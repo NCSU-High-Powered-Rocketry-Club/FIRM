@@ -16,6 +16,7 @@
   ******************************************************************************
   */
 
+#include "sdcard.h"
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -121,7 +122,13 @@ int main(void)
   while (1)
   {
 	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_8);
+
+	// Write shit
+    if (AppendToFile(log_path, strlen(log_path), "hey", 3) != FR_OK) {
+        Error_Handler(); // Handle write failure
+    }
 	HAL_Delay(1000);
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
