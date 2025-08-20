@@ -21,9 +21,11 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "fatfs.h"
+#include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "usbd_cdc_if.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -113,6 +115,7 @@ int main(void)
   MX_FATFS_Init();
   MX_SPI2_Init();
   MX_SPI3_Init();
+  MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -127,6 +130,8 @@ int main(void)
     if (AppendToFile(log_path, strlen(log_path), "hey", 3) != FR_OK) {
         Error_Handler(); // Handle write failure
     }
+    char *data = "hello\n\r";
+    CDC_Transmit_FS((uint8_t *) data, strlen(data));
 	HAL_Delay(1000);
 
     /* USER CODE END WHILE */
