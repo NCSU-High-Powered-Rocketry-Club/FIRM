@@ -133,7 +133,6 @@ int main(void)
     char *data = "hello\n\r";
     CDC_Transmit_FS((uint8_t *) data, strlen(data));
 	HAL_Delay(1000);
-
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
