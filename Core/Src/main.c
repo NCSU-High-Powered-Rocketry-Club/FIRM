@@ -130,17 +130,16 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	//HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_8);
-
 	// Write shit
     //if (AppendToFile(log_path, strlen(log_path), "hey", 3) != FR_OK) {
     //    Error_Handler(); // Handle write failure
     //}
 	if (bmp_ready){
-		if (bmp_read(&hspi2)) {
-			Error_Handler();
+		if (!bmp_read(&hspi2)) {
+			// only reset flag if the new data was collected
+			bmp_ready = false;
 		}
-		bmp_ready = false;
+
 	}
 
     /* USER CODE END WHILE */
@@ -447,8 +446,15 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+/**
+ * @brief ISR for interrupt pins
+ * @note all ISR signals use this function, must check which pin before setting data ready flags
+ * @param GPIO_Pin the EXTI pin that triggered the interrupt signal
+ * @retval None
+ */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-	if (GPIO_Pin == GPIO_PIN_3) {
+	if (GPIO_Pin == BMP581_Interrupt) {
 		bmp_ready = true;
 		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_8);
 	}
