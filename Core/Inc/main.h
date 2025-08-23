@@ -61,6 +61,7 @@ void Error_Handler(void);
 #define BMP581_CS_GPIO_Port GPIOC
 #define BMP581_Interrupt_Pin GPIO_PIN_3
 #define BMP581_Interrupt_GPIO_Port GPIOC
+#define BMP581_Interrupt_EXTI_IRQn EXTI3_IRQn
 
 /* USER CODE BEGIN Private defines */
 

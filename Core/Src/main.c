@@ -28,6 +28,7 @@
 /* USER CODE BEGIN Includes */
 #include <string.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 /* USER CODE END Includes */
 
@@ -76,7 +77,7 @@ static void MX_SPI3_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+bool bmp_ready = false;
 /* USER CODE END 0 */
 
 /**
@@ -129,18 +130,19 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_8);
+	//HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_8);
 
 	// Write shit
-    if (AppendToFile(log_path, strlen(log_path), "hey", 3) != FR_OK) {
-        Error_Handler(); // Handle write failure
-    }
+    //if (AppendToFile(log_path, strlen(log_path), "hey", 3) != FR_OK) {
+    //    Error_Handler(); // Handle write failure
+    //}
+	if (bmp_ready){
+		if (bmp_read(&hspi2)) {
+			Error_Handler();
+		}
+		bmp_ready = false;
+	}
 
-    if (bmp_read(&hspi2)) {
-    	Error_Handler();
-    }
-
-	HAL_Delay(1000);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -418,8 +420,8 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : BMP581_Interrupt_Pin */
   GPIO_InitStruct.Pin = BMP581_Interrupt_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(BMP581_Interrupt_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PB12 */
@@ -435,13 +437,22 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI3_IRQn);
+
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
   /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
-
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+	if (GPIO_Pin == GPIO_PIN_3) {
+		bmp_ready = true;
+		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_8);
+	}
+}
 /* USER CODE END 4 */
 
 /**

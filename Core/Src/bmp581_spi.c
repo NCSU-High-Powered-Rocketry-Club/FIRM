@@ -6,6 +6,7 @@
  */
 #include "bmp581_spi.h"
 #include "spi_utils.h"
+#include <stdint.h>
 
 // register for chip product ID (to test SPI transfers)
 const uint8_t bmp581_reg_chip_id = 0x01;
@@ -17,6 +18,7 @@ const uint8_t bmp581_reg_fifo_sel = 0x18;
 const uint8_t bmp581_reg_int_config = 0x14;
 const uint8_t bmp581_reg_int_source = 0x15;
 const uint8_t bmp581_reg_ord_config = 0x37;
+const uint8_t bmp581_reg_temp_data_xlsb = 0x1D;
 
 
 int bmp_init(SPI_HandleTypeDef *hspi) {
@@ -37,7 +39,7 @@ int bmp_init(SPI_HandleTypeDef *hspi) {
 	spi_read(hspi, GPIOC, GPIO_PIN_2, bmp581_reg_chip_id, &result, 1);
 	if (result != 0x50) {
 		serialPrintStr("chip ID error");
-		Error_Handler();
+		return 1;
 	}
 
 	// verify device is ready to be configured
@@ -45,7 +47,7 @@ int bmp_init(SPI_HandleTypeDef *hspi) {
 	spi_read(hspi, GPIOC, GPIO_PIN_2, bmp581_reg_status, &result, 1);
 	if (result != 0x02) {
 		serialPrintStr("device not ready to be configured");
-		Error_Handler();
+		return 1;
 	}
 
 	// verify software reset is recognized as complete by the interrupt status register
@@ -53,7 +55,7 @@ int bmp_init(SPI_HandleTypeDef *hspi) {
 	spi_read(hspi, GPIOC, GPIO_PIN_2, bmp581_reg_int_status, &result, 1);
 	if ((result & 0x10) == 0) { // check that bit 4 (POR) is 1
 		serialPrintStr("software reset not working");
-		Error_Handler();
+		return 1;
 	}
 
 	// enable pressure measurements, sets 1x over-sampling (no OSR) for pressure and temperature.
@@ -61,7 +63,7 @@ int bmp_init(SPI_HandleTypeDef *hspi) {
 	// disable FIFO buffer
 	spi_write(hspi, GPIOC, GPIO_PIN_2, bmp581_reg_fifo_sel, 0b00000000);
 	// enable interrupt pin, set to active-low, open-drain, latched mode
-	spi_write(hspi, GPIOC, GPIO_PIN_2, bmp581_reg_int_config, 0b00111101);
+	spi_write(hspi, GPIOC, GPIO_PIN_2, bmp581_reg_int_config, 0b00111001);
 	// set the source of the interrupt signal to be on data-ready
 	spi_write(hspi, GPIOC, GPIO_PIN_2, bmp581_reg_int_source, 0b00000001);
 	// disable deep-sleep, set to max ODR, set to continuous mode
@@ -72,10 +74,19 @@ int bmp_init(SPI_HandleTypeDef *hspi) {
 }
 
 int bmp_read(SPI_HandleTypeDef *hspi) {
-	uint8_t result = 0;
-	spi_read(hspi, GPIOC, GPIO_PIN_2, bmp581_reg_chip_id, &result, 1);
+	uint8_t data_ready = 0;
+	spi_read(hspi, GPIOC, GPIO_PIN_2, bmp581_reg_int_status, &data_ready, 1);
+	if (data_ready) {
+		uint8_t raw_data[6];
+		spi_read(hspi, GPIOC, GPIO_PIN_2, bmp581_reg_temp_data_xlsb, raw_data, 6);
+		uint32_t raw_temp = ((uint32_t)raw_data[2] << 16) | ((uint32_t)raw_data[1] << 8) | raw_data[0];
+		uint32_t raw_pres = ((uint32_t)raw_data[5] << 16) | ((uint32_t)raw_data[4] << 8) | raw_data[3];
+		float temp = raw_temp / 65536.0f;
+		float pres = raw_pres / 64.0f;
+		serialPrintFloat(temp);
+		serialPrintFloat(pres);
 
-	serialPrintlnInt(result);
+	}
 	return 0;
 }
 
