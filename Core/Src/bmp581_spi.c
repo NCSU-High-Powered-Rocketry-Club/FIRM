@@ -22,13 +22,12 @@ const uint8_t bmp581_reg_ord_config = 0x37;
 int bmp_init(SPI_HandleTypeDef *hspi) {
 	// drive chip select pin high
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET);
-	HAL_Delay(4); // startup time from power-on to configuration change
+	HAL_Delay(4); // from data sheet: startup time from power-on to configuration change
 
 	uint8_t result = 0;
 	spi_read(hspi, GPIOC, GPIO_PIN_2, bmp581_reg_chip_id, &result, 1); // dummy read, discard info
-	HAL_Delay(1);
 	spi_write(hspi, GPIOC, GPIO_PIN_2, bmp581_reg_cmd, 0b10110110); // do a soft-reset of the sensor's settings
-	HAL_Delay(3); // delay needed after soft reset
+	HAL_Delay(3); // from data sheet: delay needed after soft reset
 
 	// do another dummy read
 	result = 0;

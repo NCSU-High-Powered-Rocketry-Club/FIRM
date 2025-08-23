@@ -7,5 +7,5 @@
 #pragma once
 #include "usb_print_debug.h"
 
-int bmp_init();
+int bmp_init(SPI_HandleTypeDef *hspi);
 int bmp_read(SPI_HandleTypeDef *hspi);
