@@ -60,8 +60,6 @@ int bmp_init(SPI_HandleTypeDef *hspi) {
 
 	// enable pressure measurements, sets 1x over-sampling (no OSR) for pressure and temperature.
 	spi_write(hspi, GPIOC, GPIO_PIN_2, bmp581_reg_osr_config, 0b01000000);
-	// disable FIFO buffer
-	spi_write(hspi, GPIOC, GPIO_PIN_2, bmp581_reg_fifo_sel, 0b00000000);
 	// enable interrupt pin, set to active-low, open-drain, latched mode
 	spi_write(hspi, GPIOC, GPIO_PIN_2, bmp581_reg_int_config, 0b00111001);
 	// set the source of the interrupt signal to be on data-ready
