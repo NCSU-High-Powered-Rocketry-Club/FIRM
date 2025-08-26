@@ -78,6 +78,7 @@ static void MX_SPI3_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 bool bmp_ready = false;
+bool imu_ready = false;
 /* USER CODE END 0 */
 
 /**
@@ -120,9 +121,15 @@ int main(void)
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
 
+  // drive chip select pins high
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // bmp581 pin
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // imu pin
   HAL_Delay(5000); // purely for debug purposes, allows time to connect to USB serial terminal
   if (bmp_init(&hspi2)) {
   	  Error_Handler();
+  }
+  if (imu_init(&hspi2)) {
+	  Error_Handler();
   }
   /* USER CODE END 2 */
 
@@ -408,7 +415,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0|GPIO_PIN_1|BMP581_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8|IMU_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : PC0 PC1 BMP581_CS_Pin */
   GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|BMP581_CS_Pin;
@@ -429,8 +436,14 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PB8 */
-  GPIO_InitStruct.Pin = GPIO_PIN_8;
+  /*Configure GPIO pin : IMU_Interrupt_Pin */
+  GPIO_InitStruct.Pin = IMU_Interrupt_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(IMU_Interrupt_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PB8 IMU_CS_Pin */
+  GPIO_InitStruct.Pin = GPIO_PIN_8|IMU_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -454,9 +467,13 @@ static void MX_GPIO_Init(void)
  * @retval None
  */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-	if (GPIO_Pin == BMP581_Interrupt) {
+	if (GPIO_Pin == BMP581_Interrupt_Pin) {
 		bmp_ready = true;
 		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_8);
+	}
+	if (GPIO_Pin == IMU_Interrupt_Pin) {
+		imu_ready = true;
+		HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_1);
 	}
 }
 /* USER CODE END 4 */
