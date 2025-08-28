@@ -37,9 +37,9 @@ int imu_init(SPI_HandleTypeDef *hspi) {
 	result = 0;
 	spi_read(hspi, GPIOB, GPIO_PIN_9, who_am_i, &result, 1);
 	if (result != 0xE9) {
-			serialPrintStr("icm45686 chip ID failed to read");
-			return 1;
-		}
+		serialPrintStr("icm45686 chip ID failed to read");
+		return 1;
+	}
 
 	//Check bit 1 (soft reset bit) is set back to 0
 	spi_read(hspi, GPIOB, GPIO_PIN_9, reg_misc2, &result, 1);
@@ -47,13 +47,6 @@ int imu_init(SPI_HandleTypeDef *hspi) {
 		serialPrintStr("icm45686 software reset failed");
 		return 1;
 	}
-
-
-
-
-
-
-
 
 	return 0;
 }
