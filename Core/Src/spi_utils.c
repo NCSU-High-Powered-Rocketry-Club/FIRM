@@ -23,3 +23,12 @@ void spi_write(SPI_HandleTypeDef *hspi, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, 
 	HAL_GPIO_WritePin(GPIOx, GPIO_Pin, GPIO_PIN_SET);
 }
 
+void spi_burst_write(SPI_HandleTypeDef *hspi, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, uint8_t addr, uint8_t *data, uint8_t len)
+{
+    uint8_t tx_buffer[len + 1];
+    tx_buffer[0] = addr; // first byte is register address
+    memcpy(&tx_buffer[1], data, len); // copy data bytes into buffer
+    HAL_GPIO_WritePin(GPIOx, GPIO_Pin, GPIO_PIN_RESET);
+    HAL_SPI_Transmit(hspi, tx_buffer, len + 1, 100);
+    HAL_GPIO_WritePin(GPIOx, GPIO_Pin, GPIO_PIN_SET);
+}

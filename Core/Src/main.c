@@ -135,7 +135,7 @@ int main(void) {
 		Error_Handler();
 	}
 
-	if (imu_init(&hspi2)) {
+	if (imu_init(&hspi2, GPIOB, GPIO_PIN_9)) {
 		Error_Handler();
 	}
 	/* USER CODE END 2 */
