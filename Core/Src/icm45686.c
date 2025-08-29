@@ -124,5 +124,44 @@ void spi_ireg_read(SPI_HandleTypeDef *hspi, GPIO_TypeDef* cs_channel, uint16_t c
 }
 
 void spi_ireg_write(SPI_HandleTypeDef *hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin, IREGMap register_map, uint8_t addr, uint8_t data) {
+	uint16_t ireg_addr = addr;
+	uint32_t ireg_data = data;
+	//combine page with address in as 16 bits
+	switch (register_map) {
+	case IMEM_SRAM:
+		ireg_addr |= 0x0000;
+		break;
+	case IPREG_BAR:
+		ireg_addr |= 0xA000;
+		break;
+	case IPREG_SYS1:
+		ireg_addr |= 0xA400;
+		break;
+	case IPREG_SYS2:
+		ireg_addr |= 0xA500;
+		break;
+	case IPREG_TOP1:
+		ireg_addr |= 0xA200;
+		break;
+	default:
+		return;
+		}
+	//move the 16 bit page/address to the left 8 bits and turn into write as uint32_t to add 8 bits to the front
+	// giving you a 0x00####00 and combine that with your data represented as 32 bits 0x000000##
+	uint32_t ireg_addr_big = (uint32_t)(ireg_addr << 8);
+	uint32_t ireg_addr_data = ireg_addr_big |= ireg_data;
+
+	//isolate bits 16-23, 8-15, and 0-7 (farthest bit to right is 0)
+	// 16-23 by moving to the right 16 bits and uint8_t gets rid of the zeros in front
+	// 8-15 move to the right 8 bits leaving you with 24bits and compare to 0x0000FF
+	// 0-7 compare to 0x000000FF to get writing data
+	uint32_t ireg_regs[3];
+	ireg_regs[0] = (uint8_t)(ireg_addr_data >> 16);
+	ireg_regs[1] = (uint8_t)((ireg_addr_data >> 8) & 0x0000FF);
+	ireg_regs[2] = (uint8_t)(ireg_addr_data & 0x000000FF);
+
+	// burst write starting at ireg_addr_15_8
+	spi_burst_write(hspi, cs_channel, cs_pin, ireg_addr_15_8, ireg_regs, 3);
+
 
 }
