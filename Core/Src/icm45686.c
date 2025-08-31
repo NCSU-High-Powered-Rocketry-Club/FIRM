@@ -7,7 +7,13 @@
 
 #include "icm45686.h"
 #include "spi_utils.h"
+#include "firm_utils.h"
 
+// honestly i think this is probably a good thing do make a preprocessor macro but probably later
+// most likely don't need more digits because we only have a single-precision FPU
+const float pi = 3.14159265;
+
+const uint8_t accel_data_x_ui_msb = 0x00;
 const uint8_t PWR_MGMT0 = 0x10;
 const uint8_t INT1_CONFIG0 = 0x16;
 const uint8_t INT1_CONFIG2 = 0x18;
@@ -32,24 +38,22 @@ int imu_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin)
 	// Do a dummy read
 	uint8_t result = 0;
 	spi_read(hspi, cs_channel, cs_pin, WHO_AM_I, &result, 1);
-
-	// Verify chip ID is 0xE9
 	result = 0;
+	// Verify chip ID is 0xE9
 	spi_read(hspi, cs_channel, cs_pin, WHO_AM_I, &result, 1);
 	if (result != 0xE9) {
 		serialPrintStr("icm45686 chip ID failed to read");
 		return 1;
 	}
 
-	//issues a soft reset
+	// issues a soft reset
 	spi_write(hspi, cs_channel, cs_pin, REG_MISC2, 0b00000010);
 	HAL_Delay(2); // 3ms delay to allow device to finish reset
-
-	//Do another dummy read
 	result = 0;
+
+	// Do another dummy read
 	spi_read(hspi, cs_channel, cs_pin, WHO_AM_I, &result, 1);
 	// Verify chip ID is 0xE9
-	result = 0;
 	spi_read(hspi, cs_channel, cs_pin, WHO_AM_I, &result, 1);
 	if (result != 0xE9) {
 		serialPrintStr("icm45686 chip ID failed to read");
@@ -70,6 +74,7 @@ int imu_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin)
 
 	// check if the aux1 channel is disabled (bit 0 is set to 0)
 	spi_read(hspi, cs_channel, cs_pin, IOC_PAD_SCENARIO, &result, 1);
+	// TODO: Fix this check and figure out why AUX1 isn't being disabled.
 //	if ((result & 0x01) != 0) {
 //		serialPrintStr("AUX1 channel failed to disable");
 //		return 1;
@@ -89,6 +94,45 @@ int imu_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin)
 	serialPrintlnInt(result);
 
 	return 0;
+}
+
+int imu_read(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin) {
+	uint8_t data_ready = 0;
+	// checking (and resetting) interrupt status
+	spi_read(hspi, cs_channel, cs_pin, INT1_STATUS0, &data_ready, 1);
+	if (data_ready & 0x04) { // bit 2 is data_ready flag for UI channel
+		// 2 bytes for each data point, we will ignore temperature data.
+		uint8_t raw_data[12];
+		spi_read(hspi, cs_channel, cs_pin, accel_data_x_ui_msb, raw_data, 12);
+
+		// data is stored in the registers as two 8-bit values in two's complement form, so they
+		// must be converted to signed 16-bit integers.
+		int16_t ax = twos_complement_16(raw_data[0], raw_data[1]);
+		int16_t ay = twos_complement_16(raw_data[2], raw_data[3]);
+		int16_t az = twos_complement_16(raw_data[4], raw_data[5]);
+		int16_t gx = twos_complement_16(raw_data[6], raw_data[7]);
+		int16_t gy = twos_complement_16(raw_data[8], raw_data[9]);
+		int16_t gz = twos_complement_16(raw_data[10], raw_data[11]);
+
+		// TODO: determine whether the data should be logged before or after the scale factor
+		// is applied.
+
+		// datasheet lists the scale factor for accelerometer to be 1,024 LSB/g when the range is
+		// at 32g. We don't want unnecessary reads during this function, so for simplicity the
+		// 32g scale factor will be hardcoded here. Later we can determine a better way to read
+		// the scale factor
+		ax /= 1024.0f;
+		ay /= 1024.0f;
+		az /= 1024.0f;
+		// datasheet lists gyroscope scale factor as 8.192 LSB/(deg/s). We will also convert to
+		// radians, coming out to 1474.56 / PI
+		gx /= (1474.56f / pi);
+		gy /= (1474.56f / pi);
+		gz /= (1474.56f / pi);
+		return 0;
+
+	}
+	return 1; // data was not ready, return error
 }
 
 void spi_ireg_read(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel,
@@ -167,3 +211,4 @@ void spi_ireg_write(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel,
 	spi_burst_write(hspi, cs_channel, cs_pin, IREG_ADDR_15_8, ireg_regs, 3);
 
 }
+
