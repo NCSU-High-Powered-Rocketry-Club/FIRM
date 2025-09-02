@@ -131,7 +131,7 @@ int main(void) {
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // bmp581 pin
 	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // imu pin
 	HAL_Delay(5000); // purely for debug purposes, allows time to connect to USB serial terminal
-	if (bmp_init(&hspi2)) {
+	if (bmp_init(&hspi2, GPIOC, GPIO_PIN_2)) {
 		Error_Handler();
 	}
 
@@ -147,7 +147,7 @@ int main(void) {
 		AppendToFile(&file_obj, "hey", 3);
 
 		if (bmp_ready) {
-			if (!bmp_read(&hspi2)) {
+			if (!bmp_read(&hspi2, GPIOC, GPIO_PIN_2)) {
 				// only reset flag if the new data was collected
 				bmp_ready = false;
 			}
