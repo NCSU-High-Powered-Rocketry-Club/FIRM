@@ -21,8 +21,6 @@ const uint8_t INT1_STATUS0 = 0x19;
 const uint8_t INT1_STATUS1 = 0x1A;
 const uint8_t ACCEL_CONFIG0 = 0x1B;
 const uint8_t GYRO_CONFIG0 = 0x1C;
-const uint8_t IOC_PAD_SCENARIO = 0x2F;
-const uint8_t IOC_PAD_SCENARIO_aux_ovrd = 0x30;
 const uint8_t WHO_AM_I = 0x72;
 const uint8_t IREG_ADDR_15_8 = 0x7C; // used to read/write from indirect registers (IREG)
 const uint8_t IREG_ADDR_7_0 = 0x7D; // used to read/write from indirect registers (IREG)
@@ -66,19 +64,6 @@ int imu_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin)
 		serialPrintStr("icm45686 software reset failed");
 		return 1;
 	}
-
-	// overrides the aux1 channel to disable it. We are only using one output channel for the IMU
-	// and not connecting other sensors for the IMU to interface with, so AUX1 along with many
-	// of the other fancy features on the IMU will be disabled or unused.
-	spi_write(hspi, cs_channel, cs_pin, IOC_PAD_SCENARIO_aux_ovrd, 0b00000010);
-
-	// check if the aux1 channel is disabled (bit 0 is set to 0)
-	spi_read(hspi, cs_channel, cs_pin, IOC_PAD_SCENARIO, &result, 1);
-	// TODO: Fix this check and figure out why AUX1 isn't being disabled.
-//	if ((result & 0x01) != 0) {
-//		serialPrintStr("AUX1 channel failed to disable");
-//		return 1;
-//	}
 
 	// sets accel range to +/- 32g, and ODR to 1600hz
 	spi_write(hspi, cs_channel, cs_pin, ACCEL_CONFIG0, 0b00000101);
