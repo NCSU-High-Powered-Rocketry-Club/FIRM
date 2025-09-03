@@ -144,12 +144,19 @@ int main(void) {
 	/* USER CODE BEGIN WHILE */
 	while (1) {
 		// Write shit
-		AppendToFile(&file_obj, "hey", 3);
+		//AppendToFile(&file_obj, "hey", 3);
 
 		if (bmp_ready) {
-			if (!bmp_read(&hspi2, GPIOC, GPIO_PIN_2)) {
+			if (bmp_read(&hspi2, GPIOC, GPIO_PIN_2) == 0) {
 				// only reset flag if the new data was collected
 				bmp_ready = false;
+			}
+
+		}
+		if (imu_ready) {
+			if (imu_read(&hspi2, GPIOB, GPIO_PIN_9) == 0) {
+				// only reset flag if the new data was collected
+				imu_ready = false;
 			}
 
 		}

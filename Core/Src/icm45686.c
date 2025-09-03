@@ -73,10 +73,24 @@ int imu_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin)
 	spi_write(hspi, cs_channel, cs_pin, int1_config0, 0b10000100);
 	// sets interrupt pin to push-pull, latching, and active low
 	spi_write(hspi, cs_channel, cs_pin, int1_config2, 0b00000010);
-
-	spi_ireg_read(hspi, cs_channel, cs_pin, IPREG_TOP1, (uint16_t) 0x59,
-			&result);
-	serialPrintlnInt(result);
+	// big endian mode
+	spi_ireg_write(hspi, cs_channel, cs_pin, IPREG_TOP1, (uint16_t) sreg_ctrl, 0b00000010);
+	// turn interpolator and FIR filter off for gyro
+	spi_ireg_write(hspi, cs_channel, cs_pin, IPREG_SYS1, (uint16_t) ipreg_sys1_reg_166, 0b00001011);
+	// turn interpolator and FIR filter off for acceleration
+	spi_ireg_write(hspi, cs_channel, cs_pin, IPREG_SYS2, (uint16_t) ipreg_sys2_reg_123, 0b00010100);
+	spi_ireg_read(hspi, cs_channel, cs_pin, IPREG_SYS2, (uint16_t) ipreg_sys2_reg_123, &result);
+	if (result != 0b00010100) {
+		serialPrintStr("icm45686 failed to write");
+		return 1;
+	}
+	// place both accel and gyro in low noise mode
+	spi_write(hspi, cs_channel, cs_pin, pwr_mgmt0, 0b00001111);
+	// read to clear any interrupts
+	spi_read(hspi, cs_channel, cs_pin, int1_status0, &result, 1);
+	spi_read(hspi, cs_channel, cs_pin, int1_status1, &result, 1);
+	// delay for gyro to get ready
+	HAL_Delay(74);
 
 	return 0;
 }
@@ -114,6 +128,7 @@ int imu_read(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin)
 		gx /= (1474.56f / pi);
 		gy /= (1474.56f / pi);
 		gz /= (1474.56f / pi);
+		serialPrintlnInt(az);
 		return 0;
 
 	}
