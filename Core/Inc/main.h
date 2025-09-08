@@ -61,6 +61,12 @@ void Error_Handler(void);
 #define BMP581_CS_GPIO_Port GPIOC
 #define BMP581_Interrupt_Pin GPIO_PIN_3
 #define BMP581_Interrupt_GPIO_Port GPIOC
+#define BMP581_Interrupt_EXTI_IRQn EXTI3_IRQn
+#define IMU_Interrupt_Pin GPIO_PIN_6
+#define IMU_Interrupt_GPIO_Port GPIOC
+#define IMU_Interrupt_EXTI_IRQn EXTI9_5_IRQn
+#define IMU_CS_Pin GPIO_PIN_9
+#define IMU_CS_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

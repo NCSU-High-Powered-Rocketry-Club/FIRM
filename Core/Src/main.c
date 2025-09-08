@@ -1,23 +1,24 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2025 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2025 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 
 #include "sdcard.h"
 #include "bmp581_spi.h"
+#include "icm45686.h"
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -28,6 +29,7 @@
 /* USER CODE BEGIN Includes */
 #include <string.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 /* USER CODE END Includes */
 
@@ -58,6 +60,7 @@ SPI_HandleTypeDef hspi2;
 SPI_HandleTypeDef hspi3;
 
 /* USER CODE BEGIN PV */
+FIL file_obj;
 
 /* USER CODE END PV */
 
@@ -76,7 +79,8 @@ static void MX_SPI3_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+bool bmp_ready = false;
+bool imu_ready = false;
 /* USER CODE END 0 */
 
 /**
@@ -96,7 +100,6 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
 
   /* USER CODE END Init */
 
@@ -119,32 +122,57 @@ int main(void)
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
 
-  HAL_Delay(5000); // purely for debug purposes, allows time to connect to USB serial terminal
-  if (bmp_init(&hspi2)) {
-  	  Error_Handler();
-  }
+	FRESULT res = sdCardInit(&file_obj, log_path, strlen(log_path));
+	if (res) {
+		Error_Handler();
+		serialPrintStr("bad init sd card");
+	}
+
+	// drive chip select pins high
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // bmp581 pin
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // imu pin
+	HAL_Delay(5000); // purely for debug purposes, allows time to connect to USB serial terminal
+	if (bmp_init(&hspi2, GPIOC, GPIO_PIN_2)) {
+		Error_Handler();
+	}
+
+	if (imu_init(&hspi2, GPIOB, GPIO_PIN_9)) {
+		Error_Handler();
+	}
+	HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_1);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_8);
+	while (1) {
+		// Write shit
+		//AppendToFile(&file_obj, "hey", 3);
 
-	// Write shit
-    if (AppendToFile(log_path, strlen(log_path), "hey", 3) != FR_OK) {
-        Error_Handler(); // Handle write failure
-    }
+		if (bmp_ready) {
+			if (bmp_read(&hspi2, GPIOC, GPIO_PIN_2) == 0) {
+				// only reset flag if the new data was collected
+				bmp_ready = false;
+			}
 
-    if (bmp_read(&hspi2)) {
-    	Error_Handler();
-    }
+		}
+		if (imu_ready) {
+			if (imu_read(&hspi2, GPIOB, GPIO_PIN_9) == 0) {
+				// only reset flag if the new data was collected
+				imu_ready = false;
+			}
 
-	HAL_Delay(1000);
+		}
+
+		//sdCardSave(&file_obj);
+
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
+	}
+
+	sdCardClose(&file_obj);
   /* USER CODE END 3 */
 }
 
@@ -312,7 +340,7 @@ static void MX_SPI2_Init(void)
   hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi2.Init.NSS = SPI_NSS_SOFT;
-  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
   hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -407,7 +435,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0|GPIO_PIN_1|BMP581_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8|IMU_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : PC0 PC1 BMP581_CS_Pin */
   GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|BMP581_CS_Pin;
@@ -416,11 +444,11 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : BMP581_Interrupt_Pin */
-  GPIO_InitStruct.Pin = BMP581_Interrupt_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(BMP581_Interrupt_GPIO_Port, &GPIO_InitStruct);
+  /*Configure GPIO pins : BMP581_Interrupt_Pin IMU_Interrupt_Pin */
+  GPIO_InitStruct.Pin = BMP581_Interrupt_Pin|IMU_Interrupt_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PB12 */
   GPIO_InitStruct.Pin = GPIO_PIN_12;
@@ -428,12 +456,19 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PB8 */
-  GPIO_InitStruct.Pin = GPIO_PIN_8;
+  /*Configure GPIO pins : PB8 IMU_CS_Pin */
+  GPIO_InitStruct.Pin = GPIO_PIN_8|IMU_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI3_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
@@ -442,6 +477,22 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+/**
+ * @brief ISR for interrupt pins
+ * @note all ISR signals use this function, must check which pin before setting data ready flags
+ * @param GPIO_Pin the EXTI pin that triggered the interrupt signal
+ * @retval None
+ */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+	if (GPIO_Pin == BMP581_Interrupt_Pin) {
+		bmp_ready = true;
+		//HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_8);
+	}
+	if (GPIO_Pin == IMU_Interrupt_Pin) {
+		imu_ready = true;
+		//HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_1);
+	}
+}
 /* USER CODE END 4 */
 
 /**
@@ -451,11 +502,10 @@ static void MX_GPIO_Init(void)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
-  while (1)
-  {
-  }
+	/* User can add his own implementation to report the HAL error return state */
+	__disable_irq();
+	while (1) {
+	}
   /* USER CODE END Error_Handler_Debug */
 }
 #ifdef USE_FULL_ASSERT
