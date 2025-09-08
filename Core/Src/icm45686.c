@@ -69,10 +69,13 @@ int imu_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin)
 	spi_write(hspi, cs_channel, cs_pin, accel_config0, 0b00000101);
 	// sets gyro range to 4000dps, and ODR to 1600hz
 	spi_write(hspi, cs_channel, cs_pin, gyro_config0, 0b00000101);
-	// sets interrupt pin to only trigger when data is ready or reset is complete
-	spi_write(hspi, cs_channel, cs_pin, int1_config0, 0b10000100);
+	// disables all interrupts, to allow interrupt settings to be configured
+	spi_write(hspi, cs_channel, cs_pin, int1_config0, 0b00000000);
 	// sets interrupt pin to push-pull, latching, and active low
 	spi_write(hspi, cs_channel, cs_pin, int1_config2, 0b00000010);
+	// sets interrupt pin to only trigger when data is ready or reset is complete
+	spi_write(hspi, cs_channel, cs_pin, int1_config0, 0b10000100);
+
 	// big endian mode
 	spi_ireg_write(hspi, cs_channel, cs_pin, IPREG_TOP1, (uint16_t) sreg_ctrl, 0b00000010);
 	// turn interpolator and FIR filter off for gyro
@@ -91,7 +94,8 @@ int imu_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin)
 	spi_read(hspi, cs_channel, cs_pin, int1_status1, &result, 1);
 	// delay for gyro to get ready
 	HAL_Delay(74);
-
+	spi_read(hspi, cs_channel, cs_pin, int1_status0, &result, 1);
+	serialPrintStr("ICM45686 setup complete");
 	return 0;
 }
 
@@ -122,13 +126,13 @@ int imu_read(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin)
 		// the scale factor
 		ax /= 1024.0f;
 		ay /= 1024.0f;
-		az /= 1024.0f;
+		float az_f = (float)az / 1024.0f;
 		// datasheet lists gyroscope scale factor as 8.192 LSB/(deg/s). We will also convert to
 		// radians, coming out to 1474.56 / PI
 		gx /= (1474.56f / pi);
 		gy /= (1474.56f / pi);
 		gz /= (1474.56f / pi);
-		serialPrintlnInt(az);
+		serialPrintFloat(az_f);
 		return 0;
 
 	}
@@ -172,7 +176,7 @@ void spi_ireg_read(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel,
 	// will be stored in the IREG_DATA register. The `result` pointer will have the value:
 	// NOTE: We must wait for a minimum of 4us before reading IREG_DATA:
 
-	HAL_Delay(1);  // can only do millisecond delays, so 1 is enough
+	HAL_Delay(0);  // can only do millisecond delays, so 1ms is enough
 
 	spi_read(hspi, cs_channel, cs_pin, ireg_data, result, 1);
 
@@ -209,6 +213,8 @@ void spi_ireg_write(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel,
 
 	// burst write page,register, and data starting at ireg_addr_15_8
 	spi_burst_write(hspi, cs_channel, cs_pin, ireg_addr_15_8, ireg_regs, 3);
+	// must wait before next ireg operation
+	HAL_Delay(0);
 
 }
 

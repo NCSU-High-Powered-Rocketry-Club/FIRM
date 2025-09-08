@@ -94,8 +94,8 @@ int bmp_read(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin)
 		// divide raw pressure by 2^6 to get value in Pascals
 		float temp = raw_temp / 65536.0f;
 		float pres = raw_pres / 64.0f;
-		serialPrintFloat(temp);
-		serialPrintFloat(pres);
+		//serialPrintFloat(temp);
+		//serialPrintFloat(pres);
 		return 0;
 	}
 	return 1;
