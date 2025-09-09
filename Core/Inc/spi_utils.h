@@ -6,8 +6,8 @@
  */
 
 #pragma once
-#include <stdint.h>
 #include "usb_device.h"
+#include <stdint.h>
 
 /**
  * Reads data from a sensor address
@@ -18,7 +18,8 @@
  * @param buffer where the result of the read will be stored
  * @param len the number of bytes to read
  */
-void spi_read(SPI_HandleTypeDef *hspi, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, uint8_t addr, uint8_t *buffer, uint8_t len);
+void spi_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, uint8_t addr,
+              uint8_t* buffer, uint8_t len);
 
 /**
  * Writes 1 byte of data to a sensor address
@@ -28,7 +29,8 @@ void spi_read(SPI_HandleTypeDef *hspi, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, u
  * @param addr the address of the register
  * @param data the data to write to the register
  */
-void spi_write(SPI_HandleTypeDef *hspi, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, uint8_t addr, uint8_t data);
+void spi_write(SPI_HandleTypeDef* hspi, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, uint8_t addr,
+               uint8_t data);
 
 /**
  * Writes 1 or more bytes of data to sequential sensor addresses
@@ -39,4 +41,5 @@ void spi_write(SPI_HandleTypeDef *hspi, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, 
  * @param data the data to write to the registers
  * @param len the number of bytes to write
  */
-void spi_burst_write(SPI_HandleTypeDef *hspi, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, uint8_t addr, uint8_t *data, uint8_t len);
+void spi_burst_write(SPI_HandleTypeDef* hspi, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, uint8_t addr,
+                     uint8_t* data, uint8_t len);

@@ -1,0 +1,32 @@
+name: Clang format
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - '**'  # Matches all branch names, for PRs
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 2
+
+      - uses: jayllyz/clang-format-action@v1
+        with:
+          check: false     # set true to only check, false to auto-format
+          style: file      # use style from .clang-format file in repo
+          extensions: h,c    # file extensions to check
+          clang-version: latest
+
+      # Optional: Commit the changes made by clang-format if there are any
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(style): clang format files"
+          branch: ${{ github.head_ref }}
