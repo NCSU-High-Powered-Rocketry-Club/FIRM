@@ -34,7 +34,7 @@ git clone https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM.git
    - Browse to the cloned repository location and select it.
    - Click `Finish`.
 
-4. You'll find our source fiiles in the `Core/Src` directory and header files in the `Core/Inc` directory.
+4. You'll find our source files in the `Core/Src` directory and header files in the `Core/Inc` directory.
 
 5. Run `uv sync`.
 
