@@ -19,7 +19,7 @@ The components used in this project include:
 
 ## Project Setup
 
-To set up the project, follow these steps (assuming you have Git/Github Desktop installed):
+To set up the project, follow these steps (assuming you have Git/Github Desktop, and [uv](https://docs.astral.sh/uv/) installed):
 
 1. Clone the repository:
 ```bash
@@ -36,12 +36,13 @@ git clone https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM.git
 
 4. You'll find our source fiiles in the `Core/Src` directory and header files in the `Core/Inc` directory.
 
+5. Run `uv sync`.
+
+6. Run `pre-commit install` to set up the git hook for automatic code formatting, using `clang-format`.
+
 
 ## Building the project
 
 
 If you are using STM32CubeIDE, you can build the project by clicking on the hammer icon or by going to `Project` > `Build All`.
-
-
-
 
