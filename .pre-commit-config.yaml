@@ -7,4 +7,4 @@ repos:
     rev: v21.1.0
     hooks:
       - id: clang-format
-        files: \.(c|h)$   # Only run on C source and header files
+        files: ^Core/.*\.(c|h)$   # Only run on C source and header files
