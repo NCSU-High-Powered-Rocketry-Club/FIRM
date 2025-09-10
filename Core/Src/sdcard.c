@@ -51,14 +51,12 @@ FRESULT sdCardInit(FIL* file_obj, char* path, size_t path_len) {
 }
 
 FRESULT AppendToFile(FIL* file_obj, const char* msg, size_t msg_len) {
-    UINT testByte;
 
     // Write message to end of file
     //  serialPrintStr("Before sd card write");
-    FRESULT stat = f_write(file_obj, msg, msg_len, &testByte);
+    FRESULT stat = f_write(file_obj, msg, msg_len, &msg_len);
     if (stat != FR_OK) {
         serialPrintStr("failed write to sd card");
-        //	  f_mount(NULL, SDPath, 0);
         return stat;
     }
 

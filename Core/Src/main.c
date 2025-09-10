@@ -146,7 +146,8 @@ int main(void) {
     /* USER CODE BEGIN WHILE */
     while (1) {
         // Write shit
-        // AppendToFile(&file_obj, "hey", 3);
+        AppendToFile(&file_obj, "test2", 5);
+        sdCardSave(&file_obj);
 
         if (bmp_ready) {
             if (bmp_read(&hspi2, GPIOC, GPIO_PIN_2) == 0) {
@@ -161,14 +162,12 @@ int main(void) {
             }
         }
 
-        // sdCardSave(&file_obj);
 
         /* USER CODE END WHILE */
 
         /* USER CODE BEGIN 3 */
     }
 
-    sdCardClose(&file_obj);
     /* USER CODE END 3 */
 }
 
