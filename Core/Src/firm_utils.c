@@ -7,8 +7,4 @@
 
 #include "firm_utils.h"
 
-
-
-int16_t twos_complement_16(uint8_t msb, uint8_t lsb) {
-	return (int16_t)((msb << 8) | lsb);
-}
+int16_t twos_complement_16(uint8_t msb, uint8_t lsb) { return (int16_t)((msb << 8) | lsb); }
