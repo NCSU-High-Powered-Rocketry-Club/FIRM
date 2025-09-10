@@ -19,6 +19,7 @@
 #include "sdcard.h"
 #include "bmp581_spi.h"
 #include "icm45686.h"
+#include "mmc5983ma.h"
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -139,6 +140,9 @@ int main(void)
 	if (imu_init(&hspi2, GPIOB, GPIO_PIN_9)) {
 		Error_Handler();
 	}
+	if (mag_init(&hi2c1)) {
+		Error_Handler();
+	}
 	HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_1);
 
   /* USER CODE END 2 */
@@ -237,7 +241,7 @@ static void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.ClockSpeed = 100000;
+  hi2c1.Init.ClockSpeed = 400000;
   hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
