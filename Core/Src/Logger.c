@@ -4,10 +4,10 @@
  *  Created on: Aug 21, 2025
  *      Author: Praneeth, Ethan
  *
-*/
+ */
 
-#include <stdint.h>
 #include "bmp581_spi.h"
+#include <stdint.h>
 
 typedef struct bmpType {
     uint16_t temp;
@@ -30,9 +30,9 @@ BMP* addItem(BMP* head) {
     uint16_t t;
     uint16_t p;
 
-    bmp_read(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin);
+    bmp_read(SPI_HandleTypeDef * hspi, GPIO_TypeDef * cs_channel, uint16_t cs_pin);
 
-    BMP* newItem = (BMP*) malloc(sizeof(BMP)); // dynamically allocate memory
+    BMP* newItem = (BMP*)malloc(sizeof(BMP)); // dynamically allocate memory
     if (newItem == NULL) {
         printf("Memory allocation failed.\n");
         return head;
@@ -46,5 +46,3 @@ BMP* addItem(BMP* head) {
 
     return newItem;
 }
-
-
