@@ -18,6 +18,7 @@
 
 #include "bmp581_spi.h"
 #include "icm45686.h"
+#include "packets.h"
 #include "sdcard.h"
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
@@ -128,8 +129,11 @@ int main(void) {
     }
 
     // drive chip select pins high
+    // Note: We can't have these in the bmp581/imu init functions, because those somehow mess up
+    // with the initialization.
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // bmp581 pin
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // imu pin
+
     HAL_Delay(5000); // purely for debug purposes, allows time to connect to USB serial terminal
     if (bmp_init(&hspi2, GPIOC, GPIO_PIN_2)) {
         Error_Handler();
@@ -138,7 +142,13 @@ int main(void) {
     if (imu_init(&hspi2, GPIOB, GPIO_PIN_9)) {
         Error_Handler();
     }
+
+    // Toggle LED:
     HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_1);
+
+    // Declare the struct variables:
+    BMPPacket_t bmp_packet;
+    IMUPacket_t imu_packet;
 
     /* USER CODE END 2 */
 
@@ -146,17 +156,17 @@ int main(void) {
     /* USER CODE BEGIN WHILE */
     while (1) {
         // Write shit
-        AppendToFile(&file_obj, "test2", 5);
+        //        AppendToFile(&file_obj, "test2", 5);
         sdCardSave(&file_obj);
 
         if (bmp_ready) {
-            if (bmp_read(&hspi2, GPIOC, GPIO_PIN_2) == 0) {
+            if (bmp_read(&hspi2, GPIOC, GPIO_PIN_2, &bmp_packet) == 0) {
                 // only reset flag if the new data was collected
                 bmp_ready = false;
             }
         }
         if (imu_ready) {
-            if (imu_read(&hspi2, GPIOB, GPIO_PIN_9) == 0) {
+            if (imu_read(&hspi2, GPIOB, GPIO_PIN_9, &imu_packet) == 0) {
                 // only reset flag if the new data was collected
                 imu_ready = false;
             }
