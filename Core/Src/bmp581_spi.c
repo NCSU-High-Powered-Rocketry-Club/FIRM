@@ -22,8 +22,6 @@ const uint8_t bmp581_reg_ord_config = 0x37;
 const uint8_t bmp581_reg_temp_data_xlsb = 0x1D;
 
 int bmp_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin) {
-    // drive chip select pins high
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // bmp581 pin
     HAL_Delay(4); // from data sheet: startup time from power-on to configuration change
 
     uint8_t result = 0;

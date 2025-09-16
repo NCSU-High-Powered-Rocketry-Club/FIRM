@@ -128,6 +128,12 @@ int main(void) {
         serialPrintStr("bad init sd card");
     }
 
+    // drive chip select pins high
+    // Note: We can't have these in the bmp581/imu init functions, because those somehow mess up
+    // with the initialization.
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // bmp581 pin
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // imu pin
+
     HAL_Delay(5000); // purely for debug purposes, allows time to connect to USB serial terminal
     if (bmp_init(&hspi2, GPIOC, GPIO_PIN_2)) {
         Error_Handler();
@@ -150,7 +156,7 @@ int main(void) {
     /* USER CODE BEGIN WHILE */
     while (1) {
         // Write shit
-        AppendToFile(&file_obj, "test2", 5);
+        //        AppendToFile(&file_obj, "test2", 5);
         sdCardSave(&file_obj);
 
         if (bmp_ready) {

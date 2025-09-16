@@ -32,8 +32,6 @@ const uint8_t ipreg_sys1_reg_166 = 0xA6; // IPREG_SYS1 register
 const uint8_t ipreg_sys2_reg_123 = 0x7B; // IPREG_SYS2 register
 
 int imu_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin) {
-    // drive chip select pins high
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // imu pin
 
     HAL_Delay(2); // 3ms delay to allow device to power on
 
@@ -137,7 +135,7 @@ int imu_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin,
         packet->gyro_x = (float)gx / (1474.56f / pi);
         packet->gyro_y = (float)gy / (1474.56f / pi);
         packet->gyro_z = (float)gz / (1474.56f / pi);
-        serialPrintFloat(packet->acc_x);
+        serialPrintFloat(packet->acc_z);
         return 0;
     }
     return 1; // data was not ready, return error
