@@ -5,6 +5,7 @@
  *      Author: Wlsan
  */
 #pragma once
+#include "packets.h"
 #include "usb_print_debug.h"
 
 /**
@@ -25,4 +26,5 @@ int bmp_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
  * @param cs_pin specifies the GPIO pin that the chip select pin is connected to.
  * @retval 0 upon success, 1 if no new data is ready yet
  */
-int bmp_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin);
+int bmp_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin,
+             BMPPacket_t* packet);

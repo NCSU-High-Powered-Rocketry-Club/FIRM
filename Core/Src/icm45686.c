@@ -7,6 +7,7 @@
 
 #include "icm45686.h"
 #include "firm_utils.h"
+#include "packets.h"
 #include "spi_utils.h"
 
 // honestly i think this is probably a good thing do make a preprocessor macro but probably later.
@@ -31,6 +32,9 @@ const uint8_t ipreg_sys1_reg_166 = 0xA6; // IPREG_SYS1 register
 const uint8_t ipreg_sys2_reg_123 = 0x7B; // IPREG_SYS2 register
 
 int imu_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin) {
+    // drive chip select pins high
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // imu pin
+
     HAL_Delay(2); // 3ms delay to allow device to power on
 
     // Do a dummy read
@@ -99,7 +103,8 @@ int imu_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
     return 0;
 }
 
-int imu_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin) {
+int imu_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin,
+             IMUPacket_t* packet) {
     uint8_t data_ready = 0;
     // checking (and resetting) interrupt status
     spi_read(hspi, cs_channel, cs_pin, int1_status0, &data_ready, 1);
@@ -124,15 +129,15 @@ int imu_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
         // at 32g. We don't want unnecessary reads during this function, so for simplicity the
         // 32g scale factor will be hardcoded here. Later we can determine a better way to read
         // the scale factor
-        ax /= 1024.0f;
-        ay /= 1024.0f;
-        float az_f = (float)az / 1024.0f;
+        packet->acc_x = (float)ax / 1024.0f;
+        packet->acc_y = (float)ay / 1024.0f;
+        packet->acc_z = (float)az / 1024.0f;
         // datasheet lists gyroscope scale factor as 8.192 LSB/(deg/s). We will also convert to
         // radians, coming out to 1474.56 / PI
-        gx /= (1474.56f / pi);
-        gy /= (1474.56f / pi);
-        gz /= (1474.56f / pi);
-        serialPrintFloat(az_f);
+        packet->gyro_x = (float)gx / (1474.56f / pi);
+        packet->gyro_y = (float)gy / (1474.56f / pi);
+        packet->gyro_z = (float)gz / (1474.56f / pi);
+        serialPrintFloat(packet->acc_x);
         return 0;
     }
     return 1; // data was not ready, return error
