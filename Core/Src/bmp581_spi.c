@@ -5,6 +5,7 @@
  *      Author: Wlsan
  */
 #include "bmp581_spi.h"
+#include "packets.h"
 #include "spi_utils.h"
 #include <stdint.h>
 
@@ -78,7 +79,8 @@ int bmp_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
     return 0;
 }
 
-int bmp_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin) {
+int bmp_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin,
+             BMPPacket_t* packet) {
     // clear interrupt (pulls interrupt back up high) and verify new data is ready
     uint8_t data_ready = 0;
     spi_read(hspi, cs_channel, cs_pin, bmp581_reg_int_status, &data_ready, 1);
@@ -93,8 +95,8 @@ int bmp_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
             ((uint32_t)raw_data[5] << 16) | ((uint32_t)raw_data[4] << 8) | raw_data[3];
         // datasheet instructs to divide raw temperature by 2^16 to get value in celcius, and
         // divide raw pressure by 2^6 to get value in Pascals
-        float temp = raw_temp / 65536.0f;
-        float pres = raw_pres / 64.0f;
+        packet->temperature = raw_temp / 65536.0f;
+        packet->pressure = raw_pres / 64.0f;
         // serialPrintFloat(temp);
         // serialPrintFloat(pres);
         return 0;

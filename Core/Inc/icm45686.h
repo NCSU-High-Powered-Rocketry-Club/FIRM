@@ -6,6 +6,7 @@
  */
 
 #pragma once
+#include "packets.h"
 #include "usb_print_debug.h"
 
 /**
@@ -39,7 +40,8 @@ int imu_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
  * @retval 0 if successful, 1 if unsuccessful due to the data not being ready. In this case, the
  *         interrupt pin will still be reset to the inactive state, but no data will be collected.
  */
-int imu_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin);
+int imu_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin,
+             IMUPacket_t* packet);
 
 /**
  * @brief reads an indirect register from the IMU
