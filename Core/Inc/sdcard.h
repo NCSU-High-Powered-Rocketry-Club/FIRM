@@ -40,8 +40,6 @@ void sdCardSave(FIL* file_obj);
 void sdCardClose(FIL* file_obj);
 
 extern FRESULT fres;
-extern uint16_t raw_temp;
 extern char log_path[];
-extern char buf[];
 
 #endif /* INC_SDCARD_H_ */

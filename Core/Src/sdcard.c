@@ -10,7 +10,6 @@
 
 FATFS fs;
 char log_path[] = "/TEMPLOG.TXT";
-char buf[20];
 
 FRESULT sdCardInit(FIL* file_obj, char* path, size_t path_len) {
     FRESULT stat;
