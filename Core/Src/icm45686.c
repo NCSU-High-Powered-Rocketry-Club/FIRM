@@ -64,11 +64,14 @@ int imu_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
         serialPrintStr("icm45686 software reset failed");
         return 1;
     }
+    // place both accel and gyro in low noise mode
+    spi_write(hspi, cs_channel, cs_pin, pwr_mgmt0, 0b00001010);
 
     // sets accel range to +/- 32g, and ODR to 1600hz
-    spi_write(hspi, cs_channel, cs_pin, accel_config0, 0b00000101);
+    spi_write(hspi, cs_channel, cs_pin, accel_config0, 0b00000111);
     // sets gyro range to 4000dps, and ODR to 1600hz
-    spi_write(hspi, cs_channel, cs_pin, gyro_config0, 0b00000101);
+    spi_write(hspi, cs_channel, cs_pin, gyro_config0, 0b00000111);
+
     // disables all interrupts, to allow interrupt settings to be configured
     spi_write(hspi, cs_channel, cs_pin, int1_config0, 0b00000000);
     // sets interrupt pin to push-pull, latching, and active low
@@ -87,8 +90,7 @@ int imu_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
         serialPrintStr("icm45686 failed to write");
         return 1;
     }
-    // place both accel and gyro in low noise mode
-    spi_write(hspi, cs_channel, cs_pin, pwr_mgmt0, 0b00001111);
+
     // read to clear any interrupts
     spi_read(hspi, cs_channel, cs_pin, int1_status0, &result, 1);
     spi_read(hspi, cs_channel, cs_pin, int1_status1, &result, 1);
@@ -132,7 +134,11 @@ int imu_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
         gx /= (1474.56f / pi);
         gy /= (1474.56f / pi);
         gz /= (1474.56f / pi);
-        serialPrintFloat(az_f);
+        if (az_f > 15.0 || az_f < -15.0) {
+            serialPrintFloat(az_f);
+        }
+//        serialPrintFloat(az_f);
+
         return 0;
     }
     return 1; // data was not ready, return error
