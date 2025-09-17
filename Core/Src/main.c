@@ -126,7 +126,6 @@ int main(void) {
     if (res) {
         serialPrintStr("bad init sd card");
         Error_Handler();
-
     }
 
     // drive chip select pins high
@@ -137,12 +136,11 @@ int main(void) {
 
     HAL_Delay(5000); // purely for debug purposes, allows time to connect to USB serial terminal
 
-
     if (imu_init(&hspi2, GPIOB, GPIO_PIN_9)) {
         Error_Handler();
     }
     if (bmp_init(&hspi2, GPIOC, GPIO_PIN_2)) {
-            Error_Handler();
+        Error_Handler();
     }
 
     // Toggle LED:

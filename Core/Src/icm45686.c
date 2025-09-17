@@ -108,8 +108,6 @@ int imu_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
     return 0;
 }
 
-
-
 int imu_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin,
              IMUPacket_t* packet) {
     uint8_t data_ready = 0;
@@ -137,11 +135,13 @@ int imu_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin,
         gx = sign_extend_20bit(temp);
 
         // Gyro Y
-        temp = ((uint32_t)raw_data[9] << 12) | ((uint32_t)raw_data[10] << 4) | (raw_data[18] & 0x0F);
+        temp =
+            ((uint32_t)raw_data[9] << 12) | ((uint32_t)raw_data[10] << 4) | (raw_data[18] & 0x0F);
         gy = sign_extend_20bit(temp);
 
         // Gyro Z
-        temp = ((uint32_t)raw_data[11] << 12) | ((uint32_t)raw_data[12] << 4) | (raw_data[19] & 0x0F);
+        temp =
+            ((uint32_t)raw_data[11] << 12) | ((uint32_t)raw_data[12] << 4) | (raw_data[19] & 0x0F);
         gz = sign_extend_20bit(temp);
 
         // TODO: determine whether the data should be logged before or after the scale factor
@@ -238,4 +238,3 @@ void spi_ireg_write(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t 
     // must wait before next ireg operation
     HAL_Delay(0);
 }
-
