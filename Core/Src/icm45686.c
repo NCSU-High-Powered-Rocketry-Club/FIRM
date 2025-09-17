@@ -122,7 +122,8 @@ int imu_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin,
         // refer to the datasheet section 6.1 "packet structure" for information on the packet
         // structure to see which bytes of the FIFO packet go to which data points.
         // Accel X
-        uint32_t temp = ((uint32_t)raw_data[1] << 12) | ((uint32_t)raw_data[2] << 4) | (raw_data[17] >> 4);
+        uint32_t temp =
+            ((uint32_t)raw_data[1] << 12) | ((uint32_t)raw_data[2] << 4) | (raw_data[17] >> 4);
         int32_t ax = sign_extend_20bit(temp);
         // Accel Y
         temp = ((uint32_t)raw_data[3] << 12) | ((uint32_t)raw_data[4] << 4) | (raw_data[18] >> 4);
