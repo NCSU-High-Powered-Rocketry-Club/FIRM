@@ -16,6 +16,7 @@ const float pi = 3.14159265;
 
 const uint8_t accel_data_x_ui_msb = 0x00;
 const uint8_t pwr_mgmt0 = 0x10;
+const uint8_t fifo_data = 0x14;
 const uint8_t int1_config0 = 0x16;
 const uint8_t int1_config2 = 0x18;
 const uint8_t int1_status0 = 0x19;
@@ -118,31 +119,32 @@ int imu_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin,
     if (data_ready & 0x04) { // bit 2 is data_ready flag for UI channel
         // each packet from the fifo is 20 bytes
         uint8_t raw_data[20];
-        spi_read(hspi, cs_channel, cs_pin, 0x14, raw_data, 20);
-        uint32_t temp;
-        int32_t ax, ay, az, gx, gy, gz;
+        spi_read(hspi, cs_channel, cs_pin, fifo_data, raw_data, 20);
+
+        // refer to the datasheet section 6.1 "packet structure" for how the bytes of the
+        // FIFO packet are arranged. We ignore bytes 13 - 16 (temp and timestamp)
         // Accel X
-        temp = ((uint32_t)raw_data[1] << 12) | ((uint32_t)raw_data[2] << 4) | (raw_data[17] >> 4);
-        ax = sign_extend_20bit(temp);
+        uint32_t temp = ((uint32_t)raw_data[1] << 12) | ((uint32_t)raw_data[2] << 4) | (raw_data[17] >> 4);
+        int32_t ax = sign_extend_20bit(temp);
         // Accel Y
         temp = ((uint32_t)raw_data[3] << 12) | ((uint32_t)raw_data[4] << 4) | (raw_data[18] >> 4);
-        ay = sign_extend_20bit(temp);
+        int32_t ay = sign_extend_20bit(temp);
 
         // Accel Z
         temp = ((uint32_t)raw_data[5] << 12) | ((uint32_t)raw_data[6] << 4) | (raw_data[19] >> 4);
-        az = sign_extend_20bit(temp);
+        int32_t az = sign_extend_20bit(temp);
 
         // Gyro X
         temp = ((uint32_t)raw_data[7] << 12) | ((uint32_t)raw_data[8] << 4) | (raw_data[17] & 0x0F);
-        gx = sign_extend_20bit(temp);
+        int32_t gx = sign_extend_20bit(temp);
 
         // Gyro Y
         temp = ((uint32_t)raw_data[9] << 12) | ((uint32_t)raw_data[10] << 4) | (raw_data[18] & 0x0F);
-        gy = sign_extend_20bit(temp);
+        int32_t gy = sign_extend_20bit(temp);
 
         // Gyro Z
         temp = ((uint32_t)raw_data[11] << 12) | ((uint32_t)raw_data[12] << 4) | (raw_data[19] & 0x0F);
-        gz = sign_extend_20bit(temp);
+        int32_t gz = sign_extend_20bit(temp);
 
         // TODO: determine whether the data should be logged before or after the scale factor
         // is applied.
