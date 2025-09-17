@@ -19,7 +19,8 @@
 int16_t twos_complement_16(uint8_t msb, uint8_t lsb);
 
 /**
- * @brief Converts an unsigned 20-bit value to a signed 32-bit integer by sign-extending the 19th bit.
+ * @brief Converts an unsigned 20-bit value to a signed 32-bit integer by sign-extending the 19th
+ * bit.
  *
  * This function takes an unsigned 32-bit integer containing a 20-bit value (bits 0–19)
  * and returns a signed 32-bit integer, where the sign bit (bit 19) is extended to bits 20–31.
