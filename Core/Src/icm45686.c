@@ -22,6 +22,9 @@ const uint8_t int1_status0 = 0x19;
 const uint8_t int1_status1 = 0x1A;
 const uint8_t accel_config0 = 0x1B;
 const uint8_t gyro_config0 = 0x1C;
+const uint8_t fifo_config0 = 0x1D;
+const uint8_t fifo_config2 = 0x20;
+const uint8_t fifo_config3 = 0x21;
 const uint8_t who_am_i = 0x72;
 const uint8_t ireg_addr_15_8 = 0x7C; // used to read/write from indirect registers (IREG)
 const uint8_t ireg_addr_7_0 = 0x7D;  // used to read/write from indirect registers (IREG)
@@ -67,10 +70,14 @@ int imu_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
         return 1;
     }
 
-    // sets accel range to +/- 32g, and ODR to 1600hz
-    spi_write(hspi, cs_channel, cs_pin, accel_config0, 0b00000101);
-    // sets gyro range to 4000dps, and ODR to 1600hz
-    spi_write(hspi, cs_channel, cs_pin, gyro_config0, 0b00000101);
+    // sets accel range to +/- 32g, and ODR to 800hz
+    spi_write(hspi, cs_channel, cs_pin, accel_config0, 0b00000110);
+    // sets gyro range to 4000dps, and ODR to 800hz
+    spi_write(hspi, cs_channel, cs_pin, gyro_config0, 0b00000110);
+    // fifo set to stream mode, and 2k byte size
+    spi_write(hspi, cs_channel, cs_pin, fifo_config0, 0b01000111);
+    // enable fifo for acceleration and gyroscope
+    spi_write(hspi, cs_channel, cs_pin, fifo_config3, 0b00001111);
     // disables all interrupts, to allow interrupt settings to be configured
     spi_write(hspi, cs_channel, cs_pin, int1_config0, 0b00000000);
     // sets interrupt pin to push-pull, latching, and active low
@@ -101,41 +108,57 @@ int imu_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
     return 0;
 }
 
+
+
 int imu_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin,
              IMUPacket_t* packet) {
     uint8_t data_ready = 0;
     // checking (and resetting) interrupt status
     spi_read(hspi, cs_channel, cs_pin, int1_status0, &data_ready, 1);
     if (data_ready & 0x04) { // bit 2 is data_ready flag for UI channel
-        // 2 bytes for each data point, we will ignore temperature data.
-        uint8_t raw_data[12];
-        spi_read(hspi, cs_channel, cs_pin, accel_data_x_ui_msb, raw_data, 12);
+        // each packet from the fifo is 20 bytes
+        uint8_t raw_data[20];
+        spi_read(hspi, cs_channel, cs_pin, 0x14, raw_data, 20);
+        uint32_t temp;
+        int32_t ax, ay, az, gx, gy, gz;
+        // Accel X
+        temp = ((uint32_t)raw_data[1] << 12) | ((uint32_t)raw_data[2] << 4) | (raw_data[17] >> 4);
+        ax = sign_extend_20bit(temp);
+        // Accel Y
+        temp = ((uint32_t)raw_data[3] << 12) | ((uint32_t)raw_data[4] << 4) | (raw_data[18] >> 4);
+        ay = sign_extend_20bit(temp);
 
-        // data is stored in the registers as two 8-bit values in two's complement form, so they
-        // must be converted to signed 16-bit integers.
-        int16_t ax = twos_complement_16(raw_data[0], raw_data[1]);
-        int16_t ay = twos_complement_16(raw_data[2], raw_data[3]);
-        int16_t az = twos_complement_16(raw_data[4], raw_data[5]);
-        int16_t gx = twos_complement_16(raw_data[6], raw_data[7]);
-        int16_t gy = twos_complement_16(raw_data[8], raw_data[9]);
-        int16_t gz = twos_complement_16(raw_data[10], raw_data[11]);
+        // Accel Z
+        temp = ((uint32_t)raw_data[5] << 12) | ((uint32_t)raw_data[6] << 4) | (raw_data[19] >> 4);
+        az = sign_extend_20bit(temp);
+
+        // Gyro X
+        temp = ((uint32_t)raw_data[7] << 12) | ((uint32_t)raw_data[8] << 4) | (raw_data[17] & 0x0F);
+        gx = sign_extend_20bit(temp);
+
+        // Gyro Y
+        temp = ((uint32_t)raw_data[9] << 12) | ((uint32_t)raw_data[10] << 4) | (raw_data[18] & 0x0F);
+        gy = sign_extend_20bit(temp);
+
+        // Gyro Z
+        temp = ((uint32_t)raw_data[11] << 12) | ((uint32_t)raw_data[12] << 4) | (raw_data[19] & 0x0F);
+        gz = sign_extend_20bit(temp);
 
         // TODO: determine whether the data should be logged before or after the scale factor
         // is applied.
 
-        // datasheet lists the scale factor for accelerometer to be 1,024 LSB/g when the range is
-        // at 32g. We don't want unnecessary reads during this function, so for simplicity the
-        // 32g scale factor will be hardcoded here. Later we can determine a better way to read
-        // the scale factor
-        packet->acc_x = (float)ax / 1024.0f;
-        packet->acc_y = (float)ay / 1024.0f;
-        packet->acc_z = (float)az / 1024.0f;
-        // datasheet lists gyroscope scale factor as 8.192 LSB/(deg/s). We will also convert to
-        // radians, coming out to 1474.56 / PI
-        packet->gyro_x = (float)gx / (1474.56f / pi);
-        packet->gyro_y = (float)gy / (1474.56f / pi);
-        packet->gyro_z = (float)gz / (1474.56f / pi);
-        serialPrintFloat(packet->acc_z);
+        // datasheet lists the scale factor for accelerometer to be 16,384 LSB/g when in FIFO mode
+        packet->acc_x = (float)ax / 16384.0f;
+        packet->acc_y = (float)ay / 16384.0f;
+        packet->acc_z = (float)az / 16384.0f;
+        // datasheet lists gyroscope scale factor as 131.072 LSB/(deg/s). We will also convert to
+        // radians, coming out to 23592.96 / PI
+        packet->gyro_x = (float)gx / (23592.96f / pi);
+        packet->gyro_y = (float)gy / (23592.96f / pi);
+        packet->gyro_z = (float)gz / (23592.96f / pi);
+
+        // flush the fifo
+        spi_write(hspi, cs_channel, cs_pin, fifo_config2, 0b10100000);
         return 0;
     }
     return 1; // data was not ready, return error
@@ -215,3 +238,4 @@ void spi_ireg_write(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t 
     // must wait before next ireg operation
     HAL_Delay(0);
 }
+
