@@ -5,11 +5,11 @@
  *      Author: Wlsan
  */
 #pragma once
-#include <string.h>
 #include "usb_device.h"
 #include "usbd_cdc_if.h"
+#include <string.h>
 
-void serialPrintStr(const char *s);
+void serialPrintStr(const char* s);
 void serialPrintInt(int d);
 void serialPrintlnInt(int d);
 void serialPrintFloat(float f);
