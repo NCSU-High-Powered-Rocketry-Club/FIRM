@@ -167,7 +167,7 @@ int main(void) {
         // sdCardSave(&file_obj);
 
         if (bmp_ready) {
-            logger_ensure_capacity(sizeof(BMPPacket_t) + 3);
+            logger_ensure_capacity(sizeof(BMPPacket_t) + 4);
             BMPPacket_t* bmp_packet = (BMPPacket_t*)&current_buffer[current_offset + 4];
             if (bmp_read(&hspi2, GPIOC, GPIO_PIN_2, bmp_packet) == 0) {
                 // only reset flag if the new data was collected

@@ -135,7 +135,7 @@ int imu_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin,
         packet->gyro_x = (float)gx / (1474.56f / pi);
         packet->gyro_y = (float)gy / (1474.56f / pi);
         packet->gyro_z = (float)gz / (1474.56f / pi);
-        serialPrintFloat(packet->acc_z);
+        // serialPrintFloat(packet->acc_z);
         return 0;
     }
     return 1; // data was not ready, return error
