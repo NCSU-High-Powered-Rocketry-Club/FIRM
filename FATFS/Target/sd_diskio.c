@@ -329,7 +329,7 @@ DRESULT SD_write(BYTE lun, const BYTE *buff, DWORD sector, UINT count)
 		      }
 		      else
 		      {
-		        WriteStatus = 1;
+		        WriteStatus = 0;
 		        timeout = HAL_GetTick();
 
 		        while((HAL_GetTick() - timeout) < SD_TIMEOUT)
@@ -373,70 +373,113 @@ DRESULT SD_write(BYTE lun, const BYTE *buff, DWORD sector, UINT count)
   */
 #if _USE_WRITE == 1
 
+
 DRESULT SD_write(BYTE lun, const BYTE *buff, DWORD sector, UINT count)
 {
-	  DRESULT res = RES_ERROR;
-	  uint32_t timeout;
+  DRESULT res = RES_ERROR;
+  uint32_t timeout;
+#if defined(ENABLE_SCRATCH_BUFFER)
+  uint8_t ret;
+  int i;
+#endif
 
-	  if(sd_FastWriteFlag == 0)
-	  {
+   WriteStatus = 0;
+#if (ENABLE_SD_DMA_CACHE_MAINTENANCE == 1)
+  uint32_t alignedAddr;
+#endif
 
-	   WriteStatus = 0;
+  if (SD_CheckStatusWithTimeout(SD_TIMEOUT) < 0)
+  {
+    return res;
+  }
 
-	  if (SD_CheckStatusWithTimeout(SD_TIMEOUT) < 0)
-	  {
-	    return res;
-	  }
-		    if(BSP_SD_WriteBlocks_DMA((uint32_t*)buff,
-		                              (uint32_t)(sector),
-		                              count) == MSD_OK)
-		    {
-		      /* Wait that writing process is completed or a timeout occurs */
+#if defined(ENABLE_SCRATCH_BUFFER)
+  if (!((uint32_t)buff & 0x3))
+  {
+#endif
+#if (ENABLE_SD_DMA_CACHE_MAINTENANCE == 1)
 
-		      timeout = HAL_GetTick();
-		      while((WriteStatus == 0) && ((HAL_GetTick() - timeout) < SD_TIMEOUT))
-		      {
-		      }
-		      /* in case of a timeout return error */
-		      if (WriteStatus == 0)
-		      {
-		        res = RES_ERROR;
-		      }
-		      else
-		      {
-		        WriteStatus = 1;
-		        timeout = HAL_GetTick();
+    /*
+    the SCB_CleanDCache_by_Addr() requires a 32-Byte aligned address
+    adjust the address and the D-Cache size to clean accordingly.
+    */
+    alignedAddr = (uint32_t)buff &  ~0x1F;
+    SCB_CleanDCache_by_Addr((uint32_t*)alignedAddr, count*BLOCKSIZE + ((uint32_t)buff - alignedAddr));
+#endif
 
-		        while((HAL_GetTick() - timeout) < SD_TIMEOUT)
-		        {
-		          if (BSP_SD_GetCardState() == SD_TRANSFER_OK)
-		          {
-		            res = RES_OK;
-		            break;
-		          }
-		        }
-		      }
-		    }
-		  return res;
-	  }
-	  else
-	  {
-		  if (WriteStatus == 0)
-		  {
-			  res = RES_ERROR;
-		  }
-		  else
-		  {
-			  if(BSP_SD_WriteBlocks_DMA((uint32_t*)buff, (uint32_t)(sector),count) == MSD_OK)
-			  {
-				  WriteStatus = 0;
-				  res = RES_OK;
-			  }
-		  }
-		  return res;
-	  }
+    if(BSP_SD_WriteBlocks_DMA((uint32_t*)buff,
+                              (uint32_t)(sector),
+                              count) == MSD_OK)
+    {
+      /* Wait that writing process is completed or a timeout occurs */
+
+      timeout = HAL_GetTick();
+      while((WriteStatus == 0) && ((HAL_GetTick() - timeout) < SD_TIMEOUT))
+      {
+      }
+      /* in case of a timeout return error */
+      if (WriteStatus == 0)
+      {
+        res = RES_ERROR;
+      }
+      else
+      {
+        WriteStatus = 0;
+        timeout = HAL_GetTick();
+
+        while((HAL_GetTick() - timeout) < SD_TIMEOUT)
+        {
+          if (BSP_SD_GetCardState() == SD_TRANSFER_OK)
+          {
+            res = RES_OK;
+            break;
+          }
+        }
+      }
+    }
+#if defined(ENABLE_SCRATCH_BUFFER)
+  }
+    else
+    {
+      /* Slow path, fetch each sector a part and memcpy to destination buffer */
+#if (ENABLE_SD_DMA_CACHE_MAINTENANCE == 1)
+      /*
+      * invalidate the scratch buffer before the next write to get the actual data instead of the cached one
+      */
+      SCB_InvalidateDCache_by_Addr((uint32_t*)scratch, BLOCKSIZE);
+#endif
+
+      for (i = 0; i < count; i++)
+      {
+        WriteStatus = 0;
+
+        memcpy((void *)scratch, (void *)buff, BLOCKSIZE);
+        buff += BLOCKSIZE;
+
+        ret = BSP_SD_WriteBlocks_DMA((uint32_t*)scratch, (uint32_t)sector++, 1);
+        if (ret == MSD_OK) {
+          /* wait for a message from the queue or a timeout */
+          timeout = HAL_GetTick();
+          while((WriteStatus == 0) && ((HAL_GetTick() - timeout) < SD_TIMEOUT))
+          {
+          }
+          if (WriteStatus == 0)
+          {
+            break;
+          }
+
+        }
+        else
+        {
+          break;
+        }
+      }
+      if ((i == count) && (ret == MSD_OK))
+        res = RES_OK;
+    }
+#endif
+  return res;
 }
-
 #endif /* _USE_WRITE == 1 */
 
 /* USER CODE BEGIN beforeIoctlSection */
