@@ -34,7 +34,7 @@ void logger_write() {
 
     // Pad the file
     for (int i = current_offset; i < BUFFER_SIZE; i++) {
-        current_buffer[current_offset] = 0;
+        current_buffer[i] = 0;
     }
 
     uint32_t t1 = HAL_GetTick();
