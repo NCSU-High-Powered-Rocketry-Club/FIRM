@@ -329,7 +329,7 @@ DRESULT SD_write(BYTE lun, const BYTE *buff, DWORD sector, UINT count)
 		      }
 		      else
 		      {
-		        WriteStatus = 0;
+		        WriteStatus = 1;
 		        timeout = HAL_GetTick();
 
 		        while((HAL_GetTick() - timeout) < SD_TIMEOUT)

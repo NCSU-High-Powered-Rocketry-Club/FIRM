@@ -24,10 +24,17 @@ FATFS fs;
 
 extern DMA_HandleTypeDef hdma_sdio_tx; // Link to the DMA handler to check if busy
 
+TCHAR fileName[32] = {'\0'};
+
 void logger_write() {
     if (HAL_DMA_GetState(&hdma_sdio_tx) != HAL_DMA_STATE_READY) {
         serialPrintStr("Full");
         return;
+    }
+
+    // Pad the file
+    for (int i = current_offset; i < BUFFER_SIZE; i++) {
+        current_buffer[current_offset] = 0;
     }
 
     uint32_t t1 = HAL_GetTick();
@@ -38,16 +45,18 @@ void logger_write() {
 
     //	sd_FastWriteFlag = 1;
     sd_FastWriteFlag = 1;
-    FRESULT fr = f_write(&log_file, current_buffer, current_offset, &bytes_written);
+    //    FRESULT fr = f_write(&log_file, current_buffer, current_offset, &bytes_written);
+    // TODO we might need to log exactly buffer size to get it to work.
+    FRESULT fr = f_write(&log_file, current_buffer, BUFFER_SIZE, &bytes_written);
     uint32_t t3 = HAL_GetTick();
     sd_FastWriteFlag = 0;
 
-    if (fr != FR_OK || bytes_written != current_offset) {
+    if (fr != FR_OK) {
         // TODO: Error
         serialPrintStr("ERR logger_write");
     } else {
         char out[32] = {'\0'};
-        sprintf(out, "T: %i %i", t2 - t1, t3 - t2);
+        sprintf(out, "T: %i %i %s", t2 - t1, t3 - t2, fileName);
         serialPrintStr(out);
     }
 
@@ -103,7 +112,6 @@ FRESULT logger_init() {
     }
 
     uint8_t fileIndex = 0;
-    TCHAR fileName[32] = {'\0'};
     DIR dj;
     FILINFO fno;
 
@@ -119,6 +127,8 @@ FRESULT logger_init() {
         return fr;
     }
 
+    serialPrintStr(fileName);
+
     fr = f_open(&log_file, fileName, FA_CREATE_NEW | FA_WRITE);
     if (fr != FR_OK) {
         // TODO: error
@@ -126,6 +136,7 @@ FRESULT logger_init() {
         return fr;
     }
 
+#if 1
     {
         // Allocate a contiguous area to the file
         fr = f_truncate(&log_file);
@@ -141,6 +152,7 @@ FRESULT logger_init() {
     }
 
     f_sync(&log_file);
+#endif
 
     // TODO: truncate and expand for continuous file
 

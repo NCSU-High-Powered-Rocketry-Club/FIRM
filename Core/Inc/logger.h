@@ -14,7 +14,8 @@
 
 #include <string.h>
 
-#define BUFFER_SIZE 4096
+// #define BUFFER_SIZE 4096
+#define BUFFER_SIZE 8192
 
 extern char* current_buffer;
 extern UINT current_offset;
