@@ -122,20 +122,11 @@ int main(void) {
     MX_USB_DEVICE_Init();
     /* USER CODE BEGIN 2 */
 
-    // FRESULT res = sdCardInit(&file_obj, log_path, strlen(log_path));
-    // if (res) {
-    //     Error_Handler();
-    //     serialPrintStr("bad init sd card");
-    // }
     FRESULT res = logger_init();
     if (res) {
         Error_Handler();
         serialPrintStr("bad init sd card");
     }
-
-    current_buffer[current_offset] = 1;
-    BMPPacket_t* bmp_packet = (BMPPacket_t*)&current_buffer[current_offset + 1];
-    bmp_packet->temperature = 1.0;
 
     // drive chip select pins high
     // Note: We can't have these in the bmp581/imu init functions, because those somehow mess up
