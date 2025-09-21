@@ -124,8 +124,8 @@ int main(void) {
 
     FRESULT res = logger_init();
     if (res) {
-        Error_Handler();
         serialPrintStr("bad init sd card");
+        Error_Handler();
     }
 
     // drive chip select pins high
@@ -135,11 +135,11 @@ int main(void) {
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // imu pin
 
     HAL_Delay(500); // purely for debug purposes, allows time to connect to USB serial terminal
-    if (bmp_init(&hspi2, GPIOC, GPIO_PIN_2)) {
-        Error_Handler();
-    }
 
     if (imu_init(&hspi2, GPIOB, GPIO_PIN_9)) {
+        Error_Handler();
+    }
+    if (bmp_init(&hspi2, GPIOC, GPIO_PIN_2)) {
         Error_Handler();
     }
 
