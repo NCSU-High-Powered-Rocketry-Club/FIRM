@@ -22,7 +22,10 @@ int mag_init(I2C_HandleTypeDef *hi2c) {
     HAL_Delay(14); // 15ms power-on time
     uint8_t result = 0;
     // dummy read, ignore result
-    i2c_read(hi2c, dev_i2c_addr, product_id1, &result, 1);
+    if (i2c_read(hi2c, dev_i2c_addr, product_id1, &result, 1) == HAL_ERROR) {
+        serialPrintStr("I2C read failed HAL ERROR");
+        return 1;
+    }
     // read product ID, check that result is the expected Product ID byte
     result = 0;
     i2c_read(hi2c, dev_i2c_addr, product_id1, &result, 1);
@@ -35,7 +38,6 @@ int mag_init(I2C_HandleTypeDef *hi2c) {
     HAL_Delay(14); // 15ms power-on time
     // do dummy read after reset
     i2c_read(hi2c, dev_i2c_addr, product_id1, &result, 1);
-    return 0;
     // read product ID, check that result is the expected Product ID byte
     result = 0;
     i2c_read(hi2c, dev_i2c_addr, product_id1, &result, 1);
@@ -53,21 +55,23 @@ int mag_init(I2C_HandleTypeDef *hi2c) {
     // enable interrupt pin
     i2c_write(hi2c, dev_i2c_addr, internal_control0, 0b00000100);
     // set bandwidth to 200hz (4ms measurement time)
-    i2c_write(hi2c, dev_i2c_addr, internal_control1, 0b00000001);
+    i2c_write(hi2c, dev_i2c_addr, internal_control1, 0b00000000);
+
     // enable continuous measurement mode at 200hz
-    i2c_write(hi2c, dev_i2c_addr, internal_control2, 0b00001110);
-    // ensure continous measurment mode at 200hz is active
-    i2c_read(hi2c, dev_i2c_addr, internal_control2, &result, 1);
-    if (result != 0b00001110) {
-        serialPrintStr("MMC5983MA could not configure data registers");
-        return 1;
-    }
+    i2c_write(hi2c, dev_i2c_addr, internal_control2, 0b00001010);
+    return 0;
 }
 
-int mag_read(I2C_HandleTypeDef *hi2c) {
+int mag_read(I2C_HandleTypeDef *hi2c, int flip) {
     uint8_t data_ready = 0;
     i2c_read(hi2c, dev_i2c_addr, status, &data_ready, 1);
     if (data_ready & 0x01) {
+        if (flip == 0) {
+            i2c_write(hi2c, dev_i2c_addr, internal_control0, 0b00010100);
+        }
+        if (flip == 5) {
+            i2c_write(hi2c, dev_i2c_addr, internal_control0, 0b00001100);
+        }
         i2c_write(hi2c, dev_i2c_addr, status, 0b00000001);
         uint8_t raw_data[7];
         i2c_read(hi2c, dev_i2c_addr, x_out0, raw_data, 7);
@@ -79,9 +83,9 @@ int mag_read(I2C_HandleTypeDef *hi2c) {
         mag_data[0] = (((float)mag_data_binary[0]) - 131072.0) / 131072.0;
         mag_data[1] = (((float)mag_data_binary[1]) - 131072.0) / 131072.0;
         mag_data[2] = (((float)mag_data_binary[2]) - 131072.0) / 131072.0;
+        serialPrintFloat(mag_data[0]);
         return 0;
     }
     return 1;
 }
-
 

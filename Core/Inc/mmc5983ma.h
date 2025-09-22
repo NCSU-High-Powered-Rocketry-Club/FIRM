@@ -11,3 +11,5 @@
 #include <stdint.h>
 
 int mag_init(I2C_HandleTypeDef *hi2c);
+
+int mag_read(I2C_HandleTypeDef *hi2c, int flip);

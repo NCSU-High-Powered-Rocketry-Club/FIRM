@@ -17,7 +17,7 @@
  * @param buffer where the result of the read will be stored
  * @param len the number of bytes to read
  */
-void i2c_read(I2C_HandleTypeDef *hi2c, uint8_t dev_addr, uint8_t reg_addr, uint8_t *buffer, uint8_t len);
+int i2c_read(I2C_HandleTypeDef *hi2c, uint8_t dev_addr, uint8_t reg_addr, uint8_t *buffer, uint8_t len);
 
 /**
  * Writes 1 byte of data to a sensor register over I2C
