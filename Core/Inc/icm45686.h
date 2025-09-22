@@ -37,6 +37,7 @@ int imu_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
  * @param hspi specifies the SPI channel that the IMU is connected to.
  * @param cs_channel specifies the GPIO channel that the chip select pin is connected to.
  * @param cs_pin specifies the GPIO pin that the chip select pin is connected to.
+ * @param packet pointer to the IMU packet where the data will be stored
  * @retval 0 if successful, 1 if unsuccessful due to the data not being ready. In this case, the
  *         interrupt pin will still be reset to the inactive state, but no data will be collected.
  */
