@@ -38,7 +38,7 @@ void logger_write() {
     }
 
     uint32_t t1 = HAL_GetTick();
-    f_sync(&log_file);
+    //    f_sync(&log_file);
     uint32_t t2 = HAL_GetTick();
     // TODO: check sd card state
     UINT bytes_written = 0;
