@@ -169,7 +169,7 @@ void logger_log_type_timestamp(char type) {
     // This should advance by TYPE_TIMESTAMP_SIZE
     current_buffer[current_offset++] = type;
     uint32_t current_time = HAL_GetTick();
-    current_buffer[current_offset++] = (current_time << 2 * 8) & 0xFF;
-    current_buffer[current_offset++] = (current_time << 1 * 8) & 0xFF;
-    current_buffer[current_offset++] = (current_time << 0 * 8) & 0xFF;
+    current_buffer[current_offset++] = (current_time >> 16) & 0xFF;
+    current_buffer[current_offset++] = (current_time >> 8) & 0xFF;
+    current_buffer[current_offset++] = current_time & 0xFF;
 }
