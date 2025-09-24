@@ -77,18 +77,14 @@ void logger_swap_buffers() {
 // FRESULT logger_write_header()
 void logger_write_header() {
     if (current_offset != 0) {
-        // TODO: error
         serialPrintStr("ERR logger_write");
     }
 
-    const char* header = "FLOG v0.1\n";
-    sprintf(current_buffer, header);
-    current_offset = strlen(header);
-    logger_write();
-    logger_swap_buffers();
-
-    // TODO error handling
-    // return FR_OK;
+    const char* header = "FIRM LOG v0.1\n";
+    strcpy(current_buffer, header);
+    // 4 byte aligned
+    int padded_len = ((strlen(header) + 3) / 4) * 4;
+    current_offset = padded_len;
 }
 
 FRESULT logger_init() {
