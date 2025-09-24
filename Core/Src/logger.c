@@ -8,6 +8,7 @@
 #include "logger.h"
 #include "fatfs.h"
 #include "ff.h"
+#include "usb_print_debug.h"
 #include <stdint.h>
 #include <stdio.h>
 
@@ -55,8 +56,8 @@ void logger_write() {
         // TODO: Error
         serialPrintStr("ERR logger_write");
     } else {
-        char out[32] = {'\0'};
-        sprintf(out, "T: %i %i %s", t2 - t1, t3 - t2, fileName);
+        char out[48] = {'\0'};
+        sprintf(out, "T: %lu %lu %s", t2 - t1, t3 - t2, fileName);
         serialPrintStr(out);
     }
 
@@ -127,37 +128,31 @@ FRESULT logger_init() {
         return fr;
     }
 
-    serialPrintStr(fileName);
-
+    // Open the file
     fr = f_open(&log_file, fileName, FA_CREATE_NEW | FA_WRITE);
     if (fr != FR_OK) {
-        // TODO: error
         f_mount(0, SDPath, 0);
         return fr;
     }
 
-#if 1
+    // Allocate a contiguous area to the file
+    // We need to do this to avoid f_sync (slow!)
     {
-        // Allocate a contiguous area to the file
         fr = f_truncate(&log_file);
         HAL_Delay(10);
         if (fr != FR_OK) {
             return fr;
         }
-        // Create contiguous file for faster write transactions later
-        fr = f_expand(&log_file, 50000000, 1);
+
+        // 2e8 bytes = (1 hour * ((8192 bytes * 4.4hz) * 1.5))
+        fr = f_expand(&log_file, 2e8, 1);
         if (fr != FR_OK) {
             return fr;
         }
     }
-
     f_sync(&log_file);
-#endif
-
-    // TODO: truncate and expand for continuous file
 
     logger_write_header();
-
     f_sync(&log_file);
 
     return fr;
@@ -172,4 +167,13 @@ FRESULT logger_ensure_capacity(int capacity) {
 
     // TODO error handling
     return FR_OK;
+}
+
+void logger_log_type_timestamp(char type) {
+    // This should advance by TYPE_TIMESTAMP_SIZE
+    current_buffer[current_offset++] = type;
+    uint32_t current_time = HAL_GetTick();
+    current_buffer[current_offset++] = (current_time << 2 * 8) & 0xFF;
+    current_buffer[current_offset++] = (current_time << 1 * 8) & 0xFF;
+    current_buffer[current_offset++] = (current_time << 0 * 8) & 0xFF;
 }

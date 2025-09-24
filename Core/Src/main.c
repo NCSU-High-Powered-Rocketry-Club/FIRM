@@ -122,9 +122,10 @@ int main(void) {
     MX_USB_DEVICE_Init();
     /* USER CODE BEGIN 2 */
 
+    // Setup the SD card
     FRESULT res = logger_init();
     if (res) {
-        serialPrintStr("bad init sd card");
+        serialPrintStr("Failed to initialized the logger (SD card)");
         Error_Handler();
     }
 
@@ -153,34 +154,26 @@ int main(void) {
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
     while (1) {
-        // Write shit
-        //        AppendToFile(&file_obj, "test2", 5);
-        // sdCardSave(&file_obj);
-
         if (bmp_ready) {
-            logger_ensure_capacity(sizeof(BMPPacket_t) + 4);
-            BMPPacket_t* bmp_packet = (BMPPacket_t*)&current_buffer[current_offset + 4];
+            logger_ensure_capacity(sizeof(BMPPacket_t) + TYPE_TIMESTAMP_SIZE);
+            BMPPacket_t* bmp_packet =
+                (BMPPacket_t*)&current_buffer[current_offset + TYPE_TIMESTAMP_SIZE];
             if (bmp_read(&hspi2, GPIOC, GPIO_PIN_2, bmp_packet) == 0) {
                 // only reset flag if the new data was collected
                 bmp_ready = false;
-                current_buffer[current_offset] = 'B';
-                current_buffer[current_offset + 1] = 'M';
-                current_buffer[current_offset + 2] = 'P';
-                current_buffer[current_offset + 3] = 'P';
-                current_offset += sizeof(BMPPacket_t) + 4;
+                logger_log_type_timestamp('B');
+                current_offset += sizeof(BMPPacket_t);
             }
         }
         if (imu_ready) {
-            logger_ensure_capacity(sizeof(IMUPacket_t) + 4);
-            IMUPacket_t* imu_packet = (IMUPacket_t*)&current_buffer[current_offset + 4];
+            logger_ensure_capacity(sizeof(IMUPacket_t) + TYPE_TIMESTAMP_SIZE);
+            IMUPacket_t* imu_packet =
+                (IMUPacket_t*)&current_buffer[current_offset + TYPE_TIMESTAMP_SIZE];
             if (imu_read(&hspi2, GPIOB, GPIO_PIN_9, imu_packet) == 0) {
                 // only reset flag if the new data was collected
                 imu_ready = false;
-                current_buffer[current_offset] = 'I';
-                current_buffer[current_offset + 1] = 'M';
-                current_buffer[current_offset + 2] = 'U';
-                current_buffer[current_offset + 3] = 'U';
-                current_offset += sizeof(IMUPacket_t) + 4;
+                logger_log_type_timestamp('I');
+                current_offset += sizeof(IMUPacket_t);
             }
         }
 
