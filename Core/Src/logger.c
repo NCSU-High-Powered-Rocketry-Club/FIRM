@@ -25,43 +25,36 @@ FATFS fs;
 
 extern DMA_HandleTypeDef hdma_sdio_tx; // Link to the DMA handler to check if busy
 
-TCHAR fileName[32] = {'\0'};
+TCHAR file_name[32] = {'\0'};
 
-void logger_write() {
+FRESULT logger_write() {
     if (HAL_DMA_GetState(&hdma_sdio_tx) != HAL_DMA_STATE_READY) {
         serialPrintStr("Full");
-        return;
+        return FR_DISK_ERR;
     }
 
-    // Pad the file
+    // Pad the buffer
     for (int i = current_offset; i < BUFFER_SIZE; i++) {
         current_buffer[i] = 0;
     }
 
-    uint32_t t1 = HAL_GetTick();
-    //    f_sync(&log_file);
-    uint32_t t2 = HAL_GetTick();
-    // TODO: check sd card state
     UINT bytes_written = 0;
 
-    //	sd_FastWriteFlag = 1;
+    // Set fast write so that it doesn't block on the dma request
+    // See SD_write for fast implementation
     sd_FastWriteFlag = 1;
-    //    FRESULT fr = f_write(&log_file, current_buffer, current_offset, &bytes_written);
-    // TODO we might need to log exactly buffer size to get it to work.
+    // We need to log exactly BUFFER_SIZE = sector size in order for this to work in future writes.
     FRESULT fr = f_write(&log_file, current_buffer, BUFFER_SIZE, &bytes_written);
-    uint32_t t3 = HAL_GetTick();
     sd_FastWriteFlag = 0;
 
     if (fr != FR_OK) {
-        // TODO: Error
         serialPrintStr("ERR logger_write");
+        return fr;
     } else {
-        char out[48] = {'\0'};
-        sprintf(out, "T: %lu %lu %s", t2 - t1, t3 - t2, fileName);
-        serialPrintStr(out);
+        serialPrintStr(file_name);
     }
 
-    // TODO: fr error
+    return fr;
 }
 
 void logger_swap_buffers() {
@@ -74,17 +67,24 @@ void logger_swap_buffers() {
     current_offset = 0;
 }
 
-// FRESULT logger_write_header()
+// Writes the header to the log file
 void logger_write_header() {
-    if (current_offset != 0) {
-        serialPrintStr("ERR logger_write");
+    // The length needs to be 4 byte aligned because the struts we are logging are 4 byte aligned
+    // (they have floats).
+    const char* header = "FIRM LOG v0.1\n";
+    size_t len = strlen(header);
+    int padded_len = ((len + 3) / 4) * 4;
+
+    logger_ensure_capacity(padded_len);
+
+    strcpy(current_buffer + current_offset, header);
+
+    // Fill the remaining space with zeros
+    for (int i = len; i < padded_len; i++) {
+        current_buffer[current_offset + i] = 0;
     }
 
-    const char* header = "FIRM LOG v0.1\n";
-    strcpy(current_buffer, header);
-    // 4 byte aligned
-    int padded_len = ((strlen(header) + 3) / 4) * 4;
-    current_offset = padded_len;
+    current_offset += padded_len;
 }
 
 FRESULT logger_init() {
@@ -108,24 +108,23 @@ FRESULT logger_init() {
         return fr;
     }
 
-    uint8_t fileIndex = 0;
+    uint8_t file_index = 0;
     DIR dj;
     FILINFO fno;
 
     // Find the next available log file
     do {
-        fileIndex++;
-        sprintf(fileName, "log%i.txt", fileIndex);
-        fr = f_findfirst(&dj, &fno, "/", fileName);
+        file_index++;
+        sprintf(file_name, "log%i.txt", file_index);
+        fr = f_findfirst(&dj, &fno, "/", file_name);
     } while (fr == FR_OK && fno.fname[0]);
 
     if (fr != FR_OK) {
-        // TODO: error
         return fr;
     }
 
     // Open the file
-    fr = f_open(&log_file, fileName, FA_CREATE_NEW | FA_WRITE);
+    fr = f_open(&log_file, file_name, FA_CREATE_NEW | FA_WRITE);
     if (fr != FR_OK) {
         f_mount(0, SDPath, 0);
         return fr;
@@ -149,7 +148,6 @@ FRESULT logger_init() {
     f_sync(&log_file);
 
     logger_write_header();
-    f_sync(&log_file);
 
     return fr;
 }
