@@ -50,6 +50,7 @@
  */
 /* USER CODE BEGIN disableSDInit */
 /* #define DISABLE_SD_INIT */
+uint32_t sd_FastWriteFlag = 0;
 /* USER CODE END disableSDInit */
 
 /*
@@ -297,6 +298,70 @@ DRESULT SD_read(BYTE lun, BYTE *buff, DWORD sector, UINT count)
 
 /* USER CODE BEGIN beforeWriteSection */
 /* can be used to modify previous code / undefine following code / add new code */
+DRESULT SD_write(BYTE lun, const BYTE *buff, DWORD sector, UINT count)
+{
+	  DRESULT res = RES_ERROR;
+	  uint32_t timeout;
+
+	  if(sd_FastWriteFlag == 0)
+	  {
+
+	   WriteStatus = 0;
+
+	  if (SD_CheckStatusWithTimeout(SD_TIMEOUT) < 0)
+	  {
+	    return res;
+	  }
+		    if(BSP_SD_WriteBlocks_DMA((uint32_t*)buff,
+		                              (uint32_t)(sector),
+		                              count) == MSD_OK)
+		    {
+		      /* Wait that writing process is completed or a timeout occurs */
+
+		      timeout = HAL_GetTick();
+		      while((WriteStatus == 0) && ((HAL_GetTick() - timeout) < SD_TIMEOUT))
+		      {
+		      }
+		      /* in case of a timeout return error */
+		      if (WriteStatus == 0)
+		      {
+		        res = RES_ERROR;
+		      }
+		      else
+		      {
+		        WriteStatus = 1;
+		        timeout = HAL_GetTick();
+
+		        while((HAL_GetTick() - timeout) < SD_TIMEOUT)
+		        {
+		          if (BSP_SD_GetCardState() == SD_TRANSFER_OK)
+		          {
+		            res = RES_OK;
+		            break;
+		          }
+		        }
+		      }
+		    }
+		  return res;
+	  }
+	  else
+	  {
+		  if (WriteStatus == 0)
+		  {
+			  res = RES_ERROR;
+		  }
+		  else
+		  {
+			  if(BSP_SD_WriteBlocks_DMA((uint32_t*)buff, (uint32_t)(sector),count) == MSD_OK)
+			  {
+				  WriteStatus = 0;
+				  res = RES_OK;
+			  }
+		  }
+		  return res;
+	  }
+}
+#if 0
 /* USER CODE END beforeWriteSection */
 /**
   * @brief  Writes Sector(s)
@@ -307,6 +372,7 @@ DRESULT SD_read(BYTE lun, BYTE *buff, DWORD sector, UINT count)
   * @retval DRESULT: Operation result
   */
 #if _USE_WRITE == 1
+
 
 DRESULT SD_write(BYTE lun, const BYTE *buff, DWORD sector, UINT count)
 {
@@ -417,6 +483,7 @@ DRESULT SD_write(BYTE lun, const BYTE *buff, DWORD sector, UINT count)
 #endif /* _USE_WRITE == 1 */
 
 /* USER CODE BEGIN beforeIoctlSection */
+#endif
 /* can be used to modify previous code / undefine following code / add new code */
 /* USER CODE END beforeIoctlSection */
 /**

@@ -18,8 +18,8 @@
 
 #include "bmp581_spi.h"
 #include "icm45686.h"
+#include "logger.h"
 #include "packets.h"
-#include "sdcard.h"
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "fatfs.h"
@@ -122,9 +122,10 @@ int main(void) {
     MX_USB_DEVICE_Init();
     /* USER CODE BEGIN 2 */
 
-    FRESULT res = sdCardInit(&file_obj, log_path, strlen(log_path));
+    // Setup the SD card
+    FRESULT res = logger_init();
     if (res) {
-        serialPrintStr("bad init sd card");
+        serialPrintStr("Failed to initialized the logger (SD card)");
         Error_Handler();
     }
 
@@ -134,7 +135,7 @@ int main(void) {
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // bmp581 pin
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // imu pin
 
-    HAL_Delay(5000); // purely for debug purposes, allows time to connect to USB serial terminal
+    HAL_Delay(500); // purely for debug purposes, allows time to connect to USB serial terminal
 
     if (imu_init(&hspi2, GPIOB, GPIO_PIN_9)) {
         Error_Handler();
@@ -147,28 +148,32 @@ int main(void) {
     HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_1);
 
     // Declare the struct variables:
-    BMPPacket_t bmp_packet;
-    IMUPacket_t imu_packet;
 
     /* USER CODE END 2 */
 
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
     while (1) {
-        // Write shit
-        //        AppendToFile(&file_obj, "test2", 5);
-        sdCardSave(&file_obj);
-
         if (bmp_ready) {
-            if (bmp_read(&hspi2, GPIOC, GPIO_PIN_2, &bmp_packet) == 0) {
+            logger_ensure_capacity(sizeof(BMPPacket_t) + TYPE_TIMESTAMP_SIZE);
+            BMPPacket_t* bmp_packet =
+                (BMPPacket_t*)&current_buffer[current_offset + TYPE_TIMESTAMP_SIZE];
+            if (bmp_read(&hspi2, GPIOC, GPIO_PIN_2, bmp_packet) == 0) {
                 // only reset flag if the new data was collected
                 bmp_ready = false;
+                logger_log_type_timestamp('B');
+                current_offset += sizeof(BMPPacket_t);
             }
         }
         if (imu_ready) {
-            if (imu_read(&hspi2, GPIOB, GPIO_PIN_9, &imu_packet) == 0) {
+            logger_ensure_capacity(sizeof(IMUPacket_t) + TYPE_TIMESTAMP_SIZE);
+            IMUPacket_t* imu_packet =
+                (IMUPacket_t*)&current_buffer[current_offset + TYPE_TIMESTAMP_SIZE];
+            if (imu_read(&hspi2, GPIOB, GPIO_PIN_9, imu_packet) == 0) {
                 // only reset flag if the new data was collected
                 imu_ready = false;
+                logger_log_type_timestamp('I');
+                current_offset += sizeof(IMUPacket_t);
             }
         }
 
