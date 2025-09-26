@@ -46,3 +46,7 @@ git clone https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM.git
 
 If you are using STM32CubeIDE, you can build the project by clicking on the hammer icon or by going to `Project` > `Build All`.
 
+
+## Third party licenses
+
+Contains FATFS changes from https://github.com/MathewMorrow/STM32-SD-Logging-DMA (MIT Licensed)

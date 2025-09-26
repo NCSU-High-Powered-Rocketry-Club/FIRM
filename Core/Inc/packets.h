@@ -2,7 +2,6 @@
 #include <stdint.h>
 
 typedef struct {
-    uint16_t relative_timestamp;
     // Units: G's
     float acc_x;
     float acc_y;
@@ -14,7 +13,6 @@ typedef struct {
 } IMUPacket_t;
 
 typedef struct {
-    uint16_t relative_timestamp;
     // Units: degrees Celsius
     float temperature;
     // Units: Pascals
@@ -22,7 +20,6 @@ typedef struct {
 } BMPPacket_t;
 
 typedef struct {
-    uint16_t relative_timestamp;
     float mag_x;
     float mag_y;
     float mag_z;
