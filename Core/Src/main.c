@@ -18,8 +18,8 @@
 
 #include "bmp581_spi.h"
 #include "icm45686.h"
-#include "mmc5983ma.h"
 #include "logger.h"
+#include "mmc5983ma.h"
 #include "packets.h"
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
@@ -184,7 +184,7 @@ int main(void) {
         if (mag_ready) {
             logger_ensure_capacity(sizeof(MMCPacket_t) + TYPE_TIMESTAMP_SIZE);
             MMCPacket_t* mmc_packet =
-              (MMCPacket_t*)&current_buffer[current_offset + TYPE_TIMESTAMP_SIZE];;
+                (MMCPacket_t*)&current_buffer[current_offset + TYPE_TIMESTAMP_SIZE];
             if (mag_read(&hi2c1, mmc_packet, &mag_flip) == 0) {
                 // only reset flag if the new data was collected
                 mag_ready = false;
