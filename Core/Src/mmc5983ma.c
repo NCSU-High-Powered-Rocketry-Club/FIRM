@@ -42,7 +42,6 @@ int mag_init(I2C_HandleTypeDef* hi2c) {
     // do dummy read after reset
     i2c_read(hi2c, dev_i2c_addr, product_id1, &result, 1);
     // read product ID, check that result is the expected Product ID byte
-    result = 0;
     i2c_read(hi2c, dev_i2c_addr, product_id1, &result, 1);
     if (result != product_id_val) {
         serialPrintStr("MMC5983MA could not read Product ID after reset");
@@ -69,12 +68,13 @@ int mag_read(I2C_HandleTypeDef* hi2c, MMCPacket_t* packet, uint8_t* flip) {
     // read status register to make sure data is ready
     i2c_read(hi2c, dev_i2c_addr, status, &data_ready, 1);
     if (data_ready & 0x01) { // data ready bit is 0x01
-        // manually disable the interrupt signal
+        // manually clear the interrupt signal
         i2c_write(hi2c, dev_i2c_addr, status, 0b00000001);
         uint8_t raw_data[7];
         uint32_t mag_data_binary[3];
         float mag_data[3];
-        //
+        // every flip_interval read cycles, flip the polarity of the magnetometer values
+        // to calibrate the sensor properly
         if (*flip % flip_interval == 0) {
             i2c_write(hi2c, dev_i2c_addr, internal_control0, 0b00010100);
         }
@@ -95,7 +95,7 @@ int mag_read(I2C_HandleTypeDef* hi2c, MMCPacket_t* packet, uint8_t* flip) {
         packet->mag_x = mag_data[0];
         packet->mag_y = mag_data[1];
         packet->mag_z = mag_data[2];
-        (*flip)++;
+        (*flip)++; // incrememt the flip counter
         return 0;
     }
     return 1;
