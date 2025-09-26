@@ -42,6 +42,8 @@ FRESULT logger_write() {
 
     // Set fast write so that it doesn't block on the dma request
     // See SD_write for fast implementation
+    // We need to set it back because some of the internal SD card functions (like f_expand and
+    // f_sync) need the old behavior
     sd_FastWriteFlag = 1;
     // We need to log exactly BUFFER_SIZE = sector size in order for this to work in future writes.
     FRESULT fr = f_write(&log_file, current_buffer, BUFFER_SIZE, &bytes_written);
