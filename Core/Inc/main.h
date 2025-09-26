@@ -65,6 +65,9 @@ void Error_Handler(void);
 #define IMU_Interrupt_Pin GPIO_PIN_6
 #define IMU_Interrupt_GPIO_Port GPIOC
 #define IMU_Interrupt_EXTI_IRQn EXTI9_5_IRQn
+#define Mag_Interrupt_Pin GPIO_PIN_8
+#define Mag_Interrupt_GPIO_Port GPIOB
+#define Mag_Interrupt_EXTI_IRQn EXTI9_5_IRQn
 #define IMU_CS_Pin GPIO_PIN_9
 #define IMU_CS_GPIO_Port GPIOB
 

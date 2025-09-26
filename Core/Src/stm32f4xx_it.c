@@ -208,6 +208,7 @@ void EXTI9_5_IRQHandler(void) {
 
     /* USER CODE END EXTI9_5_IRQn 0 */
     HAL_GPIO_EXTI_IRQHandler(IMU_Interrupt_Pin);
+    HAL_GPIO_EXTI_IRQHandler(Mag_Interrupt_Pin);
     /* USER CODE BEGIN EXTI9_5_IRQn 1 */
 
     /* USER CODE END EXTI9_5_IRQn 1 */

@@ -19,6 +19,7 @@
 #include "bmp581_spi.h"
 #include "icm45686.h"
 #include "logger.h"
+#include "mmc5983ma.h"
 #include "packets.h"
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
@@ -82,6 +83,7 @@ static void MX_SPI3_Init(void);
 /* USER CODE BEGIN 0 */
 bool bmp_ready = false;
 bool imu_ready = false;
+bool mag_ready = false;
 /* USER CODE END 0 */
 
 /**
@@ -134,7 +136,6 @@ int main(void) {
     // with the initialization.
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // bmp581 pin
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // imu pin
-
     HAL_Delay(500); // purely for debug purposes, allows time to connect to USB serial terminal
 
     if (imu_init(&hspi2, GPIOB, GPIO_PIN_9)) {
@@ -143,11 +144,15 @@ int main(void) {
     if (bmp_init(&hspi2, GPIOC, GPIO_PIN_2)) {
         Error_Handler();
     }
+    if (mag_init(&hi2c1)) {
+        Error_Handler();
+    }
+
+    // incrementing value for magnetometer calibration
+    uint8_t mag_flip = 0;
 
     // Toggle LED:
     HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_1);
-
-    // Declare the struct variables:
 
     /* USER CODE END 2 */
 
@@ -174,6 +179,17 @@ int main(void) {
                 imu_ready = false;
                 logger_log_type_timestamp('I');
                 current_offset += sizeof(IMUPacket_t);
+            }
+        }
+        if (mag_ready) {
+            logger_ensure_capacity(sizeof(MMCPacket_t) + TYPE_TIMESTAMP_SIZE);
+            MMCPacket_t* mmc_packet =
+                (MMCPacket_t*)&current_buffer[current_offset + TYPE_TIMESTAMP_SIZE];
+            if (mag_read(&hi2c1, mmc_packet, &mag_flip) == 0) {
+                // only reset flag if the new data was collected
+                mag_ready = false;
+                logger_log_type_timestamp('M');
+                current_offset += sizeof(MMCPacket_t);
             }
         }
 
@@ -242,7 +258,7 @@ static void MX_I2C1_Init(void) {
 
     /* USER CODE END I2C1_Init 1 */
     hi2c1.Instance = I2C1;
-    hi2c1.Init.ClockSpeed = 100000;
+    hi2c1.Init.ClockSpeed = 400000;
     hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
     hi2c1.Init.OwnAddress1 = 0;
     hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
@@ -424,7 +440,7 @@ static void MX_GPIO_Init(void) {
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0 | GPIO_PIN_1 | BMP581_CS_Pin, GPIO_PIN_RESET);
 
     /*Configure GPIO pin Output Level */
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8 | IMU_CS_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_RESET);
 
     /*Configure GPIO pins : PC0 PC1 BMP581_CS_Pin */
     GPIO_InitStruct.Pin = GPIO_PIN_0 | GPIO_PIN_1 | BMP581_CS_Pin;
@@ -445,12 +461,18 @@ static void MX_GPIO_Init(void) {
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-    /*Configure GPIO pins : PB8 IMU_CS_Pin */
-    GPIO_InitStruct.Pin = GPIO_PIN_8 | IMU_CS_Pin;
+    /*Configure GPIO pin : Mag_Interrupt_Pin */
+    GPIO_InitStruct.Pin = Mag_Interrupt_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(Mag_Interrupt_GPIO_Port, &GPIO_InitStruct);
+
+    /*Configure GPIO pin : IMU_CS_Pin */
+    GPIO_InitStruct.Pin = IMU_CS_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+    HAL_GPIO_Init(IMU_CS_GPIO_Port, &GPIO_InitStruct);
 
     /* EXTI interrupt init*/
     HAL_NVIC_SetPriority(EXTI3_IRQn, 0, 0);
@@ -475,11 +497,12 @@ static void MX_GPIO_Init(void) {
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
     if (GPIO_Pin == BMP581_Interrupt_Pin) {
         bmp_ready = true;
-        // HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_8);
     }
     if (GPIO_Pin == IMU_Interrupt_Pin) {
         imu_ready = true;
-        // HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_1);
+    }
+    if (GPIO_Pin == Mag_Interrupt_Pin) {
+        mag_ready = true;
     }
 }
 /* USER CODE END 4 */
