@@ -10,26 +10,30 @@
 #include <stdint.h>
 
 /**
- * Reads data from a sensor address
+ * @brief Reads data from a sensor address
+ *
  * @param hspi pointer to the SPI channel
  * @param GPIOx the channel of the CS GPIO pin
  * @param GPIO_Pin the pin number of the CS GPIO pin
  * @param addr the address of the register
  * @param buffer where the result of the read will be stored
  * @param len the number of bytes to read
+ * @retval HAL Status, 0 on successful read
  */
-void spi_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, uint8_t addr,
+HAL_StatusTypeDef spi_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, uint8_t addr,
               uint8_t* buffer, uint8_t len);
 
 /**
- * Writes 1 byte of data to a sensor address
+ * @brief Writes 1 byte of data to a sensor address
+ *
  * @param hspi pointer to the SPI channel
  * @param GPIOx the channel of the CS GPIO pin
  * @param GPIO_Pin the pin number of the CS GPIO pin
  * @param addr the address of the register
  * @param data the data to write to the register
+ * @retval HAL Status, 0 on successful write
  */
-void spi_write(SPI_HandleTypeDef* hspi, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, uint8_t addr,
+HAL_StatusTypeDef spi_write(SPI_HandleTypeDef* hspi, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, uint8_t addr,
                uint8_t data);
 
 /**
@@ -40,6 +44,7 @@ void spi_write(SPI_HandleTypeDef* hspi, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, 
  * @param addr the address of the first register in the burst write
  * @param data the data to write to the registers
  * @param len the number of bytes to write
+ * @retval HAL Status, 0 on successful writes
  */
-void spi_burst_write(SPI_HandleTypeDef* hspi, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, uint8_t addr,
+HAL_StatusTypeDef spi_burst_write(SPI_HandleTypeDef* hspi, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, uint8_t addr,
                      uint8_t* data, uint8_t len);
