@@ -20,8 +20,8 @@
  * @param len the number of bytes to read
  * @retval HAL Status, 0 on successful read
  */
-HAL_StatusTypeDef spi_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, uint8_t addr,
-              uint8_t* buffer, uint8_t len);
+HAL_StatusTypeDef spi_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin,
+                           uint8_t addr, uint8_t* buffer, uint8_t len);
 
 /**
  * @brief Writes 1 byte of data to a sensor address
@@ -33,8 +33,8 @@ HAL_StatusTypeDef spi_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* GPIOx, uint16_
  * @param data the data to write to the register
  * @retval HAL Status, 0 on successful write
  */
-HAL_StatusTypeDef spi_write(SPI_HandleTypeDef* hspi, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, uint8_t addr,
-               uint8_t data);
+HAL_StatusTypeDef spi_write(SPI_HandleTypeDef* hspi, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin,
+                            uint8_t addr, uint8_t data);
 
 /**
  * Writes 1 or more bytes of data to sequential sensor addresses
@@ -46,5 +46,5 @@ HAL_StatusTypeDef spi_write(SPI_HandleTypeDef* hspi, GPIO_TypeDef* GPIOx, uint16
  * @param len the number of bytes to write
  * @retval HAL Status, 0 on successful writes
  */
-HAL_StatusTypeDef spi_burst_write(SPI_HandleTypeDef* hspi, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, uint8_t addr,
-                     uint8_t* data, uint8_t len);
+HAL_StatusTypeDef spi_burst_write(SPI_HandleTypeDef* hspi, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin,
+                                  uint8_t addr, uint8_t* data, uint8_t len);

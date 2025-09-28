@@ -38,7 +38,7 @@ int bmp_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
     }
     serialPrintStr("Issuing BMP581 software reset...");
     bmp_spi_write(bmp581_reg_cmd, 0b10110110); // do a soft-reset of the sensor's settings
-    if (bmp_setup_device(true)) { // verify correct setup again
+    if (bmp_setup_device(true)) {              // verify correct setup again
         return 1;
     }
 
@@ -109,16 +109,16 @@ int bmp_setup_device(bool soft_reset_complete) {
     // ensure that device is set up in SPI Mode0/Mode3, and no errors are listed
     bmp_spi_read(bmp581_reg_chip_status, &result, 1);
     if (result != 0x02) {
-      if (!(result & 0x03)) {
-          serialPrintStr("BMP wrongly initialized in I2C mode");
-      } else if ((result & 0x03) == 0x03) {
-          serialPrintStr("BMP communication mode is in autoconfig mode. Check pull-up resistors");
-      } else if ((result & 0x03) == 0x01) {
-          serialPrintStr("BMP wrongly initialized in SPI Mode 1/2");
-      } else {
-          serialPrintStr("I3C error");
-      }
-      return 1;
+        if (!(result & 0x03)) {
+            serialPrintStr("BMP wrongly initialized in I2C mode");
+        } else if ((result & 0x03) == 0x03) {
+            serialPrintStr("BMP communication mode is in autoconfig mode. Check pull-up resistors");
+        } else if ((result & 0x03) == 0x01) {
+            serialPrintStr("BMP wrongly initialized in SPI Mode 1/2");
+        } else {
+            serialPrintStr("I3C error");
+        }
+        return 1;
     }
 
     // verify chip ID and asic rev ID read works
@@ -142,7 +142,8 @@ int bmp_setup_device(bool soft_reset_complete) {
     bmp_spi_write(bmp581_reg_fifo_sel, 0b00000100);
     bmp_spi_read(bmp581_reg_fifo_sel, &result, 1);
     if (result != 0x04) {
-        serialPrintStr("BMP SPI Write test failed, wrote to register and did not read expected value back!");
+        serialPrintStr(
+            "BMP SPI Write test failed, wrote to register and did not read expected value back!");
         return 1;
     }
     bmp_spi_write(bmp581_reg_fifo_sel, 0b00000000); // set back to default
@@ -172,22 +173,10 @@ int bmp_setup_device(bool soft_reset_complete) {
 }
 
 HAL_StatusTypeDef bmp_spi_read(uint8_t addr, uint8_t* buffer, size_t len) {
-    return spi_read(
-            SPISettings.hspi,
-            SPISettings.cs_channel,
-            SPISettings.cs_pin,
-            addr,
-            buffer,
-            len);
+    return spi_read(SPISettings.hspi, SPISettings.cs_channel, SPISettings.cs_pin, addr, buffer,
+                    len);
 }
 
 HAL_StatusTypeDef bmp_spi_write(uint8_t addr, uint8_t data) {
-    return spi_write(
-            SPISettings.hspi,
-            SPISettings.cs_channel,
-            SPISettings.cs_pin,
-            addr,
-            data);
+    return spi_write(SPISettings.hspi, SPISettings.cs_channel, SPISettings.cs_pin, addr, data);
 }
-
-

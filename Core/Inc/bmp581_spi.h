@@ -18,7 +18,6 @@ typedef struct {
     uint16_t cs_pin;
 } BMPSPISettings;
 
-
 /**
  * @brief ensures SPI read/write is working to the BMP581, and configures register settings
  *
@@ -67,6 +66,3 @@ HAL_StatusTypeDef bmp_spi_read(uint8_t addr, uint8_t* buffer, size_t len);
  * @retval HAL Status, 0 on successful write
  */
 HAL_StatusTypeDef bmp_spi_write(uint8_t addr, uint8_t data);
-
-
-
