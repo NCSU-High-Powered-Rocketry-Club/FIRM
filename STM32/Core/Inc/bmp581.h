@@ -1,5 +1,5 @@
 /*
- * bmp581_spi.h
+ * bmp581.h
  *
  *  Created on: Aug 21, 2025
  *      Author: Wlsan
@@ -45,7 +45,7 @@ int bmp_read(BMPPacket_t* packet);
 int bmp_setup_device(bool soft_reset_complete);
 
 /**
- * @briefReads data from the BMP581 with SPI
+ * @brief Reads data from the BMP581 with SPI
  *
  * @param addr the address of the register
  * @param buffer where the result of the read will be stored

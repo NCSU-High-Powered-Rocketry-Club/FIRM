@@ -1,10 +1,10 @@
 /*
- * bmp581_spi.c
+ * bmp581.c
  *
  *  Created on: Aug 21, 2025
  *      Author: Wlsan
  */
-#include "bmp581_spi.h"
+#include "bmp581.h"
 #include "packets.h"
 #include "spi_utils.h"
 #include <stdint.h>
@@ -108,7 +108,7 @@ int bmp_setup_device(bool soft_reset_complete) {
         }
         return 1;
     }
-    // give device enough time to correct mode
+    // give device enough time to switch to correct mode
     HAL_Delay(0);
 
     // ensure that device is set up in SPI Mode0/Mode3, or autoconfig mode

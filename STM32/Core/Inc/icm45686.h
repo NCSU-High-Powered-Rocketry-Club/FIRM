@@ -59,7 +59,7 @@ int imu_read(IMUPacket_t* packet);
 int imu_setup_device(bool soft_reset_complete);
 
 /**
- * @briefReads data from the ICM45686 with SPI
+ * @brief Reads data from the ICM45686 with SPI
  *
  * @param addr the address of the register
  * @param buffer where the result of the read will be stored
