@@ -1,0 +1,4 @@
+../Core/Src/mmc5983ma.c:26:5:mag_init	5
+../Core/Src/mmc5983ma.c:75:5:mag_read	4
+../Core/Src/mmc5983ma.c:113:19:mag_i2c_read	1
+../Core/Src/mmc5983ma.c:124:19:mag_i2c_write	1

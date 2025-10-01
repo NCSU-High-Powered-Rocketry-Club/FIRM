@@ -1,0 +1,5 @@
+../Core/Src/usb_print_debug.c:9:6:serialPrintStr	1
+../Core/Src/usb_print_debug.c:15:6:serialPrintInt	1
+../Core/Src/usb_print_debug.c:21:6:serialPrintlnInt	1
+../Core/Src/usb_print_debug.c:27:6:serialPrintFloat	1
+../Core/Src/usb_print_debug.c:33:6:serialPrintChar	1
