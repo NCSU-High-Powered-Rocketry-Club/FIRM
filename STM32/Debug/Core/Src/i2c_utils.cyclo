@@ -1,2 +1,0 @@
-../Core/Src/i2c_utils.c:9:5:i2c_read	1
-../Core/Src/i2c_utils.c:16:5:i2c_write	1

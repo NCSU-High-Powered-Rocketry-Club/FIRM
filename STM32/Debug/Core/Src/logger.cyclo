@@ -1,6 +1,0 @@
-../Core/Src/logger.c:30:9:logger_write	4
-../Core/Src/logger.c:62:6:logger_swap_buffers	2
-../Core/Src/logger.c:73:6:logger_write_header	2
-../Core/Src/logger.c:92:9:logger_init	11
-../Core/Src/logger.c:157:9:logger_ensure_capacity	2
-../Core/Src/logger.c:168:6:logger_log_type_timestamp	1

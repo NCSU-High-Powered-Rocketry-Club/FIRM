@@ -1,4 +1,0 @@
-../Core/Src/icm45686.c:38:5:imu_init	5
-../Core/Src/icm45686.c:112:5:imu_read	2
-../Core/Src/icm45686.c:170:6:spi_ireg_read	6
-../Core/Src/icm45686.c:210:6:spi_ireg_write	6

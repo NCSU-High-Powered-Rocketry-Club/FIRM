@@ -1,5 +1,0 @@
-../Core/Src/bmp581.c:29:5:bmp_init	6
-../Core/Src/bmp581.c:69:5:bmp_read	5
-../Core/Src/bmp581.c:105:5:bmp_setup_device	19
-../Core/Src/bmp581.c:198:19:bmp_spi_read	1
-../Core/Src/bmp581.c:208:19:bmp_spi_write	1
