@@ -4,6 +4,6 @@
 ../FATFS/Target/sd_diskio.c:173:9:SD_status	1
 ../FATFS/Target/sd_diskio.c:190:9:SD_read	8
 ../FATFS/Target/sd_diskio.c:301:9:SD_write	11
-../FATFS/Target/sd_diskio.c:496:9:SD_ioctl	6
-../FATFS/Target/sd_diskio.c:551:6:BSP_SD_WriteCpltCallback	1
-../FATFS/Target/sd_diskio.c:562:6:BSP_SD_ReadCpltCallback	1
+../FATFS/Target/sd_diskio.c:497:9:SD_ioctl	6
+../FATFS/Target/sd_diskio.c:552:6:BSP_SD_WriteCpltCallback	1
+../FATFS/Target/sd_diskio.c:563:6:BSP_SD_ReadCpltCallback	1

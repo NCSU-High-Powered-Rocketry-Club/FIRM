@@ -1,0 +1,2 @@
+../Core/Src/bmp581_spi.c:24:5:bmp_init	5
+../Core/Src/bmp581_spi.c:82:5:bmp_read	2

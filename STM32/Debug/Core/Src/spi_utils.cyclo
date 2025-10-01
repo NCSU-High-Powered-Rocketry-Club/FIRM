@@ -1,3 +1,3 @@
-../Core/Src/spi_utils.c:9:19:spi_read	2
-../Core/Src/spi_utils.c:23:19:spi_write	1
-../Core/Src/spi_utils.c:32:19:spi_burst_write	1
+../Core/Src/spi_utils.c:9:6:spi_read	1
+../Core/Src/spi_utils.c:18:6:spi_write	1
+../Core/Src/spi_utils.c:26:6:spi_burst_write	1

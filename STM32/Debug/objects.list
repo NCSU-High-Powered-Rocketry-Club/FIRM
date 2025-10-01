@@ -1,5 +1,6 @@
-"./Core/Src/bmp581.o"
+"./Core/Src/bmp581_spi.o"
 "./Core/Src/firm_utils.o"
+"./Core/Src/i2c_utils.o"
 "./Core/Src/icm45686.o"
 "./Core/Src/logger.o"
 "./Core/Src/main.o"
