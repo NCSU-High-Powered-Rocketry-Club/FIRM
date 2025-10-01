@@ -61,5 +61,11 @@ dkms.conf
 
 # Python version file
 .python-version
+
+# KiCad backups
 /KiCad/FIRM-backups
 /KiCad/FIRM_Interestlaunch/FIRM_Interestlaunch-backups
+
+# KiCad cache
+/KiCad/fp-info-cache
+/KiCad/FIRM_Interestlaunch/fp-info-cache
