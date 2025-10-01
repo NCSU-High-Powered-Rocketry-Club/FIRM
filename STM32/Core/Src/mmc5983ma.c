@@ -37,6 +37,7 @@ int mag_init(I2C_HandleTypeDef* hi2c, uint8_t device_i2c_addr) {
     if (mag_setup_device(false)) return 1;
 
     // initiating a software reset
+    serialPrintStr("  Issuing MMC5983MA software reset...");
     mag_i2c_write(internal_control1, 0b10000000);
 
     // verify correct setup again
