@@ -54,10 +54,10 @@ dkms.conf
 # debug information files
 *.dwo
 
-STM32/Debug/
+/STM32/Debug/
 
 # IDE settings which changes for every machine
-STM32/.settings/
+/STM32/.settings/
 
 # Python version file
 .python-version
