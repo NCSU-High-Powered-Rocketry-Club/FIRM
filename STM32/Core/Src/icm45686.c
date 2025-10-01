@@ -14,30 +14,50 @@
 // most likely don't need more digits because we only have a single-precision FPU
 const float pi = 3.14159265;
 
-const uint8_t accel_data_x_ui_msb = 0x00;
-const uint8_t pwr_mgmt0 = 0x10;
-const uint8_t fifo_data = 0x14;
-const uint8_t int1_config0 = 0x16;
-const uint8_t int1_config2 = 0x18;
-const uint8_t int1_status0 = 0x19;
-const uint8_t int1_status1 = 0x1A;
-const uint8_t accel_config0 = 0x1B;
-const uint8_t gyro_config0 = 0x1C;
-const uint8_t fifo_config0 = 0x1D;
-const uint8_t fifo_config2 = 0x20;
-const uint8_t fifo_config3 = 0x21;
-const uint8_t who_am_i = 0x72;
-const uint8_t ireg_addr_15_8 = 0x7C; // used to read/write from indirect registers (IREG)
-const uint8_t ireg_addr_7_0 = 0x7D;  // used to read/write from indirect registers (IREG)
-const uint8_t ireg_data = 0x7E;
-const uint8_t reg_misc2 = 0x7F;
-const uint8_t sreg_ctrl = 0x67;          // IPREG_TOP1 register
-const uint8_t ipreg_sys1_reg_166 = 0xA6; // IPREG_SYS1 register
-const uint8_t ipreg_sys2_reg_123 = 0x7B; // IPREG_SYS2 register
+static const uint8_t accel_data_x_ui_msb = 0x00;
+static const uint8_t pwr_mgmt0 = 0x10;
+static const uint8_t fifo_data = 0x14;
+static const uint8_t int1_config0 = 0x16;
+static const uint8_t int1_config2 = 0x18;
+static const uint8_t int1_status0 = 0x19;
+static const uint8_t int1_status1 = 0x1A;
+static const uint8_t accel_config0 = 0x1B;
+static const uint8_t gyro_config0 = 0x1C;
+static const uint8_t fifo_config0 = 0x1D;
+static const uint8_t fifo_config2 = 0x20;
+static const uint8_t fifo_config3 = 0x21;
+static const uint8_t who_am_i = 0x72;
+static const uint8_t ireg_addr_15_8 = 0x7C; // used to read/write from indirect registers (IREG)
+static const uint8_t ireg_addr_7_0 = 0x7D;  // used to read/write from indirect registers (IREG)
+static const uint8_t ireg_data = 0x7E;
+static const uint8_t reg_misc2 = 0x7F;
+static const uint8_t sreg_ctrl = 0x67;          // IPREG_TOP1 register
+static const uint8_t ipreg_sys1_reg_166 = 0xA6; // IPREG_SYS1 register
+static const uint8_t ipreg_sys2_reg_123 = 0x7B; // IPREG_SYS2 register
+
+static IMUSPISettings SPISettings;
 
 int imu_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin) {
+    if (hspi == NULL || cs_channel == NULL) {
+        serialPrintStr("Invalid spi handle or chip select pin for ICM45686");
+        return 1;
+    }
+    // set up the SPI settings
+    SPISettings.hspi = hspi;
+    SPISettings.cs_channel = cs_channel;
+    SPISettings.cs_pin = cs_pin;
 
-    HAL_Delay(2); // 3ms delay to allow device to power on
+
+    serialPrintStr("Beginning ICM45686 initialization");
+    // sets up the IMU in SPI mode and ensures SPI is working
+    if (imu_setup_device(false)) {
+        return 1;
+    }
+    serialPrintStr("  Issuing ICM45686 software reset...");
+    imu_spi_write(cmd, 0b10110110); // do a soft-reset of the sensor's settings
+    if (imu_setup_device(true)) {              // verify correct setup again
+        return 1;
+    }
 
     // Do a dummy read
     uint8_t result = 0;

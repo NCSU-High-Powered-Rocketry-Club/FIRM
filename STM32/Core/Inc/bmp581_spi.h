@@ -31,14 +31,10 @@ int bmp_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
 /**
  * @brief reads the pressure and temperature measurements from the BMP581
  *
- * @param hspi pointer to the SPI channel that the BMP581 is connected to
- * @param cs_channel specifies the GPIO channel that the chip select pin is connected to.
- * @param cs_pin specifies the GPIO pin that the chip select pin is connected to.
  * @param packet pointer to the BMP packet where the data will be stored
  * @retval 0 upon success, 1 if no new data is ready yet
  */
-int bmp_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin,
-             BMPPacket_t* packet);
+int bmp_read(BMPPacket_t* packet);
 
 /**
  * @brief Starts up and resets the BMP, confirms the SPI read/write functionality is working

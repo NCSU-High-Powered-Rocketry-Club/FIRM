@@ -163,7 +163,7 @@ int main(void) {
             logger_ensure_capacity(sizeof(BMPPacket_t) + TYPE_TIMESTAMP_SIZE);
             BMPPacket_t* bmp_packet =
                 (BMPPacket_t*)&current_buffer[current_offset + TYPE_TIMESTAMP_SIZE];
-            if (bmp_read(&hspi2, GPIOC, GPIO_PIN_2, bmp_packet) == 0) {
+            if (bmp_read(bmp_packet) == 0) {
                 // only reset flag if the new data was collected
                 bmp_ready = false;
                 logger_log_type_timestamp('B');
@@ -174,7 +174,7 @@ int main(void) {
             logger_ensure_capacity(sizeof(IMUPacket_t) + TYPE_TIMESTAMP_SIZE);
             IMUPacket_t* imu_packet =
                 (IMUPacket_t*)&current_buffer[current_offset + TYPE_TIMESTAMP_SIZE];
-            if (imu_read(&hspi2, GPIOB, GPIO_PIN_9, imu_packet) == 0) {
+            if (imu_read(imu_packet) == 0) {
                 // only reset flag if the new data was collected
                 imu_ready = false;
                 logger_log_type_timestamp('I');
