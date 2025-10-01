@@ -51,7 +51,7 @@ int imu_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
     if (imu_setup_device(false)) return 1;
 
     // do a soft-reset of the sensor's settings
-    serialPrintStr("  Issuing ICM45686 software reset...");
+    serialPrintStr("\tIssuing ICM45686 software reset...");
     imu_spi_write(reg_misc2, 0b00000010);
     // verify correct setup again
     if (imu_setup_device(true)) return 1;
@@ -81,7 +81,7 @@ int imu_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
     uint8_t result = 0;
     spi_ireg_read(IPREG_SYS2, (uint16_t)ipreg_sys2_reg_123, &result);
     if (result != 0b00010100) {
-        serialPrintStr("  Failed to read or write to IREG registers");
+        serialPrintStr("\tFailed to read or write to IREG registers");
         return 1;
     }
     // place both accel and gyro in low noise mode
@@ -93,7 +93,7 @@ int imu_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
     // read to clear any interrupts
     imu_spi_read(int1_status0, &result, 1);
     imu_spi_read(int1_status1, &result, 1);
-    serialPrintStr("  ICM45686 startup successful!");
+    serialPrintStr("\tICM45686 startup successful!");
     return 0;
 }
 
@@ -165,13 +165,13 @@ int imu_setup_device(bool soft_reset_complete) {
     if (hal_status) {
         switch (hal_status) {
         case HAL_BUSY:
-            serialPrintStr("  SPI handle currently busy, unable to read");
+            serialPrintStr("\tSPI handle currently busy, unable to read");
             break;
         case HAL_TIMEOUT:
-            serialPrintStr("  SPI read timed out during dummy read");
+            serialPrintStr("\tSPI read timed out during dummy read");
             break;
         case HAL_ERROR:
-            serialPrintStr("  SPI read transaction failed during dummy read");
+            serialPrintStr("\tSPI read transaction failed during dummy read");
             break;
         default:
             break;
@@ -185,7 +185,7 @@ int imu_setup_device(bool soft_reset_complete) {
     // verify chip ID read works
     imu_spi_read(who_am_i, &result, 1);
     if (result != 0xE9) {
-        serialPrintStr("  IMU could not read chip ID");
+        serialPrintStr("\tIMU could not read chip ID");
         return 1;
     }
 
@@ -193,14 +193,14 @@ int imu_setup_device(bool soft_reset_complete) {
     // then set back to original value when the write succeeds.
     imu_spi_read(fifo_config2, &result, 1);
     if (result != 0b00100000) {
-        serialPrintStr("  Could not start write test: wrong expected value for FIFO_CONFIG2");
+        serialPrintStr("\tCould not start write test: wrong expected value for FIFO_CONFIG2");
         return 1;
     }
     imu_spi_write(fifo_config2, 0b00100100);
     imu_spi_read(fifo_config2, &result, 1);
     if (result != 0x24) {
         serialPrintStr(
-            "  IMU SPI Write test failed, wrote to register and did not read expected value back!");
+            "\tIMU SPI Write test failed, wrote to register and did not read expected value back!");
         return 1;
     }
     imu_spi_write(fifo_config2, 0b00100000); // set back to original value
@@ -209,7 +209,7 @@ int imu_setup_device(bool soft_reset_complete) {
         // Check bit 1 (soft reset bit) is set back to 0
         imu_spi_read(reg_misc2, &result, 1);
         if ((result & 0x02) != 0) {
-            serialPrintStr("  Software reset failed!");
+            serialPrintStr("\tSoftware reset failed!");
             return 1;
         }
     }

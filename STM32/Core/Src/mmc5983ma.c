@@ -37,7 +37,7 @@ int mag_init(I2C_HandleTypeDef* hi2c, uint8_t device_i2c_addr) {
     if (mag_setup_device(false)) return 1;
 
     // initiating a software reset
-    serialPrintStr("  Issuing MMC5983MA software reset...");
+    serialPrintStr("\tIssuing MMC5983MA software reset...");
     mag_i2c_write(internal_control1, 0b10000000);
 
     // verify correct setup again
@@ -50,7 +50,7 @@ int mag_init(I2C_HandleTypeDef* hi2c, uint8_t device_i2c_addr) {
     // enable continuous measurement mode at 200hz
     mag_i2c_write(internal_control2, 0b00001110);
 
-    serialPrintStr("  MMC5983MA startup successful!");
+    serialPrintStr("\tMMC5983MA startup successful!");
     return 0;
 }
 
@@ -105,10 +105,10 @@ int mag_setup_device(bool soft_reset_complete) {
     if (hal_status) {
         switch (hal_status) {
         case HAL_BUSY:
-            serialPrintStr("  I2C handle currently busy, unable to read");
+            serialPrintStr("\tI2C handle currently busy, unable to read");
             break;
         case HAL_ERROR:
-            serialPrintStr("  I2C read transaction failed during dummy read");
+            serialPrintStr("\tI2C read transaction failed during dummy read");
             break;
         default:
             break;
@@ -121,7 +121,7 @@ int mag_setup_device(bool soft_reset_complete) {
 
     mag_i2c_read(product_id1, &result, 1);
     if (result != product_id_val) {
-        serialPrintStr("  Magnetometer could not read Product ID");
+        serialPrintStr("\tMagnetometer could not read Product ID");
         return 1;
     }
 
@@ -133,7 +133,7 @@ int mag_setup_device(bool soft_reset_complete) {
         // check that bit 7 (sw_rst) is back to 0
         mag_i2c_read(internal_control1, &result, 1);
         if (result & 0x80) {
-            serialPrintStr("  MMC5983MA did not complete software reset");
+            serialPrintStr("\tMMC5983MA did not complete software reset");
             return 1;
         }
     }

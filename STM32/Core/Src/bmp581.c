@@ -42,7 +42,7 @@ int bmp_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
     if (bmp_setup_device(false)) {
         return 1;
     }
-    serialPrintStr("  Issuing BMP581 software reset...");
+    serialPrintStr("\tIssuing BMP581 software reset...");
     bmp_spi_write(cmd, 0b10110110); // do a soft-reset of the sensor's settings
     if (bmp_setup_device(true)) {              // verify correct setup again
         return 1;
@@ -58,7 +58,7 @@ int bmp_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
     bmp_spi_write(ord_config, 0b10000011);
     // continuous mode actually ignores the ODR bits that were set, and uses the OSR to determine
     // the ODR (498hz with 1x OSR)
-    serialPrintStr("  BMP581 startup successful!");
+    serialPrintStr("\tBMP581 startup successful!");
     return 0;
 }
 
@@ -95,13 +95,13 @@ int bmp_setup_device(bool soft_reset_complete) {
     if (hal_status) {
         switch (hal_status) {
         case HAL_BUSY:
-            serialPrintStr("  SPI handle currently busy, unable to read");
+            serialPrintStr("\tSPI handle currently busy, unable to read");
             break;
         case HAL_TIMEOUT:
-            serialPrintStr("  SPI read timed out during dummy read");
+            serialPrintStr("\tSPI read timed out during dummy read");
             break;
         case HAL_ERROR:
-            serialPrintStr("  SPI read transaction failed during dummy read");
+            serialPrintStr("\tSPI read transaction failed during dummy read");
             break;
         default:
             break;
@@ -114,52 +114,52 @@ int bmp_setup_device(bool soft_reset_complete) {
     // ensure that device is set up in SPI Mode0/Mode3, or autoconfig mode
     bmp_spi_read(chip_status, &result, 1);
     if (result == 0x00) {
-        serialPrintStr("  BMP wrongly initialized in I2C mode");
+        serialPrintStr("\tBMP wrongly initialized in I2C mode");
         return 1;
     }
     if (result == 0x01) {
-        serialPrintStr("  BMP wrongly initialized in SPI Mode 1/2");
+        serialPrintStr("\tBMP wrongly initialized in SPI Mode 1/2");
         return 1;
     }
     if (result & 0x0C) {
-        serialPrintStr("  I3C error, check datasheet register 0x11 for more info");
+        serialPrintStr("\tI3C error, check datasheet register 0x11 for more info");
         return 1;
     }
 
     // verify chip ID and asic rev ID read works
     bmp_spi_read(chip_id, &result, 1);
     if (result != 0x50) {
-        serialPrintStr("  BMP could not read chip ID");
+        serialPrintStr("\tBMP could not read chip ID");
         return 1;
     }
     bmp_spi_read(asic_rev_id, &result, 1);
     if (result != 0x32) {
-        serialPrintStr("  BMP could not read ASIC revision ID");
+        serialPrintStr("\tBMP could not read ASIC revision ID");
         return 1;
     }
 
     // verify that writes work
     bmp_spi_read(fifo_sel, &result, 1);
     if (result) {
-        serialPrintStr("  Could not start write test: wrong expected value for FIFO_SEL");
+        serialPrintStr("\tCould not start write test: wrong expected value for FIFO_SEL");
         return 1;
     }
     bmp_spi_write(fifo_sel, 0b00000100);
     bmp_spi_read(fifo_sel, &result, 1);
     if (result != 0x04) {
         serialPrintStr(
-            "  BMP SPI Write test failed, wrote to register and did not read expected value back!");
+            "\tBMP SPI Write test failed, wrote to register and did not read expected value back!");
         return 1;
     }
     bmp_spi_write(fifo_sel, 0b00000000); // set back to default
     // verify device is ready to be configured
     bmp_spi_read(status, &result, 1);
     if (result & 0x04) {
-        serialPrintStr("  NVM error, refer to datasheet for source of error");
+        serialPrintStr("\tNVM error, refer to datasheet for source of error");
         return 1;
     }
     if (result & 0x08) {
-        serialPrintStr("  NVM command error, refer to datasheet for source of error");
+        serialPrintStr("\tNVM command error, refer to datasheet for source of error");
         return 1;
     }
 
@@ -168,7 +168,7 @@ int bmp_setup_device(bool soft_reset_complete) {
         // verify software reset is recognized as complete by the interrupt status register
         bmp_spi_read(int_status, &result, 1);
         if (!(result & 0x10)) { // check that bit 4 (POR) is 1
-            serialPrintStr("  Software reset interrupt signal not generated!");
+            serialPrintStr("\tSoftware reset interrupt signal not generated!");
             return 1;
         }
     }
