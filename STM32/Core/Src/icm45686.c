@@ -180,6 +180,7 @@ int imu_setup_device(bool soft_reset_complete) {
         return 1;
     }
     // give device enough time to switch to correct mode
+    // this is a 1ms delay
     HAL_Delay(0);
 
     // verify chip ID read works
@@ -298,5 +299,6 @@ void spi_ireg_write(IREGMap_t register_map, uint16_t ireg_addr, uint8_t data) {
     // burst write page,register, and data starting at ireg_addr_15_8
     spi_burst_write(SPISettings.hspi, SPISettings.cs_channel, SPISettings.cs_pin, ireg_addr_15_8, ireg_regs, 3);
     // must wait before next ireg operation
+    // this is a 1ms delay
     HAL_Delay(0);
 }

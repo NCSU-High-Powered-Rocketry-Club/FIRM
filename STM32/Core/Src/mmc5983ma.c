@@ -24,7 +24,7 @@ static MagI2CSettings I2CSettings;
 
 int mag_init(I2C_HandleTypeDef* hi2c, uint8_t device_i2c_addr) {
     if (hi2c == NULL) {
-        serialPrintStr("Invalid i2c handle for ICM45686");
+        serialPrintStr("Invalid i2c handle for MMC5983MA");
         return 1;
     }
 
@@ -115,6 +115,7 @@ int mag_setup_device(bool soft_reset_complete) {
         return 1;
     }
     // give device enough time to switch to correct mode
+    // this is a 1ms delay
     HAL_Delay(0);
 
     mag_i2c_read(product_id1, &result, 1);

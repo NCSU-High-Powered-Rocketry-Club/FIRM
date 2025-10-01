@@ -38,7 +38,6 @@ int bmp_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
 
 
     serialPrintStr("Beginning BMP581 initialization");
-    HAL_Delay(0);
     // sets up the BMP in SPI mode and ensures SPI is working
     if (bmp_setup_device(false)) {
         return 1;

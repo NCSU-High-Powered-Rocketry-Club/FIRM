@@ -12,7 +12,7 @@
 #include <stdint.h>
 
 /**
- * @brief the SPI settings for the BMP to use when accessing device registers
+ * @brief the I2C settings for the MMC5983MA to use when accessing device registers
  */
 typedef struct {
     I2C_HandleTypeDef* hi2c;
