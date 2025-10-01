@@ -54,10 +54,18 @@ dkms.conf
 # debug information files
 *.dwo
 
-/Debug/
+/STM32/Debug/
 
 # IDE settings which changes for every machine
-.settings/
+/STM32/.settings/
 
 # Python version file
 .python-version
+
+# KiCad backups
+/KiCad/FIRM-backups
+/KiCad/FIRM_Interestlaunch/FIRM_Interestlaunch-backups
+
+# KiCad cache
+/KiCad/fp-info-cache
+/KiCad/FIRM_Interestlaunch/fp-info-cache
