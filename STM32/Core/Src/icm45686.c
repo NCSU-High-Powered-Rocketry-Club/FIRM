@@ -151,6 +151,7 @@ int imu_read(IMUPacket_t* packet) {
         imu_spi_write(fifo_config2, 0b10100000);
         return 0;
     }
+    serialPrintStr("not ready");
     return 1; // data was not ready, return error
 }
 

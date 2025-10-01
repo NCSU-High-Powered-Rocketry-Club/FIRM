@@ -38,6 +38,7 @@ int bmp_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
 
 
     serialPrintStr("Beginning BMP581 initialization");
+    HAL_Delay(0);
     // sets up the BMP in SPI mode and ensures SPI is working
     if (bmp_setup_device(false)) {
         return 1;
@@ -58,7 +59,7 @@ int bmp_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
     bmp_spi_write(ord_config, 0b10000011);
     // continuous mode actually ignores the ODR bits that were set, and uses the OSR to determine
     // the ODR (498hz with 1x OSR)
-    serialPrintStr("  BMP startup successful!");
+    serialPrintStr("  BMP581 startup successful!");
     return 0;
 }
 
@@ -126,7 +127,6 @@ int bmp_setup_device(bool soft_reset_complete) {
         return 1;
     }
 
-
     // verify chip ID and asic rev ID read works
     bmp_spi_read(chip_id, &result, 1);
     if (result != 0x50) {
@@ -153,18 +153,17 @@ int bmp_setup_device(bool soft_reset_complete) {
         return 1;
     }
     bmp_spi_write(fifo_sel, 0b00000000); // set back to default
-
     // verify device is ready to be configured
     bmp_spi_read(status, &result, 1);
-    if (result != 0x02) {
-        if (result & 0x04) {
-            serialPrintStr("  NVM error, refer to datasheet for source of error");
-        }
-        if (result & 0x08) {
-            serialPrintStr("  NVM error, datasheet just says \"TODO UPDATE ME\"");
-        }
+    if (result & 0x04) {
+        serialPrintStr("  NVM error, refer to datasheet for source of error");
         return 1;
     }
+    if (result & 0x08) {
+        serialPrintStr("  NVM command error, refer to datasheet for source of error");
+        return 1;
+    }
+
 
     if (soft_reset_complete) {
         // verify software reset is recognized as complete by the interrupt status register

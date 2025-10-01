@@ -48,6 +48,8 @@ int mag_init(I2C_HandleTypeDef* hi2c, uint8_t device_i2c_addr) {
     mag_i2c_write(internal_control1, 0b00000001);
     // enable continuous measurement mode at 200hz
     mag_i2c_write(internal_control2, 0b00001110);
+
+    serialPrintStr("  MMC5983MA startup successful!");
     return 0;
 }
 

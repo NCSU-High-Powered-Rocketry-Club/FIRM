@@ -11,10 +11,7 @@ void serialPrintStr(const char* s) {
     snprintf(buffer, sizeof(buffer), "%s\r\n", s);
     // debug messages dont work well if they are right after another, so this makes sure
     // the message is printed, and tries again if the attempt failed
-    int ret = 1;
-    while (ret) {
-        ret = CDC_Transmit_FS((uint8_t*)buffer, strlen(buffer));
-    }
+    while (CDC_Transmit_FS((uint8_t*)buffer, strlen(buffer)) == USBD_BUSY);
 }
 
 void serialPrintInt(int d) {
