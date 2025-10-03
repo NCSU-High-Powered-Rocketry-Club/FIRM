@@ -1,0 +1,5 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "MMC5983MA")(type "KiCad")(uri "C:/Users/olano/Downloads/MMC5983MA")(options "")(descr ""))
+  (lib (name "ICM-45686")(type "KiCad")(uri "C:/Users/olano/Downloads/ICM-45686")(options "")(descr ""))
+)
