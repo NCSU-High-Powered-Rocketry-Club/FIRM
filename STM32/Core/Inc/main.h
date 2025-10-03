@@ -57,6 +57,8 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define Feather_LED_Pin GPIO_PIN_1
+#define Feather_LED_GPIO_Port GPIOC
 #define BMP581_CS_Pin GPIO_PIN_2
 #define BMP581_CS_GPIO_Port GPIOC
 #define BMP581_Interrupt_Pin GPIO_PIN_3

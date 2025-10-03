@@ -9,6 +9,33 @@
 #include "spi_utils.h"
 #include <stdint.h>
 
+/**
+ * @brief Starts up and resets the BMP, confirms the SPI read/write functionality is working
+ *
+ * @param soft_reset_complete if this is a setup after a soft reset is complete
+ * @retval 0 if successful
+ */
+static int bmp_setup_device(bool soft_reset_complete);
+
+/**
+ * @brief Reads data from the BMP581 with SPI
+ *
+ * @param addr the address of the register
+ * @param buffer where the result of the read will be stored
+ * @param len the number of bytes to read
+ * @retval HAL Status, 0 on successful read
+ */
+static HAL_StatusTypeDef bmp_spi_read(uint8_t addr, uint8_t* buffer, size_t len);
+
+/**
+ * @brief Writes 1 byte of data to the BMP581 with SPI
+ *
+ * @param addr the address of the register
+ * @param data the data to write to the register
+ * @retval HAL Status, 0 on successful write
+ */
+static HAL_StatusTypeDef bmp_spi_write(uint8_t addr, uint8_t data);
+
 // register for chip product ID (to test SPI transfers)
 static const uint8_t chip_id = 0x01;
 static const uint8_t asic_rev_id = 0x02;
@@ -62,7 +89,7 @@ int bmp_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
     return 0;
 }
 
-int bmp_read(BMPPacket_t* packet) {
+int bmp_read_data(BMPPacket_t* packet) {
     // clear interrupt (pulls interrupt back up high) and verify new data is ready
     uint8_t data_ready = 0;
     bmp_spi_read(int_status, &data_ready, 1);
@@ -85,7 +112,7 @@ int bmp_read(BMPPacket_t* packet) {
     return 1;
 }
 
-int bmp_setup_device(bool soft_reset_complete) {
+static int bmp_setup_device(bool soft_reset_complete) {
     // datasheet says 2ms to powerup, include some factor of safety
     HAL_Delay(10);
 
@@ -176,11 +203,11 @@ int bmp_setup_device(bool soft_reset_complete) {
     return 0;
 }
 
-HAL_StatusTypeDef bmp_spi_read(uint8_t addr, uint8_t* buffer, size_t len) {
+static HAL_StatusTypeDef bmp_spi_read(uint8_t addr, uint8_t* buffer, size_t len) {
     return spi_read(SPISettings.hspi, SPISettings.cs_channel, SPISettings.cs_pin, addr, buffer,
                     len);
 }
 
-HAL_StatusTypeDef bmp_spi_write(uint8_t addr, uint8_t data) {
+static HAL_StatusTypeDef bmp_spi_write(uint8_t addr, uint8_t data) {
     return spi_write(SPISettings.hspi, SPISettings.cs_channel, SPISettings.cs_pin, addr, data);
 }

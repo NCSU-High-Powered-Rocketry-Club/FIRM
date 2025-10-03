@@ -6,6 +6,32 @@
  */
 #include "mmc5983ma.h"
 
+/**
+ * @brief Starts up and resets the magnetometer, confirms the I2C read/write functionality is working
+ *
+ * @param soft_reset_complete if this is a setup after a soft reset is complete
+ * @retval 0 if successful
+ */
+static int mag_setup_device(bool soft_reset_complete);
+
+/**
+ * @brief Reads data from the MMC5983MA with I2C
+ *
+ * @param reg_addr the address of the register
+ * @param buffer where the result of the read will be stored
+ * @param len the number of bytes to read
+ * @retval HAL Status, 0 on successful read
+ */
+static HAL_StatusTypeDef mag_i2c_read(uint8_t reg_addr, uint8_t* buffer, size_t len);
+
+/**
+ * @brief Writes 1 byte of data to the MMC5983MA with I2C
+ *
+ * @param reg_addr the address of the register
+ * @param data the data to write to the register
+ * @retval HAL Status, 0 on successful write
+ */
+static HAL_StatusTypeDef mag_i2c_write(uint8_t reg_addr, uint8_t data);
 
 // magnetometer register mapping
 static const uint8_t x_out0 = 0x00;
@@ -54,7 +80,7 @@ int mag_init(I2C_HandleTypeDef* hi2c, uint8_t device_i2c_addr) {
     return 0;
 }
 
-int mag_read(MMCPacket_t* packet, uint8_t* flip) {
+int mag_read_data(MMCPacket_t* packet, uint8_t* flip) {
     uint8_t data_ready = 0;
     // read status register to make sure data is ready
     mag_i2c_read(status, &data_ready, 1);
@@ -141,8 +167,7 @@ int mag_setup_device(bool soft_reset_complete) {
 
 }
 
-
-HAL_StatusTypeDef mag_i2c_read(uint8_t reg_addr, uint8_t* buffer, size_t len) {
+static HAL_StatusTypeDef mag_i2c_read(uint8_t reg_addr, uint8_t* buffer, size_t len) {
     return HAL_I2C_Mem_Read(
             I2CSettings.hi2c,
             (uint16_t)(I2CSettings.dev_addr << 1),
@@ -154,7 +179,7 @@ HAL_StatusTypeDef mag_i2c_read(uint8_t reg_addr, uint8_t* buffer, size_t len) {
 }
 
 
-HAL_StatusTypeDef mag_i2c_write(uint8_t reg_addr, uint8_t data) {
+static HAL_StatusTypeDef mag_i2c_write(uint8_t reg_addr, uint8_t data) {
     return HAL_I2C_Mem_Write(
             I2CSettings.hi2c,
             (uint16_t)(I2CSettings.dev_addr << 1),

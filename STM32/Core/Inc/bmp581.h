@@ -34,31 +34,6 @@ int bmp_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
  * @param packet pointer to the BMP packet where the data will be stored
  * @retval 0 upon success, 1 if no new data is ready yet
  */
-int bmp_read(BMPPacket_t* packet);
+int bmp_read_data(BMPPacket_t* packet);
 
-/**
- * @brief Starts up and resets the BMP, confirms the SPI read/write functionality is working
- *
- * @param soft_reset_complete if this is a setup after a soft reset is complete
- * @retval 0 if successful
- */
-int bmp_setup_device(bool soft_reset_complete);
 
-/**
- * @brief Reads data from the BMP581 with SPI
- *
- * @param addr the address of the register
- * @param buffer where the result of the read will be stored
- * @param len the number of bytes to read
- * @retval HAL Status, 0 on successful read
- */
-HAL_StatusTypeDef bmp_spi_read(uint8_t addr, uint8_t* buffer, size_t len);
-
-/**
- * @brief Writes 1 byte of data to the BMP581 with SPI
- *
- * @param addr the address of the register
- * @param data the data to write to the register
- * @retval HAL Status, 0 on successful write
- */
-HAL_StatusTypeDef bmp_spi_write(uint8_t addr, uint8_t data);

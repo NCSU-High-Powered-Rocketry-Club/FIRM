@@ -159,7 +159,7 @@ int main(void)
     // to be pulled back low too fast, and the ISR doesn't catch it for whatever reason. Doing
     // this initial read will prevent that.
     IMUPacket_t* imu_packet = (IMUPacket_t*)&current_buffer[current_offset + TYPE_TIMESTAMP_SIZE];
-    imu_read(imu_packet);
+    imu_read_data(imu_packet);
 
   /* USER CODE END 2 */
 
@@ -170,7 +170,7 @@ int main(void)
             logger_ensure_capacity(sizeof(BMPPacket_t) + TYPE_TIMESTAMP_SIZE);
             BMPPacket_t* bmp_packet =
                 (BMPPacket_t*)&current_buffer[current_offset + TYPE_TIMESTAMP_SIZE];
-            if (bmp_read(bmp_packet) == 0) {
+            if (bmp_read_data(bmp_packet) == 0) {
                 // only reset flag if the new data was collected
                 bmp_ready = false;
                 logger_log_type_timestamp('B');
@@ -181,7 +181,7 @@ int main(void)
             logger_ensure_capacity(sizeof(IMUPacket_t) + TYPE_TIMESTAMP_SIZE);
             IMUPacket_t* imu_packet =
                 (IMUPacket_t*)&current_buffer[current_offset + TYPE_TIMESTAMP_SIZE];
-            if (imu_read(imu_packet) == 0) {
+            if (imu_read_data(imu_packet) == 0) {
                 // only reset flag if the new data was collected
                 imu_ready = false;
                 logger_log_type_timestamp('I');
@@ -192,7 +192,7 @@ int main(void)
             logger_ensure_capacity(sizeof(MMCPacket_t) + TYPE_TIMESTAMP_SIZE);
             MMCPacket_t* mmc_packet =
                 (MMCPacket_t*)&current_buffer[current_offset + TYPE_TIMESTAMP_SIZE];
-            if (mag_read(mmc_packet, &mag_flip) == 0) {
+            if (mag_read_data(mmc_packet, &mag_flip) == 0) {
                 // only reset flag if the new data was collected
                 mag_ready = false;
                 logger_log_type_timestamp('M');
@@ -464,13 +464,13 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0|GPIO_PIN_1|BMP581_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0|Feather_LED_Pin|BMP581_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : PC0 PC1 BMP581_CS_Pin */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|BMP581_CS_Pin;
+  /*Configure GPIO pins : PC0 Feather_LED_Pin BMP581_CS_Pin */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|Feather_LED_Pin|BMP581_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;

@@ -97,7 +97,7 @@ int imu_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
     return 0;
 }
 
-int imu_read(IMUPacket_t* packet) {
+int imu_read_data(IMUPacket_t* packet) {
     uint8_t data_ready = 0;
     // checking (and resetting) interrupt status
     imu_spi_read(int1_status0, &data_ready, 1);

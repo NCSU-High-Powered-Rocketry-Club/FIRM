@@ -36,31 +36,4 @@ int mag_init(I2C_HandleTypeDef* hi2c, uint8_t device_i2c_addr);
  *
  * @ret error status, returns 0 on success, 1 on failure
  */
-int mag_read(MMCPacket_t* packet, uint8_t* flip);
-
-/**
- * @brief Starts up and resets the magnetometer, confirms the I2C read/write functionality is working
- *
- * @param soft_reset_complete if this is a setup after a soft reset is complete
- * @retval 0 if successful
- */
-int mag_setup_device(bool soft_reset_complete);
-
-/**
- * @brief Reads data from the MMC5983MA with I2C
- *
- * @param reg_addr the address of the register
- * @param buffer where the result of the read will be stored
- * @param len the number of bytes to read
- * @retval HAL Status, 0 on successful read
- */
-HAL_StatusTypeDef mag_i2c_read(uint8_t reg_addr, uint8_t* buffer, size_t len);
-
-/**
- * @brief Writes 1 byte of data to the MMC5983MA with I2C
- *
- * @param reg_addr the address of the register
- * @param data the data to write to the register
- * @retval HAL Status, 0 on successful write
- */
-HAL_StatusTypeDef mag_i2c_write(uint8_t reg_addr, uint8_t data);
+int mag_read_data(MMCPacket_t* packet, uint8_t* flip);
