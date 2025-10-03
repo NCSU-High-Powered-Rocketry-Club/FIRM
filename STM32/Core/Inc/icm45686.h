@@ -8,6 +8,16 @@
 #pragma once
 #include "packets.h"
 #include "usb_print_debug.h"
+#include <stdbool.h>
+
+/**
+ * @brief the SPI settings for the IMU to use when accessing device registers
+ */
+typedef struct {
+    SPI_HandleTypeDef* hspi;
+    GPIO_TypeDef* cs_channel;
+    uint16_t cs_pin;
+} IMUSPISettings;
 
 /**
  * @brief Indirect Register type enumeration
@@ -34,24 +44,45 @@ int imu_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
  * @note this function should only be called when the interrupt pin is active. This function will
  *       reset the interrupt pin to it's inactive state.
  *
- * @param hspi specifies the SPI channel that the IMU is connected to.
- * @param cs_channel specifies the GPIO channel that the chip select pin is connected to.
- * @param cs_pin specifies the GPIO pin that the chip select pin is connected to.
  * @param packet pointer to the IMU packet where the data will be stored
  * @retval 0 if successful, 1 if unsuccessful due to the data not being ready. In this case, the
  *         interrupt pin will still be reset to the inactive state, but no data will be collected.
  */
-int imu_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin,
-             IMUPacket_t* packet);
+int imu_read_data(IMUPacket_t* packet);
+
+/**
+ * @brief Starts up and resets the IMU, confirms the SPI read/write functionality is working
+ *
+ * @param soft_reset_complete if this is a setup after a soft reset is complete
+ * @retval 0 if successful
+ */
+int imu_setup_device(bool soft_reset_complete);
+
+/**
+ * @brief Reads data from the ICM45686 with SPI
+ *
+ * @param addr the address of the register
+ * @param buffer where the result of the read will be stored
+ * @param len the number of bytes to read
+ * @retval HAL Status, 0 on successful read
+ */
+HAL_StatusTypeDef imu_spi_read(uint8_t addr, uint8_t* buffer, size_t len);
+
+/**
+ * @brief Writes 1 byte of data to the ICM45686 with SPI
+ *
+ * @param addr the address of the register
+ * @param data the data to write to the register
+ * @retval HAL Status, 0 on successful write
+ */
+HAL_StatusTypeDef imu_spi_write(uint8_t addr, uint8_t data);
+
 
 /**
  * @brief reads an indirect register from the IMU
  *
  * @note a minimum wait time of 4 microseconds is required between multiple ireg reads or writes.
  *
- * @param hspi specifies the SPI channel that the IMU is connected to.
- * @param cs_channel specifies the GPIO channel that the chip select pin is connected to.
- * @param cs_pin specifies the GPIO pin that the chip select pin is connected to.
  * @param register_map the IREGMap enumeration value that the ireg register is located in.
  * @param ireg_addr the intended register address to read. From the datasheet, the register
  * 		  will either be a standard 8-bit register, or a 12-bit register. ireg_addr expects
@@ -59,17 +90,13 @@ int imu_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin,
  * @param result a pointer to the variable that the result of the read will be stored in.
  * @retval None
  */
-void spi_ireg_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin,
-                   IREGMap_t register_map, uint16_t ireg_addr, uint8_t* result);
+void spi_ireg_read(IREGMap_t register_map, uint16_t ireg_addr, uint8_t* result);
 
 /**
  * @brief writes to an indirect register of the IMU
  *
  * @note a minimum wait time of 4 microseconds is required between multiple ireg reads or writes.
  *
- * @param hspi specifies the SPI channel that the IMU is connected to.
- * @param cs_channel specifies the GPIO channel that the chip select pin is connected to.
- * @param cs_pin specifies the GPIO pin that the chip select pin is connected to.
  * @param register_map the IREGMap enumeration value that the ireg register is located in.
  * @param ireg_addr the intended register address to write to. From the datasheet, the register
  * 		  will either be a standard 8-bit register, or a 12-bit register. ireg_addr expects
@@ -77,5 +104,4 @@ void spi_ireg_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t c
  * @param data the data to write to the indirect register address, as an 8-bit unsigned integer.
  * @retval None
  */
-void spi_ireg_write(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin,
-                    IREGMap_t register_map, uint16_t ireg_addr, uint8_t data);
+void spi_ireg_write(IREGMap_t register_map, uint16_t ireg_addr, uint8_t data);

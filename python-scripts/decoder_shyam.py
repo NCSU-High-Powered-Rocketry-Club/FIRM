@@ -2,7 +2,7 @@ import struct
 import pandas as pd
 import numpy as np
 
-with open("LOG24.TXT", 'rb') as f:
+with open("LOG70.TXT", 'rb') as f:
 
     characters=f.read()
     maxByte=len(characters)
