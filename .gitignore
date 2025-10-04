@@ -72,5 +72,5 @@ dkms.conf
 
 # KiCad local stuff
 /KiCad/#auto_saved_files#
-/KiCad/~FIRM.kicad_sch.lck
 /KiCad/_autosave-FIRM.kicad_sch
+*.lck
