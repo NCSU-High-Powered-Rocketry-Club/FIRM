@@ -69,3 +69,8 @@ dkms.conf
 # KiCad cache
 /KiCad/fp-info-cache
 /KiCad/FIRM_Interestlaunch/fp-info-cache
+
+# KiCad local stuff
+/KiCad/#auto_saved_files#
+/KiCad/~FIRM.kicad_sch.lck
+/KiCad/_autosave-FIRM.kicad_sch
