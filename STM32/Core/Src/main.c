@@ -185,14 +185,14 @@ int main(void) {
             }
         }
         if (magnetometer_has_new_data) {
-            logger_ensure_capacity(sizeof(MagnetomerPacket_t) + TYPE_TIMESTAMP_SIZE);
-            MagnetomerPacket_t* magnetometer_packet =
-                (MagnetomerPacket_t*)&current_buffer[current_offset + TYPE_TIMESTAMP_SIZE];
+            logger_ensure_capacity(sizeof(MagnetometerPacket_t) + TYPE_TIMESTAMP_SIZE);
+            MagnetometerPacket_t* magnetometer_packet =
+                (MagnetometerPacket_t*)&current_buffer[current_offset + TYPE_TIMESTAMP_SIZE];
             if (magnetometer_read(hi2c, packet, flip)(&hi2c1, magnetometer_packet, &magnetometer_flip) == 0) {
                 // only reset flag if the new data was collected
                 magnetometer_has_new_data = false;
                 logger_log_type_timestamp('M');
-                current_offset += sizeof(MagnetomerPacket_t);
+                current_offset += sizeof(MagnetometerPacket_t);
             }
         }
 
