@@ -17,10 +17,10 @@ typedef struct {
     float temperature;
     // Units: Pascals
     float pressure;
-} BMPPacket_t;
+} BarometerPacket_t;
 
 typedef struct {
     float mag_x;
     float mag_y;
     float mag_z;
-} MMCPacket_t;
+} MagnetometerPacket_t;

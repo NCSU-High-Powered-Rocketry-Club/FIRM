@@ -21,7 +21,7 @@ const uint8_t bmp581_reg_int_source = 0x15;
 const uint8_t bmp581_reg_ord_config = 0x37;
 const uint8_t bmp581_reg_temp_data_xlsb = 0x1D;
 
-int bmp_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin) {
+int barometer_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin) {
     HAL_Delay(4); // from data sheet: startup time from power-on to configuration change
 
     uint8_t result = 0;
@@ -79,8 +79,8 @@ int bmp_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
     return 0;
 }
 
-int bmp_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin,
-             BMPPacket_t* packet) {
+int barometer_read(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin,
+             BarometerPacket_t* packet) {
     // clear interrupt (pulls interrupt back up high) and verify new data is ready
     uint8_t data_ready = 0;
     spi_read(hspi, cs_channel, cs_pin, bmp581_reg_int_status, &data_ready, 1);

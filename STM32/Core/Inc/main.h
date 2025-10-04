@@ -57,19 +57,19 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define BMP581_CS_Pin GPIO_PIN_2
-#define BMP581_CS_GPIO_Port GPIOC
-#define BMP581_Interrupt_Pin GPIO_PIN_3
-#define BMP581_Interrupt_GPIO_Port GPIOC
-#define BMP581_Interrupt_EXTI_IRQn EXTI3_IRQn
+#define Barometer_CS_Pin GPIO_PIN_2
+#define Barometer_GPIO_Port GPIOC
+#define Barometer_Interrupt_Pin GPIO_PIN_3
+#define Barometer_Interrupt_GPIO_Port GPIOC
+#define Barometer_Interrupt_EXTI_IRQn EXTI3_IRQn
+#define IMU_CS_Pin GPIO_PIN_9
+#define IMU_CS_GPIO_Port GPIOB
 #define IMU_Interrupt_Pin GPIO_PIN_6
 #define IMU_Interrupt_GPIO_Port GPIOC
 #define IMU_Interrupt_EXTI_IRQn EXTI9_5_IRQn
-#define Mag_Interrupt_Pin GPIO_PIN_8
-#define Mag_Interrupt_GPIO_Port GPIOB
-#define Mag_Interrupt_EXTI_IRQn EXTI9_5_IRQn
-#define IMU_CS_Pin GPIO_PIN_9
-#define IMU_CS_GPIO_Port GPIOB
+#define Magnetometer_Interrupt_Pin GPIO_PIN_8
+#define Magnetometer_Interrupt_GPIO_Port GPIOB
+#define Magnetometer_Interrupt_EXTI_IRQn EXTI9_5_IRQn
 
 /* USER CODE BEGIN Private defines */
 

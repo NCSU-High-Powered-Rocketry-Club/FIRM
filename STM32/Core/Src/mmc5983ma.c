@@ -21,7 +21,7 @@ const uint8_t product_id_val = 0x30; // expected value for the product ID regist
 const float scaling_factor = 131072.0 / 800.0;
 const int flip_interval = 10; // number of regular packets between a flipped-sign packet
 
-int mag_init(I2C_HandleTypeDef* hi2c) {
+int magnetometer_init(I2C_HandleTypeDef* hi2c) {
     HAL_Delay(14); // 15ms power-on time
     uint8_t result = 0;
     // dummy read, ignore result
@@ -63,7 +63,7 @@ int mag_init(I2C_HandleTypeDef* hi2c) {
     return 0;
 }
 
-int mag_read(I2C_HandleTypeDef* hi2c, MMCPacket_t* packet, uint8_t* flip) {
+int magnetometer_read(I2C_HandleTypeDef* hi2c, MagnetometerPacket_t* packet, uint8_t* flip) {
     uint8_t data_ready = 0;
     // read status register to make sure data is ready
     i2c_read(hi2c, dev_i2c_addr, status, &data_ready, 1);

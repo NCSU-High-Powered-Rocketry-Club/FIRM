@@ -81,9 +81,12 @@ static void MX_SPI3_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-bool bmp_ready = false;
-bool imu_ready = false;
-bool mag_ready = false;
+
+// These flags
+volatile bool barometer_has_new_data = false;
+volatile bool imu_has_new_data = false;
+volatile bool magnetometer_has_new_data = false;
+
 /* USER CODE END 0 */
 
 /**
@@ -141,15 +144,15 @@ int main(void) {
     if (imu_init(&hspi2, GPIOB, GPIO_PIN_9)) {
         Error_Handler();
     }
-    if (bmp_init(&hspi2, GPIOC, GPIO_PIN_2)) {
+    if (barometer_init(&hspi2, GPIOC, GPIO_PIN_2)) {
         Error_Handler();
     }
-    if (mag_init(&hi2c1)) {
+    if (magnetometer_init(&hi2c1)) {
         Error_Handler();
     }
 
     // incrementing value for magnetometer calibration
-    uint8_t mag_flip = 0;
+    uint8_t magnetometer_flip = 0;
 
     // Toggle LED:
     HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_1);
@@ -159,37 +162,37 @@ int main(void) {
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
     while (1) {
-        if (bmp_ready) {
-            logger_ensure_capacity(sizeof(BMPPacket_t) + TYPE_TIMESTAMP_SIZE);
-            BMPPacket_t* bmp_packet =
-                (BMPPacket_t*)&current_buffer[current_offset + TYPE_TIMESTAMP_SIZE];
-            if (bmp_read(&hspi2, GPIOC, GPIO_PIN_2, bmp_packet) == 0) {
+        if (barometer_has_new_data) {
+            logger_ensure_capacity(sizeof(BarometerPacket_t) + TYPE_TIMESTAMP_SIZE);
+            BarometerPacket_t* barometer_packet =
+                (BarometerPacket_t*)&current_buffer[current_offset + TYPE_TIMESTAMP_SIZE];
+            if (barometer_read(&hspi2, GPIOC, GPIO_PIN_2, barometer_packet) == 0) {
                 // only reset flag if the new data was collected
-                bmp_ready = false;
+                barometer_has_new_data = false;
                 logger_log_type_timestamp('B');
-                current_offset += sizeof(BMPPacket_t);
+                current_offset += sizeof(BarometerPacket_t);
             }
         }
-        if (imu_ready) {
+        if (imu_has_new_data) {
             logger_ensure_capacity(sizeof(IMUPacket_t) + TYPE_TIMESTAMP_SIZE);
             IMUPacket_t* imu_packet =
                 (IMUPacket_t*)&current_buffer[current_offset + TYPE_TIMESTAMP_SIZE];
             if (imu_read(&hspi2, GPIOB, GPIO_PIN_9, imu_packet) == 0) {
                 // only reset flag if the new data was collected
-                imu_ready = false;
+                imu_has_new_data = false;
                 logger_log_type_timestamp('I');
                 current_offset += sizeof(IMUPacket_t);
             }
         }
-        if (mag_ready) {
-            logger_ensure_capacity(sizeof(MMCPacket_t) + TYPE_TIMESTAMP_SIZE);
-            MMCPacket_t* mmc_packet =
-                (MMCPacket_t*)&current_buffer[current_offset + TYPE_TIMESTAMP_SIZE];
-            if (mag_read(&hi2c1, mmc_packet, &mag_flip) == 0) {
+        if (magnetometer_has_new_data) {
+            logger_ensure_capacity(sizeof(MagnetomerPacket_t) + TYPE_TIMESTAMP_SIZE);
+            MagnetomerPacket_t* magnetometer_packet =
+                (MagnetomerPacket_t*)&current_buffer[current_offset + TYPE_TIMESTAMP_SIZE];
+            if (magnetometer_read(hi2c, packet, flip)(&hi2c1, magnetometer_packet, &magnetometer_flip) == 0) {
                 // only reset flag if the new data was collected
-                mag_ready = false;
+                magnetometer_has_new_data = false;
                 logger_log_type_timestamp('M');
-                current_offset += sizeof(MMCPacket_t);
+                current_offset += sizeof(MagnetomerPacket_t);
             }
         }
 
@@ -437,20 +440,20 @@ static void MX_GPIO_Init(void) {
     __HAL_RCC_GPIOD_CLK_ENABLE();
 
     /*Configure GPIO pin Output Level */
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0 | GPIO_PIN_1 | BMP581_CS_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0 | GPIO_PIN_1 | Barometer_CS_Pin, GPIO_PIN_RESET);
 
     /*Configure GPIO pin Output Level */
     HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_RESET);
 
-    /*Configure GPIO pins : PC0 PC1 BMP581_CS_Pin */
-    GPIO_InitStruct.Pin = GPIO_PIN_0 | GPIO_PIN_1 | BMP581_CS_Pin;
+    /*Configure GPIO pins : PC0 PC1 Barometer_CS_Pin */
+    GPIO_InitStruct.Pin = GPIO_PIN_0 | GPIO_PIN_1 | Barometer_CS_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-    /*Configure GPIO pins : BMP581_Interrupt_Pin IMU_Interrupt_Pin */
-    GPIO_InitStruct.Pin = BMP581_Interrupt_Pin | IMU_Interrupt_Pin;
+    /*Configure GPIO pins : Barometer_Interrupt_Pin IMU_Interrupt_Pin */
+    GPIO_InitStruct.Pin = Barometer_Interrupt_Pin | IMU_Interrupt_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
@@ -461,11 +464,11 @@ static void MX_GPIO_Init(void) {
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-    /*Configure GPIO pin : Mag_Interrupt_Pin */
-    GPIO_InitStruct.Pin = Mag_Interrupt_Pin;
+    /*Configure GPIO pin : Magnetometer_Interrupt_Pin */
+    GPIO_InitStruct.Pin = Magnetometer_Interrupt_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(Mag_Interrupt_GPIO_Port, &GPIO_InitStruct);
+    HAL_GPIO_Init(Magnetometer_Interrupt_GPIO_Port, &GPIO_InitStruct);
 
     /*Configure GPIO pin : IMU_CS_Pin */
     GPIO_InitStruct.Pin = IMU_CS_Pin;
@@ -495,14 +498,14 @@ static void MX_GPIO_Init(void) {
  * @retval None
  */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-    if (GPIO_Pin == BMP581_Interrupt_Pin) {
-        bmp_ready = true;
+    if (GPIO_Pin == Barometer_Interrupt_Pin) {
+        barometer_has_new_data = true;
     }
     if (GPIO_Pin == IMU_Interrupt_Pin) {
-        imu_ready = true;
+        imu_has_new_data = true;
     }
-    if (GPIO_Pin == Mag_Interrupt_Pin) {
-        mag_ready = true;
+    if (GPIO_Pin == Magnetometer_Interrupt_Pin) {
+        magnetometer_has_new_data = true;
     }
 }
 /* USER CODE END 4 */

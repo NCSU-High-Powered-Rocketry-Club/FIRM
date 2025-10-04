@@ -17,7 +17,7 @@
  * @param hi2c pointer to the i2c handle used for the device
  * @ret error status, returns 0 on success, 1 on failure
  */
-int mag_init(I2C_HandleTypeDef* hi2c);
+int magnetometer_init(I2C_HandleTypeDef* hi2c);
 
 /**
  * @brief reads data from the magnetometer
@@ -28,4 +28,4 @@ int mag_init(I2C_HandleTypeDef* hi2c);
  *
  * @ret error status, returns 0 on success, 1 on failure
  */
-int mag_read(I2C_HandleTypeDef* hi2c, MMCPacket_t* packet, uint8_t* flip);
+int magnetometer_read(I2C_HandleTypeDef* hi2c, MagnetometerPacket_t* packet, uint8_t* flip);
