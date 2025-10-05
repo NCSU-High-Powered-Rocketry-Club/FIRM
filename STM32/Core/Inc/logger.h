@@ -18,14 +18,11 @@
 // click menu on windows
 #define BUFFER_SIZE 8192
 
-// Size of the type and timestamp at the start of a data packet.
-// The type is the first byte and the timestamp is the next 3 (big endian)
-#define TYPE_TIMESTAMP_SIZE 4
-
-extern char* current_buffer;
-extern UINT current_offset;
-
-extern FIL log_file;
+/**
+ * This is the size in bytes of the type of packet and the timestamp associated
+ * with it.
+ */
+#define PACKET_METADATA_SIZE 4
 
 // Initializes the SD card and creates the log file.
 FRESULT logger_init();
@@ -35,5 +32,7 @@ FRESULT logger_ensure_capacity(int capacity);
 
 // Logs the type and timestamp. Advances the current offset
 void logger_log_type_timestamp(char type);
+
+FRESULT logger_write_entry(char type, const void* payload, size_t payload_size);
 
 #endif /* INC_LOGGER_H_ */

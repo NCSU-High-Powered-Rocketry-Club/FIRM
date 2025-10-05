@@ -14,14 +14,13 @@
 
 #include <string.h>
 
-char buffer0[BUFFER_SIZE];
-char buffer1[BUFFER_SIZE];
-
-char* current_buffer = buffer0;
-UINT current_offset = 0;
+static char  buffer0[BUFFER_SIZE];
+static char  buffer1[BUFFER_SIZE];
+static char* current_buffer = buffer0;
+static UINT  current_offset = 0;
+static FATFS fs;
 
 FIL log_file;
-FATFS fs;
 
 extern DMA_HandleTypeDef hdma_sdio_tx; // Link to the DMA handler to check if busy
 
@@ -172,4 +171,20 @@ void logger_log_type_timestamp(char type) {
     current_buffer[current_offset++] = (current_time >> 16) & 0xFF;
     current_buffer[current_offset++] = (current_time >> 8) & 0xFF;
     current_buffer[current_offset++] = current_time & 0xFF;
+}
+
+FRESULT logger_write_entry(char type, const void* payload, size_t payload_size) {
+    // Make sure there is room for metadata + payload
+    FRESULT fr = logger_ensure_capacity((int)(PACKET_METADATA_SIZE + payload_size));
+    if (fr != FR_OK) return fr;
+
+    logger_log_type_timestamp(type);
+
+    // Copy payload bytes into the buffer
+    memcpy(&current_buffer[current_offset], payload, payload_size);
+
+    // Advance past the payload
+    current_offset += (UINT)payload_size;
+
+    return FR_OK;
 }

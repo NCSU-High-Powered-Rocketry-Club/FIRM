@@ -1,6 +1,8 @@
 #pragma once
 #include <stdint.h>
 
+// TODO: add units to var names
+
 typedef struct {
     // Units: G's
     float acc_x;
