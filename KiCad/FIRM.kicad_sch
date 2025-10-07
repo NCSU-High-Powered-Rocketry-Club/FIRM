@@ -6372,7 +6372,7 @@
 		)
 		(uuid "2d98c09a-de6a-4f85-974b-70b0b7abd4bd")
 	)
-	(text_box "Reset Switch"
+	(text_box "Reset & Boot"
 		(exclude_from_sim no)
 		(at 360.68 15.24 0)
 		(size 43.18 60.96)
@@ -8078,7 +8078,7 @@
 	)
 	(wire
 		(pts
-			(xy 367.03 43.18) (xy 377.19 43.18)
+			(xy 367.03 31.75) (xy 377.19 31.75)
 		)
 		(stroke
 			(width 0)
@@ -9228,6 +9228,16 @@
 	)
 	(wire
 		(pts
+			(xy 382.27 53.34) (xy 386.08 53.34)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9001b813-c7d8-43b6-a636-1af932379766")
+	)
+	(wire
+		(pts
 			(xy 127 88.9) (xy 166.37 88.9)
 		)
 		(stroke
@@ -9468,7 +9478,7 @@
 	)
 	(wire
 		(pts
-			(xy 393.7 43.18) (xy 393.7 45.72)
+			(xy 393.7 31.75) (xy 393.7 34.29)
 		)
 		(stroke
 			(width 0)
@@ -9748,7 +9758,7 @@
 	)
 	(wire
 		(pts
-			(xy 387.35 43.18) (xy 393.7 43.18)
+			(xy 387.35 31.75) (xy 393.7 31.75)
 		)
 		(stroke
 			(width 0)
@@ -10348,6 +10358,16 @@
 	)
 	(wire
 		(pts
+			(xy 367.03 53.34) (xy 377.19 53.34)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "f5071f65-fdcb-4677-93a8-a1395625d083")
+	)
+	(wire
+		(pts
 			(xy 55.88 86.36) (xy 55.88 88.9)
 		)
 		(stroke
@@ -10766,6 +10786,16 @@
 		)
 		(uuid "35b45798-fd66-4481-85b1-ac5c7caebd91")
 	)
+	(label "BOOT0"
+		(at 367.03 53.34 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "36358d78-4e14-440c-9392-e3fecd82812e")
+	)
 	(label "SDIO_CMD"
 		(at 59.69 186.69 0)
 		(effects
@@ -11157,7 +11187,7 @@
 		(uuid "884dc92f-e80e-4fcf-bedc-e96d6b62d446")
 	)
 	(label "NRST"
-		(at 367.03 43.18 0)
+		(at 367.03 31.75 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -11770,7 +11800,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 393.7 45.72 0)
+		(at 393.7 34.29 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -11778,7 +11808,7 @@
 		(dnp no)
 		(uuid "099a17a6-b5ee-4bbb-afcb-594a3448c507")
 		(property "Reference" "#PWR016"
-			(at 393.7 52.07 0)
+			(at 393.7 40.64 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11787,7 +11817,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 393.7 49.784 0)
+			(at 393.7 38.354 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11795,7 +11825,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 393.7 45.72 0)
+			(at 393.7 34.29 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11804,7 +11834,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 393.7 45.72 0)
+			(at 393.7 34.29 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11813,7 +11843,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 393.7 45.72 0)
+			(at 393.7 34.29 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -14814,6 +14844,72 @@
 		)
 	)
 	(symbol
+		(lib_id "Connector:TestPoint")
+		(at 386.08 53.34 270)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "5191423d-decc-4b9f-8978-c8f844d5e56b")
+		(property "Reference" "TP25"
+			(at 391.16 52.0699 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "BOOT0 Pad"
+			(at 391.16 54.6099 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 386.08 58.42 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 386.08 58.42 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "test point"
+			(at 386.08 53.34 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "fca269fe-30db-4019-8997-fa53a28df409")
+		)
+		(instances
+			(project ""
+				(path "/d3f8a00a-ef65-439d-87f3-373a106a7ddb"
+					(reference "TP25")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:R_Small")
 		(at 170.18 107.95 270)
 		(unit 1)
@@ -16628,6 +16724,74 @@
 			(project ""
 				(path "/d3f8a00a-ef65-439d-87f3-373a106a7ddb"
 					(reference "#PWR018")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R_Small")
+		(at 379.73 53.34 270)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "861fd4b9-585b-43b5-94a0-5d5b005d73ec")
+		(property "Reference" "R20"
+			(at 379.73 48.26 90)
+			(effects
+				(font
+					(size 1.016 1.016)
+				)
+			)
+		)
+		(property "Value" "100"
+			(at 379.73 50.8 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 379.73 53.34 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 379.73 53.34 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Resistor, small symbol"
+			(at 379.73 53.34 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "2"
+			(uuid "72a03cfe-ec6e-4145-ae74-037691951785")
+		)
+		(pin "1"
+			(uuid "c6ff8070-3991-44b5-b7f5-955995325f7d")
+		)
+		(instances
+			(project "FIRM"
+				(path "/d3f8a00a-ef65-439d-87f3-373a106a7ddb"
+					(reference "R20")
 					(unit 1)
 				)
 			)
@@ -20695,7 +20859,7 @@
 	)
 	(symbol
 		(lib_id "Switch:SW_Push")
-		(at 382.27 43.18 0)
+		(at 382.27 31.75 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -20704,7 +20868,7 @@
 		(fields_autoplaced yes)
 		(uuid "f812e0a3-9438-4964-b558-c7efd9225c6a")
 		(property "Reference" "SW1"
-			(at 382.27 35.56 0)
+			(at 382.27 24.13 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -20712,7 +20876,7 @@
 			)
 		)
 		(property "Value" "PTS815"
-			(at 382.27 38.1 0)
+			(at 382.27 26.67 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -20720,7 +20884,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 382.27 38.1 0)
+			(at 382.27 26.67 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -20729,7 +20893,7 @@
 			)
 		)
 		(property "Datasheet" "https://www.ckswitches.com/media/2728/pts815.pdf"
-			(at 382.27 38.1 0)
+			(at 382.27 26.67 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -20738,7 +20902,7 @@
 			)
 		)
 		(property "Description" "PTS815SJM250SMTRLFS"
-			(at 382.27 43.18 0)
+			(at 382.27 31.75 0)
 			(effects
 				(font
 					(size 1.27 1.27)
