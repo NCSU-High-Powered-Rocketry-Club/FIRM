@@ -69,3 +69,12 @@ dkms.conf
 # KiCad cache
 /KiCad/fp-info-cache
 /KiCad/FIRM_Interestlaunch/fp-info-cache
+
+# FIRM code
+/STM32/build
+mx.scratch
+/STM32/.vscode
+/STM32/CMakeFiles
+/STM32/CMakeCache.txt
+/STM32/build.ninja
+cmake_install.cmake
