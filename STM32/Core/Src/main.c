@@ -82,7 +82,8 @@ static void MX_SPI3_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-// These flags
+// These flags can be changed at any time from the interrupts. When they are set
+// to true, it means that the corresponding sensor has new data ready to be read.
 volatile bool barometer_has_new_data = false;
 volatile bool imu_has_new_data = false;
 volatile bool magnetometer_has_new_data = false;
@@ -128,13 +129,12 @@ int main(void) {
     /* USER CODE BEGIN 2 */
 
     // Setup the SD card
-    FRESULT res = logger_init();
-    if (res) {
+    if (logger_init()) {
         serialPrintStr("Failed to initialized the logger (SD card)");
         Error_Handler();
     }
 
-    // drive chip select pins high
+    // Set the chip select pins to high, this means that they're not selected.
     // Note: We can't have these in the bmp581/imu init functions, because those somehow mess up
     // with the initialization.
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // bmp581 pin
@@ -161,40 +161,33 @@ int main(void) {
 
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
+
+    // This is the main loop. It's constantly checking to see if any of the sensors have
+    // new data to read, and if so, logs it.
     while (1) {
-        if (barometer_has_new_data) {
-            logger_ensure_capacity(sizeof(BarometerPacket_t) + TYPE_TIMESTAMP_SIZE);
-            BarometerPacket_t* barometer_packet =
-                (BarometerPacket_t*)&current_buffer[current_offset + TYPE_TIMESTAMP_SIZE];
-            if (barometer_read(&hspi2, GPIOC, GPIO_PIN_2, barometer_packet) == 0) {
-                // only reset flag if the new data was collected
-                barometer_has_new_data = false;
-                logger_log_type_timestamp('B');
-                current_offset += sizeof(BarometerPacket_t);
-            }
-        }
-        if (imu_has_new_data) {
-            logger_ensure_capacity(sizeof(IMUPacket_t) + TYPE_TIMESTAMP_SIZE);
-            IMUPacket_t* imu_packet =
-                (IMUPacket_t*)&current_buffer[current_offset + TYPE_TIMESTAMP_SIZE];
-            if (imu_read(&hspi2, GPIOB, GPIO_PIN_9, imu_packet) == 0) {
-                // only reset flag if the new data was collected
-                imu_has_new_data = false;
-                logger_log_type_timestamp('I');
-                current_offset += sizeof(IMUPacket_t);
-            }
-        }
-        if (magnetometer_has_new_data) {
-            logger_ensure_capacity(sizeof(MagnetometerPacket_t) + TYPE_TIMESTAMP_SIZE);
-            MagnetometerPacket_t* magnetometer_packet =
-                (MagnetometerPacket_t*)&current_buffer[current_offset + TYPE_TIMESTAMP_SIZE];
-            if (magnetometer_read(hi2c, packet, flip)(&hi2c1, magnetometer_packet, &magnetometer_flip) == 0) {
-                // only reset flag if the new data was collected
-                magnetometer_has_new_data = false;
-                logger_log_type_timestamp('M');
-                current_offset += sizeof(MagnetometerPacket_t);
-            }
-        }
+    	if (barometer_has_new_data) {
+    	    BarometerPacket_t barometer_sample;
+    	    if (barometer_read(&hspi2, GPIOC, GPIO_PIN_2, &barometer_sample) == 0) {
+    	        barometer_has_new_data = false;
+    	        (void)logger_write_entry('B', &barometer_sample, sizeof(barometer_sample));
+    	    }
+    	}
+
+    	if (imu_has_new_data) {
+    	    IMUPacket_t imu_sample;
+    	    if (imu_read(&hspi2, GPIOB, GPIO_PIN_9, &imu_sample) == 0) {
+    	        imu_has_new_data = false;
+    	        (void)logger_write_entry('I', &imu_sample, sizeof(imu_sample));
+    	    }
+    	}
+
+    	if (magnetometer_has_new_data) {
+    	    MagnetometerPacket_t magnetometer_sample;
+    	    if (magnetometer_read(&hi2c1, &magnetometer_sample, &magnetometer_flip) == 0) {
+    	        magnetometer_has_new_data = false;
+    	        (void)logger_write_entry('M', &magnetometer_sample, sizeof(magnetometer_sample));
+    	    }
+    	}
 
         /* USER CODE END WHILE */
 
