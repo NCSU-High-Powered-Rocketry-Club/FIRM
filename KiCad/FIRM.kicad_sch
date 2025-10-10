@@ -11870,7 +11870,7 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "~"
+		(property "Datasheet" "https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/6536/ABM8_Datasheet.pdf"
 			(at 49.53 73.66 0)
 			(effects
 				(font
@@ -18424,7 +18424,7 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "~"
+		(property "Datasheet" "https://ecsxtal.com/store/pdf/ECX_34R.pdf"
 			(at 44.45 121.92 0)
 			(effects
 				(font
