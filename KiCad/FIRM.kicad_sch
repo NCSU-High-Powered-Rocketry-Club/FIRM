@@ -5693,7 +5693,7 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "Transistor_FET:AO3401A"
+		(symbol "Transistor_FET:IRLML6402"
 			(pin_names
 				(hide yes)
 			)
@@ -5709,7 +5709,7 @@
 					(justify left)
 				)
 			)
-			(property "Value" "AO3401A"
+			(property "Value" "IRLML6402"
 				(at 5.08 0 0)
 				(effects
 					(font
@@ -5729,7 +5729,7 @@
 					(hide yes)
 				)
 			)
-			(property "Datasheet" "http://www.aosmd.com/pdfs/datasheet/AO3401A.pdf"
+			(property "Datasheet" "https://www.infineon.com/dgdl/irlml6402pbf.pdf?fileId=5546d462533600a401535668d5c2263c"
 				(at 5.08 -3.81 0)
 				(effects
 					(font
@@ -5739,7 +5739,7 @@
 					(hide yes)
 				)
 			)
-			(property "Description" "-4.0A Id, -30V Vds, P-Channel MOSFET, SOT-23"
+			(property "Description" "-3.7A Id, -20V Vds, 65mOhm Rds, P-Channel HEXFET Power MOSFET, SOT-23"
 				(at 0 0 0)
 				(effects
 					(font
@@ -5748,7 +5748,7 @@
 					(hide yes)
 				)
 			)
-			(property "ki_keywords" "P-Channel MOSFET"
+			(property "ki_keywords" "P-Channel HEXFET MOSFET"
 				(at 0 0 0)
 				(effects
 					(font
@@ -5766,7 +5766,7 @@
 					(hide yes)
 				)
 			)
-			(symbol "AO3401A_0_1"
+			(symbol "IRLML6402_0_1"
 				(polyline
 					(pts
 						(xy 0.254 1.905) (xy 0.254 -1.905)
@@ -5933,7 +5933,7 @@
 					)
 				)
 			)
-			(symbol "AO3401A_1_1"
+			(symbol "IRLML6402_1_1"
 				(pin input line
 					(at -5.08 0 0)
 					(length 2.54)
@@ -6615,7 +6615,7 @@
 		(uuid "e72571c1-f195-4680-936e-4de157975708")
 	)
 	(junction
-		(at 245.11 201.93)
+		(at 243.84 201.93)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "06b3bd5f-1a84-400d-867d-44d5d50a0e45")
@@ -6945,7 +6945,7 @@
 		(uuid "c333c67b-143c-4295-abd9-c91fa3067835")
 	)
 	(junction
-		(at 245.11 214.63)
+		(at 243.84 214.63)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "c6ec868a-2299-4b76-a97b-52231c431fe9")
@@ -7198,7 +7198,7 @@
 	)
 	(wire
 		(pts
-			(xy 245.11 201.93) (xy 254 201.93)
+			(xy 243.84 201.93) (xy 254 201.93)
 		)
 		(stroke
 			(width 0)
@@ -7928,7 +7928,7 @@
 	)
 	(wire
 		(pts
-			(xy 245.11 227.33) (xy 245.11 226.06)
+			(xy 243.84 227.33) (xy 243.84 226.06)
 		)
 		(stroke
 			(width 0)
@@ -8238,7 +8238,7 @@
 	)
 	(wire
 		(pts
-			(xy 245.11 201.93) (xy 245.11 214.63)
+			(xy 243.84 201.93) (xy 243.84 214.63)
 		)
 		(stroke
 			(width 0)
@@ -8248,7 +8248,7 @@
 	)
 	(wire
 		(pts
-			(xy 245.11 214.63) (xy 245.11 218.44)
+			(xy 243.84 214.63) (xy 243.84 218.44)
 		)
 		(stroke
 			(width 0)
@@ -8748,7 +8748,7 @@
 	)
 	(wire
 		(pts
-			(xy 245.11 196.85) (xy 245.11 201.93)
+			(xy 243.84 196.85) (xy 243.84 201.93)
 		)
 		(stroke
 			(width 0)
@@ -10038,7 +10038,7 @@
 	)
 	(wire
 		(pts
-			(xy 245.11 214.63) (xy 248.92 214.63)
+			(xy 243.84 214.63) (xy 248.92 214.63)
 		)
 		(stroke
 			(width 0)
@@ -15270,82 +15270,6 @@
 		)
 	)
 	(symbol
-		(lib_id "Transistor_FET:AO3401A")
-		(at 259.08 201.93 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "5041c018-c6be-45a8-8bf2-060b05addedf")
-		(property "Reference" "Q1"
-			(at 265.43 200.6599 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "AO3401A"
-			(at 265.43 203.1999 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Package_TO_SOT_SMD:SOT-23"
-			(at 264.16 203.835 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-					(italic yes)
-				)
-				(justify left)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" "http://www.aosmd.com/pdfs/datasheet/AO3401A.pdf"
-			(at 264.16 205.74 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-				(hide yes)
-			)
-		)
-		(property "Description" "-4.0A Id, -30V Vds, P-Channel MOSFET, SOT-23"
-			(at 259.08 201.93 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "627828cc-08ab-44ae-b44d-e0d4eb1ba335")
-		)
-		(pin "3"
-			(uuid "7fd6b908-8321-4988-8498-6994e0ac1dad")
-		)
-		(pin "2"
-			(uuid "e63df4f7-e849-4435-924b-627f6fe8fd20")
-		)
-		(instances
-			(project ""
-				(path "/d3f8a00a-ef65-439d-87f3-373a106a7ddb"
-					(reference "Q1")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "power:GND")
 		(at 35.56 71.12 0)
 		(unit 1)
@@ -18052,7 +17976,7 @@
 	)
 	(symbol
 		(lib_id "power:VBUS")
-		(at 245.11 196.85 0)
+		(at 243.84 196.85 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -18060,7 +17984,7 @@
 		(dnp no)
 		(uuid "8d2c6358-380d-4674-a69c-b662a6db6fdd")
 		(property "Reference" "#PWR037"
-			(at 245.11 200.66 0)
+			(at 243.84 200.66 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -18069,7 +17993,7 @@
 			)
 		)
 		(property "Value" "VBUS"
-			(at 244.856 192.532 0)
+			(at 243.586 192.532 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -18077,7 +18001,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 245.11 196.85 0)
+			(at 243.84 196.85 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -18086,7 +18010,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 245.11 196.85 0)
+			(at 243.84 196.85 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -18095,7 +18019,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VBUS\""
-			(at 245.11 196.85 0)
+			(at 243.84 196.85 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -18792,7 +18716,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 245.11 222.25 0)
+		(at 243.84 222.25 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -18800,7 +18724,7 @@
 		(dnp no)
 		(uuid "a556e103-7a69-4c2c-94ca-5a4106395e14")
 		(property "Reference" "R8"
-			(at 246.888 220.726 0)
+			(at 245.618 220.726 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -18809,7 +18733,7 @@
 			)
 		)
 		(property "Value" "100k"
-			(at 247.142 223.52 0)
+			(at 245.872 223.52 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -18818,7 +18742,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 243.332 222.25 90)
+			(at 242.062 222.25 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -18827,7 +18751,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 245.11 222.25 0)
+			(at 243.84 222.25 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -18836,7 +18760,7 @@
 			)
 		)
 		(property "Description" "Resistor"
-			(at 245.11 222.25 0)
+			(at 243.84 222.25 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -19008,7 +18932,6 @@
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(fields_autoplaced yes)
 		(uuid "abbac53e-988d-45c0-907c-98b5ee9c1882")
 		(property "Reference" "D1"
 			(at 253.0475 208.28 0)
@@ -19035,7 +18958,7 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "~"
+		(property "Datasheet" "https://www.diodes.com/assets/Datasheets/1N5819HW.pdf"
 			(at 252.73 214.63 0)
 			(effects
 				(font
@@ -19044,13 +18967,12 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "Schottky diode"
-			(at 252.73 214.63 0)
+		(property "Description" "1N5819HW-7-F"
+			(at 252.73 217.17 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(hide yes)
 			)
 		)
 		(pin "2"
@@ -19703,7 +19625,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 245.11 227.33 0)
+		(at 243.84 227.33 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -19712,7 +19634,7 @@
 		(fields_autoplaced yes)
 		(uuid "b738b731-db5e-4990-ac4e-2099625d1326")
 		(property "Reference" "#PWR028"
-			(at 245.11 233.68 0)
+			(at 243.84 233.68 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -19721,7 +19643,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 245.11 232.41 0)
+			(at 243.84 232.41 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -19729,7 +19651,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 245.11 227.33 0)
+			(at 243.84 227.33 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -19738,7 +19660,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 245.11 227.33 0)
+			(at 243.84 227.33 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -19747,7 +19669,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 245.11 227.33 0)
+			(at 243.84 227.33 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -21352,6 +21274,82 @@
 			(project ""
 				(path "/d3f8a00a-ef65-439d-87f3-373a106a7ddb"
 					(reference "#PWR022")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Transistor_FET:IRLML6402")
+		(at 259.08 201.93 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "e229758d-880c-4af5-a0b6-c18a9c282ea2")
+		(property "Reference" "Q2"
+			(at 265.43 200.6599 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "IRLML6402"
+			(at 265.43 203.1999 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Package_TO_SOT_SMD:SOT-23"
+			(at 264.16 203.835 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+					(italic yes)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "https://www.infineon.com/dgdl/irlml6402pbf.pdf?fileId=5546d462533600a401535668d5c2263c"
+			(at 264.16 205.74 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+		(property "Description" "-3.7A Id, -20V Vds, 65mOhm Rds, P-Channel HEXFET Power MOSFET, SOT-23"
+			(at 259.08 201.93 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "3"
+			(uuid "2b56d032-1d08-4685-807b-508b935f75a6")
+		)
+		(pin "1"
+			(uuid "8ad58c05-ea6d-4ec2-b081-797682d1eb00")
+		)
+		(pin "2"
+			(uuid "31fed6ea-916c-4bb4-b56e-e67098b99712")
+		)
+		(instances
+			(project ""
+				(path "/d3f8a00a-ef65-439d-87f3-373a106a7ddb"
+					(reference "Q2")
 					(unit 1)
 				)
 			)
