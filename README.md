@@ -38,7 +38,7 @@ git clone https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM.git
 
 5. Run `uv sync`.
 
-6. Run `pre-commit install` to set up the git hook for automatic code formatting, using `clang-format`.
+6. Run `uv run pre-commit install` to set up the git hook for automatic code formatting, using `clang-format`.
 
 
 ## Building the project
