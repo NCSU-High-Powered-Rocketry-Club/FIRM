@@ -17,7 +17,7 @@
 static char  buffer0[BUFFER_SIZE];
 static char  buffer1[BUFFER_SIZE];
 static char* current_buffer = buffer0;
-static UINT  current_offset = 0;
+static size_t current_offset = 0;
 static FATFS fs;
 
 FIL log_file;
@@ -175,6 +175,7 @@ void logger_log_type_timestamp(char type) {
 
 FRESULT logger_write_entry(char type, const void* payload, size_t payload_size) {
     // Make sure there is room for metadata + payload
+
     FRESULT fr = logger_ensure_capacity((int)(PACKET_METADATA_SIZE + payload_size));
     if (fr != FR_OK) return fr;
 
@@ -184,7 +185,7 @@ FRESULT logger_write_entry(char type, const void* payload, size_t payload_size) 
     memcpy(&current_buffer[current_offset], payload, payload_size);
 
     // Advance past the payload
-    current_offset += (UINT)payload_size;
+    current_offset += payload_size;
 
-    return FR_OK;
+    return fr;
 }

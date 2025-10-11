@@ -84,9 +84,9 @@ static void MX_SPI3_Init(void);
 
 // These flags can be changed at any time from the interrupts. When they are set
 // to true, it means that the corresponding sensor has new data ready to be read.
-volatile bool barometer_has_new_data = false;
-volatile bool imu_has_new_data = false;
-volatile bool magnetometer_has_new_data = false;
+volatile bool bmp581_has_new_data = false;
+volatile bool icm45686_has_new_data = false;
+volatile bool mmc5983ma_has_new_data = false;
 /* USER CODE END 0 */
 
 /**
@@ -160,8 +160,8 @@ int main(void)
     // the IMU runs into issues when the fifo is full at the very beginning, causing the interrupt
     // to be pulled back low too fast, and the ISR doesn't catch it for whatever reason. Doing
     // this initial read will prevent that.
-    IMUPacket_t* imu_packet = (IMUPacket_t*)&current_buffer[current_offset + TYPE_TIMESTAMP_SIZE];
-    imu_read_data(imu_packet);
+    IMUPacket_t imu_packet;
+    icm45686_read_data(&imu_packet);
 
   /* USER CODE END 2 */
 
@@ -171,27 +171,27 @@ int main(void)
     // This is the main loop. It's constantly checking to see if any of the sensors have
     // new data to read, and if so, logs it.
     while (1) {
-        if (barometer_has_new_data) {
+        if (bmp581_has_new_data) {
     	    BarometerPacket_t barometer_sample;
-    	    if (!bmp581_read(&barometer_sample)) {
-    	        barometer_has_new_data = false;
-    	        (void)logger_write_entry('B', &barometer_sample, sizeof(barometer_sample));
+    	    if (!bmp581_read_data(&barometer_sample)) {
+    	        bmp581_has_new_data = false;
+    	        logger_write_entry('B', &barometer_sample, sizeof(barometer_sample));
     	    }
     	}
 
-    	if (imu_has_new_data) {
+    	if (icm45686_has_new_data) {
     	    IMUPacket_t imu_sample;
-    	    if (!icm45686_read(&imu_sample)) {
-    	        imu_has_new_data = false;
-    	        (void)logger_write_entry('I', &imu_sample, sizeof(imu_sample));
+    	    if (!icm45686_read_data(&imu_sample)) {
+    	        icm45686_has_new_data = false;
+    	        logger_write_entry('I', &imu_sample, sizeof(imu_sample));
     	    }
     	}
 
-    	if (magnetometer_has_new_data) {
+    	if (mmc5983ma_has_new_data) {
     	    MagnetometerPacket_t magnetometer_sample;
-    	    if (!magnetometer_read(&magnetometer_sample, &magnetometer_flip)) {
-    	        magnetometer_has_new_data = false;
-    	        (void)logger_write_entry('M', &magnetometer_sample, sizeof(magnetometer_sample));
+    	    if (!mmc5983ma_read_data(&magnetometer_sample, &magnetometer_flip)) {
+    	        mmc5983ma_has_new_data = false;
+    	        logger_write_entry('M', &magnetometer_sample, sizeof(magnetometer_sample));
     	    }
     	}
 
@@ -518,13 +518,13 @@ static void MX_GPIO_Init(void)
  */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
     if (GPIO_Pin == BMP581_Interrupt_Pin) {
-        bmp_ready = true;
+        bmp581_has_new_data  = true;
     }
-    if (GPIO_Pin == IMU_Interrupt_Pin) {
-        imu_ready = true;
+    if (GPIO_Pin == ICM45686_Interrupt_Pin) {
+        icm45686_has_new_data  = true;
     }
-    if (GPIO_Pin == Mag_Interrupt_Pin) {
-        mag_ready = true;
+    if (GPIO_Pin == MMC5983MA_Interrupt_Pin) {
+        mmc5983ma_has_new_data  = true;
     }
 }
 /* USER CODE END 4 */

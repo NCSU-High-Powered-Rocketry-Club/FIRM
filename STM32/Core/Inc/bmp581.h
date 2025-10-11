@@ -9,14 +9,6 @@
 #include "usb_print_debug.h"
 #include <stdbool.h>
 
-/**
- * @brief the SPI settings for the BMP581 to use when accessing device registers
- */
-typedef struct {
-    SPI_HandleTypeDef* hspi;
-    GPIO_TypeDef* cs_channel;
-    uint16_t cs_pin;
-} SPISettings;
 
 /**
  * @brief ensures SPI read/write is working to the BMP581, and configures register settings

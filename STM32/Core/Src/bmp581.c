@@ -9,6 +9,16 @@
 #include "spi_utils.h"
 #include <stdint.h>
 
+
+/**
+ * @brief the SPI settings for the BMP581 to use when accessing device registers
+ */
+typedef struct {
+    SPI_HandleTypeDef* hspi;
+    GPIO_TypeDef* cs_channel;
+    uint16_t cs_pin;
+} SPISettings;  
+
 /**
  * @brief Starts up and resets the BMP581, confirms the SPI read/write functionality is working
  *
@@ -50,8 +60,9 @@ static const uint8_t osr_config = 0x36;
 static const uint8_t ord_config = 0x37;
 static const uint8_t cmd = 0x7E;
 
+
 // BMP581 SPI config settings
-static SPISettings SPISettings;
+static SPISettings spiSettings;
 
 int bmp581_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin) {
     if (hspi == NULL || cs_channel == NULL) {
@@ -59,9 +70,9 @@ int bmp581_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_p
         return 1;
     }
     // set up the SPI settings
-    SPISettings.hspi = hspi;
-    SPISettings.cs_channel = cs_channel;
-    SPISettings.cs_pin = cs_pin;
+    spiSettings.hspi = hspi;
+    spiSettings.cs_channel = cs_channel;
+    spiSettings.cs_pin = cs_pin;
 
 
     serialPrintStr("Beginning BMP581 initialization");
@@ -204,10 +215,10 @@ static int bmp581_setup_device(bool soft_reset_complete) {
 }
 
 static HAL_StatusTypeDef read_registers(uint8_t addr, uint8_t* buffer, size_t len) {
-    return spi_read(SPISettings.hspi, SPISettings.cs_channel, SPISettings.cs_pin, addr, buffer,
+    return spi_read(spiSettings.hspi, spiSettings.cs_channel, spiSettings.cs_pin, addr, buffer,
                     len);
 }
 
 static HAL_StatusTypeDef write_register(uint8_t addr, uint8_t data) {
-    return spi_write(SPISettings.hspi, SPISettings.cs_channel, SPISettings.cs_pin, addr, data);
+    return spi_write(spiSettings.hspi, spiSettings.cs_channel, spiSettings.cs_pin, addr, data);
 }
