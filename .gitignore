@@ -74,6 +74,7 @@ dkms.conf
 /KiCad/#auto_saved_files#
 /KiCad/_autosave-FIRM.kicad_sch
 *.lck
+how-to-import.htm
 
 
 # FIRM code
