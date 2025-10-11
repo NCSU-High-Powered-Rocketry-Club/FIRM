@@ -70,6 +70,13 @@ dkms.conf
 /KiCad/fp-info-cache
 /KiCad/FIRM_Interestlaunch/fp-info-cache
 
+# KiCad local stuff
+/KiCad/#auto_saved_files#
+/KiCad/_autosave-FIRM.kicad_sch
+*.lck
+how-to-import.htm
+
+
 # FIRM code
 /STM32/build
 mx.scratch
@@ -78,3 +85,4 @@ mx.scratch
 /STM32/CMakeCache.txt
 /STM32/build.ninja
 cmake_install.cmake
+/STM32/compile_commands.json
