@@ -74,3 +74,14 @@ dkms.conf
 /KiCad/#auto_saved_files#
 /KiCad/_autosave-FIRM.kicad_sch
 *.lck
+
+
+# FIRM code
+/STM32/build
+mx.scratch
+/STM32/.vscode
+/STM32/CMakeFiles
+/STM32/CMakeCache.txt
+/STM32/build.ninja
+cmake_install.cmake
+/STM32/compile_commands.json
