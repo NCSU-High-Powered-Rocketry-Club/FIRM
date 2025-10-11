@@ -81,9 +81,12 @@ static void MX_SPI3_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-bool bmp_ready = true;
-bool imu_ready = true;
-bool mag_ready = true;
+
+// These flags can be changed at any time from the interrupts. When they are set
+// to true, it means that the corresponding sensor has new data ready to be read.
+volatile bool barometer_has_new_data = false;
+volatile bool imu_has_new_data = false;
+volatile bool magnetometer_has_new_data = false;
 /* USER CODE END 0 */
 
 /**
@@ -126,31 +129,30 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
     // Setup the SD card
-    FRESULT res = logger_init();
-    if (res) {
+    if (logger_init()) {
         serialPrintStr("Failed to initialized the logger (SD card)");
         Error_Handler();
     }
 
-    // drive chip select pins high
+    // Set the chip select pins to high, this means that they're not selected.
     // Note: We can't have these in the bmp581/imu init functions, because those somehow mess up
     // with the initialization.
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // bmp581 pin
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // imu pin
     HAL_Delay(500); // purely for debug purposes, allows time to connect to USB serial terminal
 
-    if (imu_init(&hspi2, GPIOB, GPIO_PIN_9)) {
+    if (icm45686_init(&hspi2, GPIOB, GPIO_PIN_9)) {
         Error_Handler();
     }
-    if (bmp_init(&hspi2, GPIOC, GPIO_PIN_2)) {
+    if (bmp581_init(&hspi2, GPIOC, GPIO_PIN_2)) {
         Error_Handler();
     }
-    if (mag_init(&hi2c1, 0x30)) { // 0x30 is default i2c address for MMC5983MA
+    if (mmc5983ma_init(&hi2c1, 0x30)) { // 0x30 is default i2c address for MMC5983MA
         Error_Handler();
     }
 
     // incrementing value for magnetometer calibration
-    uint8_t mag_flip = 0;
+    uint8_t magnetometer_flip = 0;
 
     // Toggle LED:
     HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_1);
@@ -165,40 +167,33 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
+    // This is the main loop. It's constantly checking to see if any of the sensors have
+    // new data to read, and if so, logs it.
     while (1) {
-        if (bmp_ready) {
-            logger_ensure_capacity(sizeof(BMPPacket_t) + TYPE_TIMESTAMP_SIZE);
-            BMPPacket_t* bmp_packet =
-                (BMPPacket_t*)&current_buffer[current_offset + TYPE_TIMESTAMP_SIZE];
-            if (bmp_read_data(bmp_packet) == 0) {
-                // only reset flag if the new data was collected
-                bmp_ready = false;
-                logger_log_type_timestamp('B');
-                current_offset += sizeof(BMPPacket_t);
-            }
-        }
-        if (imu_ready) {
-            logger_ensure_capacity(sizeof(IMUPacket_t) + TYPE_TIMESTAMP_SIZE);
-            IMUPacket_t* imu_packet =
-                (IMUPacket_t*)&current_buffer[current_offset + TYPE_TIMESTAMP_SIZE];
-            if (imu_read_data(imu_packet) == 0) {
-                // only reset flag if the new data was collected
-                imu_ready = false;
-                logger_log_type_timestamp('I');
-                current_offset += sizeof(IMUPacket_t);
-            }
-        }
-        if (mag_ready) {
-            logger_ensure_capacity(sizeof(MMCPacket_t) + TYPE_TIMESTAMP_SIZE);
-            MMCPacket_t* mmc_packet =
-                (MMCPacket_t*)&current_buffer[current_offset + TYPE_TIMESTAMP_SIZE];
-            if (mag_read_data(mmc_packet, &mag_flip) == 0) {
-                // only reset flag if the new data was collected
-                mag_ready = false;
-                logger_log_type_timestamp('M');
-                current_offset += sizeof(MMCPacket_t);
-            }
-        }
+        if (barometer_has_new_data) {
+    	    BarometerPacket_t barometer_sample;
+    	    if (!bmp581_read(&barometer_sample)) {
+    	        barometer_has_new_data = false;
+    	        (void)logger_write_entry('B', &barometer_sample, sizeof(barometer_sample));
+    	    }
+    	}
+
+    	if (imu_has_new_data) {
+    	    IMUPacket_t imu_sample;
+    	    if (!icm45686_read(&imu_sample)) {
+    	        imu_has_new_data = false;
+    	        (void)logger_write_entry('I', &imu_sample, sizeof(imu_sample));
+    	    }
+    	}
+
+    	if (magnetometer_has_new_data) {
+    	    MagnetometerPacket_t magnetometer_sample;
+    	    if (!magnetometer_read(&magnetometer_sample, &magnetometer_flip)) {
+    	        magnetometer_has_new_data = false;
+    	        (void)logger_write_entry('M', &magnetometer_sample, sizeof(magnetometer_sample));
+    	    }
+    	}
 
     /* USER CODE END WHILE */
 
@@ -467,7 +462,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0|Feather_LED_Pin|BMP581_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(ICM45686_CS_GPIO_Port, ICM45686_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : PC0 Feather_LED_Pin BMP581_CS_Pin */
   GPIO_InitStruct.Pin = GPIO_PIN_0|Feather_LED_Pin|BMP581_CS_Pin;
@@ -476,8 +471,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : BMP581_Interrupt_Pin IMU_Interrupt_Pin */
-  GPIO_InitStruct.Pin = BMP581_Interrupt_Pin|IMU_Interrupt_Pin;
+  /*Configure GPIO pins : BMP581_Interrupt_Pin ICM45686_Interrupt_Pin */
+  GPIO_InitStruct.Pin = BMP581_Interrupt_Pin|ICM45686_Interrupt_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
@@ -488,18 +483,18 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : Mag_Interrupt_Pin */
-  GPIO_InitStruct.Pin = Mag_Interrupt_Pin;
+  /*Configure GPIO pin : MMC5983MA_Interrupt_Pin */
+  GPIO_InitStruct.Pin = MMC5983MA_Interrupt_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(Mag_Interrupt_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(MMC5983MA_Interrupt_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : IMU_CS_Pin */
-  GPIO_InitStruct.Pin = IMU_CS_Pin;
+  /*Configure GPIO pin : ICM45686_CS_Pin */
+  GPIO_InitStruct.Pin = ICM45686_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(IMU_CS_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(ICM45686_CS_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI3_IRQn, 0, 0);

@@ -17,7 +17,7 @@
 typedef struct {
     I2C_HandleTypeDef* hi2c;
     uint8_t dev_addr; // 7 bit i2c address for the device
-} MagI2CSettings;
+} I2CSettings;
 
 /**
  * @brief sets up the MMC5983MA magnetometer with the intended settings for flight
@@ -26,14 +26,14 @@ typedef struct {
  * @param device_i2c_addr the 7-bit MMC5983MA's i2c device address, default is 0x30
  * @ret error status, returns 0 on success, 1 on failure
  */
-int mag_init(I2C_HandleTypeDef* hi2c, uint8_t device_i2c_addr);
+int MMC5983MA_init(I2C_HandleTypeDef* hi2c, uint8_t device_i2c_addr);
 
 /**
- * @brief reads data from the magnetometer
+ * @brief reads data from the MMC5983MA
  *
- * @param packet pointer to the MMC packet where the data will be stored
+ * @param packet pointer to the Magnetometer packet where the data will be stored
  * @param flip counter that must be incremented to determine which read cycle will flip polarity
  *
  * @ret error status, returns 0 on success, 1 on failure
  */
-int mag_read_data(MMCPacket_t* packet, uint8_t* flip);
+int MMC5983MA_read_data(MagnetometerPacket_t* packet, uint8_t* flip);

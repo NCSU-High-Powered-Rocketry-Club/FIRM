@@ -73,7 +73,7 @@ dkms.conf
 # FIRM code
 /STM32/build
 mx.scratch
-/STM32/.vscode
+.vscode
 /STM32/CMakeFiles
 /STM32/CMakeCache.txt
 /STM32/build.ninja
