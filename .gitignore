@@ -73,6 +73,7 @@ dkms.conf
 # KiCad local stuff
 /KiCad/#auto_saved_files#
 /KiCad/_autosave-FIRM.kicad_sch
+*.kicad_prl
 *.lck
 how-to-import.htm
 
