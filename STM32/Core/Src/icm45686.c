@@ -12,7 +12,7 @@
 
 // honestly i think this is probably a good thing do make a preprocessor macro but probably later.
 // most likely don't need more digits because we only have a single-precision FPU
-const float pi = 3.14159265;
+const float pi = 3.14159265F;
 
 static const uint8_t pwr_mgmt0 = 0x10;
 static const uint8_t fifo_data = 0x14;
@@ -138,14 +138,14 @@ int imu_read_data(IMUPacket_t* packet) {
         // is applied.
 
         // datasheet lists the scale factor for accelerometer to be 16,384 LSB/g when in FIFO mode
-        packet->acc_x = (float)ax / 16384.0f;
-        packet->acc_y = (float)ay / 16384.0f;
-        packet->acc_z = (float)az / 16384.0f;
+        packet->acc_x = (float)ax / 16384.0F;
+        packet->acc_y = (float)ay / 16384.0F;
+        packet->acc_z = (float)az / 16384.0F;
         // datasheet lists gyroscope scale factor as 131.072 LSB/(deg/s). We will also convert to
         // radians, coming out to 23592.96 / PI
-        packet->gyro_x = (float)gx / (23592.96f / pi);
-        packet->gyro_y = (float)gy / (23592.96f / pi);
-        packet->gyro_z = (float)gz / (23592.96f / pi);
+        packet->gyro_x = (float)gx / (23592.96F / pi);
+        packet->gyro_y = (float)gy / (23592.96F / pi);
+        packet->gyro_z = (float)gz / (23592.96F / pi);
 
         // flush the fifo
         imu_spi_write(fifo_config2, 0b10100000);

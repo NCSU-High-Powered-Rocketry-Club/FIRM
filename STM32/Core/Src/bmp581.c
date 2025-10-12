@@ -104,8 +104,8 @@ int bmp_read_data(BMPPacket_t* packet) {
             ((uint32_t)raw_data[5] << 16) | ((uint32_t)raw_data[4] << 8) | raw_data[3];
         // datasheet instructs to divide raw temperature by 2^16 to get value in celcius, and
         // divide raw pressure by 2^6 to get value in Pascals
-        packet->temperature = raw_temp / 65536.0f;
-        packet->pressure = raw_pres / 64.0f;
+        packet->temperature = (float)raw_temp / 65536.0F;
+        packet->pressure = (float)raw_pres / 64.0F;
 
         return 0;
     }

@@ -34,7 +34,7 @@ FRESULT logger_write() {
     }
 
     // Pad the buffer
-    for (int i = current_offset; i < BUFFER_SIZE; i++) {
+    for (UINT i = current_offset; i < BUFFER_SIZE; i++) {
         current_buffer[i] = 0;
     }
 
@@ -52,9 +52,8 @@ FRESULT logger_write() {
     if (fr != FR_OK) {
         serialPrintStr("ERR logger_write");
         return fr;
-    } else {
-        serialPrintStr(file_name);
     }
+    serialPrintStr(file_name);
 
     return fr;
 }
@@ -75,14 +74,14 @@ void logger_write_header() {
     // (they have floats).
     const char* header = "FIRM LOG v0.1\n";
     size_t len = strlen(header);
-    int padded_len = ((len + 3) / 4) * 4;
+    int padded_len = (int)(((len + 3) / 4) * 4);
 
     logger_ensure_capacity(padded_len);
 
-    strcpy(current_buffer + current_offset, header);
+    strncpy(current_buffer + current_offset, header, len + 1);
 
     // Fill the remaining space with zeros
-    for (int i = len; i < padded_len; i++) {
+    for (int i = (int)len; i < padded_len; i++) {
         current_buffer[current_offset + i] = 0;
     }
 
@@ -142,7 +141,7 @@ FRESULT logger_init() {
         }
 
         // 2e8 bytes = (1 hour * ((8192 bytes * 4.4hz) * 1.5))
-        fr = f_expand(&log_file, 2e8, 1);
+        fr = f_expand(&log_file, (FSIZE_t)2e8, 1);
         if (fr != FR_OK) {
             return fr;
         }
@@ -169,7 +168,7 @@ void logger_log_type_timestamp(char type) {
     // This should advance by TYPE_TIMESTAMP_SIZE
     current_buffer[current_offset++] = type;
     uint32_t current_time = HAL_GetTick();
-    current_buffer[current_offset++] = (current_time >> 16) & 0xFF;
-    current_buffer[current_offset++] = (current_time >> 8) & 0xFF;
-    current_buffer[current_offset++] = current_time & 0xFF;
+    current_buffer[current_offset++] = (char)((current_time >> 16) & 0xFF);
+    current_buffer[current_offset++] = (char)((current_time >> 8) & 0xFF);
+    current_buffer[current_offset++] = (char)(current_time & 0xFF);
 }

@@ -43,7 +43,7 @@ static const uint8_t product_id1 = 0x2F;
 static const uint8_t product_id_val = 0x30; // expected value for the product ID register
 
 // value to divide shifted mag value by to get result in microtesla (SI Units)
-static const float scaling_factor = 131072.0 / 800.0;
+static const float scaling_factor = 131072.0F / 800.0F;
 static const int flip_interval = 10; // number of regular packets between a flipped-sign packet
 
 static MagI2CSettings I2CSettings;
@@ -111,9 +111,9 @@ int mag_read_data(MMCPacket_t* packet, uint8_t* flip) {
             (uint32_t)(raw_data[2] << 10 | raw_data[3] << 2 | (raw_data[6] & 0x30) >> 4);
         mag_data_binary[2] =
             (uint32_t)(raw_data[4] << 10 | raw_data[5] << 2 | (raw_data[6] & 0x0C) >> 2);
-        mag_data[0] = (((float)mag_data_binary[0]) - 131072.0) / scaling_factor;
-        mag_data[1] = (((float)mag_data_binary[1]) - 131072.0) / scaling_factor;
-        mag_data[2] = (((float)mag_data_binary[2]) - 131072.0) / scaling_factor;
+        mag_data[0] = (((float)mag_data_binary[0]) - 131072.0F) / scaling_factor;
+        mag_data[1] = (((float)mag_data_binary[1]) - 131072.0F) / scaling_factor;
+        mag_data[2] = (((float)mag_data_binary[2]) - 131072.0F) / scaling_factor;
         packet->mag_x = mag_data[0];
         packet->mag_y = mag_data[1];
         packet->mag_z = mag_data[2];
