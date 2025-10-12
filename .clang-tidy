@@ -1,0 +1,37 @@
+---
+# clang-tidy configuration for FIRM project
+# This configuration is tailored for embedded STM32 development
+
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-implicit-widening-of-multiplication-result,
+  -bugprone-reserved-identifier,
+  clang-analyzer-*,
+  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
+  performance-*,
+  readability-*,
+  -readability-magic-numbers,
+  -readability-identifier-length,
+  -readability-identifier-naming,
+  -readability-function-cognitive-complexity,
+  portability-*,
+  cppcoreguidelines-avoid-goto,
+  misc-*,
+  -misc-unused-parameters,
+  -misc-no-recursion,
+  -misc-include-cleaner
+
+CheckOptions:
+  - key: readability-braces-around-statements.ShortStatementLines
+    value: 2
+  - key: readability-function-size.LineThreshold
+    value: 200
+  - key: readability-function-size.StatementThreshold
+    value: 150
+
+WarningsAsErrors: ''
+HeaderFilterRegex: '^.*/STM32/Core/.*\.(h|hpp)$'
+FormatStyle: file
+

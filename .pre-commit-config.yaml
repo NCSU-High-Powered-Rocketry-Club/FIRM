@@ -7,4 +7,13 @@ repos:
     rev: v21.1.2
     hooks:
       - id: clang-format
-        files: ^Core/.*\.(c|h)$   # Only run on C source and header files
+        files: ^STM32/Core/(Src/(bmp581|firm_utils|icm45686|logger|mmc5983ma|spi_utils|usb_print_debug)|Inc/(bmp581|firm_utils|icm45686|logger|mmc5983ma|packets|spi_utils|usb_print_debug))\.(c|h)$
+  
+  - repo: local
+    hooks:
+      - id: clang-tidy
+        name: clang-tidy
+        entry: .githooks/run-clang-tidy.sh
+        language: system
+        files: ^STM32/Core/(Src/(bmp581|firm_utils|icm45686|logger|mmc5983ma|spi_utils|usb_print_debug)|Inc/(bmp581|firm_utils|icm45686|logger|mmc5983ma|packets|spi_utils|usb_print_debug))\.(c|h)$
+        pass_filenames: true
