@@ -38,7 +38,24 @@ git clone https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM.git
 
 5. Run `uv sync`.
 
-6. Run `pre-commit install` to set up the git hook for automatic code formatting and linting, using `clang-format` and `clang-tidy`.
+6. Run `pre-commit install` to set up the git hook for automatic code formatting and linting, using `clang-format` and `clang-tidy`. The linting configuration can be found in `.clang-tidy` at the repository root.
+
+
+## Code Quality Tools
+
+This project uses automated code quality tools:
+- **clang-format**: Automatically formats C code according to the style defined in `.clang-format`
+- **clang-tidy**: Performs static analysis to catch bugs, performance issues, and style violations. Configuration in `.clang-tidy` includes checks for:
+  - Bug-prone code patterns (bugprone-*)
+  - Static analysis (clang-analyzer-*)
+  - Performance issues (performance-*)
+  - Readability improvements (readability-*)
+  - Portability concerns (portability-*)
+
+Both tools run automatically on commit via pre-commit hooks. To run them manually:
+```bash
+uv run pre-commit run --all-files
+```
 
 
 ## Building the project
