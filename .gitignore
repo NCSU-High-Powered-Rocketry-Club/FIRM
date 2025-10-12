@@ -65,6 +65,7 @@ dkms.conf
 # KiCad backups
 /KiCad/FIRM-backups
 /KiCad/FIRM_Interestlaunch/FIRM_Interestlaunch-backups
+*.bak
 
 # KiCad cache
 /KiCad/fp-info-cache

@@ -41,6 +41,21 @@ git clone https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM.git
 6. Run `pre-commit install` to set up the git hook for automatic code formatting, using `clang-format`.
 
 
+## KiCad Files
+
+The KiCad files are located in the `KiCad` directory. To open the project, open the `FIRM.kicad_pro` file using KiCad.
+
+### Custom symbols, footprints, and 3D models
+
+We have a custom library for symbols, footprints, and 3D models.
+
+You can find the symbols under `KiCad/symbols`. Every individual component's symbol should go into its respective directory, e.g. the ICM-45686's symbol goes under `sensors/`. You must also add that symbol to the project library, e.g. in `KiCad/symbols/sensors.kicad_sym` (i.e. open Symbol Editor, enter the "sensors" library, then click "File" > "Import" > "Symbol" to add the new symbol to the project library).
+
+You can find the footprints under `KiCad/footprints`. Every individual component footprint should go into its respective directory, e.g. the ICM-45686's footprint goes under `sensors.pretty/`.
+
+3D models go under `KiCad/3dmodels`. The 3D models are then assigned to the footprints using the Footprint Editor in KiCad.
+
+
 ## Building the project
 
 
