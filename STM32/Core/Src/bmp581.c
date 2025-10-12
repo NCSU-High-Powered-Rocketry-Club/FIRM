@@ -63,7 +63,6 @@ int bmp_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
     SPISettings.cs_channel = cs_channel;
     SPISettings.cs_pin = cs_pin;
 
-
     serialPrintStr("Beginning BMP581 initialization");
     // sets up the BMP in SPI mode and ensures SPI is working
     if (bmp_setup_device(false)) {
@@ -71,7 +70,7 @@ int bmp_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
     }
     serialPrintStr("\tIssuing BMP581 software reset...");
     bmp_spi_write(cmd, 0b10110110); // do a soft-reset of the sensor's settings
-    if (bmp_setup_device(true)) {              // verify correct setup again
+    if (bmp_setup_device(true)) {   // verify correct setup again
         return 1;
     }
 
@@ -189,7 +188,6 @@ static int bmp_setup_device(bool soft_reset_complete) {
         serialPrintStr("\tNVM command error, refer to datasheet for source of error");
         return 1;
     }
-
 
     if (soft_reset_complete) {
         // verify software reset is recognized as complete by the interrupt status register

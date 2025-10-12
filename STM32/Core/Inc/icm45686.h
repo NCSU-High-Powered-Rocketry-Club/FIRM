@@ -77,7 +77,6 @@ HAL_StatusTypeDef imu_spi_read(uint8_t addr, uint8_t* buffer, size_t len);
  */
 HAL_StatusTypeDef imu_spi_write(uint8_t addr, uint8_t data);
 
-
 /**
  * @brief reads an indirect register from the IMU
  *

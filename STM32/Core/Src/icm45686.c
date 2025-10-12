@@ -45,16 +45,17 @@ int imu_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
     SPISettings.cs_channel = cs_channel;
     SPISettings.cs_pin = cs_pin;
 
-
     serialPrintStr("Beginning ICM45686 initialization");
     // sets up the IMU in SPI mode and ensures SPI is working
-    if (imu_setup_device(false)) return 1;
+    if (imu_setup_device(false))
+        return 1;
 
     // do a soft-reset of the sensor's settings
     serialPrintStr("\tIssuing ICM45686 software reset...");
     imu_spi_write(reg_misc2, 0b00000010);
     // verify correct setup again
-    if (imu_setup_device(true)) return 1;
+    if (imu_setup_device(true))
+        return 1;
 
     // sets accel range to +/- 32g, and ODR to 800hz
     imu_spi_write(accel_config0, 0b00000110);
@@ -154,7 +155,6 @@ int imu_read_data(IMUPacket_t* packet) {
     return 1; // data was not ready, return error
 }
 
-
 int imu_setup_device(bool soft_reset_complete) {
     // datasheet says 2ms to powerup, include some factor of safety
     HAL_Delay(10);
@@ -214,15 +214,12 @@ int imu_setup_device(bool soft_reset_complete) {
         }
     }
     return 0;
-
 }
-
 
 HAL_StatusTypeDef imu_spi_read(uint8_t addr, uint8_t* buffer, size_t len) {
     return spi_read(SPISettings.hspi, SPISettings.cs_channel, SPISettings.cs_pin, addr, buffer,
                     len);
 }
-
 
 HAL_StatusTypeDef imu_spi_write(uint8_t addr, uint8_t data) {
     return spi_write(SPISettings.hspi, SPISettings.cs_channel, SPISettings.cs_pin, addr, data);
@@ -256,7 +253,8 @@ void spi_ireg_read(IREGMap_t register_map, uint16_t ireg_addr, uint8_t* result) 
     // written to, since it is auto-incremented (that's what a SPI burst write does).
     // So here, sending 2 bytes means 2 addresses (IREG_ADDR_15_8 and IREG_ADDR_7_0) are
     // configured at once.
-    spi_burst_write(SPISettings.hspi, SPISettings.cs_channel, SPISettings.cs_pin, ireg_addr_15_8, ireg_regs, sizeof(ireg_regs));
+    spi_burst_write(SPISettings.hspi, SPISettings.cs_channel, SPISettings.cs_pin, ireg_addr_15_8,
+                    ireg_regs, sizeof(ireg_regs));
 
     // After the write is over and the CS pin is pulled high, result of the the read
     // will be stored in the IREG_DATA register. The `result` pointer will have the value:
@@ -296,7 +294,8 @@ void spi_ireg_write(IREGMap_t register_map, uint16_t ireg_addr, uint8_t data) {
     ireg_regs[2] = data;
 
     // burst write page,register, and data starting at ireg_addr_15_8
-    spi_burst_write(SPISettings.hspi, SPISettings.cs_channel, SPISettings.cs_pin, ireg_addr_15_8, ireg_regs, 3);
+    spi_burst_write(SPISettings.hspi, SPISettings.cs_channel, SPISettings.cs_pin, ireg_addr_15_8,
+                    ireg_regs, 3);
     // must wait before next ireg operation
     // this is a 1ms delay
     HAL_Delay(0);

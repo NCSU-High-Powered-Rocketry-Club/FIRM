@@ -7,7 +7,8 @@
 #include "mmc5983ma.h"
 
 /**
- * @brief Starts up and resets the magnetometer, confirms the I2C read/write functionality is working
+ * @brief Starts up and resets the magnetometer, confirms the I2C read/write functionality is
+ * working
  *
  * @param soft_reset_complete if this is a setup after a soft reset is complete
  * @retval 0 if successful
@@ -60,14 +61,16 @@ int mag_init(I2C_HandleTypeDef* hi2c, uint8_t device_i2c_addr) {
     serialPrintStr("Beginning MMC5983MA initialization");
 
     // sets up the magnetometer in I2C mode and ensures I2C is working
-    if (mag_setup_device(false)) return 1;
+    if (mag_setup_device(false))
+        return 1;
 
     // initiating a software reset
     serialPrintStr("\tIssuing MMC5983MA software reset...");
     mag_i2c_write(internal_control1, 0b10000000);
 
     // verify correct setup again
-    if (mag_setup_device(true)) return 1;
+    if (mag_setup_device(true))
+        return 1;
 
     // enable interrupt pin
     mag_i2c_write(internal_control0, 0b00000100);
@@ -164,29 +167,14 @@ int mag_setup_device(bool soft_reset_complete) {
         }
     }
     return 0;
-
 }
 
 static HAL_StatusTypeDef mag_i2c_read(uint8_t reg_addr, uint8_t* buffer, size_t len) {
-    return HAL_I2C_Mem_Read(
-            I2CSettings.hi2c,
-            (uint16_t)(I2CSettings.dev_addr << 1),
-            (uint16_t)reg_addr,
-            I2C_MEMADD_SIZE_8BIT,
-            buffer,
-            len,
-            100);
+    return HAL_I2C_Mem_Read(I2CSettings.hi2c, (uint16_t)(I2CSettings.dev_addr << 1),
+                            (uint16_t)reg_addr, I2C_MEMADD_SIZE_8BIT, buffer, len, 100);
 }
-
 
 static HAL_StatusTypeDef mag_i2c_write(uint8_t reg_addr, uint8_t data) {
-    return HAL_I2C_Mem_Write(
-            I2CSettings.hi2c,
-            (uint16_t)(I2CSettings.dev_addr << 1),
-            (uint16_t)reg_addr,
-            I2C_MEMADD_SIZE_8BIT,
-            &data,
-            1,
-            100);
+    return HAL_I2C_Mem_Write(I2CSettings.hi2c, (uint16_t)(I2CSettings.dev_addr << 1),
+                             (uint16_t)reg_addr, I2C_MEMADD_SIZE_8BIT, &data, 1, 100);
 }
-

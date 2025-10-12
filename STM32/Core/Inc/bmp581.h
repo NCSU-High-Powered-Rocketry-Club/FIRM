@@ -35,5 +35,3 @@ int bmp_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
  * @retval 0 upon success, 1 if no new data is ready yet
  */
 int bmp_read_data(BMPPacket_t* packet);
-
-
