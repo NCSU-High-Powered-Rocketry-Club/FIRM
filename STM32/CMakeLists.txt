@@ -34,6 +34,7 @@ enable_language(C ASM)
 # Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME})
 
+
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
 
@@ -51,12 +52,14 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/mmc5983ma.c
     Core/Src/spi_utils.c
     Core/Src/usb_print_debug.c
+    Core/Src/state.c
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
    Core/Inc
 )
+
 
 # Add project symbols (macros)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
