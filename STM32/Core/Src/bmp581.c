@@ -50,6 +50,10 @@ static const uint8_t osr_config = 0x36;
 static const uint8_t ord_config = 0x37;
 static const uint8_t cmd = 0x7E;
 
+// device scale factor
+static const int scale_factor_celcius = 65536.0F;
+static const int scale_factor_pascal = 64.0F;
+
 // BMP SPI config settings
 static BMPSPISettings SPISettings;
 
@@ -110,6 +114,16 @@ int bmp_read_data(BMPPacket_t* packet) {
         return 0;
     }
     return 1;
+}
+
+
+float bmp581_get_temp_scale_factor(void) {
+    return scale_factor_celcius;
+}
+
+
+float bmp581_get_pressure_scale_factor(void) {
+    return scale_factor_pascal;
 }
 
 static int bmp_setup_device(bool soft_reset_complete) {

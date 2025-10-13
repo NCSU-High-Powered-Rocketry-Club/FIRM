@@ -70,16 +70,25 @@ void logger_swap_buffers() {
 }
 
 // Writes the header to the log file
-void logger_write_header() {
+FRESULT logger_write_header(HeaderFields* sensor_scale_factors) {
     // The length needs to be 4 byte aligned because the struts we are logging are 4 byte aligned
     // (they have floats).
-    const char* header = "FIRM LOG v0.1\n";
-    size_t len = strlen(header);
+    const char* firm_log_header = "FIRM LOG v1.0\n";
+    size_t header_len = strlen(firm_log_header);
+    size_t scale_factor_len = sizeof(HeaderFields);
+    size_t len = header_len + scale_factor_len;
     int padded_len = ((len + 3) / 4) * 4;
 
-    logger_ensure_capacity(padded_len);
+    FRESULT error_status = logger_ensure_capacity(padded_len);
+    if (error_status) {
+        return error_status;
+    }
 
-    strcpy(current_buffer + current_offset, header);
+    // copy "FIRM LOG" text
+    memcpy(current_buffer + current_offset, firm_log_header, header_len);
+
+    // copy sensor scale factor struct
+    memcpy(current_buffer + current_offset + header_len, sensor_scale_factors, scale_factor_len);
 
     // Fill the remaining space with zeros
     for (int i = len; i < padded_len; i++) {
@@ -87,6 +96,8 @@ void logger_write_header() {
     }
 
     current_offset += padded_len;
+
+    return error_status;
 }
 
 FRESULT logger_init() {
@@ -148,8 +159,6 @@ FRESULT logger_init() {
         }
     }
     f_sync(&log_file);
-
-    logger_write_header();
 
     return fr;
 }

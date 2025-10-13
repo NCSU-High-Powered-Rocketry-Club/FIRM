@@ -36,4 +36,16 @@ int bmp_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
  */
 int bmp_read_data(BMPPacket_t* packet);
 
+/**
+ * @brief gets the scale factor of the temperature readings to convert to celcius.
+ * 
+ * @retval float value to divide binary data by to get temperature in celcius
+ */
+float bmp581_get_temp_scale_factor(void);
 
+/**
+ * @brief gets the scale factor of the pressure readings to convert to pascals.
+ * 
+ * @retval float value to divide binary data by to get pressure in pascals
+ */
+float bmp581_get_pressure_scale_factor(void);

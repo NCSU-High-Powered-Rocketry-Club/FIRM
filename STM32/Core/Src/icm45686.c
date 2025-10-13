@@ -12,7 +12,7 @@
 
 // honestly i think this is probably a good thing do make a preprocessor macro but probably later.
 // most likely don't need more digits because we only have a single-precision FPU
-const float pi = 3.14159265;
+const float pi = 3.14159265F;
 
 static const uint8_t pwr_mgmt0 = 0x10;
 static const uint8_t fifo_data = 0x14;
@@ -32,6 +32,11 @@ static const uint8_t reg_misc2 = 0x7F;
 static const uint8_t sreg_ctrl = 0x67;          // IPREG_TOP1 register
 static const uint8_t ipreg_sys1_reg_166 = 0xA6; // IPREG_SYS1 register
 static const uint8_t ipreg_sys2_reg_123 = 0x7B; // IPREG_SYS2 register
+
+static const float hi_res_fifo_accel_scale_factor = 16384.0F;
+static const float hi_res_fifo_gyro_scale_factor = 23592.96F / pi;
+static const float base_accel_scale_factor = 1024.0F;
+static const float base_gyro_scale_factor = 1474.56F / pi;
 
 static IMUSPISettings SPISettings;
 
@@ -152,6 +157,46 @@ int imu_read_data(IMUPacket_t* packet) {
         return 0;
     }
     return 1; // data was not ready, return error
+}
+
+float icm45686_get_accel_scale_factor(void) {
+    if (SPISettings.hspi == NULL) {
+        return -1;
+    }
+    uint8_t result = 0;
+    imu_spi_read(fifo_config3, &result, 1);
+    if (result & 0x08) {
+        // high resolution mode
+        return hi_res_fifo_accel_scale_factor;
+    }
+
+    // not in fifo mode, use accel config to determine scale factor
+    imu_spi_read(accel_config0, &result, 1);
+    uint8_t full_scale_selection = (result & 0x70) >> 4;
+    if (full_scale_selection > 0b100) {
+        return -1;
+    }
+    return base_accel_scale_factor * (float)pow((double)2, (double)full_scale_selection);
+}
+
+float icm45686_get_gyro_scale_factor(void) {
+    if (SPISettings.hspi == NULL) {
+        return -1;
+    }
+    uint8_t result = 0;
+    imu_spi_read(fifo_config3, &result, 1);
+    if (result & 0x08) {
+        // high resolution mode
+        return hi_res_fifo_gyro_scale_factor;
+    }
+
+    // not in fifo mode, use accel config to determine scale factor
+    imu_spi_read(gyro_config0, &result, 1);
+    uint8_t full_scale_selection = (result & 0xF0) >> 4;
+    if (full_scale_selection > 0b1000) {
+        return -1;
+    }
+    return base_gyro_scale_factor * (float)pow((double)2, (double)full_scale_selection);
 }
 
 

@@ -27,8 +27,22 @@ extern UINT current_offset;
 
 extern FIL log_file;
 
+/**
+ * @brief scale factor values for the sensors to include in the header file
+ */
+typedef struct {
+    float temp_sf;
+    float pressure_sf;
+    float accel_sf;
+    float angular_rate_sf;
+    float magnetic_field_sf;
+} HeaderFields;
+
 // Initializes the SD card and creates the log file.
 FRESULT logger_init();
+
+// writes the header to the log file
+FRESULT logger_write_header(HeaderFields* sensor_scale_factors);
 
 // Ensure that there is enough space available in the current buffer. Swaps buffers if necessary
 FRESULT logger_ensure_capacity(int capacity);

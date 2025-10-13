@@ -125,12 +125,6 @@ int main(void)
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
 
-    // Setup the SD card
-    FRESULT res = logger_init();
-    if (res) {
-        serialPrintStr("Failed to initialized the logger (SD card)");
-        Error_Handler();
-    }
 
     // drive chip select pins high
     // Note: We can't have these in the bmp581/imu init functions, because those somehow mess up
@@ -148,6 +142,24 @@ int main(void)
     if (mag_init(&hi2c1, 0x30)) { // 0x30 is default i2c address for MMC5983MA
         Error_Handler();
     }
+
+    // Setup the SD card
+    FRESULT res = logger_init();
+    if (res) {
+        serialPrintStr("Failed to initialized the logger (SD card)");
+        Error_Handler();
+    }
+    
+    // get scale factor values for each sensor to put in header
+    HeaderFields header_fields = {
+        bmp581_get_temp_scale_factor(),
+        bmp581_get_pressure_scale_factor(),
+        icm45686_get_accel_scale_factor(),
+        icm45686_get_gyro_scale_factor(),
+        mmc5983ma_get_magnetic_field_scale_factor(),
+    };
+
+    logger_write_header(&header_fields);
 
     // incrementing value for magnetometer calibration
     uint8_t mag_flip = 0;

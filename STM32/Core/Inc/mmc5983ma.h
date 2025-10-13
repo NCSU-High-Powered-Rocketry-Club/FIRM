@@ -37,3 +37,11 @@ int mag_init(I2C_HandleTypeDef* hi2c, uint8_t device_i2c_addr);
  * @ret error status, returns 0 on success, 1 on failure
  */
 int mag_read_data(MMCPacket_t* packet, uint8_t* flip);
+
+/**
+ * @brief gets the scale factor of the magnetometer readings to convert to microteslas.
+ * @note this value is the same scale factor used for all axes of the magnetometer.
+ * 
+ * @retval float value to divide binary data by to get magnetic field in microteslas.
+ */
+float mmc5983ma_get_magnetic_field_scale_factor(void);

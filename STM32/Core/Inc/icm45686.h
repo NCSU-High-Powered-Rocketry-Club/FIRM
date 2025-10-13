@@ -9,6 +9,7 @@
 #include "packets.h"
 #include "usb_print_debug.h"
 #include <stdbool.h>
+#include <math.h>
 
 /**
  * @brief the SPI settings for the IMU to use when accessing device registers
@@ -49,6 +50,22 @@ int imu_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin)
  *         interrupt pin will still be reset to the inactive state, but no data will be collected.
  */
 int imu_read_data(IMUPacket_t* packet);
+
+/**
+ * @brief gets the scale factor of the acceleration readings to convert to g's.
+ * 
+ * @retval float value to divide binary data by to get acceleration in g's. Returns -1 if sensor
+ *         is not initialized yet.
+ */
+float icm45686_get_accel_scale_factor(void);
+
+/**
+ * @brief gets the scale factor of the gyroscope readings to convert to radians per second.
+ * 
+ * @retval float value to divide binary data by to get angular rate in radians per second.
+ *         Returns -1 if sensor is not initialized yet.
+ */
+float icm45686_get_gyro_scale_factor(void);
 
 /**
  * @brief Starts up and resets the IMU, confirms the SPI read/write functionality is working
