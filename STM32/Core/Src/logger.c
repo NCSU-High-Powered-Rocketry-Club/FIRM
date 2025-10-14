@@ -131,15 +131,12 @@ FRESULT logger_init(DMA_HandleTypeDef* dma_sdio_tx_handle) {
 }
 
 FRESULT logger_write_header(HeaderFields* sensor_scale_factors) {
-    // The length needs to be 4 byte aligned because the struts we are logging are 4 byte aligned
-    // (they have floats).
     const char* firm_log_header = "FIRM LOG v1.0\n";
     size_t header_len = strlen(firm_log_header);
     size_t scale_factor_len = sizeof(HeaderFields);
     size_t len = header_len + scale_factor_len;
-    int padded_len = ((len + 3) / 4) * 4;
 
-    FRESULT error_status = logger_ensure_capacity(padded_len);
+    FRESULT error_status = logger_ensure_capacity(len);
     if (error_status) {
         return error_status;
     }
@@ -150,12 +147,7 @@ FRESULT logger_write_header(HeaderFields* sensor_scale_factors) {
     // copy sensor scale factor struct
     memcpy(current_buffer + current_offset + header_len, sensor_scale_factors, scale_factor_len);
 
-    // Fill the remaining space with zeros
-    for (int i = len; i < padded_len; i++) {
-        current_buffer[current_offset + i] = 0;
-    }
-
-    current_offset += padded_len;
+    current_offset += len;
 
     return error_status;
 }
