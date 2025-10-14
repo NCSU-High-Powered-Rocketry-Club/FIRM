@@ -189,3 +189,10 @@ FRESULT logger_write_entry(char type, const void* payload, size_t payload_size) 
 
     return fr;
 }
+
+void* logger_malloc_packet(size_t capacity) {
+    if (logger_ensure_capacity(capacity + packet_metadata_size)) {
+        return NULL;
+    }
+    return &current_buffer[current_offset + packet_metadata_size];
+}

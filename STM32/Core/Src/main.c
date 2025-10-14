@@ -172,10 +172,10 @@ int main(void)
     // new data to read, and if so, logs it.
     while (1) {
         if (bmp581_has_new_data) {
-    	    BarometerPacket_t barometer_sample;
-    	    if (!bmp581_read_data(&barometer_sample)) {
+            BarometerPacket_t* barometer_packet = logger_malloc_packet(sizeof(BarometerPacket_t));
+    	    if (!bmp581_read_data(barometer_packet)) {
     	        bmp581_has_new_data = false;
-    	        logger_write_entry('B', &barometer_sample, sizeof(barometer_sample));
+    	        logger_write_entry('B', barometer_packet, sizeof(BarometerPacket_t));
     	    }
     	}
 
