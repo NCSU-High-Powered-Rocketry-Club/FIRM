@@ -24,7 +24,9 @@
 static FRESULT logger_ensure_capacity(int capacity);
 
 /**
- * @brief Logs the type and timestamp.
+ * @brief Logs the type and clock cycle timestamp. This will be writen as 1 byte for the type
+ *        and three bytes (uint24) for the clock cycle count. The clock cycle count will overflow
+ *        every ~0.1 seconds.
  * @note advances the current offset variable for the buffer
  * 
  * @param type the character that signifies the type of packet being logged
