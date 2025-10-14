@@ -4,7 +4,13 @@ import numpy as np
 import sys
 import os
 
-
+def get_delta_timestamp(next_timestamp, last_timestamp):
+    
+    # if the clock cycle count loops around due to unsigned int overflow, the difference
+    # is found by adding the size of the integer used to store the count
+    if (next_timestamp < last_timestamp):
+        next_timestamp += (2**24)
+    return next_timestamp - last_timestamp
 
 def decode(path):
     with open(path, 'rb') as f:
@@ -27,6 +33,12 @@ def decode(path):
         MMC5983MA_SIZE = 3*4
         HEADER_SIZE = 15
 
+        # because we use clock cycle count for timestamp, and we expect the cycle count to
+        # overflow every ~0.1 seconds, we handle the overflow in this file to make the timestamp
+        # column continuous.
+        timestamp_seconds = 0
+        last_clock_count = 0
+
         # number of times in a row whitespace has been repeated in the log
         num_repeat_whitespace = 0
 
@@ -43,24 +55,30 @@ def decode(path):
                 
                 # read timestamp
                 num_repeat_whitespace = 0
-                timestamp = struct.unpack('>I', b'\x00' + characters[currentByte + 1 : currentByte + 4])[0]
+                clock_count = struct.unpack('>I', b'\x00' + characters[currentByte + 1 : currentByte + 4])[0]
+                clock_cycle_diff = get_delta_timestamp(clock_count, last_clock_count)
+                # convert to seconds by dividing by the STM32F405's clock speed
+                timestamp_seconds += (clock_cycle_diff / 168e6)
+                # update last clock count with current clock count, and increment the current byte
+                last_clock_count = clock_count
                 currentByte += 4
+
                 if characters[currentByte - 4] == BMP581_ID:
                     data = struct.unpack('<ff', characters[currentByte: currentByte + BMP581_SIZE])
 
-                    bmp581_data.append([timestamp, data[0], data[1]])
+                    bmp581_data.append([timestamp_seconds, data[0], data[1]])
                     currentByte += BMP581_SIZE
 
                 elif characters[currentByte - 4] == ICM45686_ID:
                     data = struct.unpack('<ffffff', characters[currentByte : currentByte + ICM45686_SIZE])
 
-                    icm45686_data.append([timestamp, data[0], data[1], data[2], data[3], data[4], data[5]])
+                    icm45686_data.append([timestamp_seconds, data[0], data[1], data[2], data[3], data[4], data[5]])
                     currentByte += ICM45686_SIZE
 
                 elif characters[currentByte - 4] == MMC5983MA_ID:
                     data = struct.unpack('<fff', characters[currentByte : currentByte + MMC5983MA_SIZE])
 
-                    mmc5983ma_data.append([timestamp, data[0], data[1], data[2]])
+                    mmc5983ma_data.append([timestamp_seconds, data[0], data[1], data[2]])
                     currentByte += MMC5983MA_SIZE
 
                 else:
@@ -70,6 +88,7 @@ def decode(path):
         except:
             # if end of file is reached, wont have enough bytes to decode the requested amount
             # so just skip that packet since it's incomplete, and begin converting to csv file
+            print("end of file reached")
             pass
 
         # make each sensor data list as separate df
@@ -78,9 +97,9 @@ def decode(path):
         mmc5983ma_df = pd.DataFrame(mmc5983ma_data, columns=['timestamp', 'mag_x', 'mag_y', 'mag_z'])
 
         # write to csv
-        bmp581_df.to_csv("BMP581_data.csv")
-        icm45686_df.to_csv("ICM45686_data.csv")
-        mmc5983ma_df.to_csv("MMC5983MA_data.csv")
+        bmp581_df.to_csv("BMP581_data.csv", index=False)
+        icm45686_df.to_csv("ICM45686_data.csv", index=False)
+        mmc5983ma_df.to_csv("MMC5983MA_data.csv", index=False)
 
 if __name__ == "__main__":
     if len(sys.argv) == 2:
