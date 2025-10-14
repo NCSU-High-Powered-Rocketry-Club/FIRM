@@ -369,5 +369,4 @@ static int write_ireg_register(IREGMap_t register_map, uint16_t ireg_addr, uint8
     // this is a 1ms delay
     HAL_Delay(0);
     return error_status;
-
 }
