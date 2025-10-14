@@ -64,28 +64,6 @@
 		(layer "F.SilkS")
 		(uuid "e400904d-0bae-400d-b93e-7e06b9374c50")
 	)
-	(fp_circle
-		(center -2.5 0)
-		(end -1.3 0)
-		(stroke
-			(width 0.1)
-			(type solid)
-		)
-		(fill no)
-		(layer "F.SilkS")
-		(uuid "8bb672e6-1e6d-4b44-90ae-da2ae8b6a7f4")
-	)
-	(fp_circle
-		(center 2.5 0)
-		(end 3.7 0)
-		(stroke
-			(width 0.1)
-			(type solid)
-		)
-		(fill no)
-		(layer "F.SilkS")
-		(uuid "fef19c66-9f02-40de-887a-e319ba6eee36")
-	)
 	(fp_text user "${REFERENCE}"
 		(at 0 15 0)
 		(unlocked yes)
@@ -97,6 +75,22 @@
 				(thickness 0.15)
 			)
 		)
+	)
+	(pad "" thru_hole circle
+		(at -2.5 0)
+		(size 1.2 1.2)
+		(drill 1.2)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(uuid "af3be5cf-0562-4793-bcd7-1c46ecad0510")
+	)
+	(pad "" thru_hole circle
+		(at 2.5 0)
+		(size 1.2 1.2)
+		(drill 1.2)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(uuid "69e8dbdb-ebea-438f-886d-056908a9bcbb")
 	)
 	(pad "A1" smd rect
 		(at -3.165 -3.75)
