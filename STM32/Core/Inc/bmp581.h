@@ -9,14 +9,6 @@
 #include "usb_print_debug.h"
 #include <stdbool.h>
 
-/**
- * @brief the SPI settings for the BMP to use when accessing device registers
- */
-typedef struct {
-    SPI_HandleTypeDef* hspi;
-    GPIO_TypeDef* cs_channel;
-    uint16_t cs_pin;
-} BMPSPISettings;
 
 /**
  * @brief ensures SPI read/write is working to the BMP581, and configures register settings
@@ -26,14 +18,14 @@ typedef struct {
  * @param cs_pin specifies the GPIO pin that the chip select pin is connected to.
  * @retval 0 upon success
  */
-int bmp_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin);
+int bmp581_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin);
 
 /**
  * @brief reads the pressure and temperature measurements from the BMP581
  *
- * @param packet pointer to the BMP packet where the data will be stored
+ * @param packet pointer to the Barometer packet where the data will be stored
  * @retval 0 upon success, 1 if no new data is ready yet
  */
-int bmp_read_data(BMPPacket_t* packet);
+int bmp581_read_data(BarometerPacket_t* packet);
 
 
