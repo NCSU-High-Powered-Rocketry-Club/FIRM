@@ -110,3 +110,4 @@ if __name__ == "__main__":
             print("Invalid path to file")
     else:
         print("Specify path of file to decode")
+        sys.exit(1)
