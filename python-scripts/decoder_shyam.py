@@ -2,7 +2,7 @@ import struct
 import pandas as pd
 import numpy as np
 
-with open("LOG70.TXT", 'rb') as f:
+with open("LOG1.TXT", 'rb') as f:
 
     characters=f.read()
     maxByte=len(characters)
@@ -23,27 +23,37 @@ with open("LOG70.TXT", 'rb') as f:
     constIMUHex=73
     constMagnet=77
     constZero=0
+    row=0
 
     while True:
-        if currentByte<=15:
-            currentByte+=1
-        else:
-            if characters[currentByte]==constBMPHex:
-                savedBMPList.append([struct.unpack('>I',b'\x00'+characters[currentByte+1:currentByte+4]),struct.unpack('<ff',characters[currentByte+4:currentByte+12])])
-                bmpCounter+=1
-                currentByte+=12
-            elif characters[currentByte]==constIMUHex:
-                savedIMUList.append([struct.unpack('>I',b'\x00'+characters[currentByte+1:currentByte+4]),struct.unpack('<ffffff',characters[currentByte+4:currentByte+28])])
-                imuCounter+=1
-                currentByte+=28
-            elif characters[currentByte]==constMagnet:
-                savedMagnetList.append([struct.unpack('>I',b'\x00'+characters[currentByte+1:currentByte+4]),struct.unpack('<fff',characters[currentByte+4:currentByte+16])])
-                magnetCounter+=1
-                currentByte+=16
-            elif characters[currentByte]==constZero:
+        try :
+            if currentByte<=15:
                 currentByte+=1
             else:
-                break
+                if characters[currentByte]==constBMPHex:
+                    savedBMPList.append([struct.unpack('>I',b'\x00'+characters[currentByte+1:currentByte+4]),struct.unpack('<ff',characters[currentByte+4:currentByte+12])])
+                    bmpCounter+=1
+                    row=0
+                    currentByte+=12
+                elif characters[currentByte]==constIMUHex:
+                    savedIMUList.append([struct.unpack('>I',b'\x00'+characters[currentByte+1:currentByte+4]),struct.unpack('<ffffff',characters[currentByte+4:currentByte+28])])
+                    imuCounter+=1
+                    row=0
+                    currentByte+=28
+                elif characters[currentByte]==constMagnet:
+                    savedMagnetList.append([struct.unpack('>I',b'\x00'+characters[currentByte+1:currentByte+4]),struct.unpack('<fff',characters[currentByte+4:currentByte+16])])
+                    magnetCounter+=1
+                    row=0
+                    currentByte+=16
+                elif characters[currentByte]==constZero:
+                    currentByte+=1
+                    row+=1
+                    if row > 50:
+                        break
+                else:
+                    break
+        except:
+            break
 
 
     #I'm taking out each timestamp for ech packet typ and putting it in order(To be changed)
@@ -97,5 +107,5 @@ with open("LOG70.TXT", 'rb') as f:
 
     
     Combined_Data_Frame=pd.DataFrame(data)
-    Combined_Data_Frame=Combined_Data_Frame.sort_values(by="Time Stamp(S)",ascending=True)
+    #Combined_Data_Frame=Combined_Data_Frame.sort_values(by="Time Stamp(S)",ascending=True)
     Combined_Data_Frame.to_csv("newCombined.csv")
