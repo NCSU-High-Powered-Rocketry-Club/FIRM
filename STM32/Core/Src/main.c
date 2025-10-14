@@ -62,7 +62,6 @@ SPI_HandleTypeDef hspi2;
 SPI_HandleTypeDef hspi3;
 
 /* USER CODE BEGIN PV */
-FIL file_obj;
 
 /* USER CODE END PV */
 
@@ -129,7 +128,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
     // Setup the SD card
-    if (logger_init()) {
+    if (logger_init(&hdma_sdio_tx)) {
         serialPrintStr("Failed to initialized the logger (SD card)");
         Error_Handler();
     }
@@ -175,23 +174,23 @@ int main(void)
             BarometerPacket_t* barometer_packet = logger_malloc_packet(sizeof(BarometerPacket_t));
     	    if (!bmp581_read_data(barometer_packet)) {
     	        bmp581_has_new_data = false;
-    	        logger_write_entry('B', barometer_packet, sizeof(BarometerPacket_t));
+    	        logger_write_entry('B', sizeof(BarometerPacket_t));
     	    }
     	}
 
     	if (icm45686_has_new_data) {
-    	    IMUPacket_t imu_sample;
-    	    if (!icm45686_read_data(&imu_sample)) {
+    	    IMUPacket_t* imu_packet = logger_malloc_packet(sizeof(IMUPacket_t)); 
+    	    if (!icm45686_read_data(imu_packet)) {
     	        icm45686_has_new_data = false;
-    	        logger_write_entry('I', &imu_sample, sizeof(imu_sample));
+    	        logger_write_entry('I', sizeof(IMUPacket_t));
     	    }
     	}
 
     	if (mmc5983ma_has_new_data) {
-    	    MagnetometerPacket_t magnetometer_sample;
-    	    if (!mmc5983ma_read_data(&magnetometer_sample, &magnetometer_flip)) {
+    	    MagnetometerPacket_t* magnetometer_packet = logger_malloc_packet(sizeof(MagnetometerPacket_t));
+    	    if (!mmc5983ma_read_data(magnetometer_packet, &magnetometer_flip)) {
     	        mmc5983ma_has_new_data = false;
-    	        logger_write_entry('M', &magnetometer_sample, sizeof(magnetometer_sample));
+    	        logger_write_entry('M', sizeof(MagnetometerPacket_t));
     	    }
     	}
 
