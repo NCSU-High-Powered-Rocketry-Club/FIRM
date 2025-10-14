@@ -37,7 +37,7 @@ FRESULT logger_init(DMA_HandleTypeDef* dma_sdio_tx_handle);
 /**
  * @brief writes an initial header line to the Micro SD Card file
  * 
- * @param sensor_scale_factors address of the struct with the calibration values of the sensors
+ * @param sensor_scale_factors address of the struct with the scale factor values of the sensors
  * @retval File Status error code, 0 on success.
  */
 FRESULT logger_write_header(HeaderFields* sensor_scale_factors);

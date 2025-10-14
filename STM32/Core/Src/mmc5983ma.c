@@ -92,16 +92,14 @@ int mmc5983ma_init(I2C_HandleTypeDef* hi2c, uint8_t device_i2c_addr) {
     return 0;
 }
 
-int mmc5983ma_read_data(MagnetometerPacket_t* packet, uint8_t* flip) {
+int mmc5983ma_read_data(MMC5983MAPacket_t* packet, uint8_t* flip) {
     uint8_t data_ready = 0;
     // read status register to make sure data is ready
     read_registers(status, &data_ready, 1);
     if (data_ready & 0x01) { // data ready bit is 0x01
         // manually clear the interrupt signal
         write_register(status, 0b00000001);
-        uint8_t raw_data[7];
-        uint32_t mag_data_binary[3];
-        float mag_data[3];
+
         // every flip_interval read cycles, flip the polarity of the magnetometer values
         // to calibrate the sensor properly
         if (*flip % flip_interval == 0) {
@@ -116,22 +114,7 @@ int mmc5983ma_read_data(MagnetometerPacket_t* packet, uint8_t* flip) {
         // next two are magnetometer y
         // next two are magnetometer z
         // last byte is 2 bits of LSB x, 2 bits of LSB y, 2 bits of LSB z, and 2 reserved bits
-        read_registers(x_out0, raw_data, 7);
-        mag_data_binary[0] =
-            (uint32_t)(raw_data[0] << 10 | raw_data[1] << 2 | (raw_data[6] & 0xC0) >> 6);
-        mag_data_binary[1] =
-            (uint32_t)(raw_data[2] << 10 | raw_data[3] << 2 | (raw_data[6] & 0x30) >> 4);
-        mag_data_binary[2] =
-            (uint32_t)(raw_data[4] << 10 | raw_data[5] << 2 | (raw_data[6] & 0x0C) >> 2);
-        // the data must be shifted by half of the FS range (262,144 bits).
-        // by default the readings are from 0 to 262144, with a magnetic field value of zero
-        // being 131072. To get the data centered, we must subtract by 131072.
-        mag_data[0] = (float)((mag_data_binary[0]) - data_num_lsb_bits) / scale_factor;
-        mag_data[1] = (float)((mag_data_binary[1]) - data_num_lsb_bits) / scale_factor;
-        mag_data[2] = (float)((mag_data_binary[2]) - data_num_lsb_bits) / scale_factor;
-        packet->mag_x = mag_data[0];
-        packet->mag_y = mag_data[1];
-        packet->mag_z = mag_data[2];
+        read_registers(x_out0, (uint8_t*)packet, 7);
         (*flip)++; // incrememt the flip counter
         return 0;
     }

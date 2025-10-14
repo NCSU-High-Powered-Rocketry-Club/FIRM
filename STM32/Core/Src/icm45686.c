@@ -7,7 +7,6 @@
 
 #include "icm45686.h"
 #include "firm_utils.h"
-#include "packets.h"
 #include "spi_utils.h"
 
 /**
@@ -167,55 +166,22 @@ int icm45686_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs
     return 0;
 }
 
-int icm45686_read_data(IMUPacket_t* packet) {
+int icm45686_read_data(ICM45686Packet_t* packet) {
     uint8_t data_ready = 0;
     // checking (and resetting) interrupt status
     read_registers(int1_status0, &data_ready, 1);
     if (data_ready & 0x04) { // bit 2 is data_ready flag for UI channel
-        // each packet from the fifo is 20 bytes
+        // each packet from the fifo is 20 bytes, with the first 12 being the most significant
+        // bytes and middle bytes of accel/gyro data. The last 3 bytes of the packet are the least
+        // significant bytes of the accel/gyro data. The other bytes in the packet are for
+        // timestamp and temperature data, which we discard.
         uint8_t raw_data[20];
         read_registers(fifo_data, raw_data, 20);
 
-        // refer to the datasheet section 6.1 "packet structure" for information on the packet
-        // structure to see which bytes of the FIFO packet go to which data points.
-        // Accel X
-        uint32_t temp =
-            ((uint32_t)raw_data[1] << 12) | ((uint32_t)raw_data[2] << 4) | (raw_data[17] >> 4);
-        int32_t ax = sign_extend_20bit(temp);
-        // Accel Y
-        temp = ((uint32_t)raw_data[3] << 12) | ((uint32_t)raw_data[4] << 4) | (raw_data[18] >> 4);
-        int32_t ay = sign_extend_20bit(temp);
-
-        // Accel Z
-        temp = ((uint32_t)raw_data[5] << 12) | ((uint32_t)raw_data[6] << 4) | (raw_data[19] >> 4);
-        int32_t az = sign_extend_20bit(temp);
-
-        // Gyro X
-        temp = ((uint32_t)raw_data[7] << 12) | ((uint32_t)raw_data[8] << 4) | (raw_data[17] & 0x0F);
-        int32_t gx = sign_extend_20bit(temp);
-
-        // Gyro Y
-        temp =
-            ((uint32_t)raw_data[9] << 12) | ((uint32_t)raw_data[10] << 4) | (raw_data[18] & 0x0F);
-        int32_t gy = sign_extend_20bit(temp);
-
-        // Gyro Z
-        temp =
-            ((uint32_t)raw_data[11] << 12) | ((uint32_t)raw_data[12] << 4) | (raw_data[19] & 0x0F);
-        int32_t gz = sign_extend_20bit(temp);
-
-        // TODO: determine whether the data should be logged before or after the scale factor
-        // is applied.
-
-        // datasheet lists the scale factor for accelerometer to be 16,384 LSB/g when in FIFO mode
-        packet->acc_x = (float)ax / 16384.0f;
-        packet->acc_y = (float)ay / 16384.0f;
-        packet->acc_z = (float)az / 16384.0f;
-        // datasheet lists gyroscope scale factor as 131.072 LSB/(deg/s). We will also convert to
-        // radians, coming out to 23592.96 / PI
-        packet->gyro_x = (float)gx / (23592.96f / pi);
-        packet->gyro_y = (float)gy / (23592.96f / pi);
-        packet->gyro_z = (float)gz / (23592.96f / pi);
+        // copying the first 12 bytes (most significant byte and middle byte of accel/gyro data)
+        memcpy(packet, raw_data, 12);
+        // copying the last 3 bytes (4-bit LSB's for accel/gyro)
+        memcpy(&packet->x_vals_lsb, &raw_data[17], 3);
 
         // flush the fifo
         write_register(fifo_config2, 0b10100000);

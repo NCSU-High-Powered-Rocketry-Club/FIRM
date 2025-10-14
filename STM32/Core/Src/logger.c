@@ -130,7 +130,6 @@ FRESULT logger_init(DMA_HandleTypeDef* dma_sdio_tx_handle) {
     return fr;
 }
 
-// Writes the header to the log file
 FRESULT logger_write_header(HeaderFields* sensor_scale_factors) {
     // The length needs to be 4 byte aligned because the struts we are logging are 4 byte aligned
     // (they have floats).

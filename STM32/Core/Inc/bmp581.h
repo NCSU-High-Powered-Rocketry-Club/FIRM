@@ -5,10 +5,21 @@
  *      Author: Wlsan
  */
 #pragma once
-#include "packets.h"
 #include "usb_print_debug.h"
 #include <stdbool.h>
 
+/**
+ * @brief data packet for the BMP581 temperature and pressure data.
+ * @note the order is determined by register order in the datasheet, starting at 0x1D.
+ */
+typedef struct {
+    uint8_t temp_xlsb;
+    uint8_t temp_lsb;
+    uint8_t temp_msb;
+    uint8_t pressure_xlsb;
+    uint8_t pressure_lsb;
+    uint8_t pressure_msb;
+} BMP581Packet_t;
 
 /**
  * @brief ensures SPI read/write is working to the BMP581, and configures register settings
@@ -26,7 +37,7 @@ int bmp581_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_p
  * @param packet pointer to the Barometer packet where the data will be stored
  * @retval 0 upon success, 1 if no new data is ready yet
  */
-int bmp581_read_data(BarometerPacket_t* packet);
+int bmp581_read_data(BMP581Packet_t* packet);
 
 /**
  * @brief gets the scale factor of the temperature readings to convert to celcius.
