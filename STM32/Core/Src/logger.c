@@ -24,7 +24,9 @@
 static FRESULT logger_ensure_capacity(int capacity);
 
 /**
- * @brief Logs the type and timestamp.
+ * @brief Logs the type and clock cycle timestamp. This will be writen as 1 byte for the type
+ *        and three bytes (uint24) for the clock cycle count. The clock cycle count will overflow
+ *        every ~0.1 seconds.
  * @note advances the current offset variable for the buffer
  * 
  * @param type the character that signifies the type of packet being logged
@@ -137,7 +139,7 @@ FRESULT logger_init(DMA_HandleTypeDef* dma_sdio_tx_handle) {
 void logger_write_header() {
     // The length needs to be 4 byte aligned because the struts we are logging are 4 byte aligned
     // (they have floats).
-    const char* header = "FIRM LOG v0.1\n";
+    const char* header = "FIRM LOG v0.2\n";
     size_t len = strlen(header);
     int padded_len = ((len + 3) / 4) * 4;
 
@@ -181,7 +183,7 @@ static FRESULT logger_ensure_capacity(int capacity) {
 static void logger_log_type_timestamp(char type) {
     // This should advance by TYPE_TIMESTAMP_SIZE
     current_buffer[current_offset++] = type;
-    uint32_t current_time = HAL_GetTick();
+    uint32_t current_time = DWT->CYCCNT;
     current_buffer[current_offset++] = (current_time >> 16) & 0xFF;
     current_buffer[current_offset++] = (current_time >> 8) & 0xFF;
     current_buffer[current_offset++] = current_time & 0xFF;
