@@ -10,6 +10,71 @@
 #include "packets.h"
 #include "spi_utils.h"
 
+/**
+ * @brief the SPI settings for the IMU to use when accessing device registers
+ */
+typedef struct {
+    SPI_HandleTypeDef* hspi;
+    GPIO_TypeDef* cs_channel;
+    uint16_t cs_pin;
+} SPISettings;
+
+/**
+ * @brief Starts up and resets the ICM45686, confirms the SPI read/write functionality is working
+ *
+ * @param soft_reset_complete if this is a setup after a soft reset is complete
+ * @retval 0 if successful
+ */
+static int setup_device(bool soft_reset_complete);
+
+/**
+ * @brief Reads data from the ICM45686 with SPI
+ *
+ * @param addr the address of the register
+ * @param buffer where the result of the read will be stored
+ * @param len the number of bytes to read
+ * @retval HAL Status, 0 on successful read
+ */
+static HAL_StatusTypeDef read_registers(uint8_t addr, uint8_t* buffer, size_t len);
+
+/**
+ * @brief Writes 1 byte of data to the ICM45686 with SPI
+ *
+ * @param addr the address of the register
+ * @param data the data to write to the register
+ * @retval HAL Status, 0 on successful write
+ */
+static HAL_StatusTypeDef write_register(uint8_t addr, uint8_t data);
+
+
+/**
+ * @brief reads an indirect register from the ICM45686
+ *
+ * @note a minimum wait time of 4 microseconds is required between multiple ireg reads or writes.
+ *
+ * @param register_map the IREGMap enumeration value that the ireg register is located in.
+ * @param ireg_addr the intended register address to read. From the datasheet, the register
+ * 		  will either be a standard 8-bit register, or a 12-bit register. ireg_addr expects
+ * 		  a 16-bit unsigned integer to account for this.
+ * @param result a pointer to the variable that the result of the read will be stored in.
+ * @retval error status, 0 on successful read
+ */
+static int read_ireg_register(IREGMap_t register_map, uint16_t ireg_addr, uint8_t* result);
+
+/**
+ * @brief writes to an indirect register of the ICM45686
+ *
+ * @note a minimum wait time of 4 microseconds is required between multiple ireg reads or writes.
+ *
+ * @param register_map the IREGMap enumeration value that the ireg register is located in.
+ * @param ireg_addr the intended register address to write to. From the datasheet, the register
+ * 		  will either be a standard 8-bit register, or a 12-bit register. ireg_addr expects
+ * 		  a 16-bit unsigned integer to account for this.
+ * @param data the data to write to the indirect register address, as an 8-bit unsigned integer.
+ * @retval error status, 0 on successful read
+ */
+static int write_ireg_register(IREGMap_t register_map, uint16_t ireg_addr, uint8_t data);
+
 // honestly i think this is probably a good thing do make a preprocessor macro but probably later.
 // most likely don't need more digits because we only have a single-precision FPU
 const float pi = 3.14159265;
@@ -33,78 +98,79 @@ static const uint8_t sreg_ctrl = 0x67;          // IPREG_TOP1 register
 static const uint8_t ipreg_sys1_reg_166 = 0xA6; // IPREG_SYS1 register
 static const uint8_t ipreg_sys2_reg_123 = 0x7B; // IPREG_SYS2 register
 
-static IMUSPISettings SPISettings;
 
-int imu_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin) {
+static SPISettings spiSettings;
+
+int icm45686_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin) {
     if (hspi == NULL || cs_channel == NULL) {
         serialPrintStr("Invalid spi handle or chip select pin for ICM45686");
         return 1;
     }
     // set up the SPI settings
-    SPISettings.hspi = hspi;
-    SPISettings.cs_channel = cs_channel;
-    SPISettings.cs_pin = cs_pin;
+    spiSettings.hspi = hspi;
+    spiSettings.cs_channel = cs_channel;
+    spiSettings.cs_pin = cs_pin;
 
 
     serialPrintStr("Beginning ICM45686 initialization");
     // sets up the IMU in SPI mode and ensures SPI is working
-    if (imu_setup_device(false)) return 1;
+    if (setup_device(false)) return 1;
 
     // do a soft-reset of the sensor's settings
     serialPrintStr("\tIssuing ICM45686 software reset...");
-    imu_spi_write(reg_misc2, 0b00000010);
+    write_register(reg_misc2, 0b00000010);
     // verify correct setup again
-    if (imu_setup_device(true)) return 1;
+    if (setup_device(true)) return 1;
 
     // sets accel range to +/- 32g, and ODR to 800hz
-    imu_spi_write(accel_config0, 0b00000110);
+    write_register(accel_config0, 0b00000110);
     // sets gyro range to 4000dps, and ODR to 800hz
-    imu_spi_write(gyro_config0, 0b00000110);
+    write_register(gyro_config0, 0b00000110);
     // fifo set to stream mode, and 2k byte size
-    imu_spi_write(fifo_config0, 0b01000111);
+    write_register(fifo_config0, 0b01000111);
     // enable fifo for acceleration and gyroscope
-    imu_spi_write(fifo_config3, 0b00001111);
+    write_register(fifo_config3, 0b00001111);
     // disables all interrupts, to allow interrupt settings to be configured
-    imu_spi_write(int1_config0, 0b00000000);
+    write_register(int1_config0, 0b00000000);
     // sets interrupt pin to push-pull, latching, and active low
-    imu_spi_write(int1_config2, 0b00000010);
+    write_register(int1_config2, 0b00000010);
     // sets interrupt pin to only trigger when data is ready or reset is complete
-    imu_spi_write(int1_config0, 0b10000100);
+    write_register(int1_config0, 0b10000100);
 
     // big endian mode
-    spi_ireg_write(IPREG_TOP1, (uint16_t)sreg_ctrl, 0b00000010);
+    write_ireg_register(IPREG_TOP1, (uint16_t)sreg_ctrl, 0b00000010);
     // turn interpolator and FIR filter off for gyro
-    spi_ireg_write(IPREG_SYS1, (uint16_t)ipreg_sys1_reg_166, 0b00001011);
+    write_ireg_register(IPREG_SYS1, (uint16_t)ipreg_sys1_reg_166, 0b00001011);
     // turn interpolator and FIR filter off for acceleration
-    spi_ireg_write(IPREG_SYS2, (uint16_t)ipreg_sys2_reg_123, 0b00010100);
+    write_ireg_register(IPREG_SYS2, (uint16_t)ipreg_sys2_reg_123, 0b00010100);
     // verify ireg read/write works
     uint8_t result = 0;
-    spi_ireg_read(IPREG_SYS2, (uint16_t)ipreg_sys2_reg_123, &result);
+    read_ireg_register(IPREG_SYS2, (uint16_t)ipreg_sys2_reg_123, &result);
     if (result != 0b00010100) {
         serialPrintStr("\tFailed to read or write to IREG registers");
         return 1;
     }
     // place both accel and gyro in low noise mode
-    imu_spi_write(pwr_mgmt0, 0b00001111);
+    write_register(pwr_mgmt0, 0b00001111);
 
     // delay for gyro to get ready
     HAL_Delay(74);
 
     // read to clear any interrupts
-    imu_spi_read(int1_status0, &result, 1);
-    imu_spi_read(int1_status1, &result, 1);
+    read_registers(int1_status0, &result, 1);
+    read_registers(int1_status1, &result, 1);
     serialPrintStr("\tICM45686 startup successful!");
     return 0;
 }
 
-int imu_read_data(IMUPacket_t* packet) {
+int icm45686_read_data(IMUPacket_t* packet) {
     uint8_t data_ready = 0;
     // checking (and resetting) interrupt status
-    imu_spi_read(int1_status0, &data_ready, 1);
+    read_registers(int1_status0, &data_ready, 1);
     if (data_ready & 0x04) { // bit 2 is data_ready flag for UI channel
         // each packet from the fifo is 20 bytes
         uint8_t raw_data[20];
-        imu_spi_read(fifo_data, raw_data, 20);
+        read_registers(fifo_data, raw_data, 20);
 
         // refer to the datasheet section 6.1 "packet structure" for information on the packet
         // structure to see which bytes of the FIFO packet go to which data points.
@@ -148,20 +214,20 @@ int imu_read_data(IMUPacket_t* packet) {
         packet->gyro_z = (float)gz / (23592.96f / pi);
 
         // flush the fifo
-        imu_spi_write(fifo_config2, 0b10100000);
+        write_register(fifo_config2, 0b10100000);
         return 0;
     }
     return 1; // data was not ready, return error
 }
 
 
-int imu_setup_device(bool soft_reset_complete) {
+static int setup_device(bool soft_reset_complete) {
     // datasheet says 2ms to powerup, include some factor of safety
     HAL_Delay(10);
 
     uint8_t result = 0;
     // perform dummy read as required by datasheet
-    HAL_StatusTypeDef hal_status = imu_spi_read(who_am_i, &result, 1);
+    HAL_StatusTypeDef hal_status = read_registers(who_am_i, &result, 1);
     if (hal_status) {
         switch (hal_status) {
         case HAL_BUSY:
@@ -183,7 +249,7 @@ int imu_setup_device(bool soft_reset_complete) {
     HAL_Delay(0);
 
     // verify chip ID read works
-    imu_spi_read(who_am_i, &result, 1);
+    read_registers(who_am_i, &result, 1);
     if (result != 0xE9) {
         serialPrintStr("\tIMU could not read chip ID");
         return 1;
@@ -191,23 +257,23 @@ int imu_setup_device(bool soft_reset_complete) {
 
     // verify that writes work by wrting to a register that has no effect on our settings
     // then set back to original value when the write succeeds.
-    imu_spi_read(fifo_config2, &result, 1);
+    read_registers(fifo_config2, &result, 1);
     if (result != 0b00100000) {
         serialPrintStr("\tCould not start write test: wrong expected value for FIFO_CONFIG2");
         return 1;
     }
-    imu_spi_write(fifo_config2, 0b00100100);
-    imu_spi_read(fifo_config2, &result, 1);
+    write_register(fifo_config2, 0b00100100);
+    read_registers(fifo_config2, &result, 1);
     if (result != 0x24) {
         serialPrintStr(
             "\tIMU SPI Write test failed, wrote to register and did not read expected value back!");
         return 1;
     }
-    imu_spi_write(fifo_config2, 0b00100000); // set back to original value
+    write_register(fifo_config2, 0b00100000); // set back to original value
 
     if (soft_reset_complete) {
         // Check bit 1 (soft reset bit) is set back to 0
-        imu_spi_read(reg_misc2, &result, 1);
+        read_registers(reg_misc2, &result, 1);
         if ((result & 0x02) != 0) {
             serialPrintStr("\tSoftware reset failed!");
             return 1;
@@ -218,17 +284,17 @@ int imu_setup_device(bool soft_reset_complete) {
 }
 
 
-HAL_StatusTypeDef imu_spi_read(uint8_t addr, uint8_t* buffer, size_t len) {
-    return spi_read(SPISettings.hspi, SPISettings.cs_channel, SPISettings.cs_pin, addr, buffer,
+static HAL_StatusTypeDef read_registers(uint8_t addr, uint8_t* buffer, size_t len) {
+    return spi_read(spiSettings.hspi, spiSettings.cs_channel, spiSettings.cs_pin, addr, buffer,
                     len);
 }
 
 
-HAL_StatusTypeDef imu_spi_write(uint8_t addr, uint8_t data) {
-    return spi_write(SPISettings.hspi, SPISettings.cs_channel, SPISettings.cs_pin, addr, data);
+static HAL_StatusTypeDef write_register(uint8_t addr, uint8_t data) {
+    return spi_write(spiSettings.hspi, spiSettings.cs_channel, spiSettings.cs_pin, addr, data);
 }
 
-void spi_ireg_read(IREGMap_t register_map, uint16_t ireg_addr, uint8_t* result) {
+static int read_ireg_register(IREGMap_t register_map, uint16_t ireg_addr, uint8_t* result) {
     switch (register_map) {
     case IMEM_SRAM:
         ireg_addr |= 0x0000;
@@ -246,7 +312,7 @@ void spi_ireg_read(IREGMap_t register_map, uint16_t ireg_addr, uint8_t* result) 
         ireg_addr |= 0xA200;
         break;
     default:
-        return;
+        return 2;
     }
     uint8_t ireg_regs[2];
     ireg_regs[0] = (uint8_t)(ireg_addr >> 8);
@@ -256,18 +322,20 @@ void spi_ireg_read(IREGMap_t register_map, uint16_t ireg_addr, uint8_t* result) 
     // written to, since it is auto-incremented (that's what a SPI burst write does).
     // So here, sending 2 bytes means 2 addresses (IREG_ADDR_15_8 and IREG_ADDR_7_0) are
     // configured at once.
-    spi_burst_write(SPISettings.hspi, SPISettings.cs_channel, SPISettings.cs_pin, ireg_addr_15_8, ireg_regs, sizeof(ireg_regs));
+    int error_status = spi_burst_write(spiSettings.hspi, spiSettings.cs_channel, spiSettings.cs_pin, ireg_addr_15_8, ireg_regs, sizeof(ireg_regs));
 
     // After the write is over and the CS pin is pulled high, result of the the read
     // will be stored in the IREG_DATA register. The `result` pointer will have the value:
     // NOTE: We must wait for a minimum of 4us before reading IREG_DATA:
 
     HAL_Delay(0); // can only do millisecond delays, so 1ms is enough
+    if (error_status) return error_status;
+    error_status = read_registers(ireg_data, result, 1);
 
-    imu_spi_read(ireg_data, result, 1);
+    return error_status;
 }
 
-void spi_ireg_write(IREGMap_t register_map, uint16_t ireg_addr, uint8_t data) {
+static int write_ireg_register(IREGMap_t register_map, uint16_t ireg_addr, uint8_t data) {
     // combine page with address in as 16 bits
     switch (register_map) {
     case IMEM_SRAM:
@@ -286,7 +354,7 @@ void spi_ireg_write(IREGMap_t register_map, uint16_t ireg_addr, uint8_t data) {
         ireg_addr |= 0xA200;
         break;
     default:
-        return;
+        return 2;
     }
 
     // save the page, register, and data into an array
@@ -296,8 +364,9 @@ void spi_ireg_write(IREGMap_t register_map, uint16_t ireg_addr, uint8_t data) {
     ireg_regs[2] = data;
 
     // burst write page,register, and data starting at ireg_addr_15_8
-    spi_burst_write(SPISettings.hspi, SPISettings.cs_channel, SPISettings.cs_pin, ireg_addr_15_8, ireg_regs, 3);
+    int error_status = spi_burst_write(spiSettings.hspi, spiSettings.cs_channel, spiSettings.cs_pin, ireg_addr_15_8, ireg_regs, 3);
     // must wait before next ireg operation
     // this is a 1ms delay
     HAL_Delay(0);
+    return error_status;
 }

@@ -26,19 +26,20 @@ To set up the project, follow these steps (assuming you have Git/Github Desktop,
 git clone https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM.git
 ```
 
-2. Download the STM32CubeIDE from the [STMicroelectronics website](https://www.st.com/en/development-tools/stm32cubeide.html) and install it on your machine.
+2. Download the STM32CubeCLT from the [STMicroelectronics website](https://www.st.com/en/development-tools/stm32cubeclt.html) and install it on your machine.
 
-3. Open STM32CubeIDE and import the project:
-   - Go to `File` > `Import`.
-   - Select `General` > `Existing Projects into Workspace` and click `Next`.
-   - Browse to the cloned repository location and select it.
-   - Click `Finish`.
+3. Install the [STM32 VS Code Extension](https://marketplace.visualstudio.com/items?itemName=stmicroelectronics.stm32-vscode-extension).
 
-4. You'll find our source files in the `Core/Src` directory and header files in the `Core/Inc` directory.
+4. Open the STM32 folder of the repo in VS Code and use the extension to import the folder with the
+"Import CMake project" button.
 
-5. Run `uv sync`.
+5. Configure your workspace by accepting the default settings from the pop-up messages in VS Code.
 
-6. Run `pre-commit install` to set up the git hook for automatic code formatting, using `clang-format`.
+6. Click the "Build" button on the bottom status bar to build the project.
+
+7. Run `uv sync`.
+
+8. Run `uv run pre-commit install` to set up the git hook for automatic code formatting, using `clang-format`.
 
 
 ## KiCad Files

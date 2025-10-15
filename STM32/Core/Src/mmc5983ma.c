@@ -7,12 +7,20 @@
 #include "mmc5983ma.h"
 
 /**
+ * @brief the I2C settings for the MMC5983MA to use when accessing device registers
+ */
+typedef struct {
+    I2C_HandleTypeDef* hi2c;
+    uint8_t dev_addr; // 7 bit i2c address for the device
+} I2CSettings;
+
+/**
  * @brief Starts up and resets the magnetometer, confirms the I2C read/write functionality is working
  *
  * @param soft_reset_complete if this is a setup after a soft reset is complete
  * @retval 0 if successful
  */
-static int mag_setup_device(bool soft_reset_complete);
+static int setup_device(bool soft_reset_complete);
 
 /**
  * @brief Reads data from the MMC5983MA with I2C
@@ -22,7 +30,7 @@ static int mag_setup_device(bool soft_reset_complete);
  * @param len the number of bytes to read
  * @retval HAL Status, 0 on successful read
  */
-static HAL_StatusTypeDef mag_i2c_read(uint8_t reg_addr, uint8_t* buffer, size_t len);
+static HAL_StatusTypeDef read_registers(uint8_t reg_addr, uint8_t* buffer, size_t len);
 
 /**
  * @brief Writes 1 byte of data to the MMC5983MA with I2C
@@ -31,9 +39,9 @@ static HAL_StatusTypeDef mag_i2c_read(uint8_t reg_addr, uint8_t* buffer, size_t 
  * @param data the data to write to the register
  * @retval HAL Status, 0 on successful write
  */
-static HAL_StatusTypeDef mag_i2c_write(uint8_t reg_addr, uint8_t data);
+static HAL_StatusTypeDef write_register(uint8_t reg_addr, uint8_t data);
 
-// magnetometer register mapping
+// MMC5983MA register mapping
 static const uint8_t x_out0 = 0x00;
 static const uint8_t status = 0x08;
 static const uint8_t internal_control0 = 0x09;
@@ -46,57 +54,59 @@ static const uint8_t product_id_val = 0x30; // expected value for the product ID
 static const float scaling_factor = 131072.0 / 800.0;
 static const int flip_interval = 10; // number of regular packets between a flipped-sign packet
 
-static MagI2CSettings I2CSettings;
 
-int mag_init(I2C_HandleTypeDef* hi2c, uint8_t device_i2c_addr) {
+
+static I2CSettings i2cSettings;
+
+int mmc5983ma_init(I2C_HandleTypeDef* hi2c, uint8_t device_i2c_addr) {
     if (hi2c == NULL) {
         serialPrintStr("Invalid i2c handle for MMC5983MA");
         return 1;
     }
 
     // configure i2c settings
-    I2CSettings.hi2c = hi2c;
-    I2CSettings.dev_addr = device_i2c_addr;
+    i2cSettings.hi2c = hi2c;
+    i2cSettings.dev_addr = device_i2c_addr;
     serialPrintStr("Beginning MMC5983MA initialization");
 
     // sets up the magnetometer in I2C mode and ensures I2C is working
-    if (mag_setup_device(false)) return 1;
+    if (setup_device(false)) return 1;
 
     // initiating a software reset
     serialPrintStr("\tIssuing MMC5983MA software reset...");
-    mag_i2c_write(internal_control1, 0b10000000);
+    write_register(internal_control1, 0b10000000);
 
     // verify correct setup again
-    if (mag_setup_device(true)) return 1;
+    if (setup_device(true)) return 1;
 
     // enable interrupt pin
-    mag_i2c_write(internal_control0, 0b00000100);
+    write_register(internal_control0, 0b00000100);
     // set bandwidth to 200hz (4ms measurement time)
-    mag_i2c_write(internal_control1, 0b00000001);
+    write_register(internal_control1, 0b00000001);
     // enable continuous measurement mode at 200hz
-    mag_i2c_write(internal_control2, 0b00001110);
+    write_register(internal_control2, 0b00001110);
 
     serialPrintStr("\tMMC5983MA startup successful!");
     return 0;
 }
 
-int mag_read_data(MMCPacket_t* packet, uint8_t* flip) {
+int mmc5983ma_read_data(MagnetometerPacket_t* packet, uint8_t* flip) {
     uint8_t data_ready = 0;
     // read status register to make sure data is ready
-    mag_i2c_read(status, &data_ready, 1);
+    read_registers(status, &data_ready, 1);
     if (data_ready & 0x01) { // data ready bit is 0x01
         // manually clear the interrupt signal
-        mag_i2c_write(status, 0b00000001);
+        write_register(status, 0b00000001);
         uint8_t raw_data[7];
         uint32_t mag_data_binary[3];
         float mag_data[3];
         // every flip_interval read cycles, flip the polarity of the magnetometer values
         // to calibrate the sensor properly
         if (*flip % flip_interval == 0) {
-            mag_i2c_write(internal_control0, 0b00010100);
+            write_register(internal_control0, 0b00010100);
         }
         if ((*flip - 1) % flip_interval == 0) {
-            mag_i2c_write(internal_control0, 0b00001100);
+            write_register(internal_control0, 0b00001100);
         }
 
         // burst read 7 bytes of data from the first data register
@@ -104,7 +114,7 @@ int mag_read_data(MMCPacket_t* packet, uint8_t* flip) {
         // next two are magnetometer y
         // next two are magnetometer z
         // last byte is 2 bits of LSB x, 2 bits of LSB y, 2 bits of LSB z, and 2 reserved bits
-        mag_i2c_read(x_out0, raw_data, 7);
+        read_registers(x_out0, raw_data, 7);
         mag_data_binary[0] =
             (uint32_t)(raw_data[0] << 10 | raw_data[1] << 2 | (raw_data[6] & 0xC0) >> 6);
         mag_data_binary[1] =
@@ -123,11 +133,11 @@ int mag_read_data(MMCPacket_t* packet, uint8_t* flip) {
     return 1;
 }
 
-int mag_setup_device(bool soft_reset_complete) {
+int setup_device(bool soft_reset_complete) {
     HAL_Delay(14); // 15ms power-on time
     uint8_t result = 0;
     // perform dummy read as required by datasheet
-    HAL_StatusTypeDef hal_status = mag_i2c_read(product_id1, &result, 1);
+    HAL_StatusTypeDef hal_status = read_registers(product_id1, &result, 1);
     if (hal_status) {
         switch (hal_status) {
         case HAL_BUSY:
@@ -145,9 +155,9 @@ int mag_setup_device(bool soft_reset_complete) {
     // this is a 1ms delay
     HAL_Delay(0);
 
-    mag_i2c_read(product_id1, &result, 1);
+    read_registers(product_id1, &result, 1);
     if (result != product_id_val) {
-        serialPrintStr("\tMagnetometer could not read Product ID");
+        serialPrintStr("\tMMC5983MA could not read Product ID");
         return 1;
     }
 
@@ -157,7 +167,7 @@ int mag_setup_device(bool soft_reset_complete) {
 
     if (soft_reset_complete) {
         // check that bit 7 (sw_rst) is back to 0
-        mag_i2c_read(internal_control1, &result, 1);
+        read_registers(internal_control1, &result, 1);
         if (result & 0x80) {
             serialPrintStr("\tMMC5983MA did not complete software reset");
             return 1;
@@ -167,10 +177,10 @@ int mag_setup_device(bool soft_reset_complete) {
 
 }
 
-static HAL_StatusTypeDef mag_i2c_read(uint8_t reg_addr, uint8_t* buffer, size_t len) {
+static HAL_StatusTypeDef read_registers(uint8_t reg_addr, uint8_t* buffer, size_t len) {
     return HAL_I2C_Mem_Read(
-            I2CSettings.hi2c,
-            (uint16_t)(I2CSettings.dev_addr << 1),
+            i2cSettings.hi2c,
+            (uint16_t)(i2cSettings.dev_addr << 1),
             (uint16_t)reg_addr,
             I2C_MEMADD_SIZE_8BIT,
             buffer,
@@ -179,10 +189,10 @@ static HAL_StatusTypeDef mag_i2c_read(uint8_t reg_addr, uint8_t* buffer, size_t 
 }
 
 
-static HAL_StatusTypeDef mag_i2c_write(uint8_t reg_addr, uint8_t data) {
+static HAL_StatusTypeDef write_register(uint8_t reg_addr, uint8_t data) {
     return HAL_I2C_Mem_Write(
-            I2CSettings.hi2c,
-            (uint16_t)(I2CSettings.dev_addr << 1),
+            i2cSettings.hi2c,
+            (uint16_t)(i2cSettings.dev_addr << 1),
             (uint16_t)reg_addr,
             I2C_MEMADD_SIZE_8BIT,
             &data,

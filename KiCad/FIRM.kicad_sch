@@ -6586,6 +6586,26 @@
 		)
 		(uuid "4da16c51-71b1-493b-a0ec-84050d0365c6")
 	)
+	(text_box "Mounting Holes"
+		(exclude_from_sim no)
+		(at 237.49 246.38 0)
+		(size 44.45 34.29)
+		(margins 0.9525 0.9525 0.9525 0.9525)
+		(stroke
+			(width 0)
+			(type solid)
+		)
+		(fill
+			(type none)
+		)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left top)
+		)
+		(uuid "4e6dc1bc-c025-4f10-8e01-387d2f282efb")
+	)
 	(text_box "Micro SD Card Port"
 		(exclude_from_sim no)
 		(at 15.24 158.75 0)
@@ -6605,26 +6625,6 @@
 			(justify left top)
 		)
 		(uuid "4e719da5-40ca-411d-90d5-b883c1ec8aa4")
-	)
-	(text_box "Mounting Holes"
-		(exclude_from_sim no)
-		(at 237.49 246.38 0)
-		(size 44.45 34.29)
-		(margins 0.9525 0.9525 0.9525 0.9525)
-		(stroke
-			(width 0)
-			(type solid)
-		)
-		(fill
-			(type none)
-		)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left top)
-		)
-		(uuid "cf399a87-6efb-456d-a851-e539523f03ae")
 	)
 	(text_box "ICM45686 IMU"
 		(exclude_from_sim no)
@@ -6681,12 +6681,6 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "11987a63-6da4-46b2-a9e0-b7a3d2bcd1d2")
-	)
-	(junction
-		(at 246.38 262.89)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "122a29af-386d-4dc7-b970-746385daf42c")
 	)
 	(junction
 		(at 22.86 240.03)
@@ -6905,12 +6899,6 @@
 		(uuid "7a575245-6852-4ea2-935b-b305ffd51912")
 	)
 	(junction
-		(at 246.38 269.24)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "7b2f90c6-56b8-486f-aa95-6d36ede1ea39")
-	)
-	(junction
 		(at 39.37 121.92)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -7025,6 +7013,12 @@
 		(uuid "b4e6e57f-82a3-4ec1-9d0a-87343e3ae094")
 	)
 	(junction
+		(at 246.38 262.89)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "bacea83f-b4f2-4805-aa85-a19945d7fb69")
+	)
+	(junction
 		(at 142.24 36.83)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -7077,6 +7071,12 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "d8c18aee-72c3-4935-9890-f287387989a9")
+	)
+	(junction
+		(at 246.38 269.24)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "e172a7d9-4803-45ee-bf56-1d33e4d0b1d9")
 	)
 	(junction
 		(at 101.6 36.83)
@@ -7343,6 +7343,16 @@
 			(type default)
 		)
 		(uuid "0abc9a6c-9f39-449b-abb4-bd105ed008ea")
+	)
+	(wire
+		(pts
+			(xy 246.38 269.24) (xy 252.73 269.24)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0ad6927b-452a-4cba-bc2b-e08c555ee171")
 	)
 	(wire
 		(pts
@@ -7846,6 +7856,16 @@
 	)
 	(wire
 		(pts
+			(xy 252.73 256.54) (xy 246.38 256.54)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "29f422bc-7e61-42ea-aa8d-1c3d9f3930ee")
+	)
+	(wire
+		(pts
 			(xy 109.22 191.77) (xy 113.03 191.77)
 		)
 		(stroke
@@ -7873,16 +7893,6 @@
 			(type default)
 		)
 		(uuid "2d419106-997c-4598-9801-421241c4faf0")
-	)
-	(wire
-		(pts
-			(xy 246.38 262.89) (xy 246.38 269.24)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "2dcd2bf1-bf6f-4fa3-8367-c9bcefb06316")
 	)
 	(wire
 		(pts
@@ -9086,6 +9096,16 @@
 	)
 	(wire
 		(pts
+			(xy 246.38 262.89) (xy 246.38 269.24)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "70c93ea0-eb5f-4d50-b0d2-06584a605394")
+	)
+	(wire
+		(pts
 			(xy 325.12 36.83) (xy 325.12 38.1)
 		)
 		(stroke
@@ -9183,16 +9203,6 @@
 			(type default)
 		)
 		(uuid "759edc86-49ff-427f-b4b5-6413b53bf985")
-	)
-	(wire
-		(pts
-			(xy 246.38 256.54) (xy 246.38 262.89)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "75e4a340-5efe-4e64-a4dc-87efca15a2e4")
 	)
 	(wire
 		(pts
@@ -9906,6 +9916,16 @@
 	)
 	(wire
 		(pts
+			(xy 252.73 262.89) (xy 246.38 262.89)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a70a78b9-103d-4236-8638-e1fe03ecfff6")
+	)
+	(wire
+		(pts
 			(xy 113.03 201.93) (xy 113.03 209.55)
 		)
 		(stroke
@@ -9956,16 +9976,6 @@
 	)
 	(wire
 		(pts
-			(xy 252.73 256.54) (xy 246.38 256.54)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "abf4a805-bedd-4650-845c-ea5158a5f87d")
-	)
-	(wire
-		(pts
 			(xy 330.2 58.42) (xy 330.2 67.31)
 		)
 		(stroke
@@ -9973,6 +9983,16 @@
 			(type default)
 		)
 		(uuid "ad1ab630-c1c8-4715-9a07-3296096fa3d8")
+	)
+	(wire
+		(pts
+			(xy 246.38 256.54) (xy 246.38 262.89)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ad8b1327-4e26-4f45-9151-c3d604b09394")
 	)
 	(wire
 		(pts
@@ -10113,16 +10133,6 @@
 			(type default)
 		)
 		(uuid "b5050d2e-9e21-45db-a711-02c558cabb21")
-	)
-	(wire
-		(pts
-			(xy 252.73 262.89) (xy 246.38 262.89)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "b549fca4-38b5-4efb-ae6f-bff97ada227d")
 	)
 	(wire
 		(pts
@@ -10673,16 +10683,6 @@
 			(type default)
 		)
 		(uuid "e1569d5b-8c9a-4bec-943d-f27cf650a3e8")
-	)
-	(wire
-		(pts
-			(xy 246.38 269.24) (xy 252.73 269.24)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "e2191274-fac6-47de-89cd-98d39fa24bda")
 	)
 	(wire
 		(pts
@@ -12154,6 +12154,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C1590"
+			(at 87.63 41.91 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "a0728f95-2c9f-4720-b928-452b06996fd0")
 		)
@@ -12305,7 +12314,7 @@
 		(at 191.77 254 270)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(dnp no)
 		(fields_autoplaced yes)
@@ -12422,6 +12431,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C1590"
+			(at 36.83 41.91 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "778738d8-5955-4320-ad1e-8b162f31cf14")
 		)
@@ -12442,7 +12460,7 @@
 		(at 191.77 234.95 270)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(dnp no)
 		(fields_autoplaced yes)
@@ -12624,6 +12642,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C22356465"
+			(at 22.86 255.27 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "e36dedb0-c3b7-4953-88ae-74b10b5315bb")
 		)
@@ -12686,6 +12713,15 @@
 			)
 		)
 		(property "Description" "Resistor"
+			(at 30.48 66.04 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C177329"
 			(at 30.48 66.04 0)
 			(effects
 				(font
@@ -12829,6 +12865,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C1691"
+			(at 308.61 224.79 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "8e863861-03f1-49d9-ae15-12b0aa4694b1")
 		)
@@ -12849,7 +12894,7 @@
 		(at 191.77 215.9 270)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(dnp no)
 		(fields_autoplaced yes)
@@ -12959,6 +13004,15 @@
 		)
 		(property "Description" "128Mbit / 16MiB Serial Flash Memory, Standard/Dual/Quad SPI, 2.7-3.6V, SOIC-8"
 			(at 60.96 232.41 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C97521"
+			(at 60.96 260.35 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13134,7 +13188,7 @@
 		(at 151.13 228.6 270)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(dnp no)
 		(fields_autoplaced yes)
@@ -13242,6 +13296,15 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 19.05 60.96 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C1590"
 			(at 19.05 60.96 0)
 			(effects
 				(font
@@ -13451,6 +13514,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C177336"
+			(at 52.07 177.8 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "85980ee6-38a6-4bb0-9842-0456df7756ca")
 		)
@@ -13471,7 +13543,7 @@
 		(at 151.13 222.25 270)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(dnp no)
 		(fields_autoplaced yes)
@@ -13585,6 +13657,15 @@
 			)
 		)
 		(property "Sim.Pins" "1=K 2=A"
+			(at 184.15 119.38 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C2296"
 			(at 184.15 119.38 0)
 			(effects
 				(font
@@ -13899,7 +13980,7 @@
 				)
 			)
 		)
-		(property "Footprint" "sensors:IC_MMC5983MA"
+		(property "Footprint" "MMC5983MA:PQFN50P300X300X100-16N"
 			(at 344.424 122.428 0)
 			(effects
 				(font
@@ -13918,6 +13999,15 @@
 			)
 		)
 		(property "Description" "Magnetometer"
+			(at 325.12 111.76 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C404329"
 			(at 325.12 111.76 0)
 			(effects
 				(font
@@ -14233,6 +14323,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C1590"
+			(at 64.77 195.58 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "d970bdca-c547-4d7d-98b0-9ba635bee51d")
 		)
@@ -14433,6 +14532,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C177336"
+			(at 59.69 177.8 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "409ff520-e254-4ee0-a57a-749a9113ead0")
 		)
@@ -14568,6 +14676,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C177336"
+			(at 25.4 177.8 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "20f89a1f-3d6d-4a76-bda2-860b07e71296")
 		)
@@ -14588,7 +14705,7 @@
 		(at 256.54 182.88 0)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(dnp no)
 		(fields_autoplaced yes)
@@ -14656,7 +14773,7 @@
 		(at 191.77 270.51 270)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(dnp no)
 		(fields_autoplaced yes)
@@ -14765,6 +14882,15 @@
 			)
 		)
 		(property "Description" "Resistor, small symbol"
+			(at 153.67 111.76 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C22356633"
 			(at 153.67 111.76 0)
 			(effects
 				(font
@@ -14907,6 +15033,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C22356465"
+			(at 38.1 212.09 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "d9a47af1-0461-430c-8034-1dcbeb94e124")
 		)
@@ -15034,6 +15169,15 @@
 		)
 		(property "Description" "Unpolarized capacitor, small symbol"
 			(at 66.04 240.03 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C1590"
+			(at 66.04 240.03 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -15175,6 +15319,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C5360816"
+			(at 41.91 88.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "c8151154-39ac-4084-9015-bfdd023ed95d")
 		)
@@ -15237,6 +15390,15 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 142.24 41.91 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C1590"
 			(at 142.24 41.91 0)
 			(effects
 				(font
@@ -15385,6 +15547,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C84256"
+			(at 184.15 130.81 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "155cca8d-cfcd-492b-9d47-2105ed8baa08")
 		)
@@ -15470,7 +15641,7 @@
 		(at 386.08 53.34 270)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(dnp no)
 		(uuid "5191423d-decc-4b9f-8978-c8f844d5e56b")
@@ -15577,6 +15748,15 @@
 		)
 		(property "Description" "Resistor, small symbol"
 			(at 170.18 107.95 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C177341"
+			(at 170.18 107.95 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -15785,6 +15965,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C22356633"
+			(at 144.78 111.76 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "e6127370-8e9f-49c3-895b-48028a13aae6")
 		)
@@ -15870,7 +16059,7 @@
 		(at 151.13 254 270)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(dnp no)
 		(fields_autoplaced yes)
@@ -15937,7 +16126,7 @@
 		(at 151.13 234.95 270)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(dnp no)
 		(fields_autoplaced yes)
@@ -16053,6 +16242,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C5360816"
+			(at 63.5 90.17 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "7b9e8974-fb76-4461-8103-dc3961fae518")
 		)
@@ -16073,7 +16271,7 @@
 		(at 166.37 78.74 270)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(dnp no)
 		(fields_autoplaced yes)
@@ -16205,7 +16403,7 @@
 		(at 151.13 241.3 270)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(dnp no)
 		(fields_autoplaced yes)
@@ -16322,6 +16520,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C22369820"
+			(at 290.83 208.28 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "07948657-32f9-47d2-b070-12849c1340f1")
 		)
@@ -16342,7 +16549,7 @@
 		(at 191.77 241.3 270)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(dnp no)
 		(fields_autoplaced yes)
@@ -16463,7 +16670,7 @@
 			(uuid "0e134696-add7-4c2a-976f-8486af5a429f")
 		)
 		(instances
-			(project ""
+			(project "FIRM"
 				(path "/d3f8a00a-ef65-439d-87f3-373a106a7ddb"
 					(reference "H1")
 					(unit 1)
@@ -16724,6 +16931,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C22369819"
+			(at 170.18 130.81 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "942de31c-9343-48ff-bfe7-0b5b738f8118")
 		)
@@ -16851,6 +17067,15 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 39.37 130.81 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C37474"
 			(at 39.37 130.81 0)
 			(effects
 				(font
@@ -17126,6 +17351,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C177336"
+			(at 44.45 177.8 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "15738b4a-2573-448f-8cd6-781f349a0e0c")
 		)
@@ -17187,6 +17421,15 @@
 		)
 		(property "Description" "Unpolarized capacitor, small symbol"
 			(at 317.5 138.43 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C1691"
+			(at 317.5 138.43 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -17608,7 +17851,7 @@
 		(at 151.13 260.35 270)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(dnp no)
 		(fields_autoplaced yes)
@@ -17723,6 +17966,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C177347"
+			(at 379.73 53.34 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "72a03cfe-ec6e-4145-ae74-037691951785")
 		)
@@ -17743,7 +17995,7 @@
 		(at 151.13 215.9 270)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(dnp no)
 		(fields_autoplaced yes)
@@ -17851,6 +18103,15 @@
 			)
 		)
 		(property "Description" "Resistor"
+			(at 39.37 245.11 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C22356465"
 			(at 39.37 245.11 0)
 			(effects
 				(font
@@ -17987,6 +18248,15 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 73.66 130.81 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C1607"
 			(at 73.66 130.81 0)
 			(effects
 				(font
@@ -18264,6 +18534,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C1592"
+			(at 172.72 41.91 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "a8b43efe-8720-498a-b9f6-e239a463d54b")
 		)
@@ -18324,6 +18603,15 @@
 		)
 		(property "Description" "Unpolarized capacitor, small symbol"
 			(at 327.66 27.94 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C1590"
+			(at 327.66 27.94 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -18401,6 +18689,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C1589"
+			(at 130.81 41.91 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "f3df6bae-ad63-452c-89b1-5e822404f4d8")
 		)
@@ -18468,6 +18765,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C2450425"
+			(at 44.45 121.92 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "06d0936a-900e-47a3-97b7-7b921ee99ee2")
 		)
@@ -18488,7 +18794,7 @@
 		(at 151.13 247.65 270)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(dnp no)
 		(fields_autoplaced yes)
@@ -18555,7 +18861,7 @@
 		(at 151.13 209.55 270)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(dnp no)
 		(fields_autoplaced yes)
@@ -18661,6 +18967,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 345.44 204.47 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C22036153"
 			(at 345.44 204.47 0)
 			(effects
 				(font
@@ -18901,6 +19216,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C37474"
+			(at 50.8 130.81 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "4295850a-6274-4729-80ee-d76947a4c6ba")
 		)
@@ -18962,6 +19286,15 @@
 			)
 		)
 		(property "Description" "Resistor"
+			(at 243.84 222.25 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C177329"
 			(at 243.84 222.25 0)
 			(effects
 				(font
@@ -19036,6 +19369,15 @@
 				)
 			)
 		)
+		(property "LCSC PN " "C3716596"
+			(at 154.94 36.83 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "bbf9104c-7924-4a48-9d3b-d58042b19a50")
 		)
@@ -19095,6 +19437,15 @@
 			)
 		)
 		(property "Description" "ABM8-272-T3"
+			(at 52.07 81.28 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C20625731"
 			(at 52.07 81.28 0)
 			(effects
 				(font
@@ -19184,6 +19535,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C2297"
+			(at 294.64 201.93 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "830684a0-bfb3-4108-ba33-b66334b62982")
 		)
@@ -19250,6 +19610,15 @@
 				)
 			)
 		)
+		(property "LCSC PN " "C82544"
+			(at 252.73 214.63 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "1114c0bc-d0a1-4a07-9cdb-cac6c8d8b6df")
 		)
@@ -19312,6 +19681,15 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 48.26 41.91 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C1590"
 			(at 48.26 41.91 0)
 			(effects
 				(font
@@ -19390,6 +19768,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C1691"
+			(at 261.62 224.79 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "b70860e4-ddeb-4525-8324-fc7a86807f10")
 		)
@@ -19452,6 +19839,15 @@
 			)
 		)
 		(property "Description" "Resistor, small symbol"
+			(at 33.02 177.8 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C177336"
 			(at 33.02 177.8 0)
 			(effects
 				(font
@@ -19545,7 +19941,7 @@
 		(at 191.77 228.6 270)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(dnp no)
 		(fields_autoplaced yes)
@@ -19633,7 +20029,7 @@
 				)
 			)
 		)
-		(property "Footprint" "sensors:BMP581"
+		(property "Footprint" "Package_LGA:ST_HLGA-10_2x2mm_P0.5mm_LayoutBorder3x2y"
 			(at 326.898 27.432 0)
 			(effects
 				(font
@@ -19652,6 +20048,15 @@
 			)
 		)
 		(property "Description" "Bosch Pressure Sensor"
+			(at 327.66 48.26 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C5362283"
 			(at 327.66 48.26 0)
 			(effects
 				(font
@@ -19769,7 +20174,7 @@
 		(at 191.77 209.55 270)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(dnp no)
 		(fields_autoplaced yes)
@@ -20022,6 +20427,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C2293"
+			(at 184.15 107.95 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "d26bfa12-f252-4aec-91f0-9d52da7eb096")
 		)
@@ -20083,6 +20497,15 @@
 		)
 		(property "Description" "Unpolarized capacitor, small symbol"
 			(at 320.04 27.94 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C1590"
+			(at 320.04 27.94 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -20152,6 +20575,15 @@
 			)
 		)
 		(property "Description" "STMicroelectronics Arm Cortex-M4 MCU, 1024KB flash, 192KB RAM, 168 MHz, 1.8-3.6V, 51 GPIO, LQFP64"
+			(at 106.68 96.52 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C15742"
 			(at 106.68 96.52 0)
 			(effects
 				(font
@@ -20366,7 +20798,7 @@
 		(at 151.13 270.51 270)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(dnp no)
 		(fields_autoplaced yes)
@@ -20473,6 +20905,15 @@
 		)
 		(property "Description" "Resistor"
 			(at 373.38 198.12 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C177348"
+			(at 373.38 198.12 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -20632,7 +21073,7 @@
 		(at 166.37 91.44 270)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(dnp no)
 		(fields_autoplaced yes)
@@ -20747,6 +21188,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C5370977"
+			(at 280.67 217.17 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "3"
 			(uuid "60f87ba5-45a1-4430-be3e-891c6e5f3b6d")
 		)
@@ -20816,6 +21266,15 @@
 		)
 		(property "Description" "Resistor"
 			(at 367.03 195.58 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C177348"
+			(at 367.03 195.58 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -20951,6 +21410,15 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor, small symbol"
+			(at 314.96 148.59 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C1592"
 			(at 314.96 148.59 0)
 			(effects
 				(font
@@ -21292,6 +21760,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C1590"
+			(at 73.66 41.91 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "0906e029-7f3c-4214-a0b5-da8ff29cf494")
 		)
@@ -21362,6 +21839,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C1705"
+			(at 22.86 41.91 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "d39033fd-593b-4c7a-ad99-eb4d2c9526c9")
 		)
@@ -21382,7 +21868,7 @@
 		(at 191.77 247.65 270)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(dnp no)
 		(fields_autoplaced yes)
@@ -21632,6 +22118,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C22369820"
+			(at 170.18 119.38 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "5eabb4c2-a30a-4336-8bb0-7cf1a3c002e9")
 		)
@@ -21676,7 +22171,7 @@
 				(hide yes)
 			)
 		)
-		(property "Footprint" "sensors:IC_ICM-45686"
+		(property "Footprint" "ICM-45686:IC_ICM-45686"
 			(at 274.828 68.58 0)
 			(effects
 				(font
@@ -21695,6 +22190,15 @@
 			)
 		)
 		(property "Description" "6 Axis IMU (Acceleration + Gyroscope)"
+			(at 251.46 55.88 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C22459454"
 			(at 251.46 55.88 0)
 			(effects
 				(font
@@ -21877,6 +22381,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C22367042"
+			(at 259.08 201.93 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "3"
 			(uuid "2b56d032-1d08-4685-807b-508b935f75a6")
 		)
@@ -21900,7 +22413,7 @@
 		(at 191.77 222.25 270)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(dnp no)
 		(fields_autoplaced yes)
@@ -21967,7 +22480,7 @@
 		(at 191.77 260.35 270)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(dnp no)
 		(fields_autoplaced yes)
@@ -22034,7 +22547,7 @@
 		(at 166.37 85.09 270)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(dnp no)
 		(fields_autoplaced yes)
@@ -22151,6 +22664,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C1590"
+			(at 254 76.2 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "2"
 			(uuid "96460216-a9e7-4ecf-85ee-6d134c6a7d9d")
 		)
@@ -22213,6 +22735,15 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 62.23 130.81 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C1607"
 			(at 62.23 130.81 0)
 			(effects
 				(font
@@ -22431,6 +22962,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C202111"
+			(at 96.52 196.85 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "7"
 			(uuid "64d355dc-97c7-417b-9ad2-0a787eafcd08")
 		)
@@ -22601,6 +23141,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C1590"
+			(at 60.96 41.91 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "daed7bab-aa00-4e34-9c46-38b2edc3c407")
 		)
@@ -22621,7 +23170,7 @@
 		(at 151.13 276.86 270)
 		(unit 1)
 		(exclude_from_sim no)
-		(in_bom yes)
+		(in_bom no)
 		(on_board yes)
 		(dnp no)
 		(fields_autoplaced yes)
@@ -22737,6 +23286,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C22356465"
+			(at 33.02 255.27 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "9720cd8b-c18d-4e3a-9657-db2fa8bb819a")
 		)
@@ -22797,6 +23355,15 @@
 			)
 		)
 		(property "Description" "Push button switch, generic, two pins"
+			(at 382.27 31.75 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C411883"
 			(at 382.27 31.75 0)
 			(effects
 				(font
@@ -23006,6 +23573,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC PN " "C1620"
+			(at 290.83 222.25 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "9322bd69-4876-4a12-b168-b813ee71507f")
 		)
@@ -23068,6 +23644,15 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor, small symbol"
+			(at 264.16 76.2 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN " "C1590"
 			(at 264.16 76.2 0)
 			(effects
 				(font
