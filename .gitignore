@@ -88,3 +88,7 @@ mx.scratch
 /STM32/build.ninja
 cmake_install.cmake
 /STM32/compile_commands.json
+
+# log files in python-scripts folder
+/python-scripts/*.TXT
+/python-scripts/*.csv

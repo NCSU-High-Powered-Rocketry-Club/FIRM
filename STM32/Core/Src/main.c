@@ -126,6 +126,16 @@ int main(void)
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
 
+    // Enable the trace and debug block in the core so that DWT registers become
+    // accessible. This is required before enabling the DWT cycle counter.
+    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+
+    // Clear the DWT clock cycle counter to start counting from zero.
+    DWT->CYCCNT = 0;
+
+    // Enable the DWT cycle counter itself. Once active, it increments each CPU  
+    // clock cycle so we can use clock cycles as data packet timestamps.
+    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 
     // Set the chip select pins to high, this means that they're not selected.
     // Note: We can't have these in the bmp581/imu init functions, because those somehow mess up
