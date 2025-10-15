@@ -171,15 +171,15 @@ int icm45686_read_data(ICM45686Packet_t* packet) {
     // checking (and resetting) interrupt status
     read_registers(int1_status0, &data_ready, 1);
     if (data_ready & 0x04) { // bit 2 is data_ready flag for UI channel
-        // each packet from the fifo is 20 bytes, with the first 12 being the most significant
-        // bytes and middle bytes of accel/gyro data. The last 3 bytes of the packet are the least
-        // significant bytes of the accel/gyro data. The other bytes in the packet are for
-        // timestamp and temperature data, which we discard.
+        // each packet from the fifo is 20 bytes, with the first being the header, the next 12
+        // being the most significant bytes and middle bytes of accel/gyro data, and the last 3
+        // bytes of the packet are the least significant bytes of the accel/gyro data. The other
+        // bytes in the packet are for timestamp and temperature data, which we discard.
         uint8_t raw_data[20];
         read_registers(fifo_data, raw_data, 20);
 
-        // copying the first 12 bytes (most significant byte and middle byte of accel/gyro data)
-        memcpy(packet, raw_data, 12);
+        // copying 12 bytes after the header byte (most significant byte and middle byte of accel/gyro data)
+        memcpy(packet, &raw_data[1], 12);
         // copying the last 3 bytes (4-bit LSB's for accel/gyro)
         memcpy(&packet->x_vals_lsb, &raw_data[17], 3);
 
