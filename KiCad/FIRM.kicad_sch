@@ -18984,7 +18984,7 @@
 				(hide yes)
 			)
 		)
-		(property "Digikey PN" "1276-1184-1-ND"
+		(property "Digikey PN" "1276-1029-1-ND"
 			(at 172.72 41.91 0)
 			(effects
 				(font
@@ -22120,7 +22120,7 @@
 				(hide yes)
 			)
 		)
-		(property "Digikey PN" "1276-1184-1-ND"
+		(property "Digikey PN" "1276-1029-1-ND"
 			(at 314.96 148.59 0)
 			(effects
 				(font
