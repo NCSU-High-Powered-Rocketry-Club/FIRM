@@ -115,6 +115,13 @@ int mmc5983ma_read_data(MMC5983MAPacket_t* packet, uint8_t* flip) {
         // next two are magnetometer z
         // last byte is 2 bits of LSB x, 2 bits of LSB y, 2 bits of LSB z, and 2 reserved bits
         read_registers(x_out0, (uint8_t*)packet, 7);
+        
+        // must change from offset representation to twos complement by flipping the highest bit
+        // of the msb. This effectively subtracts by half of the resolution (18 bits), centering
+        // the data.
+        packet->mag_x_msb ^= 0x80;
+        packet->mag_y_msb ^= 0x80;
+        packet->mag_z_msb ^= 0x80;
         (*flip)++; // incrememt the flip counter
         return 0;
     }

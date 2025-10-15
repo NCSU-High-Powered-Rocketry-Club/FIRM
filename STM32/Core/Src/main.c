@@ -137,11 +137,6 @@ int main(void)
     // clock cycle so we can use clock cycles as data packet timestamps.
     DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 
-    // Setup the SD card
-    if (logger_init(&hdma_sdio_tx)) {
-        serialPrintStr("Failed to initialized the logger (SD card)");
-        Error_Handler();
-    }
 
     // Set the chip select pins to high, this means that they're not selected.
     // Note: We can't have these in the bmp581/imu init functions, because those somehow mess up
