@@ -50,8 +50,10 @@ static const uint8_t internal_control2 = 0x0B;
 static const uint8_t product_id1 = 0x2F;
 static const uint8_t product_id_val = 0x30; // expected value for the product ID register
 
-// value to divide shifted mag value by to get result in microtesla (SI Units)
-static const float scaling_factor = 131072.0 / 800.0;
+// number of LSBs in the 18-bit data
+static const int data_num_lsb_bits = 131072;
+// value to divide the data by to convert the magnetic field readings to microtesla
+static const float scale_factor = (float)data_num_lsb_bits / 800.0F;
 static const int flip_interval = 10; // number of regular packets between a flipped-sign packet
 
 
@@ -90,16 +92,14 @@ int mmc5983ma_init(I2C_HandleTypeDef* hi2c, uint8_t device_i2c_addr) {
     return 0;
 }
 
-int mmc5983ma_read_data(MagnetometerPacket_t* packet, uint8_t* flip) {
+int mmc5983ma_read_data(MMC5983MAPacket_t* packet, uint8_t* flip) {
     uint8_t data_ready = 0;
     // read status register to make sure data is ready
     read_registers(status, &data_ready, 1);
     if (data_ready & 0x01) { // data ready bit is 0x01
         // manually clear the interrupt signal
         write_register(status, 0b00000001);
-        uint8_t raw_data[7];
-        uint32_t mag_data_binary[3];
-        float mag_data[3];
+
         // every flip_interval read cycles, flip the polarity of the magnetometer values
         // to calibrate the sensor properly
         if (*flip % flip_interval == 0) {
@@ -114,23 +114,18 @@ int mmc5983ma_read_data(MagnetometerPacket_t* packet, uint8_t* flip) {
         // next two are magnetometer y
         // next two are magnetometer z
         // last byte is 2 bits of LSB x, 2 bits of LSB y, 2 bits of LSB z, and 2 reserved bits
-        read_registers(x_out0, raw_data, 7);
-        mag_data_binary[0] =
-            (uint32_t)(raw_data[0] << 10 | raw_data[1] << 2 | (raw_data[6] & 0xC0) >> 6);
-        mag_data_binary[1] =
-            (uint32_t)(raw_data[2] << 10 | raw_data[3] << 2 | (raw_data[6] & 0x30) >> 4);
-        mag_data_binary[2] =
-            (uint32_t)(raw_data[4] << 10 | raw_data[5] << 2 | (raw_data[6] & 0x0C) >> 2);
-        mag_data[0] = (((float)mag_data_binary[0]) - 131072.0) / scaling_factor;
-        mag_data[1] = (((float)mag_data_binary[1]) - 131072.0) / scaling_factor;
-        mag_data[2] = (((float)mag_data_binary[2]) - 131072.0) / scaling_factor;
-        packet->mag_x = mag_data[0];
-        packet->mag_y = mag_data[1];
-        packet->mag_z = mag_data[2];
+        read_registers(x_out0, (uint8_t*)packet, 7);
         (*flip)++; // incrememt the flip counter
         return 0;
     }
     return 1;
+}
+
+float mmc5983ma_get_magnetic_field_scale_factor(void) {
+    // since the sensor has write-only config registers, this means we can't read from it
+    // to determine which FS range we are at. I really don't care enough to set up shadow
+    // register memory for this driver, so i'm just going to return the value we are using.
+    return scale_factor;
 }
 
 int setup_device(bool soft_reset_complete) {
