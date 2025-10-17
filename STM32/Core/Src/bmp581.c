@@ -153,6 +153,12 @@ static int bmp581_setup_device(bool soft_reset_complete) {
     read_registers(chip_status, &result, 1);
     if (result == 0x00) {
         serialPrintStr("\tBMP581 wrongly initialized in I2C mode");
+        uint8_t read_check;
+        read_registers(chip_id, &read_check, 1);
+        if (read_check != 0x50) {
+            serialPrintStr("\tBMP581 chip ID read failed, device is most likely not wired correctly");
+        }
+        
         return 1;
     }
     if (result == 0x01) {
