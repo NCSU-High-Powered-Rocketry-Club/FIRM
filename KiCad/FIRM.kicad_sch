@@ -18984,7 +18984,7 @@
 				(hide yes)
 			)
 		)
-		(property "Digikey PN" "1276-1029-1-ND"
+		(property "Digikey PN" "587-1241-1-ND"
 			(at 172.72 41.91 0)
 			(effects
 				(font
@@ -19865,7 +19865,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Inductor_SMD:L_1206_3216Metric"
+		(property "Footprint" "Inductor_SMD:L_0805_2012Metric"
 			(at 154.94 38.608 90)
 			(effects
 				(font
@@ -22120,7 +22120,7 @@
 				(hide yes)
 			)
 		)
-		(property "Digikey PN" "1276-1029-1-ND"
+		(property "Digikey PN" "587-1241-1-ND"
 			(at 314.96 148.59 0)
 			(effects
 				(font
@@ -23588,7 +23588,7 @@
 		(fields_autoplaced yes)
 		(uuid "e9860bd0-bd7e-44fd-8d6b-97b7bc618e03")
 		(property "Reference" "J2"
-			(at 96.52 173.99 0)
+			(at 96.52 171.45 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -23596,7 +23596,7 @@
 			)
 		)
 		(property "Value" "DM3CS-SF"
-			(at 96.52 176.53 0)
+			(at 96.52 173.99 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -23604,12 +23604,11 @@
 			)
 		)
 		(property "Footprint" "DM3CS-SF:HRS_DM3CS-SF"
-			(at 96.52 196.85 0)
+			(at 96.52 176.53 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify bottom)
 				(hide yes)
 			)
 		)
