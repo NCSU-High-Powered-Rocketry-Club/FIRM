@@ -235,15 +235,16 @@
 		(at 101.5 127.32 90)
 		(descr "THT rectangular pad as test Point, square 1.5mm side length, hole diameter 0.7mm")
 		(tags "test point THT pad rectangle square")
-		(property "Reference" "TP28"
-			(at 0 -1.648 90)
-			(layer "F.SilkS")
+		(property "Reference" "3.3V"
+			(at 0.01 3.11 180)
+			(layer "B.SilkS")
 			(uuid "260683ac-72b7-44d8-86bf-7852712fb1aa")
 			(effects
 				(font
 					(size 1 1)
 					(thickness 0.15)
 				)
+				(justify mirror)
 			)
 		)
 		(property "Value" "3.3V Test Point"
@@ -411,15 +412,16 @@
 		(at 101.5 122.24 -90)
 		(descr "THT rectangular pad as test Point, square 1.5mm side length, hole diameter 0.7mm")
 		(tags "test point THT pad rectangle square")
-		(property "Reference" "TP7"
-			(at 0 -1.648 90)
-			(layer "F.SilkS")
+		(property "Reference" "A3"
+			(at 0 -2.32 180)
+			(layer "B.SilkS")
 			(uuid "8c5b26d0-2190-4e16-819e-c73440c3aab1")
 			(effects
 				(font
 					(size 1 1)
 					(thickness 0.15)
 				)
+				(justify mirror)
 			)
 		)
 		(property "Value" "PA3 Test Point"
@@ -590,6 +592,7 @@
 		(property "Reference" "C26"
 			(at 0 -1.43 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "367c202c-4a89-4e43-af0d-47e85783e64a")
 			(effects
 				(font
@@ -815,6 +818,7 @@
 		(property "Reference" "C27"
 			(at 0 -1.43 90)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "f83c4970-2c46-4676-aa85-9de118e00895")
 			(effects
 				(font
@@ -1037,15 +1041,16 @@
 		(at 133.12 101.5)
 		(descr "THT rectangular pad as test Point, square 1.5mm side length, hole diameter 0.7mm")
 		(tags "test point THT pad rectangle square")
-		(property "Reference" "TP3"
-			(at 0 -1.648 0)
-			(layer "F.SilkS")
+		(property "Reference" "SWCLK"
+			(at 0 3.85 270)
+			(layer "B.SilkS")
 			(uuid "a7f62b96-a0ce-4879-bf42-e79ea459dffa")
 			(effects
 				(font
 					(size 1 1)
 					(thickness 0.15)
 				)
+				(justify mirror)
 			)
 		)
 		(property "Value" "SWCLK Through-Hole"
@@ -1213,15 +1218,16 @@
 		(at 101.5 119.7 90)
 		(descr "THT rectangular pad as test Point, square 1.5mm side length, hole diameter 0.7mm")
 		(tags "test point THT pad rectangle square")
-		(property "Reference" "TP6"
-			(at 0 -1.648 90)
-			(layer "F.SilkS")
+		(property "Reference" "A2"
+			(at 0 2.32 180)
+			(layer "B.SilkS")
 			(uuid "36dfca25-e4b5-4d92-876d-1f293e8ca2ec")
 			(effects
 				(font
 					(size 1 1)
 					(thickness 0.15)
 				)
+				(justify mirror)
 			)
 		)
 		(property "Value" "PA2 Test Point"
@@ -1392,6 +1398,7 @@
 		(property "Reference" "C11"
 			(at 0 -1.43 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "b57e8de9-2475-4ce1-810a-3b7fa1fca308")
 			(effects
 				(font
@@ -1614,15 +1621,16 @@
 		(at 128.04 101.5 -90)
 		(descr "THT rectangular pad as test Point, square 1.5mm side length, hole diameter 0.7mm")
 		(tags "test point THT pad rectangle square")
-		(property "Reference" "TP26"
-			(at 0 -1.648 90)
-			(layer "F.SilkS")
+		(property "Reference" "GND"
+			(at 2.92 0 90)
+			(layer "B.SilkS")
 			(uuid "45127755-b0a5-4e89-bd1f-d14989b3297c")
 			(effects
 				(font
 					(size 1 1)
 					(thickness 0.15)
 				)
+				(justify mirror)
 			)
 		)
 		(property "Value" "GND Test Point"
@@ -1789,7 +1797,7 @@
 		(uuid "290d5f68-a630-4aca-9f20-08d30f9d06a0")
 		(at 119.15 122.6 45)
 		(property "Reference" "U3"
-			(at 0.675 -2.634999 45)
+			(at 0.141421 -2.474874 45)
 			(layer "F.SilkS")
 			(uuid "8aee3a45-d40d-4bcf-93b0-6ab9610e785b")
 			(effects
@@ -2423,15 +2431,16 @@
 		(at 112.8 101.5 -90)
 		(descr "THT rectangular pad as test Point, square 1.5mm side length, hole diameter 0.7mm")
 		(tags "test point THT pad rectangle square")
-		(property "Reference" "TP16"
-			(at 0 -1.648 90)
-			(layer "F.SilkS")
+		(property "Reference" "B8"
+			(at 2.32 0.01 90)
+			(layer "B.SilkS")
 			(uuid "e8e1ab10-ad64-4e7f-9369-85037f6007e3")
 			(effects
 				(font
 					(size 1 1)
 					(thickness 0.15)
 				)
+				(justify mirror)
 			)
 		)
 		(property "Value" "PB8 Test Point"
@@ -2602,6 +2611,7 @@
 		(property "Reference" "R11"
 			(at 0 -1.43 90)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "4abc1b0c-390c-4e4d-8038-d0c4ab84a57d")
 			(effects
 				(font
@@ -2827,6 +2837,7 @@
 		(property "Reference" "R19"
 			(at 0 -1.43 90)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "beb36af1-a1ee-4a61-9eb8-b4864f4de90e")
 			(effects
 				(font
@@ -3052,6 +3063,7 @@
 		(property "Reference" "R9"
 			(at 0 -1.43 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "93efcee9-8144-4b12-b898-f7eb1d8f7780")
 			(effects
 				(font
@@ -3277,6 +3289,7 @@
 		(property "Reference" "C7"
 			(at 0 -1.43 90)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "5f880471-e366-4cbd-8583-fa3df271b0c3")
 			(effects
 				(font
@@ -3500,8 +3513,9 @@
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
 		(tags "resistor")
 		(property "Reference" "R4"
-			(at 0 -1.43 90)
+			(at 2.35 0.1 90)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "98a09d72-13f2-4269-8816-631685fb245d")
 			(effects
 				(font
@@ -3727,6 +3741,7 @@
 		(property "Reference" "R15"
 			(at 0 -1.43 90)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "01174e66-28ca-44de-9765-b309c56ea608")
 			(effects
 				(font
@@ -3952,6 +3967,7 @@
 		(property "Reference" "C22"
 			(at 0 -1.43 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "1f687bc0-d63a-4119-9c85-eb0c9ae4c1aa")
 			(effects
 				(font
@@ -4174,10 +4190,10 @@
 		(at 123.5 136.019)
 		(descr "Through hole straight pin header, 1x02, 2.54mm pitch, single row")
 		(tags "Through hole pin header THT 1x02 2.54mm single row")
-		(property "Reference" "J1"
-			(at 0 -2.38 0)
+		(property "Reference" "BAT"
+			(at 2.5 1.581 90)
 			(layer "F.SilkS")
-			(uuid "04d24786-fab3-4ace-8295-68a0180b35de")
+			(uuid "7ed2776c-eaa8-492b-939d-c861e421af5f")
 			(effects
 				(font
 					(size 1 1)
@@ -4188,7 +4204,7 @@
 		(property "Value" "Conn_01x02_Pin"
 			(at 0 4.92 0)
 			(layer "F.Fab")
-			(uuid "5959127b-9088-434a-9b65-4902ef270ab0")
+			(uuid "aef41f18-ca1b-4434-b72c-22dc0ccbb028")
 			(effects
 				(font
 					(size 1 1)
@@ -4200,7 +4216,7 @@
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "897ad80d-1ec1-4b55-930c-a42790e5b9e8")
+			(uuid "6170a183-65be-429a-a0ca-d168f9bad715")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4212,7 +4228,7 @@
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "64b5d17d-f4e9-4d73-9fa6-f9448c21590a")
+			(uuid "00145bca-4972-4d22-8712-8e3b4a543a85")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4443,6 +4459,7 @@
 		(property "Reference" "U1"
 			(at 0 -7.4 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "e3891b0d-d3dd-4ca1-828e-ac5c293e9f5a")
 			(effects
 				(font
@@ -5494,6 +5511,7 @@
 		(property "Reference" "C18"
 			(at 0 -1.43 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "fab73402-e9c1-42c3-8d35-498d981cf35d")
 			(effects
 				(font
@@ -5716,15 +5734,16 @@
 		(at 101.5 112.08 -90)
 		(descr "THT rectangular pad as test Point, square 1.5mm side length, hole diameter 0.7mm")
 		(tags "test point THT pad rectangle square")
-		(property "Reference" "TP30"
-			(at 0 -1.648 90)
-			(layer "F.SilkS")
+		(property "Reference" "C1"
+			(at 0 -2.14 90)
+			(layer "B.SilkS")
 			(uuid "0ddc4795-1551-456a-9720-625d885fb317")
 			(effects
 				(font
 					(size 1 1)
 					(thickness 0.15)
 				)
+				(justify mirror)
 			)
 		)
 		(property "Value" "PC1 Test Point"
@@ -5895,6 +5914,7 @@
 		(property "Reference" "C4"
 			(at 0 -1.43 90)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "04ed636d-4318-4312-8299-11635b07bff0")
 			(effects
 				(font
@@ -6118,7 +6138,7 @@
 		(descr "Inductor SMD 1206 (3216 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 80, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
 		(tags "inductor")
 		(property "Reference" "FB1"
-			(at 0 -1.9 90)
+			(at -3 -0.15 180)
 			(layer "F.SilkS")
 			(uuid "2ada6b9e-fa55-46df-a529-2220c232953a")
 			(effects
@@ -6345,6 +6365,7 @@
 		(property "Reference" "R18"
 			(at 0 -1.43 90)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "28287b61-8597-4855-8d19-d933357c9438")
 			(effects
 				(font
@@ -6570,6 +6591,7 @@
 		(property "Reference" "C9"
 			(at 0 -1.43 90)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "f54335e3-e8b1-4103-a16b-a4ccc57d12e5")
 			(effects
 				(font
@@ -6792,15 +6814,16 @@
 		(at 101.5 137.48 90)
 		(descr "THT rectangular pad as test Point, square 1.5mm side length, hole diameter 0.7mm")
 		(tags "test point THT pad rectangle square")
-		(property "Reference" "TP18"
-			(at 0 -1.648 90)
-			(layer "F.SilkS")
+		(property "Reference" "B11"
+			(at -0.02 2.86 180)
+			(layer "B.SilkS")
 			(uuid "8b43b4ff-c879-4aa2-976d-16ffe4d87869")
 			(effects
 				(font
 					(size 1 1)
-					(thickness 0.15)
+					(thickness 0.153)
 				)
+				(justify mirror)
 			)
 		)
 		(property "Value" "PB11 Test Point"
@@ -6968,21 +6991,22 @@
 		(at 101.5 117.16 90)
 		(descr "THT rectangular pad as test Point, square 1.5mm side length, hole diameter 0.7mm")
 		(tags "test point THT pad rectangle square")
-		(property "Reference" "TP5"
-			(at 0 -1.648 90)
-			(layer "F.SilkS")
-			(uuid "3d9aba35-877e-4a06-ad62-dcf47e204b59")
+		(property "Reference" "A1"
+			(at 0 2.27 0)
+			(layer "B.SilkS")
+			(uuid "6d448e98-750b-4632-961e-858108a52ba7")
 			(effects
 				(font
 					(size 1 1)
 					(thickness 0.15)
 				)
+				(justify mirror)
 			)
 		)
 		(property "Value" "PA1 Test Point"
 			(at 0 1.75 90)
 			(layer "F.Fab")
-			(uuid "17f0a10d-4533-4ed8-a420-550d92623c0c")
+			(uuid "d90bc32d-bf8e-4558-8e17-f37f7d324757")
 			(effects
 				(font
 					(size 1 1)
@@ -6995,7 +7019,7 @@
 			(unlocked yes)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "2f92342a-9c6e-4512-9165-3bcdc7cd4b02")
+			(uuid "d95ad730-a9af-4510-bb02-ee44ec71aaf5")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7008,7 +7032,7 @@
 			(unlocked yes)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "2fe7cd58-c766-4b27-8f61-58dd1da69aba")
+			(uuid "8c4e041c-3878-4deb-8a66-f3c3805b424a")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7144,15 +7168,16 @@
 		(at 101.5 134.94 90)
 		(descr "THT rectangular pad as test Point, square 1.5mm side length, hole diameter 0.7mm")
 		(tags "test point THT pad rectangle square")
-		(property "Reference" "TP17"
-			(at 0 -1.648 90)
-			(layer "F.SilkS")
+		(property "Reference" "B10"
+			(at 0.02 2.87 180)
+			(layer "B.SilkS")
 			(uuid "f39c6dc3-4409-41a4-9d7c-14aee08092fe")
 			(effects
 				(font
 					(size 1 1)
 					(thickness 0.15)
 				)
+				(justify mirror)
 			)
 		)
 		(property "Value" "PB10 Test Point"
@@ -7320,15 +7345,16 @@
 		(at 107.72 101.5 180)
 		(descr "THT rectangular pad as test Point, square 1.5mm side length, hole diameter 0.7mm")
 		(tags "test point THT pad rectangle square")
-		(property "Reference" "TP1"
-			(at 0 -1.648 0)
-			(layer "F.SilkS")
+		(property "Reference" "GND"
+			(at 0 -2.94 90)
+			(layer "B.SilkS")
 			(uuid "7dffbff0-8214-46a8-863e-45a65969c58b")
 			(effects
 				(font
 					(size 1 1)
 					(thickness 0.15)
 				)
+				(justify mirror)
 			)
 		)
 		(property "Value" "GND Through-Hole"
@@ -7499,6 +7525,7 @@
 		(property "Reference" "C20"
 			(at -2.3 -1.43 90)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "cf58d56c-9567-4c82-b524-73ab403fe80a")
 			(effects
 				(font
@@ -7721,15 +7748,16 @@
 		(at 101.5 129.86 -90)
 		(descr "THT rectangular pad as test Point, square 1.5mm side length, hole diameter 0.7mm")
 		(tags "test point THT pad rectangle square")
-		(property "Reference" "TP8"
-			(at 0 -1.648 90)
-			(layer "F.SilkS")
+		(property "Reference" "A4"
+			(at 0 -2.37 0)
+			(layer "B.SilkS")
 			(uuid "f8a78b9d-918a-4d44-84db-6173fb1ba010")
 			(effects
 				(font
 					(size 1 1)
 					(thickness 0.15)
 				)
+				(justify mirror)
 			)
 		)
 		(property "Value" "PA4 Test Point"
@@ -7897,15 +7925,16 @@
 		(at 101.5 109.54 -90)
 		(descr "THT rectangular pad as test Point, square 1.5mm side length, hole diameter 0.7mm")
 		(tags "test point THT pad rectangle square")
-		(property "Reference" "TP29"
-			(at 0 -1.648 90)
-			(layer "F.SilkS")
+		(property "Reference" "C0"
+			(at -0.01 -2.4 180)
+			(layer "B.SilkS")
 			(uuid "df3307ce-ccb2-4abb-9e05-3e6f1cd316e0")
 			(effects
 				(font
 					(size 1 1)
 					(thickness 0.15)
 				)
+				(justify mirror)
 			)
 		)
 		(property "Value" "PC0 Test Point"
@@ -8076,6 +8105,7 @@
 		(property "Reference" "C10"
 			(at 0 -1.43 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "51d12d9a-b609-4c72-a0d2-0218d0a3b994")
 			(effects
 				(font
@@ -8298,15 +8328,16 @@
 		(at 115.34 101.5 90)
 		(descr "THT rectangular pad as test Point, square 1.5mm side length, hole diameter 0.7mm")
 		(tags "test point THT pad rectangle square")
-		(property "Reference" "TP14"
-			(at 0 -1.648 90)
-			(layer "F.SilkS")
+		(property "Reference" "B4"
+			(at -2.35 0.01 90)
+			(layer "B.SilkS")
 			(uuid "680d6308-a55a-4489-a5ca-920fc687bf5c")
 			(effects
 				(font
 					(size 1 1)
 					(thickness 0.15)
 				)
+				(justify mirror)
 			)
 		)
 		(property "Value" "PB4 Test Point"
@@ -8476,6 +8507,7 @@
 			(at 0 3.58 90)
 			(unlocked yes)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "f91f561e-e6b8-4909-9c68-72c24887c314")
 			(effects
 				(font
@@ -8745,6 +8777,7 @@
 		(property "Reference" "R22"
 			(at 0 -1.43 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "a07ad593-766e-480b-9792-9a82494b4245")
 			(effects
 				(font
@@ -8968,7 +9001,7 @@
 		(descr "LED SMD 0805 (2012 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: https://docs.google.com/spreadsheets/d/1BsfQQcO9C6DZCsRaXUlFlo91Tg2WpOkGARC1WS5S8t0/edit?usp=sharing), generated with kicad-footprint-generator")
 		(tags "LED")
 		(property "Reference" "D4"
-			(at 0 -1.65 90)
+			(at -2.75 0 90)
 			(layer "F.SilkS")
 			(uuid "79163f33-559c-4840-887b-53ad560027d4")
 			(effects
@@ -9228,8 +9261,9 @@
 		(descr "Capacitor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
 		(tags "capacitor")
 		(property "Reference" "C1"
-			(at 0 -1.43 90)
+			(at 2.5 0 90)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "5c8d4dbc-1be6-447b-9945-b538c6efeda6")
 			(effects
 				(font
@@ -9455,6 +9489,7 @@
 		(property "Reference" "R3"
 			(at 0 -1.43 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "85bbfa2f-0c25-48a0-96d5-4e31ec6324bc")
 			(effects
 				(font
@@ -9677,15 +9712,16 @@
 		(at 101.5 124.78 90)
 		(descr "THT rectangular pad as test Point, square 1.5mm side length, hole diameter 0.7mm")
 		(tags "test point THT pad rectangle square")
-		(property "Reference" "TP27"
-			(at 0 -2.54 90)
-			(layer "F.SilkS")
+		(property "Reference" "GND"
+			(at 0.01 2.94 0)
+			(layer "B.SilkS")
 			(uuid "30676975-2026-456f-90fe-0c9f5236259a")
 			(effects
 				(font
 					(size 1 1)
 					(thickness 0.15)
 				)
+				(justify mirror)
 			)
 		)
 		(property "Value" "GND Test Point"
@@ -9856,6 +9892,7 @@
 		(property "Reference" "C24"
 			(at 0 -1.43 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "470f2a3c-4746-435d-8a66-5d06879720aa")
 			(effects
 				(font
@@ -10078,15 +10115,16 @@
 		(at 130.58 101.5 180)
 		(descr "THT rectangular pad as test Point, square 1.5mm side length, hole diameter 0.7mm")
 		(tags "test point THT pad rectangle square")
-		(property "Reference" "TP2"
-			(at 0 -1.648 0)
-			(layer "F.SilkS")
+		(property "Reference" "SWDIO"
+			(at -0.04 -3.7 270)
+			(layer "B.SilkS")
 			(uuid "d9e935df-9521-47cd-b4d5-23c56111f554")
 			(effects
 				(font
 					(size 1 1)
 					(thickness 0.15)
 				)
+				(justify mirror)
 			)
 		)
 		(property "Value" "SWDIO Through-Hole"
@@ -10255,8 +10293,9 @@
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
 		(tags "resistor")
 		(property "Reference" "R2"
-			(at 0 -1.43 90)
+			(at 2.35 0.1 90)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "df208649-25dd-4967-99bc-b788c47baf1b")
 			(effects
 				(font
@@ -10482,6 +10521,7 @@
 		(property "Reference" "H2"
 			(at 0 -3.15 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "b91cbd2d-8c6f-49f6-a76b-2372c72064bd")
 			(effects
 				(font
@@ -10695,6 +10735,7 @@
 		(property "Reference" "C16"
 			(at 0 -1.43 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "1d480203-5816-462f-97eb-504019852952")
 			(effects
 				(font
@@ -10920,6 +10961,7 @@
 		(property "Reference" "R7"
 			(at 0 -1.43 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "600ffa3f-9ad5-4d8d-8277-9d09c5179f01")
 			(effects
 				(font
@@ -11142,15 +11184,16 @@
 		(at 101.5 114.62 90)
 		(descr "THT rectangular pad as test Point, square 1.5mm side length, hole diameter 0.7mm")
 		(tags "test point THT pad rectangle square")
-		(property "Reference" "TP4"
-			(at 0 -1.648 90)
-			(layer "F.SilkS")
+		(property "Reference" "A0"
+			(at -0.02 2.31 180)
+			(layer "B.SilkS")
 			(uuid "609d57a0-d7c7-4ff4-85f9-10801c8a7a82")
 			(effects
 				(font
 					(size 1 1)
 					(thickness 0.15)
 				)
+				(justify mirror)
 			)
 		)
 		(property "Value" "PA0 Test Point"
@@ -11319,8 +11362,9 @@
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
 		(tags "resistor")
 		(property "Reference" "R20"
-			(at 0 -1.43 90)
+			(at 0 1.25 90)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "77978bbb-8427-4616-bdc2-389091d69162")
 			(effects
 				(font
@@ -11546,6 +11590,7 @@
 		(property "Reference" "C14"
 			(at 0 -1.43 90)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "40049315-69d4-47b1-ab34-3be1533ed1ce")
 			(effects
 				(font
@@ -11768,15 +11813,16 @@
 		(at 117.88 101.5 -90)
 		(descr "THT rectangular pad as test Point, square 1.5mm side length, hole diameter 0.7mm")
 		(tags "test point THT pad rectangle square")
-		(property "Reference" "TP12"
-			(at 0 -1.648 90)
-			(layer "F.SilkS")
+		(property "Reference" "A15"
+			(at 2.86 -0.01 90)
+			(layer "B.SilkS")
 			(uuid "d56129ac-5714-4d2d-a69c-e1cfc5a92b76")
 			(effects
 				(font
 					(size 1 1)
 					(thickness 0.15)
 				)
+				(justify mirror)
 			)
 		)
 		(property "Value" "PA15 Test Point"
@@ -11947,6 +11993,7 @@
 		(property "Reference" "C21"
 			(at 0 -1.43 90)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "6eb0fe34-d123-4456-b45c-da93c74507e5")
 			(effects
 				(font
@@ -12172,6 +12219,7 @@
 		(property "Reference" "R12"
 			(at 0 -1.43 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "007a53f6-f9dc-408e-9b8c-8afb5bf1caae")
 			(effects
 				(font
@@ -12395,8 +12443,9 @@
 		(descr "Capacitor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
 		(tags "capacitor")
 		(property "Reference" "C6"
-			(at 0 -1.43 90)
+			(at 0 1.6 90)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "2354af8d-5783-4bd0-8083-816c267874e3")
 			(effects
 				(font
@@ -12620,7 +12669,7 @@
 		(descr "ST  HLGA, 10 Pin (https://www.st.com/resource/en/datasheet/lps22hh.pdf#page=55), generated with kicad-footprint-generator ipc_noLead_generator.py")
 		(tags "ST HLGA NoLead")
 		(property "Reference" "U5"
-			(at 0 -1.95 0)
+			(at 2.35 0 0)
 			(layer "F.SilkS")
 			(uuid "4a447177-e8cb-495a-8fa5-9c0b5cc51fd3")
 			(effects
@@ -12933,6 +12982,7 @@
 		(property "Reference" "C3"
 			(at 0 -1.43 90)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "d7485e18-237d-49dc-81bc-cfad08b1e106")
 			(effects
 				(font
@@ -13158,6 +13208,7 @@
 		(property "Reference" "C19"
 			(at 0 -1.43 90)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "93e974f6-47d7-472a-8abd-bf2cc5e46110")
 			(effects
 				(font
@@ -13383,6 +13434,7 @@
 		(property "Reference" "C8"
 			(at 0 -1.43 90)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "1d0d74e0-6ddf-4289-9f00-03bd98820d9f")
 			(effects
 				(font
@@ -13606,8 +13658,9 @@
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
 		(tags "resistor")
 		(property "Reference" "R1"
-			(at 0 -1.43 90)
+			(at 2.5 0.1 90)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "3ad3cff5-272c-4feb-aac5-e3b680b66cf0")
 			(effects
 				(font
@@ -13830,15 +13883,16 @@
 		(at 101.5 132.4 90)
 		(descr "THT rectangular pad as test Point, square 1.5mm side length, hole diameter 0.7mm")
 		(tags "test point THT pad rectangle square")
-		(property "Reference" "TP9"
-			(at 0 -2.794 90)
-			(layer "F.SilkS")
+		(property "Reference" "A8"
+			(at 0 2.34 180)
+			(layer "B.SilkS")
 			(uuid "2e72e27c-bacc-4d2a-8c72-99a163f9cef9")
 			(effects
 				(font
 					(size 1 1)
 					(thickness 0.15)
 				)
+				(justify mirror)
 			)
 		)
 		(property "Value" "PA8 Test Point"
@@ -14007,8 +14061,9 @@
 		(descr "Capacitor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
 		(tags "capacitor")
 		(property "Reference" "C17"
-			(at 0 -1.43 0)
+			(at 0 1.5 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "20ad6ca8-f3cb-45b2-b79f-af01ef33b03d")
 			(effects
 				(font
@@ -14231,15 +14286,16 @@
 		(at 110.26 101.5 -90)
 		(descr "THT rectangular pad as test Point, square 1.5mm side length, hole diameter 0.7mm")
 		(tags "test point THT pad rectangle square")
-		(property "Reference" "TP15"
-			(at 0 -1.648 90)
-			(layer "F.SilkS")
+		(property "Reference" "B5"
+			(at 2.33 -0.02 90)
+			(layer "B.SilkS")
 			(uuid "94afaf86-ab65-4c21-8311-c37400e026cc")
 			(effects
 				(font
 					(size 1 1)
 					(thickness 0.15)
 				)
+				(justify mirror)
 			)
 		)
 		(property "Value" "PB5 Test Point"
@@ -14408,9 +14464,9 @@
 		(descr "SOD-123")
 		(tags "SOD-123")
 		(property "Reference" "D1"
-			(at 0 -2 0)
+			(at 0 -1.85 0)
 			(layer "F.SilkS")
-			(uuid "0d832a30-54b5-49f3-bbe8-fcb9fa4bddf1")
+			(uuid "78d52f91-68c5-4f0d-9266-1fa230ef3014")
 			(effects
 				(font
 					(size 1 1)
@@ -14421,7 +14477,7 @@
 		(property "Value" "D_Schottky"
 			(at 0 2.1 0)
 			(layer "F.Fab")
-			(uuid "ad405cb2-527f-409f-b24e-5846f88eea4c")
+			(uuid "eff49cc4-17f5-4faa-8b57-c6e627d00426")
 			(effects
 				(font
 					(size 1 1)
@@ -14434,7 +14490,7 @@
 			(unlocked yes)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "c294bee6-006b-49cf-a014-0f1e029110ff")
+			(uuid "630629ea-6b7c-443d-b90a-830e163fa632")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -14447,7 +14503,7 @@
 			(unlocked yes)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "fae2c416-91d0-4782-b2df-74b19a3f538a")
+			(uuid "f4a8959c-1ba3-41d4-bc9b-f32ba75bb231")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -14717,7 +14773,7 @@
 		(descr "SOT, 5 Pin (JEDEC MO-178 Var AA https://www.jedec.org/document_search?search_api_views_fulltext=MO-178), generated with kicad-footprint-generator ipc_gullwing_generator.py")
 		(tags "SOT TO_SOT_SMD")
 		(property "Reference" "U2"
-			(at 0 -2.4 90)
+			(at -2.8 -0.45 180)
 			(layer "F.SilkS")
 			(uuid "840a5d06-d161-44a5-a362-c38f2adcf4a1")
 			(effects
@@ -15056,13 +15112,13 @@
 		(uuid "a719bed0-dd95-4d4f-97f6-cdff401d5f49")
 		(at 106.5 130.5 90)
 		(property "Reference" "U4"
-			(at -0.226 -2.1868 90)
+			(at 0 -2.75 90)
 			(layer "F.SilkS")
 			(uuid "377bb87e-a977-401f-9648-f5a96b971fe1")
 			(effects
 				(font
-					(size 0.48 0.48)
-					(thickness 0.12)
+					(size 1 1)
+					(thickness 0.15)
 				)
 			)
 		)
@@ -15495,6 +15551,7 @@
 		(property "Reference" "R8"
 			(at 0 -1.43 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "a05c836c-1904-407b-a4f2-b8d5719b1c43")
 			(effects
 				(font
@@ -15720,6 +15777,7 @@
 		(property "Reference" "C23"
 			(at 0 -1.43 90)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "45aca494-5ba4-43e1-9f4f-16e547e7e3bd")
 			(effects
 				(font
@@ -15945,6 +16003,7 @@
 		(property "Reference" "C15"
 			(at 0 -1.43 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "dcaec9aa-a1c8-4ea0-91d3-9244a98b87c1")
 			(effects
 				(font
@@ -16167,15 +16226,16 @@
 		(at 101.5 107 -90)
 		(descr "THT rectangular pad as test Point, square 1.5mm side length, hole diameter 0.7mm")
 		(tags "test point THT pad rectangle square")
-		(property "Reference" "TP24"
-			(at 0 -1.648 90)
-			(layer "F.SilkS")
+		(property "Reference" "C13"
+			(at 0.01 -2.87 0)
+			(layer "B.SilkS")
 			(uuid "d31af5d1-1b54-4ad7-85a6-f2159ca4ccd5")
 			(effects
 				(font
 					(size 1 1)
 					(thickness 0.15)
 				)
+				(justify mirror)
 			)
 		)
 		(property "Value" "PC13 Test Point"
@@ -16346,6 +16406,7 @@
 		(property "Reference" "H3"
 			(at 0 -3.15 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "915edd85-eff5-4cbe-bbb7-a551e7ffc1f8")
 			(effects
 				(font
@@ -16559,6 +16620,7 @@
 		(property "Reference" "R14"
 			(at 0 -1.43 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "0af7b6ac-ef89-43ce-86f2-295b4b40d94f")
 			(effects
 				(font
@@ -16784,6 +16846,7 @@
 		(property "Reference" "R13"
 			(at 0 -1.43 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "544a4cff-3045-40f1-b104-70b239c1cf84")
 			(effects
 				(font
@@ -17009,6 +17072,7 @@
 		(property "Reference" "C12"
 			(at 0 -1.43 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "7c86dd13-804e-4885-8dab-d5a591d9dc11")
 			(effects
 				(font
@@ -17232,7 +17296,7 @@
 		(descr "LED SMD 0805 (2012 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: https://docs.google.com/spreadsheets/d/1BsfQQcO9C6DZCsRaXUlFlo91Tg2WpOkGARC1WS5S8t0/edit?usp=sharing), generated with kicad-footprint-generator")
 		(tags "LED")
 		(property "Reference" "D3"
-			(at 0 -1.65 90)
+			(at -2.75 0 90)
 			(layer "F.SilkS")
 			(uuid "a78c8297-7f35-4479-9863-5d6ba6e17266")
 			(effects
@@ -17491,15 +17555,16 @@
 		(at 125.5 101.5 -90)
 		(descr "THT rectangular pad as test Point, square 1.5mm side length, hole diameter 0.7mm")
 		(tags "test point THT pad rectangle square")
-		(property "Reference" "TP11"
-			(at 0 -1.648 90)
-			(layer "F.SilkS")
+		(property "Reference" "A10"
+			(at 2.88 -0.01 90)
+			(layer "B.SilkS")
 			(uuid "58b2016b-f940-43d2-8cec-5d2447af2de3")
 			(effects
 				(font
 					(size 1 1)
 					(thickness 0.15)
 				)
+				(justify mirror)
 			)
 		)
 		(property "Value" "PA10 Test Point"
@@ -17670,6 +17735,7 @@
 		(property "Reference" "C2"
 			(at 0 -1.43 90)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "ef458ecd-b271-4b0c-b45c-70ae015d3f46")
 			(effects
 				(font
@@ -18155,6 +18221,7 @@
 		(property "Reference" "R10"
 			(at 0 -1.43 90)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "e1939b9e-8174-4db4-9dcc-b074f8c6a7a6")
 			(effects
 				(font
@@ -18380,6 +18447,7 @@
 		(property "Reference" "R5"
 			(at 0 -1.43 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "4620d539-84df-4a68-8328-35c34c95c9aa")
 			(effects
 				(font
@@ -18603,7 +18671,7 @@
 		(descr "SMD Crystal FC-135 https://support.epson.biz/td/api/doc_check.php?dl=brief_FC-135R_en.pdf")
 		(tags "SMD SMT Crystal")
 		(property "Reference" "X2"
-			(at 0 -2 90)
+			(at 2.7 0.05 180)
 			(layer "F.SilkS")
 			(uuid "4a77c092-ea59-4416-8c00-dd5816095dce")
 			(effects
@@ -18830,7 +18898,7 @@
 		(descr "LED SMD 0805 (2012 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: https://docs.google.com/spreadsheets/d/1BsfQQcO9C6DZCsRaXUlFlo91Tg2WpOkGARC1WS5S8t0/edit?usp=sharing), generated with kicad-footprint-generator")
 		(tags "LED")
 		(property "Reference" "D2"
-			(at 0 -1.65 90)
+			(at -2.75 0 90)
 			(layer "F.SilkS")
 			(uuid "daa3d689-2b04-4f43-90f8-3db0b957098a")
 			(effects
@@ -19092,6 +19160,7 @@
 		(property "Reference" "C13"
 			(at 0 -1.43 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "db0f2d61-cfc4-471a-92b1-fa5f5c7ebef2")
 			(effects
 				(font
@@ -19314,7 +19383,7 @@
 		(at 118.15 111.1 90)
 		(descr "Abracon ABM8G, Miniature Ceramic Crystal, 3.2x2.5mm package, SMD, generated with kicad-footprint-generator make_crystal.py, http://www.abracon.com/Resonators/ABM8G.pdf")
 		(property "Reference" "Y1"
-			(at 0 -2.45 90)
+			(at -1.3 -2.4 90)
 			(layer "F.SilkS")
 			(uuid "28c4de00-d5f2-46e7-9225-fda8973a9741")
 			(effects
@@ -19506,6 +19575,7 @@
 		(property "Reference" "H1"
 			(at 0 -3.15 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "79b4d4ac-fd6e-4a79-9a62-fb8e9ea4413e")
 			(effects
 				(font
@@ -19719,6 +19789,7 @@
 		(property "Reference" "R6"
 			(at 0 -1.43 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "1ad7ee77-542a-42b1-ad4b-2b543cb171fa")
 			(effects
 				(font
@@ -19941,15 +20012,16 @@
 		(at 122.96 101.5 90)
 		(descr "THT rectangular pad as test Point, square 1.5mm side length, hole diameter 0.7mm")
 		(tags "test point THT pad rectangle square")
-		(property "Reference" "TP10"
-			(at 0 -1.648 90)
-			(layer "F.SilkS")
+		(property "Reference" "A9"
+			(at -2.39 0 90)
+			(layer "B.SilkS")
 			(uuid "2383577a-6e18-48fe-aef8-28caf5a1f150")
 			(effects
 				(font
 					(size 1 1)
 					(thickness 0.15)
 				)
+				(justify mirror)
 			)
 		)
 		(property "Value" "PA9 Test Point"
@@ -20120,6 +20192,7 @@
 		(property "Reference" "C5"
 			(at 0 -1.43 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "46253bd2-a86a-46d0-b196-c6ba47544702")
 			(effects
 				(font
@@ -20342,15 +20415,16 @@
 		(at 120.42 101.5 90)
 		(descr "THT rectangular pad as test Point, square 1.5mm side length, hole diameter 0.7mm")
 		(tags "test point THT pad rectangle square")
-		(property "Reference" "TP13"
-			(at 0 -2.54 90)
-			(layer "F.SilkS")
+		(property "Reference" "B3"
+			(at -2.35 0 90)
+			(layer "B.SilkS")
 			(uuid "cb630f5c-887c-422c-bd1d-afca06a3e301")
 			(effects
 				(font
 					(size 1 1)
 					(thickness 0.15)
 				)
+				(justify mirror)
 			)
 		)
 		(property "Value" "PB3 Test Point"
@@ -20521,6 +20595,7 @@
 		(property "Reference" "C25"
 			(at 0 -1.43 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "cf521828-1310-460e-aa97-2ed3ebb68f2d")
 			(effects
 				(font
@@ -20744,7 +20819,7 @@
 		(descr "SOT, 3 Pin (JEDEC TO-236 Var AB https://www.jedec.org/document_search?search_api_views_fulltext=TO-236), generated with kicad-footprint-generator ipc_gullwing_generator.py")
 		(tags "SOT TO_SOT_SMD")
 		(property "Reference" "Q2"
-			(at 0 -2.4 90)
+			(at 0 -2.4 270)
 			(layer "F.SilkS")
 			(uuid "c662a86d-ef2e-448a-9a33-4e9c6ff15bfc")
 			(effects
@@ -21064,8 +21139,8 @@
 		(at 110.4 107.454 -90)
 		(descr "C&K Components, PTS 810 Series, Microminiature SMT Top Actuated, http://www.ckswitches.com/media/1476/pts810.pdf")
 		(tags "SPST Button Switch")
-		(property "Reference" "SW1"
-			(at 0 -2.6 90)
+		(property "Reference" "RST"
+			(at -3.454 0.15 180)
 			(layer "F.SilkS")
 			(uuid "efb2386b-05d1-4ca5-bd7c-996936d85719")
 			(effects
@@ -21413,6 +21488,7 @@
 		(property "Reference" "R21"
 			(at 0 -1.43 0)
 			(layer "F.SilkS")
+			(hide yes)
 			(uuid "e59b216d-7b5c-420c-a7ff-61bc28bc5e10")
 			(effects
 				(font
@@ -21635,8 +21711,8 @@
 		(at 110.75 132.75)
 		(descr "SMD Solder Jumper, 1x1.5mm, rounded Pads, 0.3mm gap, open")
 		(tags "solder jumper open")
-		(property "Reference" "JP3"
-			(at 0 1.8 0)
+		(property "Reference" "SCL"
+			(at 3.25 0 0)
 			(layer "B.SilkS")
 			(uuid "da6a054c-4bb3-472c-9cb6-83a4ebeda945")
 			(effects
@@ -21922,8 +21998,8 @@
 		(at 110 136.5 -90)
 		(descr "SMD Solder Jumper, 1x1.5mm, rounded Pads, 0.3mm gap, open")
 		(tags "solder jumper open")
-		(property "Reference" "JP2"
-			(at 0 1.8 90)
+		(property "Reference" "MOSI"
+			(at 0 -2.25 90)
 			(layer "B.SilkS")
 			(uuid "4867feaa-b06b-48b6-b842-07367221f205")
 			(effects
@@ -22209,8 +22285,8 @@
 		(at 110.75 129.75)
 		(descr "SMD Solder Jumper, 1x1.5mm, rounded Pads, 0.3mm gap, open")
 		(tags "solder jumper open")
-		(property "Reference" "JP4"
-			(at 0 1.8 0)
+		(property "Reference" "SCK"
+			(at 3.25 0 0)
 			(layer "B.SilkS")
 			(uuid "38d25932-a67c-424c-9397-4d352504dba5")
 			(effects
@@ -22914,8 +22990,8 @@
 		(at 110.4 107.1)
 		(descr "SMD rectangular pad as test Point, square 1.5mm side length")
 		(tags "test point SMD pad rectangle square")
-		(property "Reference" "TP25"
-			(at 0 1.648 180)
+		(property "Reference" "BOOT0"
+			(at 3.64 -0.02 180)
 			(layer "B.SilkS")
 			(uuid "c53b0fbd-c0f6-4b24-a2f0-f7f2556b15bc")
 			(effects
@@ -23091,11 +23167,11 @@
 	(footprint "Jumper:SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm"
 		(layer "B.Cu")
 		(uuid "9e261acc-d31e-40ae-92ed-ef8755920f40")
-		(at 106.5 136.5 -90)
+		(at 107 136.5 -90)
 		(descr "SMD Solder Jumper, 1x1.5mm, rounded Pads, 0.3mm gap, open")
 		(tags "solder jumper open")
-		(property "Reference" "JP1"
-			(at 0 1.8 90)
+		(property "Reference" "SDA"
+			(at 2.5 0 180)
 			(layer "B.SilkS")
 			(uuid "866d71ee-a9d2-4952-963c-84efb354a65f")
 			(effects
@@ -23379,13 +23455,13 @@
 		(layer "B.Cu")
 		(uuid "b55dac59-67ca-4d16-9fbd-cadb02ef5626")
 		(at 112.75 116.55 90)
-		(property "Reference" "J2"
-			(at -3.840295 8.669495 90)
+		(property "Reference" "U5"
+			(at 0 8.39 90)
 			(layer "B.SilkS")
 			(uuid "37777b5f-93d3-42ad-86f2-0f2367b94066")
 			(effects
 				(font
-					(size 1.003992 1.003992)
+					(size 1 1)
 					(thickness 0.15)
 				)
 				(justify mirror)
@@ -24237,6 +24313,18 @@
 		)
 		(layer "Edge.Cuts")
 		(uuid "af85ae4e-4d24-424b-ad1f-20c0508c1987")
+	)
+	(gr_text "You Firmed\nUp Yet?"
+		(at 127.15 115.15 0)
+		(layer "F.SilkS")
+		(uuid "006b9d3a-3254-4ed4-a782-7f9188c093e1")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+			(justify bottom)
+		)
 	)
 	(segment
 		(start 137.325 115.625)
@@ -25439,6 +25527,14 @@
 		(uuid "26d533c7-b89d-4b46-8d4c-c92e9cbd7aa0")
 	)
 	(segment
+		(start 105.75 134)
+		(end 106.225 134)
+		(width 0.1)
+		(layer "F.Cu")
+		(net 2)
+		(uuid "29c19d09-88cf-4529-9824-2ea567a856ff")
+	)
+	(segment
 		(start 127.875 138.35)
 		(end 123.709 138.35)
 		(width 0.1)
@@ -25517,14 +25613,6 @@
 		(layer "F.Cu")
 		(net 2)
 		(uuid "446b6a84-ccd5-49a2-8fbd-c68722331d2f")
-	)
-	(segment
-		(start 105.95 134)
-		(end 105.5 134.45)
-		(width 0.1)
-		(layer "F.Cu")
-		(net 2)
-		(uuid "4600c240-89d6-4821-80e0-3c997f2ea268")
 	)
 	(segment
 		(start 116.3125 108.1625)
@@ -25645,14 +25733,6 @@
 		(layer "F.Cu")
 		(net 2)
 		(uuid "675807eb-bb8b-4c83-abe8-a4722b23401d")
-	)
-	(segment
-		(start 106.225 134)
-		(end 105.95 134)
-		(width 0.1)
-		(layer "F.Cu")
-		(net 2)
-		(uuid "67af4e50-279b-437f-ae86-36102b77ddfc")
 	)
 	(segment
 		(start 135.725 131.1)
@@ -25813,6 +25893,14 @@
 		(layer "F.Cu")
 		(net 2)
 		(uuid "a037db37-b405-44c1-b32d-42aa8bc64e65")
+	)
+	(segment
+		(start 105.5 133.75)
+		(end 105.75 134)
+		(width 0.1)
+		(layer "F.Cu")
+		(net 2)
+		(uuid "a0b7847d-39c9-41b3-b3ba-45492bb48004")
 	)
 	(segment
 		(start 109.85 118.6)
@@ -26383,7 +26471,7 @@
 		(uuid "9194d593-2b61-41b5-b0a6-72a7b220c6d3")
 	)
 	(via
-		(at 105.5 134.45)
+		(at 105.5 133.75)
 		(size 0.35)
 		(drill 0.2)
 		(layers "F.Cu" "B.Cu")
@@ -29855,20 +29943,28 @@
 		(uuid "081df061-1c49-487b-8e93-d8a54ae94a56")
 	)
 	(segment
-		(start 106.35 132.9)
-		(end 106.312022 132.9)
+		(start 105.986867 133.051)
+		(end 106.137867 132.9)
 		(width 0.1)
 		(layer "F.Cu")
 		(net 30)
-		(uuid "499f6a72-7736-4b40-ac85-2d50487ad85d")
+		(uuid "13e0a093-2b13-42e5-a42c-bca5ded1ff89")
 	)
 	(segment
-		(start 105.1 134.112022)
-		(end 105.1 137.2)
+		(start 105.1 136.75)
+		(end 105.1 133.65)
 		(width 0.1)
 		(layer "F.Cu")
 		(net 30)
-		(uuid "49d3c057-fdd8-4e98-9ffb-787870ac9572")
+		(uuid "3225dbe8-77fc-49e1-b38c-cde968f0e65d")
+	)
+	(segment
+		(start 105.699 133.051)
+		(end 105.986867 133.051)
+		(width 0.1)
+		(layer "F.Cu")
+		(net 30)
+		(uuid "6500332c-4341-4365-ba04-bb2e7481779d")
 	)
 	(segment
 		(start 126.15 108.425)
@@ -29887,6 +29983,14 @@
 		(uuid "7fe4ebca-9d0d-45d8-9710-6025709f0b8c")
 	)
 	(segment
+		(start 106.137867 132.9)
+		(end 106.35 132.9)
+		(width 0.1)
+		(layer "F.Cu")
+		(net 30)
+		(uuid "8474331d-0b39-4e10-a2ab-c77ab68fd851")
+	)
+	(segment
 		(start 126.15 113.15)
 		(end 124.15 115.15)
 		(width 0.1)
@@ -29895,12 +29999,12 @@
 		(uuid "8a3f7c28-0659-4095-96b8-75fa1eb961c5")
 	)
 	(segment
-		(start 106.312022 132.9)
-		(end 105.1 134.112022)
+		(start 105.1 133.65)
+		(end 105.699 133.051)
 		(width 0.1)
 		(layer "F.Cu")
 		(net 30)
-		(uuid "97a846c2-af14-4483-9f41-b8789d5f6b00")
+		(uuid "b0a013ac-59d5-4ed1-8c92-fd00a8620661")
 	)
 	(segment
 		(start 120.35 116.55)
@@ -29991,7 +30095,7 @@
 		(uuid "d4d7091a-57c5-42c1-92e3-aee90d3134d3")
 	)
 	(via
-		(at 105.1 137.2)
+		(at 105.1 136.75)
 		(size 0.35)
 		(drill 0.2)
 		(layers "F.Cu" "B.Cu")
@@ -30031,6 +30135,22 @@
 		(uuid "48e8b753-956b-4260-9e3d-e5152cd704ea")
 	)
 	(segment
+		(start 105.1 136.75)
+		(end 105.15 136.75)
+		(width 0.1)
+		(layer "B.Cu")
+		(net 30)
+		(uuid "52c2e98c-ed93-4898-bec8-06d2aa19a381")
+	)
+	(segment
+		(start 105.55 137.15)
+		(end 106.5 137.15)
+		(width 0.1)
+		(layer "B.Cu")
+		(net 30)
+		(uuid "55889eb6-60bf-4c6d-9b25-1734d7954ed7")
+	)
+	(segment
 		(start 120.199 116.399)
 		(end 120.35 116.55)
 		(width 0.1)
@@ -30045,14 +30165,6 @@
 		(layer "B.Cu")
 		(net 30)
 		(uuid "6bcb4591-e8ba-4b5f-9690-d6aeef52bd61")
-	)
-	(segment
-		(start 105.1 137.2)
-		(end 105.5 137.2)
-		(width 0.1)
-		(layer "B.Cu")
-		(net 30)
-		(uuid "7a8f5fea-6253-4bf5-afd5-40f3febdb29a")
 	)
 	(segment
 		(start 120.199 115.754611)
@@ -30071,14 +30183,6 @@
 		(uuid "a486bdb2-6f08-40ad-9df0-62691629cda3")
 	)
 	(segment
-		(start 105.5 137.2)
-		(end 105.55 137.15)
-		(width 0.1)
-		(layer "B.Cu")
-		(net 30)
-		(uuid "c56faf2f-28e8-45b3-b736-7cf42032d2a9")
-	)
-	(segment
 		(start 120.803611 115.15)
 		(end 120.199 115.754611)
 		(width 0.1)
@@ -30095,20 +30199,20 @@
 		(uuid "cb1ec9d2-650c-485e-bc53-7665b4e2fd36")
 	)
 	(segment
-		(start 105.55 137.15)
-		(end 106.5 137.15)
-		(width 0.1)
-		(layer "B.Cu")
-		(net 30)
-		(uuid "cbf50361-717e-430b-ad55-0e215907cc84")
-	)
-	(segment
 		(start 109.745017 128.643)
 		(end 109.932046 128.643)
 		(width 0.1)
 		(layer "B.Cu")
 		(net 30)
 		(uuid "f760980f-d856-472b-825f-290cdf03b191")
+	)
+	(segment
+		(start 105.15 136.75)
+		(end 105.55 137.15)
+		(width 0.1)
+		(layer "B.Cu")
+		(net 30)
+		(uuid "f9cbc310-d09f-4de2-9a0a-be23dea886d9")
 	)
 	(segment
 		(start 116.95 121.625046)
@@ -33207,14 +33311,6 @@
 		(uuid "e3274b99-8d9b-4537-b3a1-988a57f02a4e")
 	)
 	(segment
-		(start 107.8 135)
-		(end 104.1 135)
-		(width 0.1)
-		(layer "B.Cu")
-		(net 50)
-		(uuid "0bfa6a97-c225-4de7-bf98-02b1adff3acc")
-	)
-	(segment
 		(start 135.653611 118.55)
 		(end 135.3 118.903611)
 		(width 0.1)
@@ -33231,14 +33327,6 @@
 		(uuid "19ef775f-38f7-4583-8213-a1e06a18b9af")
 	)
 	(segment
-		(start 104.1 135)
-		(end 101.5 132.4)
-		(width 0.1)
-		(layer "B.Cu")
-		(net 50)
-		(uuid "1dbaa9d5-467d-45c1-a377-6a367b3980f0")
-	)
-	(segment
 		(start 114.2 134.3)
 		(end 114.2 134.45)
 		(width 0.1)
@@ -33247,20 +33335,20 @@
 		(uuid "1e5a7a9c-0116-41dd-8cca-5ab29899a8e8")
 	)
 	(segment
-		(start 108.2 135.4)
-		(end 107.8 135)
-		(width 0.1)
-		(layer "B.Cu")
-		(net 50)
-		(uuid "1f632edc-8f07-4d95-9c1a-f9849639f229")
-	)
-	(segment
 		(start 132.35 129.35)
 		(end 119.15 129.35)
 		(width 0.1)
 		(layer "B.Cu")
 		(net 50)
 		(uuid "24a253b8-0f58-4795-bd75-d1593895702f")
+	)
+	(segment
+		(start 108.2 135.4)
+		(end 107.55 134.75)
+		(width 0.1)
+		(layer "B.Cu")
+		(net 50)
+		(uuid "2b0746cf-ce7c-4bf8-b313-1b1789c87c45")
 	)
 	(segment
 		(start 134.307168 113.469782)
@@ -33277,6 +33365,22 @@
 		(layer "B.Cu")
 		(net 50)
 		(uuid "50a8b239-5139-4eb3-b43e-106297290ec0")
+	)
+	(segment
+		(start 107.55 134.75)
+		(end 103.85 134.75)
+		(width 0.1)
+		(layer "B.Cu")
+		(net 50)
+		(uuid "52d6fc4b-011e-4341-ba82-1a29642efc74")
+	)
+	(segment
+		(start 103.85 134.75)
+		(end 101.5 132.4)
+		(width 0.1)
+		(layer "B.Cu")
+		(net 50)
+		(uuid "5708b731-418b-492a-9c36-ad19d77cc177")
 	)
 	(segment
 		(start 137.45 113.15)
