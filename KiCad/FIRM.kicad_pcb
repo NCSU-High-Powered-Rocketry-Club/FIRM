@@ -16214,7 +16214,7 @@
 		(at 101.5 107 -90)
 		(descr "THT rectangular pad as test Point, square 1.5mm side length, hole diameter 0.7mm")
 		(tags "test point THT pad rectangle square")
-		(property "Reference" "TP24"
+		(property "Reference" "C13"
 			(at 0.01 -2.87 0)
 			(layer "B.SilkS")
 			(uuid "d31af5d1-1b54-4ad7-85a6-f2159ca4ccd5")
