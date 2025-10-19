@@ -3407,6 +3407,113 @@
 			)
 			(embedded_fonts no)
 		)
+		(symbol "Mechanical:MountingHole_Pad"
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 1.016)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom no)
+			(on_board yes)
+			(property "Reference" "H"
+				(at 0 6.35 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "MountingHole_Pad"
+				(at 0 4.445 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "~"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Mounting Hole with connection"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "mounting hole"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_fp_filters" "MountingHole*Pad*"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "MountingHole_Pad_0_1"
+				(circle
+					(center 0 1.27)
+					(radius 1.27)
+					(stroke
+						(width 1.27)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "MountingHole_Pad_1_1"
+				(pin input line
+					(at 0 -2.54 90)
+					(length 2.54)
+					(name "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "Memory_Flash:W25Q128JVS"
 			(exclude_from_sim no)
 			(in_bom yes)
@@ -6479,6 +6586,26 @@
 		)
 		(uuid "4da16c51-71b1-493b-a0ec-84050d0365c6")
 	)
+	(text_box "Mounting Holes"
+		(exclude_from_sim no)
+		(at 237.49 246.38 0)
+		(size 44.45 34.29)
+		(margins 0.9525 0.9525 0.9525 0.9525)
+		(stroke
+			(width 0)
+			(type solid)
+		)
+		(fill
+			(type none)
+		)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left top)
+		)
+		(uuid "4e6dc1bc-c025-4f10-8e01-387d2f282efb")
+	)
 	(text_box "Micro SD Card Port"
 		(exclude_from_sim no)
 		(at 15.24 158.75 0)
@@ -6886,6 +7013,12 @@
 		(uuid "b4e6e57f-82a3-4ec1-9d0a-87343e3ae094")
 	)
 	(junction
+		(at 246.38 262.89)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "bacea83f-b4f2-4805-aa85-a19945d7fb69")
+	)
+	(junction
 		(at 142.24 36.83)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -6938,6 +7071,12 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "d8c18aee-72c3-4935-9890-f287387989a9")
+	)
+	(junction
+		(at 246.38 269.24)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "e172a7d9-4803-45ee-bf56-1d33e4d0b1d9")
 	)
 	(junction
 		(at 101.6 36.83)
@@ -7204,6 +7343,16 @@
 			(type default)
 		)
 		(uuid "0abc9a6c-9f39-449b-abb4-bd105ed008ea")
+	)
+	(wire
+		(pts
+			(xy 246.38 269.24) (xy 252.73 269.24)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0ad6927b-452a-4cba-bc2b-e08c555ee171")
 	)
 	(wire
 		(pts
@@ -7704,6 +7853,16 @@
 			(type default)
 		)
 		(uuid "29780f6f-e81a-49d0-b0a7-689212b55d50")
+	)
+	(wire
+		(pts
+			(xy 252.73 256.54) (xy 246.38 256.54)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "29f422bc-7e61-42ea-aa8d-1c3d9f3930ee")
 	)
 	(wire
 		(pts
@@ -8937,6 +9096,16 @@
 	)
 	(wire
 		(pts
+			(xy 246.38 262.89) (xy 246.38 269.24)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "70c93ea0-eb5f-4d50-b0d2-06584a605394")
+	)
+	(wire
+		(pts
 			(xy 325.12 36.83) (xy 325.12 38.1)
 		)
 		(stroke
@@ -9747,6 +9916,16 @@
 	)
 	(wire
 		(pts
+			(xy 252.73 262.89) (xy 246.38 262.89)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a70a78b9-103d-4236-8638-e1fe03ecfff6")
+	)
+	(wire
+		(pts
 			(xy 113.03 201.93) (xy 113.03 209.55)
 		)
 		(stroke
@@ -9804,6 +9983,16 @@
 			(type default)
 		)
 		(uuid "ad1ab630-c1c8-4715-9a07-3296096fa3d8")
+	)
+	(wire
+		(pts
+			(xy 246.38 256.54) (xy 246.38 262.89)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ad8b1327-4e26-4f45-9151-c3d604b09394")
 	)
 	(wire
 		(pts
@@ -11965,7 +12154,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C1590"
+		(property "MPN" "C1590"
+			(at 87.63 41.91 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "399-C0603C104K5RACTUCT-ND"
 			(at 87.63 41.91 0)
 			(effects
 				(font
@@ -12175,6 +12373,15 @@
 				(hide yes)
 			)
 		)
+		(property "Digikey PN" ""
+			(at 191.77 254 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "f0229482-8f98-4b93-aea0-ce648e441aaa")
 		)
@@ -12242,7 +12449,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C1590"
+		(property "MPN" "C1590"
+			(at 36.83 41.91 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "399-C0603C104K5RACTUCT-ND"
 			(at 36.83 41.91 0)
 			(effects
 				(font
@@ -12314,6 +12530,15 @@
 		)
 		(property "Description" "test point"
 			(at 191.77 234.95 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" ""
+			(at 191.77 234.95 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -12453,7 +12678,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C22356465"
+		(property "MPN" "C22356465"
+			(at 22.86 255.27 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "311-10.0KHRCT-ND"
 			(at 22.86 255.27 0)
 			(effects
 				(font
@@ -12532,7 +12766,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C177329"
+		(property "MPN" "C177329"
+			(at 30.48 66.04 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "311-100KHRCT-ND"
 			(at 30.48 66.04 0)
 			(effects
 				(font
@@ -12676,7 +12919,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C1691"
+		(property "MPN" "C1691"
+			(at 308.61 224.79 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "490-18214-1-ND"
 			(at 308.61 224.79 0)
 			(effects
 				(font
@@ -12755,6 +13007,15 @@
 				(hide yes)
 			)
 		)
+		(property "Digikey PN" ""
+			(at 191.77 215.9 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "3392e090-8164-41d8-8cfa-eed59b801d50")
 		)
@@ -12822,7 +13083,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C97521"
+		(property "MPN" "C97521"
+			(at 60.96 260.35 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "256-W25Q128JVSIQTRCT-ND"
 			(at 60.96 260.35 0)
 			(effects
 				(font
@@ -13049,6 +13319,15 @@
 				(hide yes)
 			)
 		)
+		(property "Digikey PN" ""
+			(at 151.13 228.6 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "87dc3f63-eacc-4923-b78a-cf2cfdbf62b0")
 		)
@@ -13115,7 +13394,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C1590"
+		(property "MPN" "C1590"
+			(at 19.05 60.96 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "399-C0603C104K5RACTUCT-ND"
 			(at 19.05 60.96 0)
 			(effects
 				(font
@@ -13325,7 +13613,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C177336"
+		(property "MPN" "C177336"
+			(at 52.07 177.8 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "311-47.0KHRCT-ND"
 			(at 52.07 177.8 0)
 			(effects
 				(font
@@ -13397,6 +13694,15 @@
 		)
 		(property "Description" "test point"
 			(at 151.13 222.25 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" ""
+			(at 151.13 222.25 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13476,7 +13782,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C2296"
+		(property "MPN" "C2296"
+			(at 184.15 119.38 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "160-1428-1-ND"
 			(at 184.15 119.38 0)
 			(effects
 				(font
@@ -13546,6 +13861,15 @@
 			)
 		)
 		(property "Description" "Solder Jumper, 2-pole, open"
+			(at 367.03 102.87 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" ""
 			(at 367.03 102.87 0)
 			(effects
 				(font
@@ -13818,7 +14142,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C404329"
+		(property "MPN" "C404329"
+			(at 325.12 111.76 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "1267-MMC5983MACT-ND"
 			(at 325.12 111.76 0)
 			(effects
 				(font
@@ -14134,7 +14467,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C1590"
+		(property "MPN" "C1590"
+			(at 64.77 195.58 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "399-C0603C104K5RACTUCT-ND"
 			(at 64.77 195.58 0)
 			(effects
 				(font
@@ -14343,7 +14685,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C177336"
+		(property "MPN" "C177336"
+			(at 59.69 177.8 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "311-47.0KHRCT-ND"
 			(at 59.69 177.8 0)
 			(effects
 				(font
@@ -14487,7 +14838,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C177336"
+		(property "MPN" "C177336"
+			(at 25.4 177.8 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "311-47.0KHRCT-ND"
 			(at 25.4 177.8 0)
 			(effects
 				(font
@@ -14556,6 +14916,15 @@
 			)
 		)
 		(property "Description" "Generic connector, single row, 01x02, script generated"
+			(at 256.54 182.88 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" ""
 			(at 256.54 182.88 0)
 			(effects
 				(font
@@ -14634,6 +15003,15 @@
 				(hide yes)
 			)
 		)
+		(property "Digikey PN" ""
+			(at 191.77 270.51 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "bddc84d6-e530-4e0f-970f-75ba5e353d6d")
 		)
@@ -14701,7 +15079,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C22356633"
+		(property "MPN" "C22356633"
+			(at 153.67 111.76 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "311-2.20KHRCT-ND"
 			(at 153.67 111.76 0)
 			(effects
 				(font
@@ -14844,7 +15231,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C22356465"
+		(property "MPN" "C22356465"
+			(at 38.1 212.09 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "311-10.0KHRCT-ND"
 			(at 38.1 212.09 90)
 			(effects
 				(font
@@ -14987,7 +15383,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C1590"
+		(property "MPN" "C1590"
+			(at 66.04 240.03 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "399-C0603C104K5RACTUCT-ND"
 			(at 66.04 240.03 90)
 			(effects
 				(font
@@ -15130,7 +15535,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C5360816"
+		(property "MPN" "C5360816"
+			(at 41.91 88.9 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "311-1767-1-ND"
 			(at 41.91 88.9 0)
 			(effects
 				(font
@@ -15209,7 +15623,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C1590"
+		(property "MPN" "C1590"
+			(at 142.24 41.91 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "399-C0603C104K5RACTUCT-ND"
 			(at 142.24 41.91 0)
 			(effects
 				(font
@@ -15358,7 +15781,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C84256"
+		(property "MPN" "C84256"
+			(at 184.15 130.81 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "160-1422-1-ND"
 			(at 184.15 130.81 0)
 			(effects
 				(font
@@ -15501,6 +15933,15 @@
 				(hide yes)
 			)
 		)
+		(property "Digikey PN" ""
+			(at 386.08 53.34 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "fca269fe-30db-4019-8997-fa53a28df409")
 		)
@@ -15566,7 +16007,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C177341"
+		(property "MPN" "C177341"
+			(at 170.18 107.95 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "311-330HRCT-ND"
 			(at 170.18 107.95 90)
 			(effects
 				(font
@@ -15776,7 +16226,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C22356633"
+		(property "MPN" "C22356633"
+			(at 144.78 111.76 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "311-2.20KHRCT-ND"
 			(at 144.78 111.76 0)
 			(effects
 				(font
@@ -15920,6 +16379,15 @@
 				(hide yes)
 			)
 		)
+		(property "Digikey PN" ""
+			(at 151.13 254 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "a73cb93d-8f90-4757-bff4-2c7368c7312a")
 		)
@@ -15980,6 +16448,15 @@
 		)
 		(property "Description" "test point"
 			(at 151.13 234.95 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" ""
+			(at 151.13 234.95 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16053,7 +16530,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C5360816"
+		(property "MPN" "C5360816"
+			(at 63.5 90.17 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "311-1767-1-ND"
 			(at 63.5 90.17 0)
 			(effects
 				(font
@@ -16125,6 +16611,15 @@
 		)
 		(property "Description" "test point"
 			(at 166.37 78.74 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" ""
+			(at 166.37 78.74 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16264,6 +16759,15 @@
 				(hide yes)
 			)
 		)
+		(property "Digikey PN" ""
+			(at 151.13 241.3 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "8c3119fe-e505-4922-a302-c6c8b6c69d6d")
 		)
@@ -16331,7 +16835,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C22369820"
+		(property "MPN" "C22369820"
+			(at 290.83 208.28 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "P1.2KDBCT-ND"
 			(at 290.83 208.28 0)
 			(effects
 				(font
@@ -16410,6 +16923,15 @@
 				(hide yes)
 			)
 		)
+		(property "Digikey PN" ""
+			(at 191.77 241.3 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "f3b9682d-34d0-42b6-8115-26ec4808a9f0")
 		)
@@ -16417,6 +16939,82 @@
 			(project "FIRM"
 				(path "/d3f8a00a-ef65-439d-87f3-373a106a7ddb"
 					(reference "TP12")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Mechanical:MountingHole_Pad")
+		(at 255.27 269.24 270)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "6e7dfdf5-3538-4500-9710-eb99b2d4a483")
+		(property "Reference" "H1"
+			(at 259.08 267.9699 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "MountingHole_Pad"
+			(at 259.08 270.5099 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "MountingHole:MountingHole_2.2mm_M2_Pad_Via"
+			(at 255.27 269.24 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 255.27 269.24 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Mounting Hole with connection"
+			(at 255.27 269.24 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" ""
+			(at 255.27 269.24 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "0e134696-add7-4c2a-976f-8486af5a429f")
+		)
+		(instances
+			(project "FIRM"
+				(path "/d3f8a00a-ef65-439d-87f3-373a106a7ddb"
+					(reference "H1")
 					(unit 1)
 				)
 			)
@@ -16533,6 +17131,15 @@
 			)
 		)
 		(property "Description" "Solder Jumper, 2-pole, open"
+			(at 367.03 86.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" ""
 			(at 367.03 86.36 0)
 			(effects
 				(font
@@ -16675,7 +17282,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C22369819"
+		(property "MPN" "C22369819"
+			(at 170.18 130.81 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "311-1.50KHRCT-ND"
 			(at 170.18 130.81 90)
 			(effects
 				(font
@@ -16819,7 +17435,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C37474"
+		(property "MPN" "C37474"
+			(at 39.37 130.81 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "1276-2134-1-ND"
 			(at 39.37 130.81 0)
 			(effects
 				(font
@@ -17095,7 +17720,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C177336"
+		(property "MPN" "C177336"
+			(at 44.45 177.8 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "311-47.0KHRCT-ND"
 			(at 44.45 177.8 0)
 			(effects
 				(font
@@ -17172,7 +17806,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C1691"
+		(property "MPN" "C1691"
+			(at 317.5 138.43 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "490-18214-1-ND"
 			(at 317.5 138.43 90)
 			(effects
 				(font
@@ -17645,6 +18288,15 @@
 				(hide yes)
 			)
 		)
+		(property "Digikey PN" ""
+			(at 151.13 260.35 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "a45ed6d0-76e9-4b64-9041-023459fc29b3")
 		)
@@ -17710,7 +18362,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C177347"
+		(property "MPN" "C177347"
+			(at 379.73 53.34 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "541-100HCT-ND"
 			(at 379.73 53.34 90)
 			(effects
 				(font
@@ -17789,6 +18450,15 @@
 				(hide yes)
 			)
 		)
+		(property "Digikey PN" ""
+			(at 151.13 215.9 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "ff2fc15d-6c90-4176-b5b9-9a890af1d640")
 		)
@@ -17855,7 +18525,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C22356465"
+		(property "MPN" "C22356465"
+			(at 39.37 245.11 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "311-10.0KHRCT-ND"
 			(at 39.37 245.11 0)
 			(effects
 				(font
@@ -18000,7 +18679,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C1607"
+		(property "MPN" "C1607"
+			(at 73.66 130.81 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "490-4520-1-ND"
 			(at 73.66 130.81 0)
 			(effects
 				(font
@@ -18134,6 +18822,15 @@
 			)
 		)
 		(property "Description" "Solder Jumper, 2-pole, open"
+			(at 367.03 109.22 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" ""
 			(at 367.03 109.22 0)
 			(effects
 				(font
@@ -18278,7 +18975,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C1592"
+		(property "MPN" "C1592"
+			(at 172.72 41.91 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "587-1241-1-ND"
 			(at 172.72 41.91 0)
 			(effects
 				(font
@@ -18354,7 +19060,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C1590"
+		(property "MPN" "C1590"
+			(at 327.66 27.94 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "399-C0603C104K5RACTUCT-ND"
 			(at 327.66 27.94 90)
 			(effects
 				(font
@@ -18433,7 +19148,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C1589"
+		(property "MPN" "C1589"
+			(at 130.81 41.91 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "399-C0603C103K5RACTUCT-ND"
 			(at 130.81 41.91 0)
 			(effects
 				(font
@@ -18501,6 +19225,24 @@
 			)
 		)
 		(property "Description" "Two pin crystal"
+			(at 44.45 121.92 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "C2450425"
+			(at 44.45 121.92 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "50-ECS-.327-6-34R-TRCT-ND"
 			(at 44.45 121.92 0)
 			(effects
 				(font
@@ -18579,6 +19321,15 @@
 				(hide yes)
 			)
 		)
+		(property "Digikey PN" ""
+			(at 151.13 247.65 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "0c205237-2da7-430a-87e4-d00b7627cef9")
 		)
@@ -18646,6 +19397,15 @@
 				(hide yes)
 			)
 		)
+		(property "Digikey PN" ""
+			(at 151.13 209.55 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "07b6b341-216c-4a5e-93a8-b0dd0a14c338")
 		)
@@ -18702,6 +19462,24 @@
 			)
 		)
 		(property "Description" ""
+			(at 345.44 204.47 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "C22036153"
+			(at 345.44 204.47 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "123-A-USBC-20F0-EA-GSR05CT-ND"
 			(at 345.44 204.47 0)
 			(effects
 				(font
@@ -18942,7 +19720,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C37474"
+		(property "MPN" "C37474"
+			(at 50.8 130.81 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "1276-2134-1-ND"
 			(at 50.8 130.81 0)
 			(effects
 				(font
@@ -19020,7 +19807,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C177329"
+		(property "MPN" "C177329"
+			(at 243.84 222.25 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "311-100KHRCT-ND"
 			(at 243.84 222.25 0)
 			(effects
 				(font
@@ -19069,7 +19865,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Inductor_SMD:L_1206_3216Metric"
+		(property "Footprint" "Inductor_SMD:L_0805_2012Metric"
 			(at 154.94 38.608 90)
 			(effects
 				(font
@@ -19093,6 +19889,24 @@
 				(font
 					(size 1.27 1.27)
 				)
+			)
+		)
+		(property "MPN" "C3716596"
+			(at 154.94 36.83 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "1934-1472-1-ND"
+			(at 154.94 36.83 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
 			)
 		)
 		(pin "2"
@@ -19162,7 +19976,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C20625731"
+		(property "MPN" "C20625731"
+			(at 52.07 81.28 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "535-ABM8-272-T3CT-ND"
 			(at 52.07 81.28 0)
 			(effects
 				(font
@@ -19252,7 +20075,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C2297"
+		(property "MPN" "C2297"
+			(at 294.64 201.93 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "160-1423-1-ND"
 			(at 294.64 201.93 0)
 			(effects
 				(font
@@ -19327,7 +20159,16 @@
 				)
 			)
 		)
-		(property "LCSC PN " "C82544"
+		(property "MPN" "C82544"
+			(at 252.73 214.63 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "1N5819HW-FDICT-ND"
 			(at 252.73 214.63 0)
 			(effects
 				(font
@@ -19406,7 +20247,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C1590"
+		(property "MPN" "C1590"
+			(at 48.26 41.91 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "399-C0603C104K5RACTUCT-ND"
 			(at 48.26 41.91 0)
 			(effects
 				(font
@@ -19485,7 +20335,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C1691"
+		(property "MPN" "C1691"
+			(at 261.62 224.79 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "490-18214-1-ND"
 			(at 261.62 224.79 0)
 			(effects
 				(font
@@ -19564,7 +20423,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C177336"
+		(property "MPN" "C177336"
+			(at 33.02 177.8 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "311-47.0KHRCT-ND"
 			(at 33.02 177.8 0)
 			(effects
 				(font
@@ -19708,6 +20576,15 @@
 				(hide yes)
 			)
 		)
+		(property "Digikey PN" ""
+			(at 191.77 228.6 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "e85f0ba8-4457-4fbf-b4dc-3350c117a8b3")
 		)
@@ -19765,6 +20642,24 @@
 			)
 		)
 		(property "Description" "Bosch Pressure Sensor"
+			(at 327.66 48.26 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "C5362283"
+			(at 327.66 48.26 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "828-BMP581CT-ND"
 			(at 327.66 48.26 0)
 			(effects
 				(font
@@ -19925,6 +20820,15 @@
 		)
 		(property "Description" "test point"
 			(at 191.77 209.55 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" ""
+			(at 191.77 209.55 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -20135,7 +21039,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C2293"
+		(property "MPN" "C2293"
+			(at 184.15 107.95 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "160-1645-1-ND"
 			(at 184.15 107.95 0)
 			(effects
 				(font
@@ -20212,7 +21125,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C1590"
+		(property "MPN" "C1590"
+			(at 320.04 27.94 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "399-C0603C104K5RACTUCT-ND"
 			(at 320.04 27.94 90)
 			(effects
 				(font
@@ -20291,7 +21213,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C15742"
+		(property "MPN" "C15742"
+			(at 106.68 96.52 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "497-11767-ND"
 			(at 106.68 96.52 0)
 			(effects
 				(font
@@ -20556,6 +21487,15 @@
 				(hide yes)
 			)
 		)
+		(property "Digikey PN" ""
+			(at 151.13 270.51 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "388f5dd2-21a1-47e4-800d-49d39d321cc7")
 		)
@@ -20620,7 +21560,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C177348"
+		(property "MPN" "C177348"
+			(at 373.38 198.12 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "311-5.10KHRCT-ND"
 			(at 373.38 198.12 90)
 			(effects
 				(font
@@ -20710,6 +21659,82 @@
 		)
 	)
 	(symbol
+		(lib_id "Mechanical:MountingHole_Pad")
+		(at 255.27 262.89 270)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "c4c4fc27-8ca9-4516-974c-3282493fb4cc")
+		(property "Reference" "H2"
+			(at 259.08 261.6199 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "MountingHole_Pad"
+			(at 259.08 264.1599 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "MountingHole:MountingHole_2.2mm_M2_Pad_Via"
+			(at 255.27 262.89 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 255.27 262.89 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Mounting Hole with connection"
+			(at 255.27 262.89 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" ""
+			(at 255.27 262.89 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "3cb7bc9d-62e8-4925-a527-38a843e94898")
+		)
+		(instances
+			(project "FIRM"
+				(path "/d3f8a00a-ef65-439d-87f3-373a106a7ddb"
+					(reference "H2")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Connector:TestPoint")
 		(at 166.37 91.44 270)
 		(unit 1)
@@ -20757,6 +21782,15 @@
 		)
 		(property "Description" "test point"
 			(at 166.37 91.44 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" ""
+			(at 166.37 91.44 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -20829,7 +21863,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C5370977"
+		(property "MPN" "C5370977"
+			(at 280.67 217.17 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "576-1281-1-ND"
 			(at 280.67 217.17 0)
 			(effects
 				(font
@@ -20914,7 +21957,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C177348"
+		(property "MPN" "C177348"
+			(at 367.03 195.58 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "311-5.10KHRCT-ND"
 			(at 367.03 195.58 90)
 			(effects
 				(font
@@ -21059,7 +22111,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C1592"
+		(property "MPN" "C1592"
+			(at 314.96 148.59 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "587-1241-1-ND"
 			(at 314.96 148.59 0)
 			(effects
 				(font
@@ -21281,6 +22342,72 @@
 		)
 	)
 	(symbol
+		(lib_id "power:GND")
+		(at 246.38 269.24 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "dbf07172-3bba-4c67-a903-2bcbd6340e03")
+		(property "Reference" "#PWR039"
+			(at 246.38 275.59 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 246.38 274.32 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 246.38 269.24 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 246.38 269.24 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 246.38 269.24 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "8b023ce6-d822-43f7-a894-6aa9e52ca6fb")
+		)
+		(instances
+			(project "FIRM"
+				(path "/d3f8a00a-ef65-439d-87f3-373a106a7ddb"
+					(reference "#PWR039")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:C")
 		(at 73.66 41.91 0)
 		(unit 1)
@@ -21335,7 +22462,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C1590"
+		(property "MPN" "C1590"
+			(at 73.66 41.91 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "399-C0603C104K5RACTUCT-ND"
 			(at 73.66 41.91 0)
 			(effects
 				(font
@@ -21414,7 +22550,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C1705"
+		(property "MPN" "C1705"
+			(at 22.86 41.91 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "1276-1044-1-ND"
 			(at 22.86 41.91 0)
 			(effects
 				(font
@@ -21486,6 +22631,15 @@
 		)
 		(property "Description" "test point"
 			(at 191.77 247.65 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" ""
+			(at 191.77 247.65 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -21625,6 +22779,15 @@
 				(hide yes)
 			)
 		)
+		(property "Digikey PN" ""
+			(at 367.03 92.71 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "0cb08935-cd54-4526-9611-65b3fcce3216")
 		)
@@ -21693,7 +22856,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C22369820"
+		(property "MPN" "C22369820"
+			(at 170.18 119.38 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "P1.2KDBCT-ND"
 			(at 170.18 119.38 90)
 			(effects
 				(font
@@ -21773,7 +22945,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C22459454"
+		(property "MPN" "C22459454"
+			(at 251.46 55.88 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "1428-ICM-45686CT-ND"
 			(at 251.46 55.88 0)
 			(effects
 				(font
@@ -21956,7 +23137,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C22367042"
+		(property "MPN" "C22367042"
+			(at 259.08 201.93 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "IRLML6402PBFCT-ND"
 			(at 259.08 201.93 0)
 			(effects
 				(font
@@ -22038,6 +23228,15 @@
 				(hide yes)
 			)
 		)
+		(property "Digikey PN" ""
+			(at 191.77 222.25 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "c07a9558-7c04-4b22-8a0a-e34d8d26dfd5")
 		)
@@ -22098,6 +23297,15 @@
 		)
 		(property "Description" "test point"
 			(at 191.77 260.35 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" ""
+			(at 191.77 260.35 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -22172,6 +23380,15 @@
 				(hide yes)
 			)
 		)
+		(property "Digikey PN" ""
+			(at 166.37 85.09 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "038510e0-82c4-48d5-8789-f45188f2aec9")
 		)
@@ -22239,7 +23456,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C1590"
+		(property "MPN" "C1590"
+			(at 254 76.2 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "399-C0603C104K5RACTUCT-ND"
 			(at 254 76.2 0)
 			(effects
 				(font
@@ -22318,7 +23544,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C1607"
+		(property "MPN" "C1607"
+			(at 62.23 130.81 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "490-4520-1-ND"
 			(at 62.23 130.81 0)
 			(effects
 				(font
@@ -22353,7 +23588,7 @@
 		(fields_autoplaced yes)
 		(uuid "e9860bd0-bd7e-44fd-8d6b-97b7bc618e03")
 		(property "Reference" "J2"
-			(at 96.52 173.99 0)
+			(at 96.52 171.45 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -22361,7 +23596,7 @@
 			)
 		)
 		(property "Value" "DM3CS-SF"
-			(at 96.52 176.53 0)
+			(at 96.52 173.99 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -22369,12 +23604,11 @@
 			)
 		)
 		(property "Footprint" "DM3CS-SF:HRS_DM3CS-SF"
-			(at 96.52 196.85 0)
+			(at 96.52 176.53 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify bottom)
 				(hide yes)
 			)
 		)
@@ -22537,6 +23771,24 @@
 				(hide yes)
 			)
 		)
+		(property "MPN" "C202111"
+			(at 96.52 196.85 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "HR1972CT-ND"
+			(at 96.52 196.85 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "7"
 			(uuid "64d355dc-97c7-417b-9ad2-0a787eafcd08")
 		)
@@ -22580,6 +23832,82 @@
 			(project ""
 				(path "/d3f8a00a-ef65-439d-87f3-373a106a7ddb"
 					(reference "J2")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Mechanical:MountingHole_Pad")
+		(at 255.27 256.54 270)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "e992dd62-13b6-4152-948d-b2b3e507d5da")
+		(property "Reference" "H3"
+			(at 259.08 255.2699 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "MountingHole_Pad"
+			(at 259.08 257.8099 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "MountingHole:MountingHole_2.2mm_M2_Pad_Via"
+			(at 255.27 256.54 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 255.27 256.54 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Mounting Hole with connection"
+			(at 255.27 256.54 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" ""
+			(at 255.27 256.54 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "03985591-0c79-4511-ad1b-b53e4d6f7098")
+		)
+		(instances
+			(project "FIRM"
+				(path "/d3f8a00a-ef65-439d-87f3-373a106a7ddb"
+					(reference "H3")
 					(unit 1)
 				)
 			)
@@ -22640,7 +23968,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C1590"
+		(property "MPN" "C1590"
+			(at 60.96 41.91 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "399-C0603C104K5RACTUCT-ND"
 			(at 60.96 41.91 0)
 			(effects
 				(font
@@ -22719,6 +24056,15 @@
 				(hide yes)
 			)
 		)
+		(property "Digikey PN" ""
+			(at 151.13 276.86 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "309d06f6-1161-4b1d-a7bf-254b1feb0898")
 		)
@@ -22785,7 +24131,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C22356465"
+		(property "MPN" "C22356465"
+			(at 33.02 255.27 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "311-10.0KHRCT-ND"
 			(at 33.02 255.27 0)
 			(effects
 				(font
@@ -22862,7 +24217,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C411883"
+		(property "MPN" "C411883"
+			(at 382.27 31.75 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "CKN12215-1-ND"
 			(at 382.27 31.75 0)
 			(effects
 				(font
@@ -23072,7 +24436,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C1620"
+		(property "MPN" "C1620"
+			(at 290.83 222.25 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "1276-1168-1-ND"
 			(at 290.83 222.25 0)
 			(effects
 				(font
@@ -23151,7 +24524,16 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC PN " "C1590"
+		(property "MPN" "C1590"
+			(at 264.16 76.2 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Digikey PN" "399-C0603C104K5RACTUCT-ND"
 			(at 264.16 76.2 0)
 			(effects
 				(font
