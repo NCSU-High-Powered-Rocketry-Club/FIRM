@@ -127,7 +127,10 @@ int main(void)
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
 
-    // Enable the trace and debug block in the core so that DWT registers become
+    // We use DWT (Data Watchpoint and Trace unit) to get a high resolution free-running timer
+    // for our data packet timestamps. This allows us to use the clock cycle count instead of a
+    // standard timestamp in milliseconds or similar, while not having any performance penalty.
+    // Enables the trace and debug block in the core so that DWT registers become
     // accessible. This is required before enabling the DWT cycle counter.
     CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
 
