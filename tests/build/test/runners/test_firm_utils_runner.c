@@ -105,8 +105,8 @@ static void run_test(UnityTestFunction func, const char* name, UNITY_LINE_TYPE l
 #endif
   UnityBegin("test_firm_utils.c");
   run_test(test_twos_complement_16_should_return_positive_values, "test_twos_complement_16_should_return_positive_values", 7);
-  run_test(test_twos_complement_16_should_return_negative_values, "test_twos_complement_16_should_return_negative_values", 16);
-  run_test(test_sign_extend_20bit_should_sign_extend_correctly, "test_sign_extend_20bit_should_sign_extend_correctly", 25);
+  run_test(test_twos_complement_16_should_return_negative_values, "test_twos_complement_16_should_return_negative_values", 15);
+  run_test(test_sign_extend_20bit_should_sign_extend_correctly, "test_sign_extend_20bit_should_sign_extend_correctly", 23);
 
   return UNITY_END();
 }

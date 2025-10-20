@@ -1,6 +1,4 @@
-#include "bmp581.h"
-#include "mmc5983ma.h"
-#include "icm45686.h"
+#include "preprocessor.h"
 
 static const float pi = 3.141592653F;
 
