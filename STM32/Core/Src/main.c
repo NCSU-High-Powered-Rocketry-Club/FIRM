@@ -20,7 +20,6 @@
 #include "icm45686.h"
 #include "logger.h"
 #include "mmc5983ma.h"
-#include "packets.h"
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -138,11 +137,6 @@ int main(void)
     // clock cycle so we can use clock cycles as data packet timestamps.
     DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 
-    // Setup the SD card
-    if (logger_init(&hdma_sdio_tx)) {
-        serialPrintStr("Failed to initialized the logger (SD card)");
-        Error_Handler();
-    }
 
     // Set the chip select pins to high, this means that they're not selected.
     // Note: We can't have these in the bmp581/imu init functions, because those somehow mess up
@@ -154,12 +148,33 @@ int main(void)
     if (icm45686_init(&hspi2, GPIOB, GPIO_PIN_9)) {
         Error_Handler();
     }
+
     if (bmp581_init(&hspi2, GPIOC, GPIO_PIN_2)) {
         Error_Handler();
     }
+    
     if (mmc5983ma_init(&hi2c1, 0x30)) { // 0x30 is default i2c address for MMC5983MA
         Error_Handler();
     }
+
+    // Setup the SD card
+    FRESULT res = logger_init(&hdma_sdio_tx);
+    if (res) {
+        serialPrintStr("Failed to initialized the logger (SD card)");
+        Error_Handler();
+    }
+    
+    // get scale factor values for each sensor to put in header
+    HeaderFields header_fields = {
+        bmp581_get_temp_scale_factor(),
+        bmp581_get_pressure_scale_factor(),
+        icm45686_get_accel_scale_factor(),
+        icm45686_get_gyro_scale_factor(),
+        mmc5983ma_get_magnetic_field_scale_factor(),
+    };
+    
+
+    logger_write_header(&header_fields);
 
     // incrementing value for magnetometer calibration
     uint8_t magnetometer_flip = 0;
@@ -170,7 +185,7 @@ int main(void)
     // the IMU runs into issues when the fifo is full at the very beginning, causing the interrupt
     // to be pulled back low too fast, and the ISR doesn't catch it for whatever reason. Doing
     // this initial read will prevent that.
-    IMUPacket_t imu_packet;
+    ICM45686Packet_t imu_packet;
     icm45686_read_data(&imu_packet);
 
   /* USER CODE END 2 */
@@ -182,26 +197,26 @@ int main(void)
     // new data to read, and if so, logs it.
     while (1) {
         if (bmp581_has_new_data) {
-            BarometerPacket_t* barometer_packet = logger_malloc_packet(sizeof(BarometerPacket_t));
-    	    if (!bmp581_read_data(barometer_packet)) {
+            BMP581Packet_t* bmp581_packet = logger_malloc_packet(sizeof(BMP581Packet_t));
+    	    if (!bmp581_read_data(bmp581_packet)) {
     	        bmp581_has_new_data = false;
-    	        logger_write_entry('B', sizeof(BarometerPacket_t));
+    	        logger_write_entry('B', sizeof(BMP581Packet_t));
     	    }
     	}
 
     	if (icm45686_has_new_data) {
-    	    IMUPacket_t* imu_packet = logger_malloc_packet(sizeof(IMUPacket_t)); 
-    	    if (!icm45686_read_data(imu_packet)) {
+    	    ICM45686Packet_t* icm45686_packet = logger_malloc_packet(sizeof(ICM45686Packet_t)); 
+    	    if (!icm45686_read_data(icm45686_packet)) {
     	        icm45686_has_new_data = false;
-    	        logger_write_entry('I', sizeof(IMUPacket_t));
+    	        logger_write_entry('I', sizeof(ICM45686Packet_t));
     	    }
     	}
 
     	if (mmc5983ma_has_new_data) {
-    	    MagnetometerPacket_t* magnetometer_packet = logger_malloc_packet(sizeof(MagnetometerPacket_t));
-    	    if (!mmc5983ma_read_data(magnetometer_packet, &magnetometer_flip)) {
+    	    MMC5983MAPacket_t* mmc5983ma_packet = logger_malloc_packet(sizeof(MMC5983MAPacket_t));
+    	    if (!mmc5983ma_read_data(mmc5983ma_packet, &magnetometer_flip)) {
     	        mmc5983ma_has_new_data = false;
-    	        logger_write_entry('M', sizeof(MagnetometerPacket_t));
+    	        logger_write_entry('M', sizeof(MMC5983MAPacket_t));
     	    }
     	}
 

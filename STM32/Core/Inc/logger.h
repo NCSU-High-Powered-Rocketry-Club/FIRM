@@ -16,6 +16,17 @@
 #define SD_SECTOR_SIZE 8192
 
 /**
+ * @brief scale factor values for the sensors to include in the header file
+ */
+typedef struct {
+    float temp_sf;
+    float pressure_sf;
+    float accel_sf;
+    float angular_rate_sf;
+    float magnetic_field_sf;
+} HeaderFields;
+
+/**
  * @brief Initializes the SD card and creates the log file.
  * 
  * @param dma_sdio_tx_handle the handle for the DMA SDIO
@@ -25,8 +36,11 @@ FRESULT logger_init(DMA_HandleTypeDef* dma_sdio_tx_handle);
 
 /**
  * @brief writes an initial header line to the Micro SD Card file
+ * 
+ * @param sensor_scale_factors address of the struct with the scale factor values of the sensors
+ * @retval File Status error code, 0 on success.
  */
-void logger_write_header();
+FRESULT logger_write_header(HeaderFields* sensor_scale_factors);
 
 /**
  * @brief allocates space for a sensor packet in the logger, not including the metadata info.

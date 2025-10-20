@@ -51,6 +51,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/mmc5983ma.c
     Core/Src/spi_utils.c
     Core/Src/usb_print_debug.c
+    Core/Src/preprocessor.c
 )
 
 # Add include paths
