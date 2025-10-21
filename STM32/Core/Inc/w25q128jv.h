@@ -1,5 +1,10 @@
 #pragma once
+#include "stm32f4xx_hal.h"
 #include <stdint.h>
+#include <stdio.h>
+
+void w25q128jv_set_spi_settings(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin);
+/////////////////////////////////////////////////////////////////
 
 /**
  * @brief Read JEDEC ID

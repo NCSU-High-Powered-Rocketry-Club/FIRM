@@ -1,6 +1,5 @@
 #include "w25q128jv.h"
-#include <stdint.h>
-#include <stdio.h>
+
 
 /**
  * @brief Standard SPI Instructions
@@ -87,13 +86,32 @@
 /*******************************************************************************
  * Porting Layer
  ******************************************************************************/
+
+typedef struct {
+    SPI_HandleTypeDef* hspi;
+    GPIO_TypeDef* cs_channel;
+    uint16_t cs_pin;
+} SPISettings_t;
+
+static SPISettings_t spiSettings;
+
+void w25q128jv_set_spi_settings(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin) {
+    spiSettings.hspi = hspi;
+    spiSettings.cs_channel = cs_channel;
+    spiSettings.cs_pin = cs_pin;
+}
+
 /**
  * @brief For SPI data swap
  *
  */
 static uint8_t w25q128jv_spi(uint8_t data)
 {
-    // TODO: porting layer ...
+    uint8_t rx_byte;
+    if (HAL_SPI_TransmitReceive(spiSettings.hspi, &data, &rx_byte, 1, 100) != HAL_OK) {
+        rx_byte = 0xFF;
+    }
+    return rx_byte;
 }
 
 /**
@@ -102,7 +120,7 @@ static uint8_t w25q128jv_spi(uint8_t data)
  */
 static inline void __w25q128jv_CS_ENABLE(void)
 {
-    // TODO: porting layer ...
+    HAL_GPIO_WritePin(spiSettings.cs_channel, spiSettings.cs_pin, GPIO_PIN_RESET);
 }
 
 /**
@@ -111,7 +129,7 @@ static inline void __w25q128jv_CS_ENABLE(void)
  */
 static inline void __w25q128jv_CS_DISABLE(void)
 {
-    // TODO: porting layer ...
+    HAL_GPIO_WritePin(spiSettings.cs_channel, spiSettings.cs_pin, GPIO_PIN_SET);
 }
 
 /*******************************************************************************

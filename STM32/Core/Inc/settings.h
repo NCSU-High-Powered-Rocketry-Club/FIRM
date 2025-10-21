@@ -1,6 +1,6 @@
 #pragma once
 #include "w25q128jv.h"
-#include "spi_utils.h"
+#include "usb_print_debug.h"
 #include <stdbool.h>
 
 /**
@@ -42,6 +42,7 @@ typedef struct {
 typedef struct {
     // TODO: finish python bindings and make real settings
     bool accel_enabled;
+    uint32_t checksum;
 } FIRMSettings_t;
 
 // global declaration of FIRM Settings to be used elsewhere in project

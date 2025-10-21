@@ -64,6 +64,8 @@ void Error_Handler(void);
 #define BMP581_Interrupt_Pin GPIO_PIN_3
 #define BMP581_Interrupt_GPIO_Port GPIOC
 #define BMP581_Interrupt_EXTI_IRQn EXTI3_IRQn
+#define CONF_CHECK_Pin GPIO_PIN_4
+#define CONF_CHECK_GPIO_Port GPIOA
 #define FLASH_CS_Pin GPIO_PIN_4
 #define FLASH_CS_GPIO_Port GPIOC
 #define ICM45686_Interrupt_Pin GPIO_PIN_6
