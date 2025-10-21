@@ -16,7 +16,7 @@ typedef struct {
     SPI_HandleTypeDef* hspi;
     GPIO_TypeDef* cs_channel;
     uint16_t cs_pin;
-} SPISettings;  
+} SPISettings;
 
 /**
  * @brief Starts up and resets the BMP581, confirms the SPI read/write functionality is working

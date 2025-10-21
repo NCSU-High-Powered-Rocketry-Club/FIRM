@@ -5,7 +5,6 @@
  *      Author: Wlsan
  */
 #pragma once
-#include "usb_device.h"
 #include "usbd_cdc_if.h"
 #include <string.h>
 
