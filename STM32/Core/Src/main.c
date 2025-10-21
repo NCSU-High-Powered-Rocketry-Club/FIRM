@@ -20,7 +20,7 @@
 #include "icm45686.h"
 #include "logger.h"
 #include "mmc5983ma.h"
-#include "w25q128jvs.h"
+#include "settings.h"
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -159,6 +159,11 @@ int main(void)
     }
     
     if (mmc5983ma_init(&hi2c1, 0x30)) { // 0x30 is default i2c address for MMC5983MA
+        Error_Handler();
+    }
+
+    // set up settings module with flash chip
+    if (settings_init(&hspi1, GPIOC, GPIO_PIN_4)) {
         Error_Handler();
     }
 

@@ -52,6 +52,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/spi_utils.c
     Core/Src/usb_print_debug.c
     Core/Src/preprocessor.c
+    Core/Src/settings.c
+    Core/Src/w25q128jv.c
 )
 
 # Add include paths
