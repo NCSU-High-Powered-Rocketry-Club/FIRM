@@ -1,8 +1,8 @@
 ---
 BasedOnStyle: LLVM
-IndentWidth: 4
+IndentWidth: 2
 InsertNewlineAtEOF: true
-PointerAlignment: Left
+PointerAlignment: Right
 ColumnLimit: 100
 ...
 
