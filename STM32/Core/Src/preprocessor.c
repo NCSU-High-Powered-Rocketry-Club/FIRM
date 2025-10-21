@@ -47,5 +47,3 @@ void imu_convert_packet(ICM45686Packet_t packet){
     float gryo_float_z =((float) gyro_binary_z) / (131.072F * (pi/180.0F));
 }  
 
-
-
