@@ -41,12 +41,12 @@ typedef struct {
  */
 typedef struct {
     // TODO: finish python bindings and make real settings
-    bool accel_enabled;
     uint32_t checksum;
 } FIRMSettings_t;
 
-// global declaration of FIRM Settings to be used elsewhere in project
-extern FIRMSettings_t FIRMSettings;
+// global declaration of FIRM Settings and calibration settings to be used elsewhere in project
+extern FIRMSettings_t firmSettings;
+extern CalibrationSettings_t calibrationSettings;
 
 /**
  * @brief sets up the settings module by initializing the flash chip and ensuring the device

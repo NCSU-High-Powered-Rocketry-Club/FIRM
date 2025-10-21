@@ -1,6 +1,7 @@
 #include "settings.h"
 
-FIRMSettings_t FIRMSettings;
+FIRMSettings_t firmSettings;
+CalibrationSettings_t calibrationSettings;
 
 static void settings_write_defaults(void);
 
@@ -22,26 +23,52 @@ int settings_init(SPI_HandleTypeDef* flash_hspi, GPIO_TypeDef* flash_cs_channel,
     // read 1024 bytes containing settings
     uint8_t buf[1024];
     w25q128jv_read_sector(buf, 0, 0, 1024);
-    memcpy(&FIRMSettings, buf, sizeof(FIRMSettings_t));
+    memcpy(&calibrationSettings, buf, sizeof(CalibrationSettings_t));
+    memcpy(&firmSettings, buf + sizeof(CalibrationSettings_t), sizeof(FIRMSettings_t));
 
-    /* Optional: Basic validation (extend as needed) */
-    if (FIRMSettings.checksum != 0xA5A5A5A5) {
-        serialPrintStr("Settings checksum failed, device needs to be configured");
+    // checksum validation
+    if (firmSettings.checksum != 0xA5A5A5A5) {
+        serialPrintStr("Settings checksum failed, device may need to be configured");
         return 1;
     }
     return 0;
 }
 
 static void settings_write_defaults(void) {
+
+    calibrationSettings.icm45686_accel.offset_gs[0] = 0.0F;
+    calibrationSettings.icm45686_accel.offset_gs[1] = 0.0F;
+    calibrationSettings.icm45686_accel.offset_gs[2] = 0.0F;
+
+    calibrationSettings.icm45686_gyro.offset_dps[0] = 0.0F;
+    calibrationSettings.icm45686_gyro.offset_dps[1] = 0.0F;
+    calibrationSettings.icm45686_gyro.offset_dps[2] = 0.0F;
+
+    calibrationSettings.mmc5983ma_mag.offset_ut[0] = 0.0F;
+    calibrationSettings.mmc5983ma_mag.offset_ut[1] = 0.0F;
+    calibrationSettings.mmc5983ma_mag.offset_ut[2] = 0.0F;
+
+    calibrationSettings.icm45686_accel.scale_multiplier[0] = 1.0F;
+    calibrationSettings.icm45686_accel.scale_multiplier[1] = 1.0F;
+    calibrationSettings.icm45686_accel.scale_multiplier[2] = 1.0F;
+
+    calibrationSettings.icm45686_gyro.scale_multiplier[0] = 1.0F;
+    calibrationSettings.icm45686_gyro.scale_multiplier[1] = 1.0F;
+    calibrationSettings.icm45686_gyro.scale_multiplier[2] = 1.0F;
+
+    calibrationSettings.mmc5983ma_mag.scale_multiplier[0] = 1.0F;
+    calibrationSettings.mmc5983ma_mag.scale_multiplier[1] = 1.0F;
+    calibrationSettings.mmc5983ma_mag.scale_multiplier[2] = 1.0F;
+
     // TODO: determine settings to use
-    FIRMSettings.accel_enabled = true;
-    FIRMSettings.checksum = 0xA5A5A5A5;
+    firmSettings.checksum = 0xA5A5A5A5;
 
     // Erase sector 0 first (4 KB, covers our 1024 bytes)
     w25q128jv_erase_sector(0);
 
     // Write the 1024-byte block
     uint8_t buf[1024];
-    memcpy(buf, &FIRMSettings, sizeof(FIRMSettings_t));
+    memcpy(buf, &calibrationSettings, sizeof(CalibrationSettings_t));
+    memcpy(buf + sizeof(CalibrationSettings_t), &firmSettings, sizeof(FIRMSettings_t));
     w25q128jv_write_sector(buf, 0, 0, 1024);
 }
