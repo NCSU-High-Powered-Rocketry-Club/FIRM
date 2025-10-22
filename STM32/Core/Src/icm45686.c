@@ -74,10 +74,6 @@ static int read_ireg_register(IREGMap_t register_map, uint16_t ireg_addr, uint8_
  */
 static int write_ireg_register(IREGMap_t register_map, uint16_t ireg_addr, uint8_t data);
 
-// honestly i think this is probably a good thing do make a preprocessor macro but probably later.
-// most likely don't need more digits because we only have a single-precision FPU
-static const float pi = 3.14159265F;
-
 static const uint8_t pwr_mgmt0 = 0x10;
 static const uint8_t fifo_data = 0x14;
 static const uint8_t int1_config0 = 0x16;
@@ -98,9 +94,9 @@ static const uint8_t ipreg_sys1_reg_166 = 0xA6; // IPREG_SYS1 register
 static const uint8_t ipreg_sys2_reg_123 = 0x7B; // IPREG_SYS2 register
 
 static const float hi_res_fifo_accel_scale_factor = 16384.0F;
-static const float hi_res_fifo_gyro_scale_factor = 131.072F * (pi/180.0F);
+static const float hi_res_fifo_gyro_scale_factor = 131.072;
 static const float base_accel_scale_factor = 1024.0F;
-static const float base_gyro_scale_factor = 8.192F * (pi/180.0F);
+static const float base_gyro_scale_factor = 8.192F;
 
 static SPISettings spiSettings;
 

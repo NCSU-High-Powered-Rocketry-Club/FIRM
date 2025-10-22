@@ -21,6 +21,7 @@
 #include "logger.h"
 #include "mmc5983ma.h"
 #include "settings.h"
+#include "preprocessor.h"
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -201,9 +202,8 @@ int main(void)
     ICM45686Packet_t imu_packet;
     icm45686_read_data(&imu_packet);
 
-    // the current timestamp, and overflow counter to make 64 bit clock cycle count
-    static uint32_t last_dwt_timestamp = 0;
-
+    // instance of the calibrated data packet from the preprocessor to be reused
+    CalibratedDataPacket_t* calibrated_packet = {0};
 
   /* USER CODE END 2 */
 
@@ -218,6 +218,7 @@ int main(void)
     	    if (!bmp581_read_data(bmp581_packet)) {
     	        bmp581_has_new_data = false;
     	        logger_write_entry('B', sizeof(BMP581Packet_t));
+                bmp581_convert_packet(bmp581_packet, calibrated_packet);
     	    }
     	}
 
@@ -226,6 +227,7 @@ int main(void)
     	    if (!icm45686_read_data(icm45686_packet)) {
     	        icm45686_has_new_data = false;
     	        logger_write_entry('I', sizeof(ICM45686Packet_t));
+                icm45686_convert_packet(icm45686_packet, calibrated_packet);
     	    }
     	}
 
@@ -234,14 +236,10 @@ int main(void)
     	    if (!mmc5983ma_read_data(mmc5983ma_packet, &magnetometer_flip)) {
     	        mmc5983ma_has_new_data = false;
     	        logger_write_entry('M', sizeof(MMC5983MAPacket_t));
+                mmc5983ma_convert_packet(mmc5983ma_packet, calibrated_packet);
     	    }
     	}
 
-        uint32_t current_dwt_timestamp = DWT->CYCCNT;
-        if (current_dwt_timestamp < last_dwt_timestamp) {
-            dwt_overflow_count++;
-        }
-        last_dwt_timestamp = current_dwt_timestamp;
 
     /* USER CODE END WHILE */
 

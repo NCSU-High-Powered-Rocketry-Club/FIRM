@@ -1,10 +1,22 @@
-#include "bmp581.h"
-#include "mmc5983ma.h"
-#include "icm45686.h"
+#include "preprocessor.h"
 
 static const float pi = 3.141592653F;
+static uint32_t dwt_overflow_count = 0;
+static uint32_t last_cyccnt = 0;
 
-void bmp581_convert_packet(BMP581Packet_t *packet){
+/**
+ * @brief Updates dwt overflow counter and returns current timestamp
+ * @note Called frequently enough that we can't miss an overflow.
+ * DWT->CYCCNT overflows every ~25 seconds at 168MHz.
+ * 
+ * @return Current timestamp as a double
+ */
+static double update_dwt_timestamp(void);
+
+void bmp581_convert_packet(BMP581Packet_t *packet, CalibratedDataPacket_t *result_packet){
+    // get the current timestamp of the packet in seconds using the DWT counter
+    result_packet->timestamp_sec = update_dwt_timestamp();
+
     int32_t temp_binary, pressure_binary;
 
     temp_binary = (((int32_t) (*packet).temp_msb) << 16 )| (((int32_t) (*packet).temp_lsb) << 8) | ((int32_t) (*packet).temp_xlsb);
@@ -15,13 +27,14 @@ void bmp581_convert_packet(BMP581Packet_t *packet){
     float pressure_float = (float) pressure_binary/64.0F;
 }
 
-void mmc5983_convert_packet(MMC5983MAPacket_t *packet1){
+void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, CalibratedDataPacket_t *result_packet){
+    // get the current timestamp of the packet in seconds using the DWT counter
+    result_packet->timestamp_sec = update_dwt_timestamp();
+    int32_t mag_binary_x, mag_binary_y, mag_binary_z;
 
-    int32_t mag_binary_x,mag_binary_y,mag_binary_z;
-
-    mag_binary_x = (((int32_t) (*packet1).mag_x_msb) << 10 ) | (((int32_t) (*packet1).mag_x_mid) << 2) | ((int32_t) ((*packet1).mag_xyz_lsb >> 6));
-    mag_binary_y = (((int32_t) (*packet1).mag_y_msb) << 10 ) | (((int32_t) (*packet1).mag_y_mid) << 2) | ((int32_t) (((*packet1).mag_xyz_lsb & 00110000) >> 4));
-    mag_binary_z = (((int32_t) (*packet1).mag_z_msb) << 10 ) | (((int32_t) (*packet1).mag_z_mid) << 2) | ((int32_t) (((*packet1).mag_xyz_lsb & 00001100 >> 2)));
+    mag_binary_x = (((int32_t) (*packet).mag_x_msb) << 10 ) | (((int32_t) (*packet).mag_x_mid) << 2) | ((int32_t) ((*packet).mag_xyz_lsb >> 6));
+    mag_binary_y = (((int32_t) (*packet).mag_y_msb) << 10 ) | (((int32_t) (*packet).mag_y_mid) << 2) | ((int32_t) (((*packet).mag_xyz_lsb & 00110000) >> 4));
+    mag_binary_z = (((int32_t) (*packet).mag_z_msb) << 10 ) | (((int32_t) (*packet).mag_z_mid) << 2) | ((int32_t) (((*packet).mag_xyz_lsb & 00001100 >> 2)));
     
     float mag_float_x = ((float) mag_binary_x) / (131072.0F/800.0F);
     float mag_float_y = ((float) mag_binary_y) / (131072.0F/800.0F);
@@ -29,16 +42,18 @@ void mmc5983_convert_packet(MMC5983MAPacket_t *packet1){
 
 }
 
-void imu_convert_packet(ICM45686Packet_t *packet3){
+void icm45686_convert_packet(ICM45686Packet_t *packet, CalibratedDataPacket_t *result_packet){
+    // get the current timestamp of the packet in seconds using the DWT counter
+    result_packet->timestamp_sec = update_dwt_timestamp();
     int32_t acc_binary_x, acc_binary_y, acc_binary_z, gyro_binary_x,gyro_binary_y,gyro_binary_z;
 
-    acc_binary_x = (((int32_t) (*packet3).accX_H) << 12 ) | (((int32_t) (*packet3).accX_L) << 4) | ((int32_t) ((*packet3).x_vals_lsb >> 4));
-    acc_binary_y = (((int32_t) (*packet3).accY_H) << 12 ) | (((int32_t) (*packet3).accY_L) << 4) | ((int32_t) ((*packet3).y_vals_lsb >> 4));
-    acc_binary_z = (((int32_t) (*packet3).accZ_H) << 12 ) | (((int32_t) (*packet3).accZ_L) << 4) | ((int32_t) ((*packet3).z_vals_lsb >> 4));
+    acc_binary_x = (((int32_t) (*packet).accX_H) << 12 ) | (((int32_t) (*packet).accX_L) << 4) | ((int32_t) ((*packet).x_vals_lsb >> 4));
+    acc_binary_y = (((int32_t) (*packet).accY_H) << 12 ) | (((int32_t) (*packet).accY_L) << 4) | ((int32_t) ((*packet).y_vals_lsb >> 4));
+    acc_binary_z = (((int32_t) (*packet).accZ_H) << 12 ) | (((int32_t) (*packet).accZ_L) << 4) | ((int32_t) ((*packet).z_vals_lsb >> 4));
 
-    gyro_binary_x = (((int32_t) (*packet3).gyroX_H) << 12) | (((int32_t) (*packet3).gyroX_L) << 4) | ((int32_t) ((*packet3).x_vals_lsb & 00001111));
-    gyro_binary_y = (((int32_t) (*packet3).gyroY_H) << 12) | (((int32_t) (*packet3).gyroY_L) << 4) | ((int32_t) ((*packet3).y_vals_lsb & 00001111));
-    gyro_binary_z = (((int32_t) (*packet3).gyroZ_H) << 12) | (((int32_t) (*packet3).gyroZ_L) << 4) | ((int32_t) ((*packet3).z_vals_lsb & 00001111));
+    gyro_binary_x = (((int32_t) (*packet).gyroX_H) << 12) | (((int32_t) (*packet).gyroX_L) << 4) | ((int32_t) ((*packet).x_vals_lsb & 00001111));
+    gyro_binary_y = (((int32_t) (*packet).gyroY_H) << 12) | (((int32_t) (*packet).gyroY_L) << 4) | ((int32_t) ((*packet).y_vals_lsb & 00001111));
+    gyro_binary_z = (((int32_t) (*packet).gyroZ_H) << 12) | (((int32_t) (*packet).gyroZ_L) << 4) | ((int32_t) ((*packet).z_vals_lsb & 00001111));
 
     float acc_float_x = ((float) acc_binary_x ) / 16384.0F;
     float acc_float_y = ((float) acc_binary_y ) / 16384.0F;
@@ -49,3 +64,14 @@ void imu_convert_packet(ICM45686Packet_t *packet3){
     float gryo_float_z =((float) gyro_binary_z) / (131.072F * (pi/180.0F));
 } 
 
+static double update_dwt_timestamp(void) {
+    uint32_t current_cyccnt = DWT->CYCCNT;
+    // Check for overflow by comparing with last value
+    // Overflow occurred if current value is less than last value
+    if (current_cyccnt < last_cyccnt) {
+        dwt_overflow_count++;
+    }
+    last_cyccnt = current_cyccnt;
+    uint64_t cycle_count = ((uint64_t)dwt_overflow_count << 32) | current_cyccnt;
+    return ((double)cycle_count) / 168000000.0F;
+}
