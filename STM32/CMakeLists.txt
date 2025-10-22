@@ -54,6 +54,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/preprocessor.c
     Core/Src/settings.c
     Core/Src/w25q128jv.c
+    Core/Src/usb_serializer.c
 )
 
 # Add include paths

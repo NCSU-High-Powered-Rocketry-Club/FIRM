@@ -15,8 +15,6 @@ void bmp581_convert_packet(BMP581Packet_t *packet){
     float pressure_float = (float) pressure_binary/64.0F;
 }
 
-
-
 void mmc5983_convert_packet(MMC5983MAPacket_t *packet1){
 
     int32_t mag_binary_x,mag_binary_y,mag_binary_z;

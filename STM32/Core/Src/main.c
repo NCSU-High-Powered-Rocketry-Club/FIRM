@@ -88,6 +88,9 @@ static void MX_SPI1_Init(void);
 volatile bool bmp581_has_new_data = false;
 volatile bool icm45686_has_new_data = false;
 volatile bool mmc5983ma_has_new_data = false;
+// number of times the DWT timestamp has overflowed. This happens every ~25 seconds
+volatile uint32_t dwt_overflow_count = 0;
+
 /* USER CODE END 0 */
 
 /**
@@ -198,6 +201,10 @@ int main(void)
     ICM45686Packet_t imu_packet;
     icm45686_read_data(&imu_packet);
 
+    // the current timestamp, and overflow counter to make 64 bit clock cycle count
+    static uint32_t last_dwt_timestamp = 0;
+
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -229,6 +236,12 @@ int main(void)
     	        logger_write_entry('M', sizeof(MMC5983MAPacket_t));
     	    }
     	}
+
+        uint32_t current_dwt_timestamp = DWT->CYCCNT;
+        if (current_dwt_timestamp < last_dwt_timestamp) {
+            dwt_overflow_count++;
+        }
+        last_dwt_timestamp = current_dwt_timestamp;
 
     /* USER CODE END WHILE */
 

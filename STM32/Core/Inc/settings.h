@@ -42,6 +42,10 @@ typedef struct {
 typedef struct {
     // TODO: finish python bindings and make real settings
     uint32_t checksum;
+    /* enable flags for live USB telemetry */
+    bool enable_accel;
+    bool enable_gyro;
+    bool enable_mag;
 } FIRMSettings_t;
 
 // global declaration of FIRM Settings and calibration settings to be used elsewhere in project
