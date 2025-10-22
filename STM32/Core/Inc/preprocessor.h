@@ -10,6 +10,8 @@
 typedef struct {
     double timestamp_sec;
 
+    float temperature;
+    float pressure;
     float accel_x;
     float accel_y;
     float accel_z;
