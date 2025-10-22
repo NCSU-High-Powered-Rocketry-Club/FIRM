@@ -62,6 +62,7 @@ static void settings_write_defaults(void) {
 
     // TODO: determine settings to use
     firmSettings.checksum = 0xA5A5A5A5;
+    firmSettings.serial_transfer_enabled = true;
 
     // Erase sector 0 first (4 KB, covers our 1024 bytes)
     w25q128jv_erase_sector(0);

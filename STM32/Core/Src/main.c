@@ -22,6 +22,7 @@
 #include "mmc5983ma.h"
 #include "settings.h"
 #include "preprocessor.h"
+#include "usb_serializer.h"
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -204,7 +205,12 @@ int main(void)
 
     // instance of the calibrated data packet from the preprocessor to be reused
     CalibratedDataPacket_t* calibrated_packet = {0};
+    // instance of the serialized packet, will be reused
+    SerializedPacket_t* serialized_packet = {0};
+    serializer_init_packet(serialized_packet); // initializes the packet length and header bytes
 
+    // check to verify if any new data has been collected, from any of the sensors
+    bool any_new_data_collected = false;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -219,6 +225,7 @@ int main(void)
     	        bmp581_has_new_data = false;
     	        logger_write_entry('B', sizeof(BMP581Packet_t));
                 bmp581_convert_packet(bmp581_packet, calibrated_packet);
+                any_new_data_collected = true;
     	    }
     	}
 
@@ -228,6 +235,7 @@ int main(void)
     	        icm45686_has_new_data = false;
     	        logger_write_entry('I', sizeof(ICM45686Packet_t));
                 icm45686_convert_packet(icm45686_packet, calibrated_packet);
+                any_new_data_collected = true;
     	    }
     	}
 
@@ -237,9 +245,16 @@ int main(void)
     	        mmc5983ma_has_new_data = false;
     	        logger_write_entry('M', sizeof(MMC5983MAPacket_t));
                 mmc5983ma_convert_packet(mmc5983ma_packet, calibrated_packet);
+                any_new_data_collected = true;
     	    }
     	}
 
+        // if USB serial communication setting is enabled, and new data is collected, serialize
+        // and transmit it
+        if (firmSettings.serial_transfer_enabled && any_new_data_collected) {
+            usb_serialize_calibrated_packet(calibrated_packet, serialized_packet);
+            usb_transmit_serialized_packet(serialized_packet);
+        }
 
     /* USER CODE END WHILE */
 
