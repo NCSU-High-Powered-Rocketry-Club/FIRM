@@ -25,6 +25,9 @@ void bmp581_convert_packet(BMP581Packet_t *packet, CalibratedDataPacket_t *resul
     float temp_float = (float) temp_binary/65536.0F;
 
     float pressure_float = (float) pressure_binary/64.0F;
+
+    result_packet -> temperature = temp_float;
+    result_packet -> pressure = pressure_float;
 }
 
 void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, CalibratedDataPacket_t *result_packet){
@@ -40,6 +43,9 @@ void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, CalibratedDataPacket_t 
     float mag_float_y = ((float) mag_binary_y) / (131072.0F/800.0F);
     float mag_float_z = ((float) mag_binary_z) / (131072.0F/800.0F);
 
+    result_packet -> magnetic_field_x = mag_float_x;
+    result_packet -> magnetic_field_y = mag_float_y;
+    result_packet -> magnetic_field_z = mag_float_z;
 }
 
 void icm45686_convert_packet(ICM45686Packet_t *packet, CalibratedDataPacket_t *result_packet){
@@ -59,9 +65,18 @@ void icm45686_convert_packet(ICM45686Packet_t *packet, CalibratedDataPacket_t *r
     float acc_float_y = ((float) acc_binary_y ) / 16384.0F;
     float acc_float_z = ((float) acc_binary_z ) / 16384.0F;
 
-    float gryo_float_x = ((float) gyro_binary_x) / (131.072F * (pi/180.0F));
-    float gryo_float_y = ((float) gyro_binary_y) / (131.072F * (pi/180.0F));
-    float gryo_float_z =((float) gyro_binary_z) / (131.072F * (pi/180.0F));
+    float gyro_float_x = ((float) gyro_binary_x) / (131.072F * (pi/180.0F));
+    float gyro_float_y = ((float) gyro_binary_y) / (131.072F * (pi/180.0F));
+    float gyro_float_z =((float) gyro_binary_z) / (131.072F * (pi/180.0F));
+
+    result_packet -> accel_x = acc_float_x;
+    result_packet -> accel_y = acc_float_y;
+    result_packet -> accel_z = acc_float_z;
+
+    result_packet -> angular_rate_x = gyro_float_x;
+    result_packet -> angular_rate_y = gyro_float_y;
+    result_packet -> angular_rate_z = gyro_float_z;
+    
 } 
 
 static double update_dwt_timestamp(void) {
