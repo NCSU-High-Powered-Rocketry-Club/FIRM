@@ -103,6 +103,7 @@
     - src/**
     - ../STM32/Core/Src/**
   :include:
+    - test/support
     - src/** # In simple projects, this entry often duplicates :source
     - ../STM32/Core/Inc/**
   :support:
@@ -202,7 +203,7 @@
 # Configuration options specific to Unity. 
 :unity:
   :defines:
-    - UNITY_EXCLUDE_FLOAT
+    - UNITY_INCLUDE_FLOAT
 
 # You can optionally have ceedling create environment variables for you before
 # performing the rest of its tasks.
@@ -347,9 +348,9 @@
 # See documentation to configure a given toolchain for use
 # :tools:
 #   :test_compiler: 
-#     :executable:
+#     :executable: arm-none-eabi-gcc
 #     :arguments: []
-#     :name: 
+#     :name: 'Default Test Compiler'
 #     :optional: FALSE
 #   :test_linker: 
 #     :executable:

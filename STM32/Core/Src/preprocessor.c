@@ -18,9 +18,14 @@ void bmp581_convert_packet(BMP581Packet_t *packet, CalibratedDataPacket_t *resul
     result_packet->timestamp_sec = update_dwt_timestamp();
     int32_t temp_binary, pressure_binary;
 
-    // extract pressure and temp bytes as a 32 bit int
-    temp_binary = (((int32_t) packet->temp_msb) << 16 )| (((int32_t) packet->temp_lsb) << 8) | ((int32_t) packet->temp_xlsb);
-    pressure_binary = (((int32_t) packet->pressure_msb)  << 16) | (((int32_t) packet->pressure_lsb) << 8) | ((int32_t) packet->pressure_xlsb);
+    // extract pressure and temp bytes as a 32 bit int, preserving sign
+    temp_binary = ((int32_t)((int8_t)packet->temp_msb) << 16) | 
+                 ((int32_t)packet->temp_lsb << 8) | 
+                 ((int32_t)packet->temp_xlsb);
+    
+    pressure_binary = ((int32_t)((int8_t)packet->pressure_msb) << 16) |
+                     ((int32_t)packet->pressure_lsb << 8) |
+                     ((int32_t)packet->pressure_xlsb);
 
     // convert to a float with temp in celcius and pressure in pascals
     float temp_float = (float) temp_binary / 65536.0F;
@@ -35,10 +40,18 @@ void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, CalibratedDataPacket_t 
     result_packet->timestamp_sec = update_dwt_timestamp();
     int32_t mag_binary_x, mag_binary_y, mag_binary_z;
 
-    // extract magnetic field bytes as 32 bit integer
-    mag_binary_x = (((int32_t) packet->mag_x_msb) << 10 ) | (((int32_t) packet->mag_x_mid) << 2) | ((int32_t) (packet->mag_xyz_lsb >> 6));
-    mag_binary_y = (((int32_t) packet->mag_y_msb) << 10 ) | (((int32_t) packet->mag_y_mid) << 2) | ((int32_t) ((packet->mag_xyz_lsb & 00110000) >> 4));
-    mag_binary_z = (((int32_t) packet->mag_z_msb) << 10 ) | (((int32_t) packet->mag_z_mid) << 2) | ((int32_t) ((packet->mag_xyz_lsb & 00001100 >> 2)));
+    // extract magnetic field bytes as 32 bit integer, preserving sign
+    mag_binary_x = ((int32_t)((int8_t)packet->mag_x_msb) << 10) |
+                  ((int32_t)packet->mag_x_mid << 2) |
+                  ((int32_t)(packet->mag_xyz_lsb >> 6));
+                  
+    mag_binary_y = ((int32_t)((int8_t)packet->mag_y_msb) << 10) |
+                  ((int32_t)packet->mag_y_mid << 2) |
+                  ((int32_t)((packet->mag_xyz_lsb & 0b00110000) >> 4));
+                  
+    mag_binary_z = ((int32_t)((int8_t)packet->mag_z_msb) << 10) |
+                  ((int32_t)packet->mag_z_mid << 2) |
+                  ((int32_t)((packet->mag_xyz_lsb & 0b00001100) >> 2));
     
     // convert to float in SI units (microtesla)
     float mag_float_x = ((float) mag_binary_x) / (131072.0F / 800.0F);
@@ -57,13 +70,30 @@ void icm45686_convert_packet(ICM45686Packet_t *packet, CalibratedDataPacket_t *r
     result_packet->timestamp_sec = update_dwt_timestamp();
     int32_t acc_binary_x, acc_binary_y, acc_binary_z, gyro_binary_x,gyro_binary_y,gyro_binary_z;
 
-    // extract acceleration and gyroscope bytes into 32 bit integers
-    acc_binary_x = (((int32_t) packet->accX_H) << 12 ) | (((int32_t) packet->accX_L) << 4) | ((int32_t) (packet->x_vals_lsb >> 4));
-    acc_binary_y = (((int32_t) packet->accY_H) << 12 ) | (((int32_t) packet->accY_L) << 4) | ((int32_t) (packet->y_vals_lsb >> 4));
-    acc_binary_z = (((int32_t) packet->accZ_H) << 12 ) | (((int32_t) packet->accZ_L) << 4) | ((int32_t) (packet->z_vals_lsb >> 4));
-    gyro_binary_x = (((int32_t) packet->gyroX_H) << 12) | (((int32_t) packet->gyroX_L) << 4) | ((int32_t) (packet->x_vals_lsb & 00001111));
-    gyro_binary_y = (((int32_t) packet->gyroY_H) << 12) | (((int32_t) packet->gyroY_L) << 4) | ((int32_t) (packet->y_vals_lsb & 00001111));
-    gyro_binary_z = (((int32_t) packet->gyroZ_H) << 12) | (((int32_t) packet->gyroZ_L) << 4) | ((int32_t) (packet->z_vals_lsb & 00001111));
+    // extract acceleration and gyroscope bytes into 32 bit integers, preserving sign
+    acc_binary_x = ((int32_t)((int8_t)packet->accX_H) << 12) |
+                   ((int32_t)packet->accX_L << 4) |
+                   ((int32_t)(packet->x_vals_lsb >> 4));
+                   
+    acc_binary_y = ((int32_t)((int8_t)packet->accY_H) << 12) |
+                   ((int32_t)packet->accY_L << 4) |
+                   ((int32_t)(packet->y_vals_lsb >> 4));
+                   
+    acc_binary_z = ((int32_t)((int8_t)packet->accZ_H) << 12) |
+                   ((int32_t)packet->accZ_L << 4) |
+                   ((int32_t)(packet->z_vals_lsb >> 4));
+                   
+    gyro_binary_x = ((int32_t)((int8_t)packet->gyroX_H) << 12) |
+                    ((int32_t)packet->gyroX_L << 4) |
+                    ((int32_t)(packet->x_vals_lsb & 0x0F));
+                    
+    gyro_binary_y = ((int32_t)((int8_t)packet->gyroY_H) << 12) |
+                    ((int32_t)packet->gyroY_L << 4) |
+                    ((int32_t)(packet->y_vals_lsb & 0x0F));
+                    
+    gyro_binary_z = ((int32_t)((int8_t)packet->gyroZ_H) << 12) |
+                    ((int32_t)packet->gyroZ_L << 4) |
+                    ((int32_t)(packet->z_vals_lsb & 0x0F));
 
     // convert acceleration to g's, and gyroscope to degrees per second
     float acc_float_x = ((float) acc_binary_x ) / 16384.0F;
@@ -71,14 +101,14 @@ void icm45686_convert_packet(ICM45686Packet_t *packet, CalibratedDataPacket_t *r
     float acc_float_z = ((float) acc_binary_z ) / 16384.0F;
     float gyro_float_x = ((float) gyro_binary_x) / 131.072F;
     float gyro_float_y = ((float) gyro_binary_y) / 131.072F;
-    float gyro_float_z =((float) gyro_binary_z) / 131.072F;
+    float gyro_float_z = ((float) gyro_binary_z) / 131.072F;
 
     // TODO: Apply calibration
     
     // convert gyroscope to radians per second for further processing
-    gyro_float_x = gyro_binary_x * (pi / 180.0F);
-    gyro_float_y = gyro_binary_y * (pi / 180.0F);
-    gyro_float_z = gyro_binary_z * (pi / 180.0F);
+    gyro_float_x = gyro_float_x * (pi / 180.0F);
+    gyro_float_y = gyro_float_y * (pi / 180.0F);
+    gyro_float_z = gyro_float_z * (pi / 180.0F);
 
     result_packet -> accel_x = acc_float_x;
     result_packet -> accel_y = acc_float_y;

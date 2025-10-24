@@ -3,9 +3,9 @@
 /*=======Automagically Detected Files To Include=====*/
 #include "unity.h"
 /* injected defines for unity settings, etc */
-#ifndef UNITY_EXCLUDE_FLOAT
-#define UNITY_EXCLUDE_FLOAT
-#endif /* UNITY_EXCLUDE_FLOAT */
+#ifndef UNITY_INCLUDE_FLOAT
+#define UNITY_INCLUDE_FLOAT
+#endif /* UNITY_INCLUDE_FLOAT */
 #include "firm_utils.h"
 
 int GlobalExpectCount;
