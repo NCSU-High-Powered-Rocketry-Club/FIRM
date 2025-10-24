@@ -94,3 +94,6 @@ cmake_install.cmake
 /python-scripts/*.csv
 KiCad/production
 KiCad/fabrication-toolkit-options.json
+
+# tests
+/tests/build
