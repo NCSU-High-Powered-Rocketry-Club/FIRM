@@ -110,12 +110,8 @@ class PacketParser:
 
             # Verify CRC
             data_for_crc = self.bytes_stored[header_pos:crc_start]
-            print(len(data_for_crc))
             received_crc = int.from_bytes(self.bytes_stored[crc_start : crc_start + 2], "little")
-            print(received_crc)
             computed_crc = self._crc16_ccitt(data_for_crc)
-            print(computed_crc)
-            print("\n")
             if computed_crc != received_crc:
                 pos = header_pos + 2
                 continue
