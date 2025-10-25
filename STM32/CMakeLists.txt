@@ -57,6 +57,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
    Core/Inc
+   Drivers/CMSIS-DSP/Include
 )
 
 # Add project symbols (macros)
@@ -73,3 +74,7 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 
     # Add user defined libraries
 )
+
+set(CMSISDSP Drivers/CMSIS-DSP)
+set(CMSISCORE "${CMAKE_CURRENT_SOURCE_DIR}/Drivers/CMSIS")
+add_subdirectory(${CMSISDSP}/Source bin_dsp)
