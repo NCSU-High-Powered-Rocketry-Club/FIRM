@@ -1,7 +1,9 @@
 #pragma once
-#include "bmp581.h"
-#include "mmc5983ma.h"
-#include "icm45686.h"
+#include <stdint.h>
+#include "support/mock_bmp581.h"
+#include "support/mock_mmc5983ma.h"
+#include "support/mock_icm45686.h"
+#include "support/mock_dwt.h"
 
 
 /**
@@ -54,4 +56,3 @@ void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, CalibratedDataPacket_t 
  *                      will be stored
  */
 void icm45686_convert_packet(ICM45686Packet_t *packet, CalibratedDataPacket_t *result_packet);
-
