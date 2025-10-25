@@ -16,9 +16,12 @@ class PacketParser:
 
     """
 
+    __slots__ = ("_bytes_stored", "_ser", "_struct")
+
     def __init__(self, port: str, baudrate: int):
-        self.ser = serial.Serial(port, baudrate)
-        self.bytes_stored = bytearray()
+        self._ser = serial.Serial(port, baudrate)
+        self._bytes_stored = bytearray()
+        self._struct = struct.Struct("<fffffffffffxxxxd")
 
     def __enter__(self):
         self.initialize()
@@ -30,14 +33,14 @@ class PacketParser:
 
     def initialize(self):
         """Open serial and prepare for parsing packets."""
-        if not self.ser.is_open:
-            self.ser.open()
-        self.bytes_stored.clear()
+        if not self._ser.is_open:
+            self._ser.open()
+        self._bytes_stored.clear()
 
     def close(self):
         """Close the serial port."""
-        if self.ser.is_open:
-            self.ser.close()
+        if self._ser.is_open:
+            self._ser.close()
 
     @overload
     def get_data_packets(
@@ -64,16 +67,16 @@ class PacketParser:
 
         if block:
             while not packets:
-                chunk = self.ser.read(self.ser.in_waiting)
+                chunk = self._ser.read(self._ser.in_waiting)
                 # Add the read bytes to the stored bytes
-                self.bytes_stored.extend(chunk)
+                self._bytes_stored.extend(chunk)
                 # Attempt to parse packets from the stored bytes:
                 packets = self._parse_packets()
                 if packets:
                     break
-        elif self.ser.in_waiting > 0:
-            chunk = self.ser.read(self.ser.in_waiting)
-            self.bytes_stored.extend(chunk)
+        elif self._ser.in_waiting > 0:
+            chunk = self._ser.read(self._ser.in_waiting)
+            self._bytes_stored.extend(chunk)
             packets = self._parse_packets()
 
         return packets
@@ -84,10 +87,10 @@ class PacketParser:
 
         packets = []
         pos = 0
-        data_len = len(self.bytes_stored)
+        data_len = len(self._bytes_stored)
         while pos < data_len:
             # Find the next header starting from pos
-            header_pos = self.bytes_stored.find(START_BYTE, pos)
+            header_pos = self._bytes_stored.find(START_BYTE, pos)
             if header_pos == -1:  # No more headers found (incomplete packet)
                 break
 
@@ -95,7 +98,7 @@ class PacketParser:
             if pos + 2 > data_len:  # Not enough data for length field
                 break
 
-            length_bytes = self.bytes_stored[pos : pos + 2]
+            length_bytes = self._bytes_stored[pos : pos + 2]
             length = int.from_bytes(length_bytes, "little")
             if length != 56:
                 pos += 2  # Skip length field and continue searching
@@ -109,17 +112,17 @@ class PacketParser:
                 break
 
             # Verify CRC
-            data_for_crc = self.bytes_stored[header_pos:crc_start]
-            received_crc = int.from_bytes(self.bytes_stored[crc_start : crc_start + 2], "little")
+            data_for_crc = self._bytes_stored[header_pos:crc_start]
+            received_crc = int.from_bytes(self._bytes_stored[crc_start : crc_start + 2], "little")
             computed_crc = self._crc16_ccitt(data_for_crc)
             if computed_crc != received_crc:
                 pos = header_pos + 2
                 continue
 
             # Extract payload
-            payload = self.bytes_stored[payload_start:payload_end]
+            payload = self._bytes_stored[payload_start:payload_end]
             try:
-                fields = struct.unpack("<ffffffffffffd", payload)
+                fields = self._struct.unpack(payload)
                 (
                     temperature,
                     pressure,
@@ -132,9 +135,7 @@ class PacketParser:
                     magnetic_field_x,
                     magnetic_field_y,
                     magnetic_field_z,
-                    dummy,
                     timestamp,
-                    
                 ) = fields
                 imu_packet = IMUPacket(
                     timestamp_secs=timestamp,
@@ -162,11 +163,11 @@ class PacketParser:
             except (struct.error, ValueError) as e:
                 # Unpacking failed, skip and continue searching after length
                 pos = header_pos + 2
-                raise(e)
+                raise (e)
                 continue
 
         # Retain unparsed data, delete parsed bytes:
-        self.bytes_stored = self.bytes_stored[pos:]
+        self._bytes_stored = self._bytes_stored[pos:]
 
         return packets if packets else None
 
