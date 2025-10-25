@@ -110,6 +110,7 @@ class PacketParser:
 
             # Verify CRC
             data_for_crc = self.bytes_stored[header_pos:crc_start]
+            print(len(data_for_crc))
             received_crc = int.from_bytes(self.bytes_stored[crc_start : crc_start + 2], "little")
             print(received_crc)
             computed_crc = self._crc16_ccitt(data_for_crc)
@@ -122,9 +123,8 @@ class PacketParser:
             # Extract payload
             payload = self.bytes_stored[payload_start:payload_end]
             try:
-                fields = struct.unpack("<dffffffffffff", payload)
+                fields = struct.unpack("<ffffffffffffd", payload)
                 (
-                    timestamp,
                     temperature,
                     pressure,
                     accel_x,
@@ -137,6 +137,8 @@ class PacketParser:
                     magnetic_field_y,
                     magnetic_field_z,
                     dummy,
+                    timestamp,
+                    
                 ) = fields
                 imu_packet = IMUPacket(
                     timestamp_secs=timestamp,
