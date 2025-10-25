@@ -8,7 +8,6 @@
  * @brief Calibrated data with timestamp
  */
 typedef struct {
-    double timestamp_sec;
 
     float temperature;
     float pressure;
@@ -21,6 +20,7 @@ typedef struct {
     float magnetic_field_x;
     float magnetic_field_y;
     float magnetic_field_z;
+    double timestamp_sec;
 } CalibratedDataPacket_t;
 
 
