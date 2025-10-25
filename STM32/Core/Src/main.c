@@ -20,7 +20,6 @@
 #include "icm45686.h"
 #include "logger.h"
 #include "mmc5983ma.h"
-#include "settings.h"
 #include "preprocessor.h"
 #include "usb_serializer.h"
 /* USER CODE END Header */
@@ -168,9 +167,9 @@ int main(void)
     }
 
     // set up settings module with flash chip
-    if (settings_init(&hspi1, GPIOC, GPIO_PIN_4)) {
-        Error_Handler();
-    }
+    // if (settings_init(&hspi1, GPIOC, GPIO_PIN_4)) {
+    //     Error_Handler();
+    // }
 
     // Setup the SD card
     FRESULT res = logger_init(&hdma_sdio_tx);
@@ -251,7 +250,7 @@ int main(void)
 
         // if USB serial communication setting is enabled, and new data is collected, serialize
         // and transmit it
-        if (firmSettings.serial_transfer_enabled && any_new_data_collected) {
+        if (any_new_data_collected) {
             usb_serialize_calibrated_packet(calibrated_packet, serialized_packet);
             usb_transmit_serialized_packet(serialized_packet);
         }
