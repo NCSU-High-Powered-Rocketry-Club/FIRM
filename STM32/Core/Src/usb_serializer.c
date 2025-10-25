@@ -14,8 +14,9 @@ void usb_serialize_calibrated_packet(const CalibratedDataPacket_t *packet, Seria
     if (!serialized_packet->header || !serialized_packet->length) return;
 
     serialized_packet->payload = *packet;
-    // size of the data minus the crc
-    uint16_t data_len = sizeof(uint16_t) * 2 + sizeof(CalibratedDataPacket_t);
+    // size of the data minus the crc, theres 4 bytes of padding in the struct between the
+    // length field and the calibrated packet field due to the calibrated packet having a double
+    uint16_t data_len = offsetof(SerializedPacket_t, crc);
     const uint8_t *data = (const uint8_t *)serialized_packet;
     // calculate and set the crc bytes based on CRC-ccitt-KERMIT format
     serialized_packet->crc = crc16_ccitt(data, data_len);
