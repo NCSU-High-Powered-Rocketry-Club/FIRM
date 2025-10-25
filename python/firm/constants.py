@@ -1,6 +1,6 @@
 """Constants used in FIRM data packet processing."""
 
-START_BYTE = b"\xa5\x5a"
+START_BYTE = b"\x5a\xa5"
 """Start byte sequence for packet identification."""
 
 CRC16_TABLE = [

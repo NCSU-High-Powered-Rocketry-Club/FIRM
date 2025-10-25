@@ -64,7 +64,7 @@ class PacketParser:
 
         if block:
             while not packets:
-                chunk = self.ser.read_until(expected=START_BYTE)
+                chunk = self.ser.read(self.ser.in_waiting)
                 # Add the read bytes to the stored bytes
                 self.bytes_stored.extend(chunk)
                 # Attempt to parse packets from the stored bytes:
@@ -102,7 +102,7 @@ class PacketParser:
                 continue
 
             # Check if full packet is available:
-            payload_start = pos + 2
+            payload_start = pos + 6
             payload_end = payload_start + length
             crc_start = payload_end
             if crc_start + 2 > data_len:
@@ -111,7 +111,10 @@ class PacketParser:
             # Verify CRC
             data_for_crc = self.bytes_stored[header_pos:crc_start]
             received_crc = int.from_bytes(self.bytes_stored[crc_start : crc_start + 2], "little")
+            print(received_crc)
             computed_crc = self._crc16_ccitt(data_for_crc)
+            print(computed_crc)
+            print("\n")
             if computed_crc != received_crc:
                 pos = header_pos + 2
                 continue
@@ -119,7 +122,7 @@ class PacketParser:
             # Extract payload
             payload = self.bytes_stored[payload_start:payload_end]
             try:
-                fields = struct.unpack("<dfffffffffff", payload)
+                fields = struct.unpack("<dffffffffffff", payload)
                 (
                     timestamp,
                     temperature,
@@ -133,6 +136,7 @@ class PacketParser:
                     magnetic_field_x,
                     magnetic_field_y,
                     magnetic_field_z,
+                    dummy,
                 ) = fields
                 imu_packet = IMUPacket(
                     timestamp_secs=timestamp,
@@ -157,9 +161,10 @@ class PacketParser:
                 packets.extend([imu_packet, baro_packet, mag_packet])
                 # Advance position past this packet
                 pos = crc_start + 2
-            except (struct.error, ValueError):
+            except (struct.error, ValueError) as e:
                 # Unpacking failed, skip and continue searching after length
                 pos = header_pos + 2
+                raise(e)
                 continue
 
         # Retain unparsed data, delete parsed bytes:
