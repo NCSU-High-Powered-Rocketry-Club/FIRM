@@ -253,6 +253,7 @@ int main(void)
         if (any_new_data_collected) {
             usb_serialize_calibrated_packet(calibrated_packet, serialized_packet);
             usb_transmit_serialized_packet(serialized_packet);
+            any_new_data_collected = false;
         }
 
     /* USER CODE END WHILE */

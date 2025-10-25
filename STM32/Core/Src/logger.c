@@ -215,7 +215,7 @@ static FRESULT logger_write() {
         serialPrintStr("ERR logger_write");
         return fr;
     } else {
-        serialPrintStr(file_name);
+        //serialPrintStr(file_name);
     }
 
     return fr;

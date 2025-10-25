@@ -22,9 +22,8 @@ void usb_serialize_calibrated_packet(const CalibratedDataPacket_t *packet, Seria
 }
 
 void usb_transmit_serialized_packet(const SerializedPacket_t *serialized_packet) {
-    if (!serialized_packet) return;
     if (!serialized_packet->crc) return;
-      // uint16_t cast is required by CDC API
+    // uint16_t cast is required by CDC API
     CDC_Transmit_FS((uint8_t*)serialized_packet, (uint16_t)sizeof(SerializedPacket_t));
 }
 
