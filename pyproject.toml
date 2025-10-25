@@ -3,12 +3,33 @@ name = "firm"
 version = "0.1.0"
 description = "Filtered Inertial Rotation Module"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.10,<3.14"
 dependencies = [
-    "pandas>=2.3.3",
+    "msgspec>=0.19.0",
+    "pyserial>=3.5",
 ]
 
 [dependency-groups]
 dev = [
-    "pre-commit"
+    "pre-commit",
+    "ruff>=0.14.1",
+    "ty>=0.0.1a23",
 ]
+
+decoding = [
+    "pandas>=2.3.3",
+]
+
+
+# RUFF:
+[tool.ruff]
+line-length = 100
+show-fixes = true
+
+[tool.ruff.lint]
+typing-extensions = false
+ignore = ["PLR2004", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PERF203"]
+select = ["E", "F", "I", "PL", "UP", "RUF", "PTH", "C4", "B", "PIE", "SIM", "RET", "RSE",
+          "G", "ISC", "PT", "ASYNC", "TCH", "SLOT", "PERF", "PYI", "FLY", "AIR", "RUF022",
+          "RUF023", "Q", "INP", "W", "YTT", "DTZ", "ARG", "T20", "FURB", "DOC", "TRY", 
+          "D100", "D101", "D102", "D103", "D300", "D418", "D419", "S"]

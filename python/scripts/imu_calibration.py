@@ -1,12 +1,11 @@
-import pandas as pd
 import math
-import sys
 import os
+import sys
+
+import pandas as pd
 
 
 def calibrate(path):
-    
-
     # columns to use
     applicable_fields = ["accel_x", "accel_y", "accel_z", "gyro_x", "gyro_y", "gyro_z"]
 
@@ -20,8 +19,8 @@ def calibrate(path):
         for value in read_csv[key]:
             if math.isnan(value):
                 continue
-            elif key == 'accel_z':
-                element_list.append(float(value) - 1.0) # subtract gravity, expected 1gs
+            if key == "accel_z":
+                element_list.append(float(value) - 1.0)  # subtract gravity, expected 1gs
             else:
                 element_list.append(float(value))
         field_element_dict[key] = element_list
