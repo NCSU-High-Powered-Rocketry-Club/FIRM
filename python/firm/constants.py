@@ -1,7 +1,25 @@
 """Constants used in FIRM data packet processing."""
 
 START_BYTE = b"\x5a\xa5"
-"""Start byte sequence for packet identification."""
+"""Start byte sequence for packet identification. This is in little-endian format."""
+
+HEADER_SIZE = len(START_BYTE)
+"""Size of the packet header in bytes."""
+
+LENGTH_FIELD_SIZE = 2
+"""Size of the length field in bytes."""
+
+PADDING_SIZE = 6
+"""Size of the padding buffer in bytes."""
+
+PAYLOAD_LENGTH = 56
+"""Length of the payload in bytes."""
+
+CRC_SIZE = 2
+"""Size of the CRC field in bytes."""
+
+FULL_PACKET_SIZE = HEADER_SIZE + LENGTH_FIELD_SIZE + PADDING_SIZE + PAYLOAD_LENGTH + CRC_SIZE
+"""Total size of a full data packet in bytes."""
 
 CRC16_TABLE = [
     0x0000,

@@ -1,11 +1,19 @@
 """Parser for FIRM data packets from a serial interface."""
 
 import struct
-from typing import Literal, overload
 
 import serial
 
-from .constants import CRC16_TABLE, START_BYTE
+from .constants import (
+    CRC16_TABLE,
+    CRC_SIZE,
+    FULL_PACKET_SIZE,
+    HEADER_SIZE,
+    LENGTH_FIELD_SIZE,
+    PADDING_SIZE,
+    PAYLOAD_LENGTH,
+    START_BYTE,
+)
 from .packets import BarometerPacket, IMUPacket, MagnetometerPacket
 
 
@@ -24,11 +32,12 @@ class PacketParser:
         self._struct = struct.Struct("<fffffffffffxxxxd")
 
     def __enter__(self):
+        """Context manager entry: initialize the parser."""
         self.initialize()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        """Ensure serial port is closed on exit."""
+        """Context manager exit: Ensure serial port is closed on exit."""
         self.close()
 
     def initialize(self):
@@ -42,18 +51,9 @@ class PacketParser:
         if self._ser.is_open:
             self._ser.close()
 
-    @overload
-    def get_data_packets(
-        self, block: Literal[True] = True
-    ) -> list[IMUPacket | BarometerPacket | MagnetometerPacket]: ...
-    @overload
-    def get_data_packets(
-        self, block: Literal[False] = False
-    ) -> list[IMUPacket | BarometerPacket | MagnetometerPacket] | None: ...
-
     def get_data_packets(
         self, block: bool = True
-    ) -> list[IMUPacket | BarometerPacket | MagnetometerPacket] | None:
+    ) -> list[IMUPacket | BarometerPacket | MagnetometerPacket]:
         """Read data from the serial port and parse packets.
 
         Args:
@@ -81,95 +81,77 @@ class PacketParser:
 
         return packets
 
-    def _parse_packets(self) -> list[IMUPacket | BarometerPacket | MagnetometerPacket] | None:
+    def _parse_packets(self) -> list[IMUPacket | BarometerPacket | MagnetometerPacket]:
         """Attempt to parse packets from the data. If any packets cannot be fully parsed, the data
         is retained for the next read."""
 
         packets = []
         pos = 0
         data_len = len(self._bytes_stored)
+        view = memoryview(self._bytes_stored)
+
         while pos < data_len:
             # Find the next header starting from pos
             header_pos = self._bytes_stored.find(START_BYTE, pos)
             if header_pos == -1:  # No more headers found (incomplete packet)
                 break
 
-            pos = header_pos + 2
-            if pos + 2 > data_len:  # Not enough data for length field
+            # Check if we have enough data for a complete packet
+            if header_pos + FULL_PACKET_SIZE > data_len:
                 break
 
-            length_bytes = self._bytes_stored[pos : pos + 2]
-            length = int.from_bytes(length_bytes, "little")
-            if length != 56:
-                pos += 2  # Skip length field and continue searching
+            # Parse and validate length of payload
+            length_start = header_pos + HEADER_SIZE
+            length = int.from_bytes(view[length_start : length_start + LENGTH_FIELD_SIZE], "little")
+
+            if length != PAYLOAD_LENGTH:
+                pos = length_start
                 continue
 
-            # Check if full packet is available:
-            payload_start = pos + 6
-            payload_end = payload_start + length
-            crc_start = payload_end
-            if crc_start + 2 > data_len:
-                break
+            # Calculate packet boundaries
+            payload_start = length_start + LENGTH_FIELD_SIZE + PADDING_SIZE
+            crc_start = payload_start + length
 
             # Verify CRC
-            data_for_crc = self._bytes_stored[header_pos:crc_start]
-            received_crc = int.from_bytes(self._bytes_stored[crc_start : crc_start + 2], "little")
-            computed_crc = self._crc16_ccitt(data_for_crc)
-            if computed_crc != received_crc:
-                pos = header_pos + 2
+            if not self._verify_crc(view, header_pos, crc_start):
+                pos = length_start
                 continue
 
-            # Extract payload
-            payload = self._bytes_stored[payload_start:payload_end]
-            try:
-                fields = self._struct.unpack(payload)
-                (
-                    temperature,
-                    pressure,
-                    accel_x,
-                    accel_y,
-                    accel_z,
-                    angular_rate_x,
-                    angular_rate_y,
-                    angular_rate_z,
-                    magnetic_field_x,
-                    magnetic_field_y,
-                    magnetic_field_z,
-                    timestamp,
-                ) = fields
-                imu_packet = IMUPacket(
-                    timestamp_secs=timestamp,
-                    acc_x_gs=accel_x,
-                    acc_y_gs=accel_y,
-                    acc_z_gs=accel_z,
-                    gyro_x_rad_s=angular_rate_x,
-                    gyro_y_rad_s=angular_rate_y,
-                    gyro_z_rad_s=angular_rate_z,
-                )
-                baro_packet = BarometerPacket(
-                    timestamp_secs=timestamp,
-                    temperature_celsius=temperature,
-                    pressure_pascals=pressure,
-                )
-                mag_packet = MagnetometerPacket(
-                    timestamp_secs=timestamp,
-                    mag_x_ut=magnetic_field_x,
-                    mag_y_ut=magnetic_field_y,
-                    mag_z_ut=magnetic_field_z,
-                )
-                packets.extend([imu_packet, baro_packet, mag_packet])
-                # Advance position past this packet
-                pos = crc_start + 2
-            except (struct.error, ValueError) as e:
-                # Unpacking failed, skip and continue searching after length
-                pos = header_pos + 2
-                raise (e)
-                continue
+            # Extract and parse payload
+            payload = bytes(view[payload_start:crc_start])
+            packet_group = self._create_packet_group(payload)
+            if packet_group:
+                packets.extend(packet_group)
+
+            pos = crc_start + CRC_SIZE
 
         # Retain unparsed data, delete parsed bytes:
         self._bytes_stored = self._bytes_stored[pos:]
 
-        return packets if packets else None
+        return packets
+
+    def _create_packet_group(
+        self, payload: bytes
+    ) -> list[IMUPacket | BarometerPacket | MagnetometerPacket] | None:
+        """Unpack payload and create packet group."""
+        try:
+            fields = self._struct.unpack(payload)
+        except (struct.error, ValueError):
+            return None
+
+        (temp, press, ax, ay, az, gx, gy, gz, mx, my, mz, ts) = fields
+
+        return [
+            IMUPacket(ts, ax, ay, az, gx, gy, gz),
+            BarometerPacket(ts, temp, press),
+            MagnetometerPacket(ts, mx, my, mz),
+        ]
+
+    def _verify_crc(self, data: memoryview, header_pos: int, crc_start: int) -> bool:
+        """Verify CRC checksum for packet."""
+        data_for_crc = data[header_pos:crc_start]
+        received_crc = int.from_bytes(data[crc_start : crc_start + CRC_SIZE], "little")
+        return self._crc16_ccitt(data_for_crc) == received_crc
 
     def _crc16_ccitt(self, data: bytes) -> int:
         """Compute the CRC-16-CCITT checksum for the given data."""
