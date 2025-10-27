@@ -26,15 +26,15 @@ class PacketParser:
 
     """
 
-    __slots__ = ("_bytes_stored", "_ser", "_struct", "_rx_thread", "_stop_event", "_pkt_q")
+    __slots__ = ("_bytes_stored", "_serial_port", "_struct", "_rx_thread", "_stop_event", "_packet_queue")
 
     def __init__(self, port: str, baudrate: int):
-        self._ser = serial.Serial(port, baudrate)
+        self._serial_port = serial.Serial(port, baudrate)
         self._bytes_stored = bytearray()
         self._struct = struct.Struct("<fffffffffffxxxxd")
         self._rx_thread = None
         self._stop_event = threading.Event()
-        self._pkt_q: queue.Queue[FIRMPacket] = queue.Queue(maxsize=8192)
+        self._packet_queue: queue.Queue[FIRMPacket] = queue.Queue(maxsize=8192)
 
     def __enter__(self):
         """Context manager entry: initialize the parser."""
@@ -47,8 +47,8 @@ class PacketParser:
 
     def initialize(self):
         """Open serial and prepare for parsing packets."""
-        if not self._ser.is_open:
-            self._ser.open()
+        if not self._serial_port.is_open:
+            self._serial_port.open()
         self._bytes_stored.clear()
         self._stop_event.clear()
         if self._rx_thread is None or not self._rx_thread.is_alive():
@@ -61,8 +61,8 @@ class PacketParser:
         if self._rx_thread is not None:
             self._rx_thread.join(timeout=1.0)
             self._rx_thread = None
-        if self._ser.is_open:
-            self._ser.close()
+        if self._serial_port.is_open:
+            self._serial_port.close()
 
     def get_data_packets(
             self,
@@ -84,23 +84,64 @@ class PacketParser:
         firm_packets: list[FIRMPacket] = []
 
         if block:
-            try:
-                first_packet: FIRMPacket = self._pkt_q.get(timeout=timeout)
-                firm_packets.append(first_packet)
-            except queue.Empty:
-                return firm_packets
+            # Keep waiting until we successfully get a packet
+            while not firm_packets:
+                packet = self._packet_queue.get()
+                firm_packets.append(packet)
 
         try:
             while max_items is None or len(firm_packets) < max_items:
-                firm_packets.append(self._pkt_q.get_nowait())
+                firm_packets.append(self._packet_queue.get_nowait())
         except queue.Empty:
             pass
 
         return firm_packets
 
+    def _worker(self):
+        """Background reader: read bytes -> parse -> enqueue FIRMPackets."""
+        serial_port = self._serial_port
+        stop = self._stop_event
+
+        while not stop.is_set():
+            # 1) Read some bytes (at least 1 to avoid a busy loop when idle)
+            try:
+                n_waiting = serial_port.in_waiting
+            except (OSError, serial.SerialException):
+                break  # serial port went away
+
+            to_read = n_waiting if n_waiting > 0 else 1
+            try:
+                chunk = serial_port.read(to_read)  # respects pyserial timeout if set
+            except (OSError, serial.SerialException):
+                break
+
+            if not chunk:
+                continue  # timed out or no data yet
+
+            # 2) Accumulate and parse as many complete packets as possible
+            self._bytes_stored.extend(chunk)
+            try:
+                packets = self._parse_packets()  # returns list[FIRMPacket]
+            except Exception:
+                # Defensive: never let the worker die due to a bad parse
+                packets = []
+
+            # 3) Enqueue results; on overflow, drop oldest to keep latency bounded
+            for pkt in packets:
+                try:
+                    self._packet_queue.put_nowait(pkt)
+                except queue.Full:
+                    try:
+                        _ = self._packet_queue.get_nowait()  # drop oldest
+                        self._packet_queue.put_nowait(pkt)
+                    except queue.Empty:
+                        pass  # rare race: ignore and continue
+
     def _parse_packets(self) -> list[FIRMPacket]:
         """Parse as many complete packets as possible and return FIRMPacket objects.
         Any leftover bytes for an incomplete packet are retained for the next read.
+
+        Returns: list of FIRMPacket objects parsed.
         """
         firm_packets: list[FIRMPacket] = []
         position = 0
