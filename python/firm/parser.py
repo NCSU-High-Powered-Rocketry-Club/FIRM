@@ -16,7 +16,7 @@ from .constants import (
     PAYLOAD_LENGTH,
     START_BYTE,
 )
-from .packets import BarometerPacket, IMUPacket, MagnetometerPacket, FIRMPacket
+from .packets import FIRMPacket
 
 
 class PacketParser:
@@ -137,7 +137,7 @@ class PacketParser:
 
             # Extract payload and build a FIRMPacket
             payload = bytes(view[payload_start:crc_start])
-            firm_packet = self._create_packet_group(payload)  # returns FIRMPacket | None
+            firm_packet = self._create_firm_packet(payload)  # returns FIRMPacket | None
             if firm_packet is not None:
                 firm_packets.append(firm_packet)
 
@@ -149,32 +149,41 @@ class PacketParser:
 
         return firm_packets
 
-    def _create_packet_group(self, payload: bytes) -> FIRMPacket | None:
-        """Unpack payload and create a single FIRMPacket containing IMU, barometer, and mag data."""
+    def _create_firm_packet(self, payload: bytes) -> FIRMPacket | None:
+        """Unpack payload and create a single unified FIRMPacket."""
         try:
             fields = self._struct.unpack(payload)
         except (struct.error, ValueError):
             return None
 
         (
-            temperature,
-            pressure,
-            accel_x,
-            accel_y,
-            accel_z,
-            gyro_x,
-            gyro_y,
-            gyro_z,
-            mag_x,
-            mag_y,
-            mag_z,
-            timestamp,
+            temperature_celsius,
+            pressure_pascals,
+            accel_x_meters_per_s2,
+            accel_y_meters_per_s2,
+            accel_z_meters_per_s2,
+            gyro_x_radians_per_s,
+            gyro_y_radians_per_s,
+            gyro_z_radians_per_s,
+            mag_x_microteslas,
+            mag_y_microteslas,
+            mag_z_microteslas,
+            timestamp_seconds,
         ) = fields
 
         return FIRMPacket(
-            IMUPacket(timestamp, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z),
-            BarometerPacket(timestamp, pressure, temperature),
-            MagnetometerPacket(timestamp, mag_x, mag_y, mag_z),
+            timestamp_seconds=timestamp_seconds,
+            accel_x_meters_per_s2=accel_x_meters_per_s2,
+            accel_y_meters_per_s2=accel_y_meters_per_s2,
+            accel_z_meters_per_s2=accel_z_meters_per_s2,
+            gyro_x_radians_per_s=gyro_x_radians_per_s,
+            gyro_y_radians_per_s=gyro_y_radians_per_s,
+            gyro_z_radians_per_s=gyro_z_radians_per_s,
+            pressure_pascals=pressure_pascals,
+            temperature_celsius=temperature_celsius,
+            mag_x_microteslas=mag_x_microteslas,
+            mag_y_microteslas=mag_y_microteslas,
+            mag_z_microteslas=mag_z_microteslas,
         )
 
     def _verify_crc(self, data: memoryview, header_pos: int, crc_start: int) -> bool:

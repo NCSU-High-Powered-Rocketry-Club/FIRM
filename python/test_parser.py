@@ -10,7 +10,7 @@ while True:
     time.sleep(0.3)
     # print()
     if prev_packet_time is not None and packets:
-        dt = packets[0].imu_packet.timestamp_secs - prev_packet_time
+        dt = packets[0].timestamp_seconds - prev_packet_time
         print(f"dt: {dt * 1000:.2f} ms", "len packets:", len(packets))
     if packets:
-        prev_packet_time = packets[0].imu_packet.timestamp_secs
+        prev_packet_time = packets[0].timestamp_seconds

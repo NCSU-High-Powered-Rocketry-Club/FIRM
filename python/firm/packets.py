@@ -1,73 +1,39 @@
-"""Defines the data packet structures used in FIRM."""
+"""Defines the unified FIRM data packet structure."""
 
-import msgspec
-
-
-class DataPacket(msgspec.Struct):
-    """Base class for data packets.
-
-    Arguments:
-        timestamp_secs (float): Timestamp in seconds since FIRM was powered on.
-    """
-
-    timestamp_secs: float
+from msgspec import Struct
 
 
-class IMUPacket(DataPacket):
-    """Inertial Measurement Unit (IMU) data packet.
+class FIRMPacket(Struct):
+    """Full FIRM data packet containing all sensor fields.
 
     Arguments:
-        acc_x_gs (float): Acceleration in the X direction in g's.
-        acc_y_gs (float): Acceleration in the Y direction in g's.
-        acc_z_gs (float): Acceleration in the Z direction in g's.
-        gyro_x_rad_s (float): Angular rate around the X axis in radians per second.
-        gyro_y_rad_s (float): Angular rate around the Y axis in radians per second.
-        gyro_z_rad_s (float): Angular rate around the Z axis in radians per second.
-    """
-
-    acc_x_gs: float
-    acc_y_gs: float
-    acc_z_gs: float
-    gyro_x_rad_s: float
-    gyro_y_rad_s: float
-    gyro_z_rad_s: float
-
-
-class BarometerPacket(DataPacket):
-    """Barometer data packet.
-
-    Arguments:
+        timestamp_seconds (float): Timestamp in seconds since FIRM was powered on.
+        accel_x_meters_per_s2 (float): Acceleration in the X direction in meters per second squared.
+        accel_y_meters_per_s2 (float): Acceleration in the Y direction in meters per second squared.
+        accel_z_meters_per_s2 (float): Acceleration in the Z direction in meters per second squared.
+        gyro_x_radians_per_s (float): Angular rate around the X axis in radians per second.
+        gyro_y_radians_per_s (float): Angular rate around the Y axis in radians per second.
+        gyro_z_radians_per_s (float): Angular rate around the Z axis in radians per second.
         pressure_pascals (float): Atmospheric pressure in Pascals.
         temperature_celsius (float): Temperature in degrees Celsius.
+        mag_x_microteslas (float): Magnetic field in the X direction in microteslas.
+        mag_y_microteslas (float): Magnetic field in the Y direction in microteslas.
+        mag_z_microteslas (float): Magnetic field in the Z direction in microteslas.
     """
+
+    timestamp_seconds: float
+
+    accel_x_meters_per_s2: float
+    accel_y_meters_per_s2: float
+    accel_z_meters_per_s2: float
+
+    gyro_x_radians_per_s: float
+    gyro_y_radians_per_s: float
+    gyro_z_radians_per_s: float
 
     pressure_pascals: float
     temperature_celsius: float
 
-
-class MagnetometerPacket(DataPacket):
-    """Magnetometer data packet.
-
-    Arguments:
-        mag_x_ut (float): Magnetic field in the X direction in microteslas.
-        mag_y_ut (float): Magnetic field in the Y direction in microteslas.
-        mag_z_ut (float): Magnetic field in the Z direction in microteslas.
-    """
-
-    mag_x_ut: float
-    mag_y_ut: float
-    mag_z_ut: float
-
-
-class FIRMPacket(msgspec.Struct):
-    """FIRM data packet. It has all the data FIRM collects.
-    
-    Arguments:
-        imu_packet (IMUPacket): The IMU packet.
-        barometer_packet (BarometerPacket): The barometer packet.
-        magnetometer_packet (MagnetometerPacket): The magnetometer packet.
-    """
-
-    imu_packet: IMUPacket
-    barometer_packet: BarometerPacket
-    magnetometer_packet: MagnetometerPacket
+    mag_x_microteslas: float
+    mag_y_microteslas: float
+    mag_z_microteslas: float
