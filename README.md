@@ -5,9 +5,9 @@ FIRM is a project by the NCSU High Powered Rocketry Club to develop a flight com
 
 It is also designed to be modular and easily adaptable to different rocket configurations and mission requirements. The project will also have a custom PCB design to integrate all the components into a compact and lightweight package suitable for high-speed flight.
 
-## Hardware Components
+## Main Hardware Components
 
-The components used in this project include:
+The main hardware components used in this project include:
 
 | Part Number    | Description       | Datasheet Link                                                                                      |
 | -------------- | ----------------- | ------------------------------------------------------------------------------------------------- |
@@ -15,6 +15,7 @@ The components used in this project include:
 | STM32F405RGT6  | Microcontroller   | [Datasheet](https://www.st.com/resource/en/datasheet/dm00037051.pdf)                              |
 | MMC5983MA      | Magnetometer      | [Datasheet](https://media.digikey.com/pdf/Data%20Sheets/MEMSIC%20PDFs/MMC5983MA_RevA_4-3-19.pdf)  |
 | BMP581         | Pressure Sensor   | [Datasheet](https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp581-ds004.pdf) |
+| W25Q128JVSIQ   | Flash Chip        | [Datasheet](https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/7161/256_W25Q128JV.pdf) |
 
 
 ## Project Setup
