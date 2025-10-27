@@ -3,6 +3,8 @@
 import struct
 
 import serial
+import threading
+import queue
 
 from .constants import (
     CRC16_TABLE,
@@ -24,12 +26,15 @@ class PacketParser:
 
     """
 
-    __slots__ = ("_bytes_stored", "_ser", "_struct")
+    __slots__ = ("_bytes_stored", "_ser", "_struct", "_rx_thread", "_stop_event", "_pkt_q")
 
     def __init__(self, port: str, baudrate: int):
         self._ser = serial.Serial(port, baudrate)
         self._bytes_stored = bytearray()
         self._struct = struct.Struct("<fffffffffffxxxxd")
+        self._rx_thread = None
+        self._stop_event = threading.Event()
+        self._pkt_q: queue.Queue[IMUPacket | BarometerPacket | MagnetometerPacket] = queue.Queue(maxsize=8192)
 
     def __enter__(self):
         """Context manager entry: initialize the parser."""
@@ -45,41 +50,50 @@ class PacketParser:
         if not self._ser.is_open:
             self._ser.open()
         self._bytes_stored.clear()
+        self._stop_event.clear()
+        if self._rx_thread is None or not self._rx_thread.is_alive():
+            self._rx_thread = threading.Thread(target=self._worker, name="FIRM-RX", daemon=True)
+            self._rx_thread.start()
 
     def close(self):
         """Close the serial port."""
+        self._stop_event.set()
+        if self._rx_thread is not None:
+            self._rx_thread.join(timeout=1.0)
+            self._rx_thread = None
         if self._ser.is_open:
             self._ser.close()
 
     def get_data_packets(
-        self, block: bool = True
+            self, block: bool = True, timeout: float | None = None, max_items: int | None = None
     ) -> list[IMUPacket | BarometerPacket | MagnetometerPacket]:
-        """Read data from the serial port and parse packets.
+        """
+        Retrieve packets parsed by the background thread.
 
         Args:
-            block (bool): If True, block until at least one packet is read.
+            block: If True, wait for at least one packet.
+            timeout: Seconds to wait for the first packet if block=True.
+            max_items: Optional cap on number of packets returned.
 
         Returns:
-            list: A list of parsed msgspec packets. Currently, the packets can be any of
-                IMUPacket, BarometerPacket, and MagnetometerPacket.
+            List of parsed packets.
         """
-        packets = []
+        out: list[IMUPacket | BarometerPacket | MagnetometerPacket] = []
 
         if block:
-            while not packets:
-                chunk = self._ser.read(self._ser.in_waiting)
-                # Add the read bytes to the stored bytes
-                self._bytes_stored.extend(chunk)
-                # Attempt to parse packets from the stored bytes:
-                packets = self._parse_packets()
-                if packets:
-                    break
-        elif self._ser.in_waiting > 0:
-            chunk = self._ser.read(self._ser.in_waiting)
-            self._bytes_stored.extend(chunk)
-            packets = self._parse_packets()
+            try:
+                first = self._pkt_q.get(timeout=timeout)
+                out.append(first)
+            except queue.Empty:
+                return out
 
-        return packets
+        try:
+            while max_items is None or len(out) < max_items:
+                out.append(self._pkt_q.get_nowait())
+        except queue.Empty:
+            pass
+
+        return out
 
     def _parse_packets(self) -> list[IMUPacket | BarometerPacket | MagnetometerPacket]:
         """Attempt to parse packets from the data. If any packets cannot be fully parsed, the data
