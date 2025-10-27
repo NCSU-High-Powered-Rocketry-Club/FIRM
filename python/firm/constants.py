@@ -9,7 +9,7 @@ HEADER_SIZE = len(START_BYTE)
 LENGTH_FIELD_SIZE = 2
 """Size of the length field in bytes."""
 
-PADDING_SIZE = 6
+PADDING_SIZE = 4
 """Size of the padding buffer in bytes."""
 
 PAYLOAD_LENGTH = 56

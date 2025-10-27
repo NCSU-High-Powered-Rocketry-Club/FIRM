@@ -143,7 +143,7 @@ class PacketParser:
 
         return [
             IMUPacket(ts, ax, ay, az, gx, gy, gz),
-            BarometerPacket(ts, temp, press),
+            BarometerPacket(ts, press, temp),
             MagnetometerPacket(ts, mx, my, mz),
         ]
 
