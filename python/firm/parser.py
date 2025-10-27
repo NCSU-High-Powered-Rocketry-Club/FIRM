@@ -16,7 +16,7 @@ from .constants import (
     PAYLOAD_LENGTH,
     START_BYTE,
 )
-from .packets import BarometerPacket, IMUPacket, MagnetometerPacket
+from .packets import BarometerPacket, IMUPacket, MagnetometerPacket, FIRMPacket
 
 
 class PacketParser:
@@ -34,7 +34,7 @@ class PacketParser:
         self._struct = struct.Struct("<fffffffffffxxxxd")
         self._rx_thread = None
         self._stop_event = threading.Event()
-        self._pkt_q: queue.Queue[IMUPacket | BarometerPacket | MagnetometerPacket] = queue.Queue(maxsize=8192)
+        self._pkt_q: queue.Queue[FIRMPacket] = queue.Queue(maxsize=8192)
 
     def __enter__(self):
         """Context manager entry: initialize the parser."""
@@ -65,10 +65,13 @@ class PacketParser:
             self._ser.close()
 
     def get_data_packets(
-            self, block: bool = True, timeout: float | None = None, max_items: int | None = None
-    ) -> list[IMUPacket | BarometerPacket | MagnetometerPacket]:
+            self,
+            block: bool = True,
+            timeout: float | None = None,
+            max_items: int | None = None,
+    ) -> list[FIRMPacket]:
         """
-        Retrieve packets parsed by the background thread.
+        Retrieve FIRMPacket objects parsed by the background thread.
 
         Args:
             block: If True, wait for at least one packet.
@@ -76,90 +79,103 @@ class PacketParser:
             max_items: Optional cap on number of packets returned.
 
         Returns:
-            List of parsed packets.
+            List of FIRMPacket objects.
         """
-        out: list[IMUPacket | BarometerPacket | MagnetometerPacket] = []
+        firm_packets: list[FIRMPacket] = []
 
         if block:
             try:
-                first = self._pkt_q.get(timeout=timeout)
-                out.append(first)
+                first_packet: FIRMPacket = self._pkt_q.get(timeout=timeout)
+                firm_packets.append(first_packet)
             except queue.Empty:
-                return out
+                return firm_packets
 
         try:
-            while max_items is None or len(out) < max_items:
-                out.append(self._pkt_q.get_nowait())
+            while max_items is None or len(firm_packets) < max_items:
+                firm_packets.append(self._pkt_q.get_nowait())
         except queue.Empty:
             pass
 
-        return out
+        return firm_packets
 
-    def _parse_packets(self) -> list[IMUPacket | BarometerPacket | MagnetometerPacket]:
-        """Attempt to parse packets from the data. If any packets cannot be fully parsed, the data
-        is retained for the next read."""
-
-        packets = []
-        pos = 0
-        data_len = len(self._bytes_stored)
+    def _parse_packets(self) -> list[FIRMPacket]:
+        """Parse as many complete packets as possible and return FIRMPacket objects.
+        Any leftover bytes for an incomplete packet are retained for the next read.
+        """
+        firm_packets: list[FIRMPacket] = []
+        position = 0
+        data_length = len(self._bytes_stored)
         view = memoryview(self._bytes_stored)
 
-        while pos < data_len:
-            # Find the next header starting from pos
-            header_pos = self._bytes_stored.find(START_BYTE, pos)
-            if header_pos == -1:  # No more headers found (incomplete packet)
+        while position < data_length:
+            # Find the next header starting from position
+            header_pos = self._bytes_stored.find(START_BYTE, position)
+            if header_pos == -1:
                 break
 
-            # Check if we have enough data for a complete packet
-            if header_pos + FULL_PACKET_SIZE > data_len:
+            # Not enough bytes for a full packet yet
+            if header_pos + FULL_PACKET_SIZE > data_length:
                 break
 
-            # Parse and validate length of payload
+            # Parse and validate the payload length
             length_start = header_pos + HEADER_SIZE
-            length = int.from_bytes(view[length_start : length_start + LENGTH_FIELD_SIZE], "little")
-
-            if length != PAYLOAD_LENGTH:
-                pos = length_start
+            payload_length = int.from_bytes(
+                view[length_start : length_start + LENGTH_FIELD_SIZE], "little"
+            )
+            if payload_length != PAYLOAD_LENGTH:
+                position = length_start
                 continue
 
-            # Calculate packet boundaries
+            # Compute boundaries
             payload_start = length_start + LENGTH_FIELD_SIZE + PADDING_SIZE
-            crc_start = payload_start + length
+            crc_start = payload_start + payload_length
 
-            # Verify CRC
+            # CRC check
             if not self._verify_crc(view, header_pos, crc_start):
-                pos = length_start
+                position = length_start
                 continue
 
-            # Extract and parse payload
+            # Extract payload and build a FIRMPacket
             payload = bytes(view[payload_start:crc_start])
-            packet_group = self._create_packet_group(payload)
-            if packet_group:
-                packets.extend(packet_group)
+            firm_packet = self._create_packet_group(payload)  # returns FIRMPacket | None
+            if firm_packet is not None:
+                firm_packets.append(firm_packet)
 
-            pos = crc_start + CRC_SIZE
+            position = crc_start + CRC_SIZE
 
-        # Retain unparsed data, delete parsed bytes:
-        self._bytes_stored = self._bytes_stored[pos:]
+        # Retain unparsed remainder
+        if position:
+            del self._bytes_stored[:position]
 
-        return packets
+        return firm_packets
 
-    def _create_packet_group(
-        self, payload: bytes
-    ) -> list[IMUPacket | BarometerPacket | MagnetometerPacket] | None:
-        """Unpack payload and create packet group."""
+    def _create_packet_group(self, payload: bytes) -> FIRMPacket | None:
+        """Unpack payload and create a single FIRMPacket containing IMU, barometer, and mag data."""
         try:
             fields = self._struct.unpack(payload)
         except (struct.error, ValueError):
             return None
 
-        (temp, press, ax, ay, az, gx, gy, gz, mx, my, mz, ts) = fields
+        (
+            temperature,
+            pressure,
+            accel_x,
+            accel_y,
+            accel_z,
+            gyro_x,
+            gyro_y,
+            gyro_z,
+            mag_x,
+            mag_y,
+            mag_z,
+            timestamp,
+        ) = fields
 
-        return [
-            IMUPacket(ts, ax, ay, az, gx, gy, gz),
-            BarometerPacket(ts, press, temp),
-            MagnetometerPacket(ts, mx, my, mz),
-        ]
+        return FIRMPacket(
+            IMUPacket(timestamp, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z),
+            BarometerPacket(timestamp, pressure, temperature),
+            MagnetometerPacket(timestamp, mag_x, mag_y, mag_z),
+        )
 
     def _verify_crc(self, data: memoryview, header_pos: int, crc_start: int) -> bool:
         """Verify CRC checksum for packet."""

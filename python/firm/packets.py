@@ -3,8 +3,8 @@
 import msgspec
 
 
-class FirmPacket(msgspec.Struct):
-    """Base class for FIRM data packets.
+class DataPacket(msgspec.Struct):
+    """Base class for data packets.
 
     Arguments:
         timestamp_secs (float): Timestamp in seconds since FIRM was powered on.
@@ -13,7 +13,7 @@ class FirmPacket(msgspec.Struct):
     timestamp_secs: float
 
 
-class IMUPacket(FirmPacket):
+class IMUPacket(DataPacket):
     """Inertial Measurement Unit (IMU) data packet.
 
     Arguments:
@@ -33,7 +33,7 @@ class IMUPacket(FirmPacket):
     gyro_z_rad_s: float
 
 
-class BarometerPacket(FirmPacket):
+class BarometerPacket(DataPacket):
     """Barometer data packet.
 
     Arguments:
@@ -45,7 +45,7 @@ class BarometerPacket(FirmPacket):
     temperature_celsius: float
 
 
-class MagnetometerPacket(FirmPacket):
+class MagnetometerPacket(DataPacket):
     """Magnetometer data packet.
 
     Arguments:
@@ -57,3 +57,17 @@ class MagnetometerPacket(FirmPacket):
     mag_x_ut: float
     mag_y_ut: float
     mag_z_ut: float
+
+
+class FIRMPacket(msgspec.Struct):
+    """FIRM data packet. It has all the data FIRM collects.
+    
+    Arguments:
+        imu_packet (IMUPacket): The IMU packet.
+        barometer_packet (BarometerPacket): The barometer packet.
+        magnetometer_packet (MagnetometerPacket): The magnetometer packet.
+    """
+
+    imu_packet: IMUPacket
+    barometer_packet: BarometerPacket
+    magnetometer_packet: MagnetometerPacket
