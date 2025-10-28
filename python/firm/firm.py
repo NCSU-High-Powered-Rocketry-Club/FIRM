@@ -33,19 +33,15 @@ class FIRM:
         "_serial_reader_thread",
         "_stop_event",
         "_struct",
-        "_one_shot_mode",
-        "_most_recent_packet",
     )
 
-    def __init__(self, port: str, baudrate: int, one_shot_mode: bool = False):
+    def __init__(self, port: str, baudrate: int):
         self._serial_port = serial.Serial(port, baudrate)
-        self._one_shot_mode = one_shot_mode
         self._bytes_stored = bytearray()
         self._struct = struct.Struct("<fffffffffffxxxxd")
         self._serial_reader_thread = None
         self._stop_event = threading.Event()
         self._packet_queue: queue.Queue[FIRMPacket] = queue.Queue(maxsize=8192)
-        self._most_recent_packet: FIRMPacket | None = None
 
     def __enter__(self):
         """Context manager entry: initialize the parser."""
@@ -62,7 +58,7 @@ class FIRM:
             self._serial_port.open()
         self._bytes_stored.clear()
         self._stop_event.clear()
-        if (not self._one_shot_mode) and (self._serial_reader_thread is None or not self._serial_reader_thread.is_alive()):
+        if self._serial_reader_thread is None or not self._serial_reader_thread.is_alive():
             self._serial_reader_thread = threading.Thread(
                 target=self._serial_reader, name="FIRM-RX", daemon=True
             )
@@ -79,57 +75,9 @@ class FIRM:
 
     def get_most_recent_data_packet(self) -> FIRMPacket:
         """
-        Always attempt to parse and return the most recent complete packet.
-        If there is not yet enough data in the serial buffer to form a packet,
-        this method will block until one can be parsed.
+        Retrieve the most recent FIRMPacket object parsed.
         """
-        if not self._one_shot_mode:
-            raise RuntimeError("get_most_recent_data_packet() can only be used in one-shot mode.")
-
-        while True:
-            # Read any newly arrived bytes from the serial port
-            bytes_waiting = self._serial_port.in_waiting
-            if bytes_waiting > 0:
-                new_bytes = self._serial_port.read(bytes_waiting)
-                if new_bytes:
-                    self._bytes_stored.extend(new_bytes)
-
-            # Gets the newest header position
-            header_position = self._bytes_stored.rfind(START_BYTE)
-            if header_position == -1:
-                # No header yet; block until more data arrives, this will really only happen once at
-                # the start
-                self._bytes_stored.extend(self._serial_port.read(1))
-                continue
-
-            # Try to parse the most recent complete packet, walking backward if needed
-            while header_position != -1:
-                packet_end = header_position + FULL_PACKET_SIZE
-
-                # Wait until we have enough bytes for a full packet
-                while len(self._bytes_stored) < packet_end:
-                    self._bytes_stored.extend(
-                        self._serial_port.read(packet_end - len(self._bytes_stored) or 1)
-                    )
-
-                view = memoryview(self._bytes_stored)
-
-                status, length_start_pos, crc_end_pos, firm_packet = self._try_build_packet_at(
-                    view, header_position
-                )
-
-                if status == "ok":
-                    self._most_recent_packet = firm_packet
-                    pos = crc_end_pos  # identical trimming semantics
-                    self._bytes_stored = self._bytes_stored[pos:]
-                    return firm_packet
-
-                # If it was not a valid packet, look for an earlier header
-                header_position = self._bytes_stored.rfind(START_BYTE, 0, header_position)
-
-            # If no valid header worked, read one more byte and try again
-            self._bytes_stored.extend(self._serial_port.read(1))
-
+        return self.get_data_packets(block=True)[-1]
 
     def get_data_packets(
         self,
@@ -146,9 +94,6 @@ class FIRM:
         Returns:
             List of FIRMPacket objects.
         """
-        if self._one_shot_mode:
-            raise RuntimeError("get_data_packets() cannot be used in one-shot mode.")
-
         firm_packets: list[FIRMPacket] = []
 
         if block:
@@ -228,62 +173,35 @@ class FIRM:
             if header_pos + FULL_PACKET_SIZE > data_len:
                 break
 
-            status, length_start_pos, crc_end_pos, firm_packet = self._try_build_packet_at(view, header_pos)
+            # Parse and validate length of payload
+            length_start = header_pos + HEADER_SIZE
+            length = int.from_bytes(view[length_start:length_start + LENGTH_FIELD_SIZE], "little")
 
-            if status == "ok":
-                packets.append(firm_packet)
-                pos = crc_end_pos
-            else:
-                pos = length_start_pos
+            if length != PAYLOAD_LENGTH:
+                pos = length_start
                 continue
+
+            # Calculate packet boundaries
+            payload_start = length_start + LENGTH_FIELD_SIZE + PADDING_SIZE
+            crc_start = payload_start + length
+
+            # Verify CRC
+            if not self._verify_crc(view, header_pos, crc_start):
+                pos = length_start
+                continue
+
+            # Extract and parse payload
+            payload = bytes(view[payload_start:crc_start])
+            firm_packet = self._create_firm_packet(payload)  # returns FIRMPacket | None
+            if firm_packet:
+                packets.append(firm_packet)
+
+            pos = crc_start + CRC_SIZE
 
         # Retain unparsed data, delete parsed bytes:
         self._bytes_stored = self._bytes_stored[pos:]
 
         return packets
-
-    def _try_build_packet_at(
-            self,
-            data_view: memoryview,
-            header_position: int,
-    ) -> tuple[str, int, int, FIRMPacket | None]:
-        """
-        Attempt to parse a FIRMPacket at header_position.
-
-        Returns:
-            (status, length_start_position, crc_end_position, packet_or_none)
-            - status: "ok", "bad_length", "bad_crc", "unpack_error"
-            - length_start_position: header_position + HEADER_SIZE
-            - crc_end_position: (crc_start + CRC_SIZE) when status == "ok", else undefined
-            - packet_or_none: FIRMPacket when status == "ok", else None
-
-        NOTE: This function does NOT change any state; callers decide how to advance/truncate.
-        """
-        length_start_position = header_position + HEADER_SIZE
-        payload_length = int.from_bytes(
-            data_view[length_start_position:length_start_position + LENGTH_FIELD_SIZE],
-            "little",
-        )
-
-        if payload_length != PAYLOAD_LENGTH:
-            return "bad_length", length_start_position, 0, None
-
-        payload_start_position = (
-                length_start_position + LENGTH_FIELD_SIZE + PADDING_SIZE
-        )
-        crc_start_position = payload_start_position + payload_length
-
-        if not self._verify_crc(data_view, header_position, crc_start_position):
-            return "bad_crc", length_start_position, 0, None
-
-        payload_bytes = bytes(data_view[payload_start_position:crc_start_position])
-        firm_packet = self._create_firm_packet(payload_bytes)
-        if firm_packet is None:
-            return "unpack_error", length_start_position, 0, None
-
-        crc_end_position = crc_start_position + CRC_SIZE
-        return "ok", length_start_position, crc_end_position, firm_packet
-
 
     def _create_firm_packet(self, payload: bytes) -> FIRMPacket | None:
         """Unpack payload and create a single unified FIRMPacket."""
