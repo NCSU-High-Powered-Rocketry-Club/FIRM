@@ -1,10 +1,10 @@
 """Parser for FIRM data packets from a serial interface."""
 
+import queue
 import struct
+import threading
 
 import serial
-import threading
-import queue
 
 from .constants import (
     CRC16_TABLE,
@@ -28,11 +28,11 @@ class FIRM:
 
     __slots__ = (
         "_bytes_stored",
+        "_packet_queue",
         "_serial_port",
-        "_struct",
         "_serial_reader_thread",
         "_stop_event",
-        "_packet_queue",
+        "_struct",
     )
 
     def __init__(self, port: str, baudrate: int):
