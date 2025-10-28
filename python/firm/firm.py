@@ -62,7 +62,7 @@ class FIRM:
             self._serial_port.open()
         self._bytes_stored.clear()
         self._stop_event.clear()
-        if (not self._one_shot_mode) and self._serial_reader_thread is None or not self._serial_reader_thread.is_alive():
+        if (not self._one_shot_mode) and (self._serial_reader_thread is None or not self._serial_reader_thread.is_alive()):
             self._serial_reader_thread = threading.Thread(
                 target=self._serial_reader, name="FIRM-RX", daemon=True
             )
