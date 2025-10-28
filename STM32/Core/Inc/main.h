@@ -68,9 +68,17 @@ void Error_Handler(void);
 #define CONF_CHECK_GPIO_Port GPIOA
 #define FLASH_CS_Pin GPIO_PIN_4
 #define FLASH_CS_GPIO_Port GPIOC
+#define DEBUG2_Pin GPIO_PIN_5
+#define DEBUG2_GPIO_Port GPIOC
+#define DEBUG0_Pin GPIO_PIN_0
+#define DEBUG0_GPIO_Port GPIOB
+#define DEBUG1_Pin GPIO_PIN_1
+#define DEBUG1_GPIO_Port GPIOB
 #define ICM45686_Interrupt_Pin GPIO_PIN_6
 #define ICM45686_Interrupt_GPIO_Port GPIOC
 #define ICM45686_Interrupt_EXTI_IRQn EXTI9_5_IRQn
+#define MMC5983MA_CS_Pin GPIO_PIN_7
+#define MMC5983MA_CS_GPIO_Port GPIOC
 #define MMC5983MA_Interrupt_Pin GPIO_PIN_8
 #define MMC5983MA_Interrupt_GPIO_Port GPIOB
 #define MMC5983MA_Interrupt_EXTI_IRQn EXTI9_5_IRQn

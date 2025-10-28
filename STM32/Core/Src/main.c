@@ -149,9 +149,10 @@ int main(void)
     // Set the chip select pins to high, this means that they're not selected.
     // Note: We can't have these in the bmp581/imu/flash chip init functions, because those somehow
     // mess up with the initialization.
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // bmp581 pin
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // imu pin
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET); // flash chip pin
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // bmp581 cs pin
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // icm45686 cs pin
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET); // flash chip cs pin
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET); // mmc5983ma CS pin
     HAL_Delay(500); // purely for debug purposes, allows time to connect to USB serial terminal
 
     if (icm45686_init(&hspi2, GPIOB, GPIO_PIN_9)) {
@@ -162,7 +163,7 @@ int main(void)
         Error_Handler();
     }
     
-    if (mmc5983ma_init(&hi2c1, 0x30)) { // 0x30 is default i2c address for MMC5983MA
+    if (mmc5983ma_init(&hspi2, GPIOC, GPIO_PIN_7)) {
         Error_Handler();
     }
 
@@ -194,7 +195,7 @@ int main(void)
     uint8_t magnetometer_flip = 0;
 
     // Toggle LED:
-    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_1);
+    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_1);
 
     // the IMU runs into issues when the fifo is full at the very beginning, causing the interrupt
     // to be pulled back low too fast, and the ISR doesn't catch it for whatever reason. Doing
@@ -559,13 +560,16 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0|Feather_LED_Pin|BMP581_CS_Pin|FLASH_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0|Feather_LED_Pin|BMP581_CS_Pin|FLASH_CS_Pin
+                          |DEBUG2_Pin|MMC5983MA_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(ICM45686_CS_GPIO_Port, ICM45686_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, DEBUG0_Pin|DEBUG1_Pin|ICM45686_CS_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : PC0 Feather_LED_Pin BMP581_CS_Pin FLASH_CS_Pin */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|Feather_LED_Pin|BMP581_CS_Pin|FLASH_CS_Pin;
+  /*Configure GPIO pins : PC0 Feather_LED_Pin BMP581_CS_Pin FLASH_CS_Pin
+                           DEBUG2_Pin MMC5983MA_CS_Pin */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|Feather_LED_Pin|BMP581_CS_Pin|FLASH_CS_Pin
+                          |DEBUG2_Pin|MMC5983MA_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -583,6 +587,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(CONF_CHECK_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : DEBUG0_Pin DEBUG1_Pin ICM45686_CS_Pin */
+  GPIO_InitStruct.Pin = DEBUG0_Pin|DEBUG1_Pin|ICM45686_CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
   /*Configure GPIO pin : PB12 */
   GPIO_InitStruct.Pin = GPIO_PIN_12;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
@@ -594,13 +605,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(MMC5983MA_Interrupt_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : ICM45686_CS_Pin */
-  GPIO_InitStruct.Pin = ICM45686_CS_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(ICM45686_CS_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI3_IRQn, 0, 0);

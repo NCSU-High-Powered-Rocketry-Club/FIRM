@@ -9,6 +9,7 @@
 #include "usb_print_debug.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include <spi_utils.h>
 
 /**
  * @brief magnetometer data packet structur for the MMC5983MA.
@@ -24,13 +25,14 @@ typedef struct {
 } MMC5983MAPacket_t;
 
 /**
- * @brief sets up the MMC5983MA magnetometer with the intended settings for flight
+ * @brief ensures SPI read/write is working to the MMC9583MA, and configures register settings
  *
- * @param hi2c pointer to the i2c handle used for the device
- * @param device_i2c_addr the 7-bit MMC5983MA's i2c device address, default is 0x30
- * @ret error status, returns 0 on success, 1 on failure
+ * @param hspi pointer to the SPI channel that the MMC9583MA is connected to
+ * @param cs_channel specifies the GPIO channel that the chip select pin is connected to.
+ * @param cs_pin specifies the GPIO pin that the chip select pin is connected to.
+ * @retval 0 upon success
  */
-int mmc5983ma_init(I2C_HandleTypeDef* hi2c, uint8_t device_i2c_addr);
+int mmc5983ma_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin);
 
 /**
  * @brief reads data from the MMC5983MA

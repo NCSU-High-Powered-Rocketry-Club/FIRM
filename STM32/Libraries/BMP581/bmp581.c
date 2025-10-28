@@ -129,7 +129,7 @@ float bmp581_get_pressure_scale_factor(void) {
 
 static int bmp581_setup_device(bool soft_reset_complete) {
     // datasheet says 2ms to powerup, include some factor of safety
-    HAL_Delay(10);
+    HAL_Delay(50);
 
     uint8_t result = 0;
     // perform dummy read as required by datasheet
@@ -194,19 +194,19 @@ static int bmp581_setup_device(bool soft_reset_complete) {
         return 1;
     }
     write_register(fifo_sel, 0b00000000); // set back to default
-    // verify device is ready to be configured
-    read_registers(status, &result, 1);
-    if (result & 0x04) {
-        serialPrintStr("\tNVM error, refer to datasheet for source of error");
-        return 1;
-    }
-    if (result & 0x08) {
-        serialPrintStr("\tNVM command error, refer to datasheet for source of error");
-        return 1;
-    }
-
-
+    
     if (soft_reset_complete) {
+        // verify device is ready to be configured
+        read_registers(status, &result, 1);
+        if (result & 0x04) {
+            serialPrintStr("\tNVM error, refer to datasheet for source of error");
+            return 1;
+        }
+        if (result & 0x08) {
+            serialPrintStr("\tNVM command error, refer to datasheet for source of error");
+            return 1;
+        }
+
         // verify software reset is recognized as complete by the interrupt status register
         read_registers(int_status, &result, 1);
         if (!(result & 0x10)) { // check that bit 4 (POR) is 1
