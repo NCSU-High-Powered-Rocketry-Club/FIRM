@@ -4,8 +4,8 @@ __all__ = (
     "BarometerPacket",
     "IMUPacket",
     "MagnetometerPacket",
-    "PacketParser",
+    "FIRM",
 )
 
 from .packets import BarometerPacket, IMUPacket, MagnetometerPacket
-from .parser import PacketParser
+from .parser import FIRM

@@ -19,20 +19,27 @@ from .constants import (
 from .packets import FIRMPacket
 
 
-class PacketParser:
+class FIRM:
     """Parser for FIRM data packets from a serial interface.
 
     TODO: Write more docs here.
 
     """
 
-    __slots__ = ("_bytes_stored", "_serial_port", "_struct", "_rx_thread", "_stop_event", "_packet_queue")
+    __slots__ = (
+        "_bytes_stored",
+        "_serial_port",
+        "_struct",
+        "_serial_reader_thread",
+        "_stop_event",
+        "_packet_queue",
+    )
 
     def __init__(self, port: str, baudrate: int):
         self._serial_port = serial.Serial(port, baudrate)
         self._bytes_stored = bytearray()
         self._struct = struct.Struct("<fffffffffffxxxxd")
-        self._rx_thread = None
+        self._serial_reader_thread = None
         self._stop_event = threading.Event()
         self._packet_queue: queue.Queue[FIRMPacket] = queue.Queue(maxsize=8192)
 
@@ -51,31 +58,31 @@ class PacketParser:
             self._serial_port.open()
         self._bytes_stored.clear()
         self._stop_event.clear()
-        if self._rx_thread is None or not self._rx_thread.is_alive():
-            self._rx_thread = threading.Thread(target=self._worker, name="FIRM-RX", daemon=True)
-            self._rx_thread.start()
+        if self._serial_reader_thread is None or not self._serial_reader_thread.is_alive():
+            self._serial_reader_thread = threading.Thread(
+                target=self._serial_reader, name="FIRM-RX", daemon=True
+            )
+            self._serial_reader_thread.start()
 
     def close(self):
         """Close the serial port."""
         self._stop_event.set()
-        if self._rx_thread is not None:
-            self._rx_thread.join(timeout=1.0)
-            self._rx_thread = None
+        if self._serial_reader_thread is not None:
+            self._serial_reader_thread.join(timeout=1.0)
+            self._serial_reader_thread = None
         if self._serial_port.is_open:
             self._serial_port.close()
 
     def get_data_packets(
-            self,
-            block: bool = True,
-            timeout: float | None = None,
-            max_items: int | None = None,
+        self,
+        block: bool = True,
+        max_items: int | None = None,
     ) -> list[FIRMPacket]:
         """
         Retrieve FIRMPacket objects parsed by the background thread.
 
         Args:
             block: If True, wait for at least one packet.
-            timeout: Seconds to wait for the first packet if block=True.
             max_items: Optional cap on number of packets returned.
 
         Returns:
@@ -97,43 +104,45 @@ class PacketParser:
 
         return firm_packets
 
-    def _worker(self):
-        """Background reader: read bytes -> parse -> enqueue FIRMPackets."""
+    def _serial_reader(self):
+        """Continuously read from serial port, parse packets, and enqueue them."""
         serial_port = self._serial_port
         stop = self._stop_event
 
         while not stop.is_set():
-            # 1) Read some bytes (at least 1 to avoid a busy loop when idle)
+            # Get how many bytes are waiting
             try:
-                n_waiting = serial_port.in_waiting
+                number_of_bytes_in_buffer = serial_port.in_waiting
             except (OSError, serial.SerialException):
-                break  # serial port went away
+                break  # serial port error, exit thread
+            # We either get how many bytes are waiting, or if there are no bytes we say to read
+            # at least 1 byte, which will block until data arrives or timeout occurs.
+            number_of_bytes_to_read = (
+                number_of_bytes_in_buffer if number_of_bytes_in_buffer > 0 else 1
+            )
 
-            to_read = n_waiting if n_waiting > 0 else 1
+            # Read the available bytes
             try:
-                chunk = serial_port.read(to_read)  # respects pyserial timeout if set
+                # This may block until data is available or timeout occurs
+                new_bytes = serial_port.read(number_of_bytes_to_read)
             except (OSError, serial.SerialException):
                 break
 
-            if not chunk:
+            if not new_bytes:
                 continue  # timed out or no data yet
 
-            # 2) Accumulate and parse as many complete packets as possible
-            self._bytes_stored.extend(chunk)
-            try:
-                packets = self._parse_packets()  # returns list[FIRMPacket]
-            except Exception:
-                # Defensive: never let the worker die due to a bad parse
-                packets = []
+            # Parse as many packets as possible
+            self._bytes_stored.extend(new_bytes)
+            packets = self._parse_packets()
 
-            # 3) Enqueue results; on overflow, drop oldest to keep latency bounded
-            for pkt in packets:
+            # Add the new packets to the queue, dropping oldest if full
+            for packet in packets:
                 try:
-                    self._packet_queue.put_nowait(pkt)
+                    self._packet_queue.put_nowait(packet)
                 except queue.Full:
                     try:
                         _ = self._packet_queue.get_nowait()  # drop oldest
-                        self._packet_queue.put_nowait(pkt)
+                        self._packet_queue.put_nowait(packet)
                     except queue.Empty:
                         pass  # rare race: ignore and continue
 
@@ -143,52 +152,50 @@ class PacketParser:
 
         Returns: list of FIRMPacket objects parsed.
         """
-        firm_packets: list[FIRMPacket] = []
-        position = 0
-        data_length = len(self._bytes_stored)
+        packets: list[FIRMPacket] = []
+        pos = 0
+        data_len = len(self._bytes_stored)
         view = memoryview(self._bytes_stored)
 
-        while position < data_length:
-            # Find the next header starting from position
-            header_pos = self._bytes_stored.find(START_BYTE, position)
-            if header_pos == -1:
+        while pos < data_len:
+            # Find the next header starting from pos
+            header_pos = self._bytes_stored.find(START_BYTE, pos)
+            if header_pos == -1:  # No more headers found (incomplete packet)
                 break
 
-            # Not enough bytes for a full packet yet
-            if header_pos + FULL_PACKET_SIZE > data_length:
+            # Check if we have enough data for a complete packet
+            if header_pos + FULL_PACKET_SIZE > data_len:
                 break
 
-            # Parse and validate the payload length
+            # Parse and validate length of payload
             length_start = header_pos + HEADER_SIZE
-            payload_length = int.from_bytes(
-                view[length_start : length_start + LENGTH_FIELD_SIZE], "little"
-            )
-            if payload_length != PAYLOAD_LENGTH:
-                position = length_start
+            length = int.from_bytes(view[length_start : length_start + LENGTH_FIELD_SIZE], "little")
+
+            if length != PAYLOAD_LENGTH:
+                pos = length_start
                 continue
 
-            # Compute boundaries
+            # Calculate packet boundaries
             payload_start = length_start + LENGTH_FIELD_SIZE + PADDING_SIZE
-            crc_start = payload_start + payload_length
+            crc_start = payload_start + length
 
-            # CRC check
+            # Verify CRC
             if not self._verify_crc(view, header_pos, crc_start):
-                position = length_start
+                pos = length_start
                 continue
 
-            # Extract payload and build a FIRMPacket
+            # Extract and parse payload
             payload = bytes(view[payload_start:crc_start])
             firm_packet = self._create_firm_packet(payload)  # returns FIRMPacket | None
-            if firm_packet is not None:
-                firm_packets.append(firm_packet)
+            if firm_packet:
+                packets.append(firm_packet)
 
-            position = crc_start + CRC_SIZE
+            pos = crc_start + CRC_SIZE
 
-        # Retain unparsed remainder
-        if position:
-            del self._bytes_stored[:position]
+        # Retain unparsed data, delete parsed bytes:
+        self._bytes_stored = self._bytes_stored[pos:]
 
-        return firm_packets
+        return packets
 
     def _create_firm_packet(self, payload: bytes) -> FIRMPacket | None:
         """Unpack payload and create a single unified FIRMPacket."""

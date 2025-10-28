@@ -1,11 +1,11 @@
 import time
-from firm.parser import PacketParser
+from firm.parser import FIRM
 
-pp = PacketParser(port="/dev/ttyACM0", baudrate=115200)
-pp.initialize()
+firm = FIRM(port="/dev/ttyACM0", baudrate=115200)
+firm.initialize()
 prev_packet_time = None
 while True:
-    packets = pp.get_data_packets(block=True)
+    packets = firm.get_data_packets(block=True)
     # print(packets)
     time.sleep(0.3)
     # print()
