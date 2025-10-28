@@ -1,5 +1,6 @@
 """Parser for FIRM data packets from a serial interface."""
 
+import contextlib
 import queue
 import struct
 import threading
@@ -53,19 +54,19 @@ class FIRM:
         self.close()
 
     def initialize(self):
-        """Open serial and prepare for parsing packets."""
+        """Open serial and prepare for parsing packets by spawning a new thread."""
         if not self._serial_port.is_open:
             self._serial_port.open()
         self._bytes_stored.clear()
         self._stop_event.clear()
         if self._serial_reader_thread is None or not self._serial_reader_thread.is_alive():
             self._serial_reader_thread = threading.Thread(
-                target=self._serial_reader, name="FIRM-RX", daemon=True
+                target=self._serial_reader, name="Packet-Reader-Thread", daemon=True
             )
             self._serial_reader_thread.start()
 
     def close(self):
-        """Close the serial port."""
+        """Close the serial port, and stop the packet reader thread."""
         self._stop_event.set()
         if self._serial_reader_thread is not None:
             self._serial_reader_thread.join(timeout=1.0)
@@ -82,14 +83,12 @@ class FIRM:
     def get_data_packets(
         self,
         block: bool = True,
-        max_items: int | None = None,
     ) -> list[FIRMPacket]:
         """
         Retrieve FIRMPacket objects parsed by the background thread.
 
         Args:
             block: If True, wait for at least one packet.
-            max_items: Optional cap on number of packets returned.
 
         Returns:
             List of FIRMPacket objects.
@@ -102,55 +101,22 @@ class FIRM:
                 packet = self._packet_queue.get()
                 firm_packets.append(packet)
 
-        try:
-            while max_items is None or len(firm_packets) < max_items:
-                firm_packets.append(self._packet_queue.get_nowait())
-        except queue.Empty:
-            pass
+        while self._packet_queue.qsize() > 0:
+            firm_packets.append(self._packet_queue.get_nowait())
 
         return firm_packets
 
     def _serial_reader(self):
         """Continuously read from serial port, parse packets, and enqueue them."""
-        serial_port = self._serial_port
-        stop = self._stop_event
-
-        while not stop.is_set():
-            # Get how many bytes are waiting
-            try:
-                number_of_bytes_in_buffer = serial_port.in_waiting
-            except (OSError, serial.SerialException):
-                break  # serial port error, exit thread
-            # We either get how many bytes are waiting, or if there are no bytes we say to read
-            # at least 1 byte, which will block until data arrives or timeout occurs.
-            number_of_bytes_to_read = (
-                number_of_bytes_in_buffer if number_of_bytes_in_buffer > 0 else 1
-            )
-
-            # Read the available bytes
-            try:
-                # This may block until data is available or timeout occurs
-                new_bytes = serial_port.read(number_of_bytes_to_read)
-            except (OSError, serial.SerialException):
-                break
-
-            if not new_bytes:
-                continue  # timed out or no data yet
-
+        while not self._stop_event.is_set():
+            new_bytes = self._serial_port.read(self._serial_port.in_waiting)
             # Parse as many packets as possible
             self._bytes_stored.extend(new_bytes)
             packets = self._parse_packets()
 
-            # Add the new packets to the queue, dropping oldest if full
+            # Add the new packets to the queue
             for packet in packets:
-                try:
-                    self._packet_queue.put_nowait(packet)
-                except queue.Full:
-                    try:
-                        _ = self._packet_queue.get_nowait()  # drop oldest
-                        self._packet_queue.put_nowait(packet)
-                    except queue.Empty:
-                        pass  # rare race: ignore and continue
+                self._packet_queue.put(packet)
 
     def _parse_packets(self) -> list[FIRMPacket]:
         """Parse as many complete packets as possible and return FIRMPacket objects.
@@ -192,7 +158,7 @@ class FIRM:
 
             # Extract and parse payload
             payload = bytes(view[payload_start:crc_start])
-            firm_packet = self._create_firm_packet(payload)  # returns FIRMPacket | None
+            firm_packet = self._create_firm_packet(payload)
             if firm_packet:
                 packets.append(firm_packet)
 
