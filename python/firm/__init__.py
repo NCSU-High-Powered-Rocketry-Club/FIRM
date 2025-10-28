@@ -6,4 +6,4 @@ __all__ = (
 )
 
 from .packets import FIRMPacket
-from .parser import FIRM
+from .firm import FIRM
