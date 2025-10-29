@@ -13739,7 +13739,7 @@
 				)
 			)
 		)
-		(property "Value" "LED"
+		(property "Value" "LED_Yellow"
 			(at 184.658 114.046 0)
 			(effects
 				(font
@@ -15738,7 +15738,7 @@
 				)
 			)
 		)
-		(property "Value" "LED"
+		(property "Value" "LED_Red"
 			(at 185.42 125.222 0)
 			(effects
 				(font
@@ -20032,7 +20032,7 @@
 				)
 			)
 		)
-		(property "Value" "LED"
+		(property "Value" "LED_Green"
 			(at 296.164 195.072 0)
 			(effects
 				(font
@@ -20996,7 +20996,7 @@
 				)
 			)
 		)
-		(property "Value" "LED"
+		(property "Value" "LED_Blue"
 			(at 184.404 102.87 0)
 			(effects
 				(font
