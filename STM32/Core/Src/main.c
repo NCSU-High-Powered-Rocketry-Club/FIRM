@@ -16,11 +16,11 @@
  ******************************************************************************
  */
 
-#include "bmp581.h"
-#include "icm45686.h"
+#include <bmp581.h>
+#include <icm45686.h>
 #include "logger.h"
-#include "mmc5983ma.h"
-#include "preprocessor.h"
+#include <mmc5983ma.h>
+#include "data_processing/preprocessor.h"
 #include "usb_serializer.h"
 #include "settings.h"
 /* USER CODE END Header */

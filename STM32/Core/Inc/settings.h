@@ -1,5 +1,5 @@
 #pragma once
-#include "w25q128jv.h"
+#include <w25q128jv.h>
 #include "usb_print_debug.h"
 #include <stdbool.h>
 
