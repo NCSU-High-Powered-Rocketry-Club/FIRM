@@ -74,6 +74,15 @@ class FIRM:
         if self._serial_port.is_open:
             self._serial_port.close()
 
+    def get_number_of_available_packets(self) -> int:
+        """
+        Get the number of FIRMPacket objects currently available in the queue.
+
+        Returns:
+            Number of available FIRMPacket objects.
+        """
+        return self._packet_queue.qsize()
+
     def get_most_recent_data_packet(self) -> FIRMPacket:
         """
         Retrieve the most recent FIRMPacket object parsed.
@@ -141,7 +150,7 @@ class FIRM:
 
             # Parse and validate length of payload
             length_start = header_pos + HEADER_SIZE
-            length = int.from_bytes(view[length_start:length_start + LENGTH_FIELD_SIZE], "little")
+            length = int.from_bytes(view[length_start : length_start + LENGTH_FIELD_SIZE], "little")
 
             if length != PAYLOAD_LENGTH:
                 pos = length_start
@@ -158,9 +167,7 @@ class FIRM:
 
             # Extract and parse payload
             payload = bytes(view[payload_start:crc_start])
-            firm_packet = self._create_firm_packet(payload)
-            if firm_packet:
-                packets.append(firm_packet)
+            packets.append(self._create_firm_packet(payload))
 
             pos = crc_start + CRC_SIZE
 
@@ -169,12 +176,8 @@ class FIRM:
 
         return packets
 
-    def _create_firm_packet(self, payload: bytes) -> FIRMPacket | None:
+    def _create_firm_packet(self, payload: bytes) -> FIRMPacket:
         """Unpack payload and create a single unified FIRMPacket."""
-        try:
-            fields = self._struct.unpack(payload)
-        except (struct.error, ValueError):
-            return None
 
         (
             temperature_celsius,
@@ -189,7 +192,7 @@ class FIRM:
             mag_y_microteslas,
             mag_z_microteslas,
             timestamp_seconds,
-        ) = fields
+        ) = self._struct.unpack(payload)
 
         return FIRMPacket(
             timestamp_seconds=timestamp_seconds,
