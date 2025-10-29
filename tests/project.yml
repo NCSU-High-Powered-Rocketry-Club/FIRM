@@ -98,17 +98,14 @@
 :paths:
   :test:
     - +:test/**
-    - -:test/support/**
+    - -:test/support
   :source:
     - src/**
     - ../STM32/Core/Src/**
-    - ../STM32/Core/Src/data_processing/**
   :include:
-    - test/support/**
+    - test/support
     - src/** # In simple projects, this entry often duplicates :source
     - ../STM32/Core/Inc/**
-    - ../STM32/Core/Inc/data_processing/**
-    - test/data_processing
   :support:
     - test/support
   :libraries: []

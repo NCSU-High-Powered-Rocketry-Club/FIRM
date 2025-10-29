@@ -5,7 +5,7 @@
  *      Author: Wlsan
  */
 #include "bmp581.h"
-#include "spi_utils.h"
+#include <spi_utils.h>
 #include <stdint.h>
 
 
