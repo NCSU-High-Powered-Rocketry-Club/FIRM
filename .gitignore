@@ -90,10 +90,17 @@ cmake_install.cmake
 /STM32/compile_commands.json
 
 # log files in python-scripts folder
-/python-scripts/*.TXT
-/python-scripts/*.csv
+python/scripts/*.TXT
+python/scripts/*.csv
 KiCad/production
 KiCad/fabrication-toolkit-options.json
+
+# Python files:
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
 
 # tests
 /tests/build
