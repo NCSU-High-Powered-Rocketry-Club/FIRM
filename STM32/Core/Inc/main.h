@@ -74,14 +74,14 @@ void Error_Handler(void);
 #define DEBUG0_GPIO_Port GPIOB
 #define DEBUG1_Pin GPIO_PIN_1
 #define DEBUG1_GPIO_Port GPIOB
+#define MMC5983MA_Interrupt_Pin GPIO_PIN_2
+#define MMC5983MA_Interrupt_GPIO_Port GPIOB
+#define MMC5983MA_Interrupt_EXTI_IRQn EXTI2_IRQn
 #define ICM45686_Interrupt_Pin GPIO_PIN_6
 #define ICM45686_Interrupt_GPIO_Port GPIOC
 #define ICM45686_Interrupt_EXTI_IRQn EXTI9_5_IRQn
 #define MMC5983MA_CS_Pin GPIO_PIN_7
 #define MMC5983MA_CS_GPIO_Port GPIOC
-#define MMC5983MA_Interrupt_Pin GPIO_PIN_8
-#define MMC5983MA_Interrupt_GPIO_Port GPIOB
-#define MMC5983MA_Interrupt_EXTI_IRQn EXTI9_5_IRQn
 #define ICM45686_CS_Pin GPIO_PIN_9
 #define ICM45686_CS_GPIO_Port GPIOB
 

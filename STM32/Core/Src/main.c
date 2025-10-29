@@ -164,7 +164,7 @@ int main(void)
         Error_Handler();
     }
     
-    if (mmc5983ma_init(&hspi2, GPIOC, GPIO_PIN_7)) {
+    if (mmc5983ma_init(&hi2c1, 0x30)) {
         Error_Handler();
     }
 
@@ -198,11 +198,7 @@ int main(void)
     // Toggle LED:
     HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_1);
 
-    // the IMU runs into issues when the fifo is full at the very beginning, causing the interrupt
-    // to be pulled back low too fast, and the ISR doesn't catch it for whatever reason. Doing
-    // this initial read will prevent that.
-    ICM45686Packet_t imu_packet;
-    icm45686_read_data(&imu_packet);
+    
 
     // instance of the calibrated data packet from the preprocessor to be reused
     CalibratedDataPacket_t calibrated_packet = {0};
@@ -210,9 +206,17 @@ int main(void)
     SerializedPacket_t serialized_packet = {0};
     serializer_init_packet(&serialized_packet); // initializes the packet length and header bytes
     
-
     // check to verify if any new data has been collected, from any of the sensors
     bool any_new_data_collected = false;
+
+    // the IMU runs into issues when the fifo is full at the very beginning, causing the interrupt
+    // to be pulled back low too fast, and the ISR doesn't catch it for whatever reason. Doing
+    // this initial read will prevent that.
+    ICM45686Packet_t imu_packet;
+    icm45686_read_data(&imu_packet);
+    MMC5983MAPacket_t mag_packet;
+    mmc5983ma_read_data(&mag_packet, &magnetometer_flip);
+    
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -240,7 +244,6 @@ int main(void)
                 any_new_data_collected = true;
     	    }
     	}
-
     	if (mmc5983ma_has_new_data) {
     	    MMC5983MAPacket_t* mmc5983ma_packet = logger_malloc_packet(sizeof(MMC5983MAPacket_t));
     	    if (!mmc5983ma_read_data(mmc5983ma_packet, &magnetometer_flip)) {
@@ -595,19 +598,22 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : MMC5983MA_Interrupt_Pin */
+  GPIO_InitStruct.Pin = MMC5983MA_Interrupt_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(MMC5983MA_Interrupt_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pin : PB12 */
   GPIO_InitStruct.Pin = GPIO_PIN_12;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : MMC5983MA_Interrupt_Pin */
-  GPIO_InitStruct.Pin = MMC5983MA_Interrupt_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(MMC5983MA_Interrupt_GPIO_Port, &GPIO_InitStruct);
-
   /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI2_IRQn);
+
   HAL_NVIC_SetPriority(EXTI3_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI3_IRQn);
 
@@ -635,7 +641,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
         icm45686_has_new_data  = true;
     }
     if (GPIO_Pin == MMC5983MA_Interrupt_Pin) {
-        mmc5983ma_has_new_data  = true;
+        mmc5983ma_has_new_data = true;
     }
 }
 /* USER CODE END 4 */

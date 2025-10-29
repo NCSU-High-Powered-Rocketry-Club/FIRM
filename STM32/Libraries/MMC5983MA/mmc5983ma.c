@@ -7,16 +7,15 @@
 #include "mmc5983ma.h"
 
 /**
- * @brief the SPI settings for the MMC5983MA to use when accessing device registers
+ * @brief the I2C settings for the MMC5983MA to use when accessing device registers
  */
 typedef struct {
-    SPI_HandleTypeDef* hspi;
-    GPIO_TypeDef* cs_channel;
-    uint16_t cs_pin;
-} SPISettings;
+    I2C_HandleTypeDef* hi2c;
+    uint8_t dev_addr; // 7 bit i2c address for the device
+} I2CSettings;
 
 /**
- * @brief Starts up and resets the magnetometer, confirms the SPI read/write functionality is working
+ * @brief Starts up and resets the magnetometer, confirms the I2C read/write functionality is working
  *
  * @param soft_reset_complete if this is a setup after a soft reset is complete
  * @retval 0 if successful
@@ -24,23 +23,23 @@ typedef struct {
 static int setup_device(bool soft_reset_complete);
 
 /**
- * @brief Reads data from the MMC5983MA with SPI
+ * @brief Reads data from the MMC5983MA with I2C
  *
- * @param addr the address of the register
+ * @param reg_addr the address of the register
  * @param buffer where the result of the read will be stored
  * @param len the number of bytes to read
  * @retval HAL Status, 0 on successful read
  */
-static HAL_StatusTypeDef read_registers(uint8_t addr, uint8_t* buffer, size_t len);
+static HAL_StatusTypeDef read_registers(uint8_t reg_addr, uint8_t* buffer, size_t len);
 
 /**
- * @brief Writes 1 byte of data to the MMC5983MA with SPI
+ * @brief Writes 1 byte of data to the MMC5983MA with I2C
  *
- * @param addr the address of the register
+ * @param reg_addr the address of the register
  * @param data the data to write to the register
  * @retval HAL Status, 0 on successful write
  */
-static HAL_StatusTypeDef write_register(uint8_t addr, uint8_t data);
+static HAL_StatusTypeDef write_register(uint8_t reg_addr, uint8_t data);
 
 // MMC5983MA register mapping
 static const uint8_t x_out0 = 0x00;
@@ -59,20 +58,20 @@ static const int flip_interval = 10; // number of regular packets between a flip
 
 
 
-static SPISettings spiSettings;
+static I2CSettings i2cSettings;
 
-int mmc5983ma_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin) {
-    if (hspi == NULL || cs_channel == NULL) {
-        serialPrintStr("Invalid spi handle or chip select pin for BMP581");
+int mmc5983ma_init(I2C_HandleTypeDef* hi2c, uint8_t device_i2c_addr) {
+    if (hi2c == NULL) {
+        serialPrintStr("Invalid i2c handle for MMC5983MA");
         return 1;
     }
-    // set up the SPI settings
-    spiSettings.hspi = hspi;
-    spiSettings.cs_channel = cs_channel;
-    spiSettings.cs_pin = cs_pin;
+
+    // configure i2c settings
+    i2cSettings.hi2c = hi2c;
+    i2cSettings.dev_addr = device_i2c_addr;
     serialPrintStr("Beginning MMC5983MA initialization");
 
-    // sets up the magnetometer in SPI mode and ensures SPI is working
+    // sets up the magnetometer in I2C mode and ensures I2C is working
     if (setup_device(false)) return 1;
 
     // initiating a software reset
@@ -126,6 +125,7 @@ int mmc5983ma_read_data(MMC5983MAPacket_t* packet, uint8_t* flip) {
         (*flip)++; // incrememt the flip counter
         return 0;
     }
+    //serialPrintStr("no data");
     return 1;
 }
 
@@ -144,10 +144,10 @@ int setup_device(bool soft_reset_complete) {
     if (hal_status) {
         switch (hal_status) {
         case HAL_BUSY:
-            serialPrintStr("\tSPI handle currently busy, unable to read");
+            serialPrintStr("\tI2C handle currently busy, unable to read");
             break;
         case HAL_ERROR:
-            serialPrintStr("\tSPI read transaction failed during dummy read");
+            serialPrintStr("\tI2C read transaction failed during dummy read");
             break;
         default:
             break;
@@ -160,7 +160,6 @@ int setup_device(bool soft_reset_complete) {
 
     read_registers(product_id1, &result, 1);
     if (result != product_id_val) {
-        serialPrintlnInt(result);
         serialPrintStr("\tMMC5983MA could not read Product ID");
         return 1;
     }
@@ -181,12 +180,25 @@ int setup_device(bool soft_reset_complete) {
 
 }
 
-static HAL_StatusTypeDef read_registers(uint8_t addr, uint8_t* buffer, size_t len) {
-    return spi_read(spiSettings.hspi, spiSettings.cs_channel, spiSettings.cs_pin, addr, buffer,
-                    len);
+static HAL_StatusTypeDef read_registers(uint8_t reg_addr, uint8_t* buffer, size_t len) {
+    return HAL_I2C_Mem_Read(
+            i2cSettings.hi2c,
+            (uint16_t)(i2cSettings.dev_addr << 1),
+            (uint16_t)reg_addr,
+            I2C_MEMADD_SIZE_8BIT,
+            buffer,
+            len,
+            100);
 }
 
-static HAL_StatusTypeDef write_register(uint8_t addr, uint8_t data) {
-    return spi_write(spiSettings.hspi, spiSettings.cs_channel, spiSettings.cs_pin, addr, data);
-}
 
+static HAL_StatusTypeDef write_register(uint8_t reg_addr, uint8_t data) {
+    return HAL_I2C_Mem_Write(
+            i2cSettings.hi2c,
+            (uint16_t)(i2cSettings.dev_addr << 1),
+            (uint16_t)reg_addr,
+            I2C_MEMADD_SIZE_8BIT,
+            &data,
+            1,
+            100);
+}
