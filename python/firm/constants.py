@@ -48,4 +48,3 @@ CRC16_TABLE = [
 ]
 """CRC-16-CCITT (KERMIT) lookup table."""
 # fmt: on
-

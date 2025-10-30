@@ -1,9 +1,11 @@
 """All public classes for FIRM."""
 
 __all__ = (
-    "FIRMPacket",
     "FIRM",
+    "FIRMPacket",
+    "calibrate_magnetometer",
 )
 
-from .packets import FIRMPacket
 from .firm import FIRM
+from .packets import FIRMPacket
+from .calibration import calibrate_magnetometer

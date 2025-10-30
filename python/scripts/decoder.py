@@ -91,12 +91,11 @@ def decode(path):
 
                 else:
                     # garbage data, end of file
-                    print("hit garbage data, assuming end of file")
                     break
         except:
             # if end of file is reached, wont have enough bytes to decode the requested amount
             # so just skip that packet since it's incomplete, and begin converting to csv file
-            print("end of file reached")
+            pass
 
         # make each sensor data list as separate df
         bmp581_df = pd.DataFrame(bmp581_data, columns=["timestamp", "temperature", "pressure"])
@@ -120,7 +119,6 @@ if __name__ == "__main__":
         if os.path.exists(path):
             decode(path)
         else:
-            print("Invalid path to file")
+            pass
     else:
-        print("Specify path of file to decode")
         sys.exit(1)
