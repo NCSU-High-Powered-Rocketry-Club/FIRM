@@ -1,6 +1,5 @@
 """Parser for FIRM data packets from a serial interface."""
 
-import contextlib
 import queue
 import struct
 import threading
