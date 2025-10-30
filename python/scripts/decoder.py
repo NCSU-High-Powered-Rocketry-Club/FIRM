@@ -148,9 +148,9 @@ class Decoder:
 
         data = [
             self.timestamp_seconds,
-            mag_x_bin / self.mmc5983ma_scale_factor,
-            mag_y_bin / self.mmc5983ma_scale_factor,
-            mag_z_bin / self.mmc5983ma_scale_factor,
+            (mag_x_bin - 131072) / self.mmc5983ma_scale_factor,
+            (mag_y_bin - 131072) / self.mmc5983ma_scale_factor,
+            (mag_z_bin - 131072) / self.mmc5983ma_scale_factor,
         ]
         return data
 
