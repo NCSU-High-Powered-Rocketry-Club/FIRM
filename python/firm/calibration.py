@@ -30,7 +30,8 @@ def calibrate_magnetometer(firm, calibration_duration_seconds=180, outlier_perce
     update_interval = 5
     remaining = int(calibration_duration_seconds)
     while remaining > 0:
-        sleep_time = min(update_interval, remaining)
+        print(f"[Calibration] {remaining} seconds remaining...")
+        sleep_time = update_interval if remaining >= update_interval else remaining
         time.sleep(sleep_time)
         remaining -= sleep_time
 
@@ -43,6 +44,7 @@ def calibrate_magnetometer(firm, calibration_duration_seconds=180, outlier_perce
     if leftover:
         collected_packets.extend(leftover)
 
+    print(f"[Calibration] Finished! Collected {len(collected_packets)} packets.")
 
     # Extract magnetometer triplets from packets
     x_vals, y_vals, z_vals = [], [], []
@@ -60,6 +62,8 @@ def calibrate_magnetometer(firm, calibration_duration_seconds=180, outlier_perce
         fx, fy, fz
     )
 
+    print(f"[Calibration] Offsets (µT): ({offset_x:.3f}, {offset_y:.3f}, {offset_z:.3f})")
+    print(f"[Calibration] Scales  (-):  ({scale_x:.6f}, {scale_y:.6f}, {scale_z:.6f})")
 
     # Return constants in a simple list, as requested
     return [offset_x, offset_y, offset_z, scale_x, scale_y, scale_z]
@@ -86,7 +90,8 @@ def _percentile_trim_indices(count, outlier_percentage):
         return 0, 0
     if outlier_percentage < 0:
         outlier_percentage = 0.0
-    outlier_percentage = min(outlier_percentage, 0.98)  # keep at least 2% of data
+    if outlier_percentage > 0.98:
+        outlier_percentage = 0.98  # keep at least 2% of data
 
     tail = outlier_percentage / 2.0
     start = int(count * tail)

@@ -1,5 +1,4 @@
-
-from firm import FIRM
+from python.firm import FIRM
 
 firm = FIRM(port="/dev/ttyACM0", baudrate=115200)
 firm.initialize()
