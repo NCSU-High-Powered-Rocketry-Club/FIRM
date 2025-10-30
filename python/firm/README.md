@@ -9,7 +9,7 @@ This directory contains the Python library for FIRM, which provides tools and ut
 You can install the FIRM Python library using pip:
 
 ```bash
-pip install firm
+pip install firm-hprc
 ```
 
 ## Usage
