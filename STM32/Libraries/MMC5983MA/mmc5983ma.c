@@ -108,6 +108,9 @@ int mmc5983ma_read_data(MMC5983MAPacket_t* packet, uint8_t* flip) {
         if ((*flip - 1) % flip_interval == 0) {
             write_register(internal_control0, 0b00001100);
         }
+        if (*flip == 11) {
+            *flip = 0;
+        }
 
         // burst read 7 bytes of data from the first data register
         // first two bytes are magnetometer x
