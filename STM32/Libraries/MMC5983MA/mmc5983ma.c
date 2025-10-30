@@ -102,13 +102,11 @@ int mmc5983ma_read_data(MMC5983MAPacket_t* packet, uint8_t* flip) {
 
         // every flip_interval read cycles, flip the polarity of the magnetometer values
         // to calibrate the sensor properly
-        if (*flip % flip_interval == 0) {
+        if (*flip == flip_interval) {
             write_register(internal_control0, 0b00010100);
         }
-        if ((*flip - 1) % flip_interval == 0) {
+        if (*flip == flip_interval + 1) {
             write_register(internal_control0, 0b00001100);
-        }
-        if (*flip == 11) {
             *flip = 0;
         }
 
