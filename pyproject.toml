@@ -1,5 +1,5 @@
 [project]
-name = "firm"
+name = "firm-hprc"
 version = "0.1.0"
 description = "Filtered Inertial Rotation Module"
 readme = "README.md"

@@ -6,8 +6,6 @@
  */
 
 #include "icm45686.h"
-#include "firm_utils.h"
-#include "packets.h"
 #include "spi_utils.h"
 
 /**
@@ -75,10 +73,6 @@ static int read_ireg_register(IREGMap_t register_map, uint16_t ireg_addr, uint8_
  */
 static int write_ireg_register(IREGMap_t register_map, uint16_t ireg_addr, uint8_t data);
 
-// honestly i think this is probably a good thing do make a preprocessor macro but probably later.
-// most likely don't need more digits because we only have a single-precision FPU
-const float pi = 3.14159265;
-
 static const uint8_t pwr_mgmt0 = 0x10;
 static const uint8_t fifo_data = 0x14;
 static const uint8_t int1_config0 = 0x16;
@@ -98,6 +92,10 @@ static const uint8_t sreg_ctrl = 0x67;          // IPREG_TOP1 register
 static const uint8_t ipreg_sys1_reg_166 = 0xA6; // IPREG_SYS1 register
 static const uint8_t ipreg_sys2_reg_123 = 0x7B; // IPREG_SYS2 register
 
+static const float hi_res_fifo_accel_scale_factor = 16384.0F;
+static const float hi_res_fifo_gyro_scale_factor = 131.072;
+static const float base_accel_scale_factor = 1024.0F;
+static const float base_gyro_scale_factor = 8.192F;
 
 static SPISettings spiSettings;
 
@@ -163,61 +161,69 @@ int icm45686_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs
     return 0;
 }
 
-int icm45686_read_data(IMUPacket_t* packet) {
+int icm45686_read_data(ICM45686Packet_t* packet) {
     uint8_t data_ready = 0;
     // checking (and resetting) interrupt status
     read_registers(int1_status0, &data_ready, 1);
     if (data_ready & 0x04) { // bit 2 is data_ready flag for UI channel
-        // each packet from the fifo is 20 bytes
+        // each packet from the fifo is 20 bytes, with the first being the header, the next 12
+        // being the most significant bytes and middle bytes of accel/gyro data, and the last 3
+        // bytes of the packet are the least significant bytes of the accel/gyro data. The other
+        // bytes in the packet are for timestamp and temperature data, which we discard.
         uint8_t raw_data[20];
         read_registers(fifo_data, raw_data, 20);
 
-        // refer to the datasheet section 6.1 "packet structure" for information on the packet
-        // structure to see which bytes of the FIFO packet go to which data points.
-        // Accel X
-        uint32_t temp =
-            ((uint32_t)raw_data[1] << 12) | ((uint32_t)raw_data[2] << 4) | (raw_data[17] >> 4);
-        int32_t ax = sign_extend_20bit(temp);
-        // Accel Y
-        temp = ((uint32_t)raw_data[3] << 12) | ((uint32_t)raw_data[4] << 4) | (raw_data[18] >> 4);
-        int32_t ay = sign_extend_20bit(temp);
-
-        // Accel Z
-        temp = ((uint32_t)raw_data[5] << 12) | ((uint32_t)raw_data[6] << 4) | (raw_data[19] >> 4);
-        int32_t az = sign_extend_20bit(temp);
-
-        // Gyro X
-        temp = ((uint32_t)raw_data[7] << 12) | ((uint32_t)raw_data[8] << 4) | (raw_data[17] & 0x0F);
-        int32_t gx = sign_extend_20bit(temp);
-
-        // Gyro Y
-        temp =
-            ((uint32_t)raw_data[9] << 12) | ((uint32_t)raw_data[10] << 4) | (raw_data[18] & 0x0F);
-        int32_t gy = sign_extend_20bit(temp);
-
-        // Gyro Z
-        temp =
-            ((uint32_t)raw_data[11] << 12) | ((uint32_t)raw_data[12] << 4) | (raw_data[19] & 0x0F);
-        int32_t gz = sign_extend_20bit(temp);
-
-        // TODO: determine whether the data should be logged before or after the scale factor
-        // is applied.
-
-        // datasheet lists the scale factor for accelerometer to be 16,384 LSB/g when in FIFO mode
-        packet->acc_x = (float)ax / 16384.0f;
-        packet->acc_y = (float)ay / 16384.0f;
-        packet->acc_z = (float)az / 16384.0f;
-        // datasheet lists gyroscope scale factor as 131.072 LSB/(deg/s). We will also convert to
-        // radians, coming out to 23592.96 / PI
-        packet->gyro_x = (float)gx / (23592.96f / pi);
-        packet->gyro_y = (float)gy / (23592.96f / pi);
-        packet->gyro_z = (float)gz / (23592.96f / pi);
+        // copying 12 bytes after the header byte (most significant byte and middle byte of accel/gyro data)
+        memcpy(packet, &raw_data[1], 12);
+        // copying the last 3 bytes (4-bit LSB's for accel/gyro)
+        memcpy(&packet->x_vals_lsb, &raw_data[17], 3);
 
         // flush the fifo
         write_register(fifo_config2, 0b10100000);
         return 0;
     }
     return 1; // data was not ready, return error
+}
+
+
+float icm45686_get_accel_scale_factor(void) {
+    if (spiSettings.hspi == NULL) {
+        return -1;
+    }
+    uint8_t result = 0;
+    read_registers(fifo_config3, &result, 1);
+    if (result & 0x08) {
+        // high resolution mode
+        return hi_res_fifo_accel_scale_factor;
+    }
+
+    // not in fifo mode, use accel config to determine scale factor
+    read_registers(accel_config0, &result, 1);
+    uint8_t full_scale_selection = (result & 0x70) >> 4;
+    if (full_scale_selection > 0b100) {
+        return -1;
+    }
+    return base_accel_scale_factor * (float)pow((double)2, (double)full_scale_selection);
+}
+
+float icm45686_get_gyro_scale_factor(void) {
+    if (spiSettings.hspi == NULL) {
+        return -1;
+    }
+    uint8_t result = 0;
+    read_registers(fifo_config3, &result, 1);
+    if (result & 0x08) {
+        // high resolution mode
+        return hi_res_fifo_gyro_scale_factor;
+    }
+
+    // not in fifo mode, use accel config to determine scale factor
+    read_registers(gyro_config0, &result, 1);
+    uint8_t full_scale_selection = (result & 0xF0) >> 4;
+    if (full_scale_selection > 0b1000) {
+        return -1;
+    }
+    return base_gyro_scale_factor * (float)pow((double)2, (double)full_scale_selection);
 }
 
 
