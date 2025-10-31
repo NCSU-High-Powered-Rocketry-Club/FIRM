@@ -1,12 +1,11 @@
 import threading
-import time
 
 
-def calibrate_magnetometer(firm, calibration_duration_seconds=180, outlier_percentage=0.02):
+def calibrate_magnetometer(firm, calibration_duration_seconds=180):
     """
     Calibrates FIRM's magnetometer for the specified duration. During calibration, the function
-    continuously collects data packets from FIRM in a separate thread. FIRM should be physically
-    rotated in all orientations during this period to ensure a comprehensive calibration.
+    continuously collects data packets from FIRM. FIRM should be physically rotated in all
+    orientations during this period to ensure a comprehensive calibration.
 
     Args:
         firm: An initialized FIRM instance.
@@ -15,38 +14,24 @@ def calibrate_magnetometer(firm, calibration_duration_seconds=180, outlier_perce
     Returns:
         A list of calibration constants.
     """
+    print("[Calibration] Collecting packets...")
     collected_packets = []
-    stop_event = threading.Event()
 
-    collector_thread = threading.Thread(
-        target=_packet_collector,
-        args=(stop_event, firm, collected_packets),
-        name="FIRM-Calibrator",
-        daemon=True,
-    )
-    collector_thread.start()
+    # Schedule countdown printouts (fires asynchronously)
+    _schedule_countdown_timers(calibration_duration_seconds)
 
-    # Countdown every 5 seconds, printing the remainder on the last tick
-    update_interval = 5
-    remaining = int(calibration_duration_seconds)
-    while remaining > 0:
-        print(f"[Calibration] {remaining} seconds remaining...")
-        sleep_time = update_interval if remaining >= update_interval else remaining
-        time.sleep(sleep_time)
-        remaining -= sleep_time
+    # Compute absolute end time for the loop
+    end_time = threading.Timer(calibration_duration_seconds, lambda: None)
+    end_time.start()
 
-    # Stop the collector and wait for it to finish
-    stop_event.set()
-    collector_thread.join()
-
-    # Final non-blocking drain to catch any last packets
-    leftover = firm.get_data_packets(block=False)
-    if leftover:
-        collected_packets.extend(leftover)
+    # Continuous blocking reads until all timers finish
+    while end_time.is_alive():
+        packets = firm.get_data_packets()
+        if packets:
+            collected_packets.extend(packets)
 
     print(f"[Calibration] Finished! Collected {len(collected_packets)} packets.")
 
-    # Extract magnetometer triplets from packets
     x_vals, y_vals, z_vals = [], [], []
     for p in collected_packets:
         x_vals.append(p.mag_x_microteslas)
@@ -56,103 +41,49 @@ def calibrate_magnetometer(firm, calibration_duration_seconds=180, outlier_perce
     if len(x_vals) == 0:
         raise ValueError("No magnetometer samples collected during calibration.")
 
-    # Outlier filtering, then offsets and scales
+    outlier_percentage = 0.02
     fx, fy, fz = _filter_outliers_xyz(x_vals, y_vals, z_vals, outlier_percentage)
-    offset_x, offset_y, offset_z, scale_x, scale_y, scale_z = _compute_offsets_and_scales(
-        fx, fy, fz
-    )
+    offset_x, offset_y, offset_z, scale_x, scale_y, scale_z = _compute_offsets_and_scales(fx, fy, fz)
 
     print(f"[Calibration] Offsets (µT): ({offset_x:.3f}, {offset_y:.3f}, {offset_z:.3f})")
     print(f"[Calibration] Scales  (-):  ({scale_x:.6f}, {scale_y:.6f}, {scale_z:.6f})")
 
-    # Return constants in a simple list, as requested
     return [offset_x, offset_y, offset_z, scale_x, scale_y, scale_z]
 
 
-def _packet_collector(stop_event, firm, collected_packets):
+def _schedule_countdown_timers(total_seconds, interval=5):
     """
-    Continuously retrieve packets until stop_event is set.
-    Non-blocking drain with a tiny sleep to avoid busy-waiting.
+    Schedule countdown printouts using threading.Timer.
+    Fires messages at fixed intervals without recursion or nesting.
     """
-    while not stop_event.is_set():
-        packets = firm.get_data_packets(block=False)
-        if packets:
-            collected_packets.extend(packets)
-        time.sleep(0.01)
-
-
-def _percentile_trim_indices(count, outlier_percentage):
-    """
-    Compute symmetric trim start/end indices for a sorted list length 'count'.
-    Returns (start_index, end_index_exclusive).
-    """
-    if count <= 0:
-        return 0, 0
-    if outlier_percentage < 0:
-        outlier_percentage = 0.0
-    if outlier_percentage > 0.98:
-        outlier_percentage = 0.98  # keep at least 2% of data
-
-    tail = outlier_percentage / 2.0
-    start = int(count * tail)
-    end = count - int(count * tail)
-    if start >= end:
-        # Ensure at least one element remains
-        start = 0
-        end = count
-    return start, end
+    for remaining in range(total_seconds, 0, -interval):
+        delay = total_seconds - remaining
+        timer = threading.Timer(delay, print, args=(f"[Calibration] {remaining} seconds remaining...",))
+        timer.daemon = True
+        timer.start()
 
 
 def _filter_outliers_xyz(x_vals, y_vals, z_vals, outlier_percentage):
-    """
-    Symmetric per-axis quantile clipping without numpy.
-    Keeps rows that fall within the retained range on ALL three axes.
-    Returns filtered (x_list, y_list, z_list).
-    """
-    n = len(x_vals)
-    if n == 0:
-        return [], [], []
+    """Symmetric percentile trimming per axis (same as the GitHub reference)."""
+    def trim(values):
+        sorted_vals = sorted(values)
+        n = len(sorted_vals)
+        tail = outlier_percentage / 2.0
+        start = int(n * tail)
+        end = n - int(n * tail)
+        return sorted_vals[start:end]
 
-    # Prepare sorted copies to determine bounds
-    xs = sorted(x_vals)
-    ys = sorted(y_vals)
-    zs = sorted(z_vals)
+    trimmed_x = trim(x_vals)
+    trimmed_y = trim(y_vals)
+    trimmed_z = trim(z_vals)
 
-    sx, ex = _percentile_trim_indices(len(xs), outlier_percentage)
-    sy, ey = _percentile_trim_indices(len(ys), outlier_percentage)
-    sz, ez = _percentile_trim_indices(len(zs), outlier_percentage)
-
-    low_x, high_x = xs[sx], xs[ex - 1]
-    low_y, high_y = ys[sy], ys[ey - 1]
-    low_z, high_z = zs[sz], zs[ez - 1]
-
-    fx, fy, fz = [], [], []
-    for i in range(n):
-        vx = x_vals[i]
-        vy = y_vals[i]
-        vz = z_vals[i]
-        if (low_x <= vx <= high_x) and (low_y <= vy <= high_y) and (low_z <= vz <= high_z):
-            fx.append(vx)
-            fy.append(vy)
-            fz.append(vz)
-
-    # If we filtered too aggressively, fall back to original data
-    if len(fx) < 8:
+    if len(trimmed_x) < 8:
         return x_vals, y_vals, z_vals
-
-    return fx, fy, fz
+    return trimmed_x, trimmed_y, trimmed_z
 
 
 def _compute_offsets_and_scales(x_vals, y_vals, z_vals):
-    """
-    Mirrors the reference logic:
-      - Offsets are midpoints of per-axis min/max.
-      - Scales make each axis half-range match the average half-range.
-    Returns (offset_x, offset_y, offset_z, scale_x, scale_y, scale_z).
-    """
-    if len(x_vals) == 0:
-        raise ValueError("No samples available for calibration.")
-
+    """Compute per-axis offsets and scale factors."""
     min_x, max_x = min(x_vals), max(x_vals)
     min_y, max_y = min(y_vals), max(y_vals)
     min_z, max_z = min(z_vals), max(z_vals)
@@ -161,7 +92,6 @@ def _compute_offsets_and_scales(x_vals, y_vals, z_vals):
     offset_y = (max_y + min_y) / 2.0
     offset_z = (max_z + min_z) / 2.0
 
-    # Correct values to compute half-ranges
     cx = [v - offset_x for v in x_vals]
     cy = [v - offset_y for v in y_vals]
     cz = [v - offset_z for v in z_vals]
@@ -169,17 +99,16 @@ def _compute_offsets_and_scales(x_vals, y_vals, z_vals):
     hr_x = (max(cx) - min(cx)) / 2.0
     hr_y = (max(cy) - min(cy)) / 2.0
     hr_z = (max(cz) - min(cz)) / 2.0
-
-    # Average half-range
-    average_half_range = (hr_x + hr_y + hr_z) / 3.0
+    avg_half_range = (hr_x + hr_y + hr_z) / 3.0
 
     def safe_scale(half_range):
         if half_range == 0.0:
             return 1.0
-        return average_half_range / half_range
+        return avg_half_range / half_range
 
     scale_x = safe_scale(hr_x)
     scale_y = safe_scale(hr_y)
     scale_z = safe_scale(hr_z)
 
     return offset_x, offset_y, offset_z, scale_x, scale_y, scale_z
+
