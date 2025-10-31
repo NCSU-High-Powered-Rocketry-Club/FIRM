@@ -20,9 +20,12 @@ from .packets import FIRMPacket
 
 
 class FIRM:
-    """Parser for FIRM data packets from a serial interface.
+    """
+    Parser for FIRM data packets from a serial interface.
 
-    TODO: Write more docs here.
+    Args:
+        port (str): Serial port to connect to (e.g., "/dev/ttyACM0" or "COM3").
+        baudrate (int): Baud rate for the serial connection
 
     """
 
@@ -35,7 +38,7 @@ class FIRM:
         "_struct",
     )
 
-    def __init__(self, port: str, baudrate: int):
+    def __init__(self, port: str, baudrate: int = 115_200):
         self._serial_port = serial.Serial(port, baudrate)
         self._bytes_stored = bytearray()
         self._struct = struct.Struct("<fffffffffffxxxxd")

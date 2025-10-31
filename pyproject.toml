@@ -3,11 +3,38 @@ name = "firm"
 version = "0.1.0"
 description = "Filtered Inertial Rotation Module"
 readme = "README.md"
+authors = [
+    { name = "High Powered Rocketry Club", email = "ncsurocketry@gmail.com"}
+]
 requires-python = ">=3.10,<3.14"
+license = "MIT"
 dependencies = [
     "msgspec>=0.19.0",
     "pyserial>=3.5",
 ]
+keywords = [
+    "firm",
+    "flight computer",
+    "python",
+    "rocketry",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    # "Programming Language :: Python :: 3.14",
+]
+
+[project.urls]
+"Homepage" = "https://ncsurocketry.org"
+"Bug Tracker" = "https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM/issues"
+"Source Code" = "https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM/"
 
 [dependency-groups]
 dev = [
@@ -21,10 +48,28 @@ decoding = [
 ]
 
 
+[tool.uv.build-backend]
+module-root="python/"
+module-name="firm"
+source-exclude = ["scripts/"]
+wheel-include = ["scripts/"]
+
+# [[tool.uv.index]]
+# name = "testpypi"
+# url = "https://test.pypi.org/simple/"
+# publish-url = "https://test.pypi.org/legacy/"
+# explicit = true
+
+[build-system]
+requires = ["uv_build>=0.9.5,<0.10.0"]
+build-backend = "uv_build"
+
 # RUFF:
 [tool.ruff]
 line-length = 100
 show-fixes = true
+target-version = "py310"
+exclude = ["scripts", "_calibration.py"]
 
 [tool.ruff.lint]
 typing-extensions = false

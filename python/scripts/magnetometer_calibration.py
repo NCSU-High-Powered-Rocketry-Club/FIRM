@@ -1,5 +1,4 @@
-from python.firm import calibrate_magnetometer
-from python.firm import FIRM
+from python.firm import FIRM, calibrate_magnetometer
 
 firm = FIRM(port="/dev/ttyACM0", baudrate=115200)
 firm.initialize()
