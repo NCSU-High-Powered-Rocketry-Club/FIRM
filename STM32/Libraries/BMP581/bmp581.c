@@ -5,8 +5,7 @@
  *      Author: Wlsan
  */
 #include "bmp581.h"
-#include "packets.h"
-#include "spi_utils.h"
+#include <spi_utils.h>
 #include <stdint.h>
 
 
@@ -17,7 +16,7 @@ typedef struct {
     SPI_HandleTypeDef* hspi;
     GPIO_TypeDef* cs_channel;
     uint16_t cs_pin;
-} SPISettings;  
+} SPISettings;
 
 /**
  * @brief Starts up and resets the BMP581, confirms the SPI read/write functionality is working
@@ -60,6 +59,9 @@ static const uint8_t osr_config = 0x36;
 static const uint8_t ord_config = 0x37;
 static const uint8_t cmd = 0x7E;
 
+// device scale factor
+static const int scale_factor_celcius = 65536.0F;
+static const int scale_factor_pascal = 64.0F;
 
 // BMP581 SPI config settings
 static SPISettings spiSettings;
@@ -100,27 +102,29 @@ int bmp581_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_p
     return 0;
 }
 
-int bmp581_read_data(BarometerPacket_t* packet) {
+int bmp581_read_data(BMP581Packet_t* packet) {
     // clear interrupt (pulls interrupt back up high) and verify new data is ready
     uint8_t data_ready = 0;
     read_registers(int_status, &data_ready, 1);
     if (data_ready & 0x01) { // bit 0 (LSB) will be 1 if new data is ready
         // temperature and pressure are both 24 bit values, with the data in 3 registers each
-        // burst read 6 registers starting from XLSB of temp, to MSB of pressure (0x1D -> 0x22)
-        uint8_t raw_data[6];
-        read_registers(temp_data_xlsb, raw_data, 6);
-        // bit shift the raw data, MSB shifts 16 bits left, LSB 8 bits left, and XLSB rightmost
-        int32_t raw_temp = ((int32_t)raw_data[2] << 16) | ((int32_t)raw_data[1] << 8) | raw_data[0];
-        uint32_t raw_pres =
-            ((uint32_t)raw_data[5] << 16) | ((uint32_t)raw_data[4] << 8) | raw_data[3];
-        // datasheet instructs to divide raw temperature by 2^16 to get value in celcius, and
-        // divide raw pressure by 2^6 to get value in Pascals
-        packet->temperature = raw_temp / 65536.0f;
-        packet->pressure = raw_pres / 64.0f;
-
+        // burst read 6 registers starting from XLSB of temp, to MSB of pressure (0x1D -> 0x22).
+        // the packet is passed in, so the retrieved values get stored directly into the desired
+        // place in memory.
+        read_registers(temp_data_xlsb, (uint8_t*)packet, 6);
         return 0;
     }
     return 1;
+}
+
+
+float bmp581_get_temp_scale_factor(void) {
+    return scale_factor_celcius;
+}
+
+
+float bmp581_get_pressure_scale_factor(void) {
+    return scale_factor_pascal;
 }
 
 static int bmp581_setup_device(bool soft_reset_complete) {
@@ -196,6 +200,7 @@ static int bmp581_setup_device(bool soft_reset_complete) {
         return 1;
     }
     write_register(fifo_sel, 0b00000000); // set back to default
+
     // verify device is ready to be configured
     read_registers(status, &result, 1);
     if (result & 0x04) {
@@ -206,9 +211,10 @@ static int bmp581_setup_device(bool soft_reset_complete) {
         serialPrintStr("\tNVM command error, refer to datasheet for source of error");
         return 1;
     }
-
-
+    
     if (soft_reset_complete) {
+        
+
         // verify software reset is recognized as complete by the interrupt status register
         read_registers(int_status, &result, 1);
         if (!(result & 0x10)) { // check that bit 4 (POR) is 1
@@ -216,7 +222,6 @@ static int bmp581_setup_device(bool soft_reset_complete) {
             return 1;
         }
     }
-
     return 0;
 }
 
