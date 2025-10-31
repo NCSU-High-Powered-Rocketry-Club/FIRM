@@ -6,17 +6,18 @@ import threading
 
 import serial
 
-from .constants import (
+from ._constants import (
     CRC16_TABLE,
     CRC_SIZE,
     FULL_PACKET_SIZE,
+    GRAVITY_METERS_PER_SECONDS_SQUARED,
     HEADER_SIZE,
     LENGTH_FIELD_SIZE,
     PADDING_SIZE,
     PAYLOAD_LENGTH,
     START_BYTE,
 )
-from .packets import FIRMPacket
+from ._packets import FIRMPacket
 
 
 class FIRM:
@@ -198,9 +199,10 @@ class FIRM:
 
         return FIRMPacket(
             timestamp_seconds=timestamp_seconds,
-            accel_x_meters_per_s2=accel_x_meters_per_s2,
-            accel_y_meters_per_s2=accel_y_meters_per_s2,
-            accel_z_meters_per_s2=accel_z_meters_per_s2,
+            # Convert acceleration from g to m/s²
+            accel_x_meters_per_s2=accel_x_meters_per_s2 * GRAVITY_METERS_PER_SECONDS_SQUARED,
+            accel_y_meters_per_s2=accel_y_meters_per_s2 * GRAVITY_METERS_PER_SECONDS_SQUARED,
+            accel_z_meters_per_s2=accel_z_meters_per_s2 * GRAVITY_METERS_PER_SECONDS_SQUARED,
             gyro_x_radians_per_s=gyro_x_radians_per_s,
             gyro_y_radians_per_s=gyro_y_radians_per_s,
             gyro_z_radians_per_s=gyro_z_radians_per_s,

@@ -175,7 +175,6 @@ if __name__ == "__main__":
         if os.path.exists(path):
             decode(path)
         else:
-            print("Invalid path to file")
+            pass
     else:
-        print("Specify path of file to decode")
         sys.exit(1)

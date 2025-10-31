@@ -48,3 +48,6 @@ CRC16_TABLE = [
 ]
 """CRC-16-CCITT (KERMIT) lookup table."""
 # fmt: on
+
+GRAVITY_METERS_PER_SECONDS_SQUARED = 9.80665
+"""Standard gravity in m/s²."""

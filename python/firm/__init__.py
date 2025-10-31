@@ -3,7 +3,9 @@
 __all__ = (
     "FIRM",
     "FIRMPacket",
+    "calibrate_magnetometer",
 )
 
-from .firm import FIRM
-from .packets import FIRMPacket
+from ._calibration import calibrate_magnetometer
+from ._firm import FIRM
+from ._packets import FIRMPacket

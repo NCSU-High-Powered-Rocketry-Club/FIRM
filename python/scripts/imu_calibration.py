@@ -26,18 +26,16 @@ def calibrate(path):
         field_element_dict[key] = element_list
 
     # calculate averages
-    averages_dict = {key: sum(values) / len(values) for key, values in field_element_dict.items()}
-    print("Calibration Offsets (subtract these from raw data): ")
+    {key: sum(values) / len(values) for key, values in field_element_dict.items()}
     for key in read_csv:
-        print(f"{key}: {averages_dict[key]}")
+        pass
 
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Specify path of imu file to calibrate")
         sys.exit(1)
     path = sys.argv[1]
     if os.path.exists(path):
         calibrate(path)
     else:
-        print("Invalid path to file")
+        pass
