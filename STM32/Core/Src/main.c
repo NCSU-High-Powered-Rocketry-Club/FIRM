@@ -93,6 +93,14 @@ volatile bool mmc5983ma_has_new_data = false;
 // number of times the DWT timestamp has overflowed. This happens every ~25 seconds
 volatile uint32_t dwt_overflow_count = 0;
 
+// I2C2 slave buffers and state for communication with a Raspberry Pi Zero
+// The Pi will act as I2C master and read the latest serialized packet from this device.
+// Choose a 7-bit slave address (avoid conflicts with onboard sensors). We will use 0x42.
+volatile uint8_t i2c2_tx_buf[128];
+volatile uint16_t i2c2_tx_len = 0;
+volatile bool i2c2_tx_ready = false;
+volatile uint8_t i2c2_rx_buf[32];
+
 /* USER CODE END 0 */
 
 /**
@@ -127,6 +135,10 @@ int main(void)
   MX_DMA_Init();
   MX_I2C1_Init();
   MX_I2C2_Init();
+  // Enable I2C2 listen mode so the MCU behaves as an I2C slave for the Pi Zero master
+  if (HAL_I2C_EnableListen_IT(&hi2c2) != HAL_OK) {
+      Error_Handler();
+  }
   MX_SDIO_SD_Init();
   MX_FATFS_Init();
   MX_SPI2_Init();
@@ -259,11 +271,15 @@ int main(void)
 
         // if USB serial communication setting is enabled, and new data is collected, serialize
         // and transmit it
-        if (firmSettings.serial_transfer_enabled && any_new_data_collected) {
-            usb_serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
-            usb_transmit_serialized_packet(&serialized_packet);
-            any_new_data_collected = false;
-        }
+    if (firmSettings.serial_transfer_enabled && any_new_data_collected) {
+      usb_serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
+      usb_transmit_serialized_packet(&serialized_packet);
+      // Also make the last serialized packet available to I2C master (Pi Zero)
+      memcpy((void*)i2c2_tx_buf, (const void*)&serialized_packet, sizeof(SerializedPacket_t));
+      i2c2_tx_len = (uint16_t)sizeof(SerializedPacket_t);
+      i2c2_tx_ready = true;
+      any_new_data_collected = false;
+    }
 
     /* USER CODE END WHILE */
 
@@ -370,7 +386,7 @@ static void MX_I2C2_Init(void)
   hi2c2.Instance = I2C2;
   hi2c2.Init.ClockSpeed = 100000;
   hi2c2.Init.DutyCycle = I2C_DUTYCYCLE_2;
-  hi2c2.Init.OwnAddress1 = 0;
+  hi2c2.Init.OwnAddress1 = 0x42; // 7-bit slave address for Pi Zero to talk to
   hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
   hi2c2.Init.OwnAddress2 = 0;
@@ -646,6 +662,51 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
     if (GPIO_Pin == MMC5983MA_Interrupt_Pin) {
         mmc5983ma_has_new_data = true;
     }
+}
+
+/**
+ * @brief I2C Address matched callback (called when this device is addressed as slave)
+ * @note We use this to start a non-blocking transmit or receive depending on master direction
+ */
+void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, uint16_t AddrMatchCode) {
+  if (hi2c->Instance == I2C2) {
+    if (TransferDirection == I2C_DIRECTION_TRANSMIT) {
+      // Master will write to us
+      HAL_I2C_Slave_Seq_Receive_IT(hi2c, (uint8_t*)i2c2_rx_buf, (uint16_t)sizeof(i2c2_rx_buf), I2C_FIRST_FRAME);
+    } else {
+      // Master will read from us
+      if (i2c2_tx_ready && i2c2_tx_len > 0) {
+        HAL_I2C_Slave_Seq_Transmit_IT(hi2c, (uint8_t*)i2c2_tx_buf, i2c2_tx_len, I2C_LAST_FRAME);
+      } else {
+        // No data ready, send a single zero byte so master gets something
+        static uint8_t zero = 0;
+        HAL_I2C_Slave_Seq_Transmit_IT(hi2c, &zero, 1, I2C_LAST_FRAME);
+      }
+    }
+  }
+}
+
+/**
+ * @brief Called when a slave transmit completes
+ */
+void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *hi2c) {
+  if (hi2c->Instance == I2C2) {
+    // A master finished reading our data. Clear ready flag.
+    i2c2_tx_ready = false;
+    i2c2_tx_len = 0;
+    // Re-enable listen mode to catch future addressings
+    HAL_I2C_EnableListen_IT(hi2c);
+  }
+}
+
+/**
+ * @brief Called when a slave receive completes
+ */
+void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c) {
+  if (hi2c->Instance == I2C2) {
+    // Process received data in i2c2_rx_buf as desired. Here we simply re-enable listening.
+    HAL_I2C_EnableListen_IT(hi2c);
+  }
 }
 /* USER CODE END 4 */
 
