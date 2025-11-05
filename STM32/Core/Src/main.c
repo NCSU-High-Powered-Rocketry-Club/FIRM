@@ -389,10 +389,10 @@ static void MX_I2C2_Init(void)
   hi2c2.Instance = I2C2;
   hi2c2.Init.ClockSpeed = 100000;
   hi2c2.Init.DutyCycle = I2C_DUTYCYCLE_2;
-  // Some HAL versions expect the left-shifted (7-bit << 1) value for OwnAddress1.
-  // Try the shifted address first (0x42 << 1 == 0x84). If detection still fails,
-  // change this to 0x42 (unshifted) and rebuild.
-  hi2c2.Init.OwnAddress1 = (0x42 << 1); // use 0x84 here
+  /* Use 7-bit slave address (0x42). Some older code/comments mention using the
+    left-shifted value; the HAL expects a 7-bit address when AddressingMode is
+    I2C_ADDRESSINGMODE_7BIT. If you still see detection failures, try 0x84. */
+  hi2c2.Init.OwnAddress1 = 0x42;
   hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
   hi2c2.Init.OwnAddress2 = 0;

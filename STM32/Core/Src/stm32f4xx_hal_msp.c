@@ -124,15 +124,24 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
     PB10     ------> I2C2_SCL
     PB11     ------> I2C2_SDA
     */
-    GPIO_InitStruct.Pin = GPIO_PIN_10|GPIO_PIN_11;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-    GPIO_InitStruct.Alternate = GPIO_AF4_I2C2;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+   GPIO_InitStruct.Pin = GPIO_PIN_10|GPIO_PIN_11;
+   GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+   /* Enable internal pull-ups so SCL/SDA are pulled high if no external pull-ups
+     are fitted. The Raspberry Pi usually provides pull-ups on its side, but
+     having STM32 internal pull-ups improves robustness when wiring varies. */
+   GPIO_InitStruct.Pull = GPIO_PULLUP;
+   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+   GPIO_InitStruct.Alternate = GPIO_AF4_I2C2;
+   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-    /* Peripheral clock enable */
-    __HAL_RCC_I2C2_CLK_ENABLE();
+   /* Peripheral clock enable */
+   __HAL_RCC_I2C2_CLK_ENABLE();
+
+   /* Enable and set I2C2 event/error IRQs so HAL IT-based slave mode works */
+   HAL_NVIC_SetPriority(I2C2_EV_IRQn, 0, 0);
+   HAL_NVIC_EnableIRQ(I2C2_EV_IRQn);
+   HAL_NVIC_SetPriority(I2C2_ER_IRQn, 0, 0);
+   HAL_NVIC_EnableIRQ(I2C2_ER_IRQn);
     /* USER CODE BEGIN I2C2_MspInit 1 */
 
     /* USER CODE END I2C2_MspInit 1 */
