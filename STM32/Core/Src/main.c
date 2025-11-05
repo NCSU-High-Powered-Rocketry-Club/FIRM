@@ -275,9 +275,12 @@ int main(void)
       usb_serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
       usb_transmit_serialized_packet(&serialized_packet);
       // Also make the last serialized packet available to I2C master (Pi Zero)
+      // Do the buffer copy atomically to avoid a race with the I2C ISR.
+      __disable_irq();
       memcpy((void*)i2c2_tx_buf, (const void*)&serialized_packet, sizeof(SerializedPacket_t));
       i2c2_tx_len = (uint16_t)sizeof(SerializedPacket_t);
       i2c2_tx_ready = true;
+      __enable_irq();
       any_new_data_collected = false;
     }
 
@@ -386,7 +389,10 @@ static void MX_I2C2_Init(void)
   hi2c2.Instance = I2C2;
   hi2c2.Init.ClockSpeed = 100000;
   hi2c2.Init.DutyCycle = I2C_DUTYCYCLE_2;
-  hi2c2.Init.OwnAddress1 = 0x42; // 7-bit slave address for Pi Zero to talk to
+  // Some HAL versions expect the left-shifted (7-bit << 1) value for OwnAddress1.
+  // Try the shifted address first (0x42 << 1 == 0x84). If detection still fails,
+  // change this to 0x42 (unshifted) and rebuild.
+  hi2c2.Init.OwnAddress1 = (0x42 << 1); // use 0x84 here
   hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
   hi2c2.Init.OwnAddress2 = 0;
@@ -670,6 +676,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
  */
 void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, uint16_t AddrMatchCode) {
   if (hi2c->Instance == I2C2) {
+    // Toggle debug pin to indicate address match (use PC0 which is configured as output)
+    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_0);
     if (TransferDirection == I2C_DIRECTION_TRANSMIT) {
       // Master will write to us
       HAL_I2C_Slave_Seq_Receive_IT(hi2c, (uint8_t*)i2c2_rx_buf, (uint16_t)sizeof(i2c2_rx_buf), I2C_FIRST_FRAME);
@@ -705,6 +713,18 @@ void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *hi2c) {
 void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c) {
   if (hi2c->Instance == I2C2) {
     // Process received data in i2c2_rx_buf as desired. Here we simply re-enable listening.
+    HAL_I2C_EnableListen_IT(hi2c);
+  }
+}
+
+/**
+ * @brief I2C Error callback for debugging and recovery
+ */
+void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
+  if (hi2c->Instance == I2C2) {
+    // Toggle debug pin to indicate error
+    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_0);
+    // Try to recover by re-enabling listen
     HAL_I2C_EnableListen_IT(hi2c);
   }
 }
