@@ -1,6 +1,6 @@
 import React, { Fragment, useState } from "react";
 import { Listbox, Transition } from "@headlessui/react";
-import { ChevronsUpDown, Check, Download, RefreshCcw, Rocket } from "lucide-react";
+import { ChevronsUpDown, Check, Download, RefreshCcw } from "lucide-react";
 
 type LogOption = {
   id: string;
@@ -30,33 +30,33 @@ function classNames(...classes: Array<string | false | null | undefined>) {
 export function ActionsPanel() {
   const [selectedLog, setSelectedLog] = useState<LogOption>(LOG_OPTIONS[0]);
 
-  const handleRunCalibration = () => console.log("Run Calibration clicked");
+  const handleCalibrateIMU = () => console.log("Calibrate IMU clicked");
+  const handleCalibrateMag = () => console.log("Calibrate Magnetometer clicked");
   const handleDownloadLog = () => console.log("Download log:", selectedLog);
-  const handleCustomAction = () => console.log("Custom action triggered");
 
   return (
     <section className="mt-4 rounded-xl border border-slate-300 bg-white px-6 pt-3 pb-4 shadow-sm text-slate-900">
       <h2 className="mb-3 text-lg font-semibold leading-tight">Actions</h2>
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-4 text-sm">
-        {/* Run Calibration – 1/4 */}
+        {/* Calibrate IMU – 1/4 */}
         <div className="col-span-1 flex flex-col justify-between rounded-lg border border-white bg-slate-50/70">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Run Calibration
+              Calibrate IMU
             </p>
             <p className="text-xs text-slate-500">
-              Zero sensors and collect baseline data for FIRM.
+              Zero accelerometer and gyroscope sensors for accurate orientation data.
             </p>
           </div>
           <div className="mt-3 flex items-center gap-3">
             <button
               type="button"
-              onClick={handleRunCalibration}
+              onClick={handleCalibrateIMU}
               className="inline-flex items-center gap-2 rounded-md bg-theme px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-theme/70 focus:ring-offset-1 focus:ring-offset-white"
             >
               <RefreshCcw className="h-4 w-4" />
-              Run Calibration
+              Calibrate IMU
             </button>
             <p className="text-[11px] text-slate-500">
               Last run: <span className="font-medium text-slate-700">N/A</span>
@@ -64,25 +64,28 @@ export function ActionsPanel() {
           </div>
         </div>
 
-        {/* Custom Action – 1/4 */}
+        {/* Calibrate Magnetometer – 1/4 */}
         <div className="col-span-1 flex flex-col justify-between rounded-lg border border-white bg-slate-50/70">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Custom Action
+              Calibrate Magnetometer
             </p>
             <p className="text-xs text-slate-500">
-              Placeholder for a future FIRM control action or automation trigger.
+              Remove hard-iron and soft-iron distortions for accurate heading data.
             </p>
           </div>
           <div className="mt-3 flex items-center gap-3">
             <button
               type="button"
-              onClick={handleCustomAction}
+              onClick={handleCalibrateMag}
               className="inline-flex items-center gap-2 rounded-md bg-theme px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-theme/70 focus:ring-offset-1 focus:ring-offset-white"
             >
-              <Rocket className="h-4 w-4 text-white" />
-              Execute Action
+              <RefreshCcw className="h-4 w-4" />
+              Calibrate Mag
             </button>
+            <p className="text-[11px] text-slate-500">
+              Last run: <span className="font-medium text-slate-700">N/A</span>
+            </p>
           </div>
         </div>
 
