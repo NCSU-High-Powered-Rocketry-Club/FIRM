@@ -1,4 +1,3 @@
-// eslint.config.cjs
 const js = require("@eslint/js");
 const tsParser = require("@typescript-eslint/parser");
 const tsPlugin = require("@typescript-eslint/eslint-plugin");
@@ -17,6 +16,11 @@ module.exports = [
       globals: {
         window: "readonly",
         document: "readonly",
+        navigator: "readonly",
+        Blob: "readonly",
+        URL: "readonly",
+        FileReader: "readonly",
+        HTMLInputElement: "readonly",
         console: "readonly",
         module: "readonly",
         process: "readonly",

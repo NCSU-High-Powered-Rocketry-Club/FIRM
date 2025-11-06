@@ -1,6 +1,6 @@
 import React, { Fragment, useState } from "react";
 import { Menu, Listbox, Transition } from "@headlessui/react";
-import { ChevronDown, ChevronsUpDown, Check } from "lucide-react";
+import { ChevronDown, ChevronsUpDown, Check, Download, Upload } from "lucide-react";
 
 type TelemetryFieldId =
   | "accelX"
@@ -57,6 +57,8 @@ export function SettingsPanel() {
     new Set(["accelX", "accelY", "accelZ", "gyroX", "gyroY", "gyroZ", "pressure", "altitude"]),
   );
 
+  const [configError, setConfigError] = useState<string | null>(null);
+
   const handleFreqChange = (value: string) => {
     if (value === "" || /^\d*$/.test(value)) {
       setFreqInput(value);
@@ -90,19 +92,91 @@ export function SettingsPanel() {
     });
   };
 
+  const buildConfig = () => ({
+    deviceName,
+    updateFrequencyHz: Number(freqInput),
+    protocol,
+    fields: Array.from(selectedFields),
+  });
+
   const handleApply = (event: React.FormEvent) => {
     event.preventDefault();
     validateFrequency();
     const numericFreq = Number(freqInput);
     if (!freqError && numericFreq >= 1 && numericFreq <= 500) {
-      const config = {
-        deviceName,
-        updateFrequencyHz: numericFreq,
-        protocol,
-        fields: Array.from(selectedFields),
-      };
+      const config = buildConfig();
       console.log("Apply FIRM settings:", config);
     }
+  };
+
+  const handleDownloadConfig = () => {
+    const config = buildConfig();
+    const blob = new Blob([JSON.stringify(config, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "firm-settings.json";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setConfigError(null);
+  };
+
+  const handleUploadConfig: React.ChangeEventHandler<HTMLInputElement> = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string;
+        const data = JSON.parse(text);
+
+        const validFieldIds = new Set(TELEMETRY_FIELDS.map((f) => f.id));
+
+        const isInvalidConfig =
+          typeof data.deviceName !== "string" ||
+          typeof data.updateFrequencyHz !== "number" ||
+          !PROTOCOL_OPTIONS.includes(data.protocol as ProtocolOption) ||
+          !Array.isArray(data.fields) ||
+          !data.fields.every((id: string) => validFieldIds.has(id as TelemetryFieldId));
+
+        if (isInvalidConfig) {
+          setConfigError("Invalid settings file. Please check the contents and try again.");
+          return;
+        }
+
+        setDeviceName(data.deviceName);
+        setFreqInput(String(data.updateFrequencyHz));
+        setProtocol(data.protocol as ProtocolOption);
+        setSelectedFields(new Set(data.fields as TelemetryFieldId[]));
+        setFreqError(null);
+        setConfigError(null);
+      } catch (err) {
+        console.error(err);
+        setConfigError("Invalid settings file. Please check the contents and try again.");
+      } finally {
+        // allow re-uploading the same file
+        event.target.value = "";
+      }
+    };
+
+    reader.readAsText(file);
+  };
+
+  const handleReset = () => {
+    setDeviceName("FIRM Flight Computer");
+    setFreqInput("100");
+    setFreqError(null);
+    setProtocol("USB");
+    setSelectedFields(
+      new Set(["accelX", "accelY", "accelZ", "gyroX", "gyroY", "gyroZ", "pressure", "altitude"]),
+    );
+    setConfigError(null);
   };
 
   const groupedFields: Record<string, TelemetryField[]> = TELEMETRY_FIELDS.reduce(
@@ -287,37 +361,60 @@ export function SettingsPanel() {
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end gap-2 pt-1">
-          <button
-            type="button"
-            onClick={() => {
-              setDeviceName("FIRM Flight Computer");
-              setFreqInput("100");
-              setFreqError(null);
-              setProtocol("USB");
-              setSelectedFields(
-                new Set([
-                  "accelX",
-                  "accelY",
-                  "accelZ",
-                  "gyroX",
-                  "gyroY",
-                  "gyroZ",
-                  "pressure",
-                  "altitude",
-                ]),
-              );
-            }}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-          >
-            Reset
-          </button>
-          <button
-            type="submit"
-            className="rounded-md bg-theme px-4 py-1.5 text-xs font-semibold text-white shadow-sm hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-theme/70 focus:ring-offset-1 focus:ring-offset-white"
-          >
-            Apply Settings
-          </button>
+        <div className="pt-1">
+          <div className="flex items-center justify-between gap-3">
+            {/* Left: Import / Export */}
+            <div className="flex items-center gap-2 text-xs">
+              <button
+                type="button"
+                onClick={handleDownloadConfig}
+                className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-slate-300
+               px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-sm
+               transition-colors duration-150 hover:border-theme hover:text-theme hover:bg-theme/5"
+              >
+                <Download className="h-3.5 w-3.5 transition-transform duration-150 group-hover:scale-110" />
+                <span>Export config</span>
+              </button>
+
+              <div>
+                <input
+                  id="firm-config-upload"
+                  type="file"
+                  accept="application/json"
+                  className="hidden"
+                  onChange={handleUploadConfig}
+                />
+                <label
+                  htmlFor="firm-config-upload"
+                  className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-slate-300
+                 px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-sm
+                 transition-colors duration-150 hover:border-theme hover:text-theme hover:bg-theme/5"
+                >
+                  <Upload className="h-3.5 w-3.5 transition-transform duration-150 group-hover:scale-110" />
+                  <span>Import config</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Right: Reset / Apply */}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleReset}
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Reset
+              </button>
+              <button
+                type="submit"
+                className="rounded-md bg-theme px-4 py-1.5 text-xs font-semibold text-white shadow-sm hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-theme/70 focus:ring-offset-1 focus:ring-offset-white"
+              >
+                Apply Settings
+              </button>
+            </div>
+          </div>
+
+          {configError && <p className="mt-1 text-[11px] text-red-500">{configError}</p>}
         </div>
       </form>
     </section>
