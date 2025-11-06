@@ -66,13 +66,12 @@ class SensorPacket:
     def __str__(self) -> str:
         return (
             f"SensorPacket(\n"
-            f"  timestamp={self.timestamp},\n"
-            f"  pressure={self.pressure_raw + self.pressure_frac / 1e9:.2f} Pa,\n"
+            f"  timestamp={self.timestamp:.3f}s,\n"
+            f"  temperature={self.temperature:.2f}°C,\n"
+            f"  pressure={self.pressure_raw:.2f} Pa,\n"
             f"  accel=({self.accel_x:.3f}, {self.accel_y:.3f}, {self.accel_z:.3f}) m/s²,\n"
             f"  gyro=({self.gyro_x:.3f}, {self.gyro_y:.3f}, {self.gyro_z:.3f}) rad/s,\n"
             f"  mag=({self.mag_x:.3f}, {self.mag_y:.3f}, {self.mag_z:.3f}) µT,\n"
-            f"  temperature={self.temperature:.2f}°C,\n"
-            f"  altitude={self.altitude:.2f}m,\n"
             f"  crc_valid={self.crc_valid}\n"
             f")"
         )
@@ -157,16 +156,14 @@ class STM32I2CReader:
         
         Packet structure (58 bytes total):
         - header: uint16_t (2 bytes) - 0xA55A
-        - length: uint16_t (2 bytes) - payload length (56)
-        - timestamp: uint64_t (8 bytes)
-        - pressure_raw: uint32_t (4 bytes)
-        - pressure_frac: uint8_t (1 byte)
-        - accel_x/y/z: float (4 bytes each, 12 total)
-        - gyro_x/y/z: float (4 bytes each, 12 total)
-        - mag_x/y/z: float (4 bytes each, 12 total)
-        - temperature: double (8 bytes)
-        - altitude: float (4 bytes)
-        - reserved: uint32_t (4 bytes)
+        - length: uint16_t (2 bytes) - payload length (52)
+        - CalibratedDataPacket_t payload (52 bytes):
+          - temperature: float (4 bytes)
+          - pressure: float (4 bytes)
+          - accel_x/y/z: float (4 bytes each, 12 total)
+          - angular_rate_x/y/z: float (4 bytes each, 12 total)
+          - magnetic_field_x/y/z: float (4 bytes each, 12 total)
+          - timestamp_sec: double (8 bytes)
         - crc: uint16_t (2 bytes)
         """
         if len(data) != self.PACKET_SIZE:
@@ -177,27 +174,28 @@ class STM32I2CReader:
         
         try:
             # Unpack the packet (little-endian format)
-            # Format string: H=uint16, Q=uint64, I=uint32, B=uint8, f=float, d=double
-            unpacked = struct.unpack('<HH Q IB fff fff fff d f I H', data)
+            # Format: H H (header, length) + f f fff fff fff d (11 floats + 1 double) + H (crc)
+            # Total: 2 + 2 + 4 + 4 + 12 + 12 + 12 + 8 + 2 = 58 bytes
+            unpacked = struct.unpack('<HH fff fff fff fff d H', data)
             
             packet.header = unpacked[0]
             packet.length = unpacked[1]
-            packet.timestamp = unpacked[2]
-            packet.pressure_raw = unpacked[3]
-            packet.pressure_frac = unpacked[4]
-            packet.accel_x = unpacked[5]
-            packet.accel_y = unpacked[6]
-            packet.accel_z = unpacked[7]
-            packet.gyro_x = unpacked[8]
-            packet.gyro_y = unpacked[9]
-            packet.gyro_z = unpacked[10]
-            packet.mag_x = unpacked[11]
-            packet.mag_y = unpacked[12]
-            packet.mag_z = unpacked[13]
-            packet.temperature = unpacked[14]
-            packet.altitude = unpacked[15]
-            packet.reserved = unpacked[16]
-            packet.crc = unpacked[17]
+            packet.temperature = unpacked[2]
+            packet.pressure_raw = int(unpacked[3])  # Store as integer for display
+            packet.pressure_frac = 0  # Not used in this format
+            packet.accel_x = unpacked[4]
+            packet.accel_y = unpacked[5]
+            packet.accel_z = unpacked[6]
+            packet.gyro_x = unpacked[7]
+            packet.gyro_y = unpacked[8]
+            packet.gyro_z = unpacked[9]
+            packet.mag_x = unpacked[10]
+            packet.mag_y = unpacked[11]
+            packet.mag_z = unpacked[12]
+            packet.timestamp = int(unpacked[13])  # timestamp_sec as integer for display
+            packet.altitude = 0.0  # Not in this packet format
+            packet.reserved = 0
+            packet.crc = unpacked[14]
             
             # Verify header
             if packet.header != self.HEADER_MAGIC:

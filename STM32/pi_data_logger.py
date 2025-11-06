@@ -40,7 +40,8 @@ class SensorDataLogger:
         # Write header row
         self.csv_writer.writerow([
             'system_time',
-            'stm32_timestamp',
+            'timestamp_sec',
+            'temperature_c',
             'pressure_pa',
             'accel_x_ms2',
             'accel_y_ms2',
@@ -51,8 +52,6 @@ class SensorDataLogger:
             'mag_x_ut',
             'mag_y_ut',
             'mag_z_ut',
-            'temperature_c',
-            'altitude_m',
             'crc_valid'
         ])
         
@@ -74,14 +73,12 @@ class SensorDataLogger:
         # Get system timestamp
         system_time = datetime.now().isoformat()
         
-        # Calculate pressure (raw + fractional)
-        pressure = packet.pressure_raw + (packet.pressure_frac / 1e9)
-        
         # Write data row
         self.csv_writer.writerow([
             system_time,
-            packet.timestamp,
-            f"{pressure:.2f}",
+            f"{packet.timestamp:.3f}",
+            f"{packet.temperature:.2f}",
+            f"{packet.pressure_raw:.2f}",
             f"{packet.accel_x:.6f}",
             f"{packet.accel_y:.6f}",
             f"{packet.accel_z:.6f}",
@@ -91,8 +88,6 @@ class SensorDataLogger:
             f"{packet.mag_x:.6f}",
             f"{packet.mag_y:.6f}",
             f"{packet.mag_z:.6f}",
-            f"{packet.temperature:.2f}",
-            f"{packet.altitude:.2f}",
             packet.crc_valid
         ])
         
