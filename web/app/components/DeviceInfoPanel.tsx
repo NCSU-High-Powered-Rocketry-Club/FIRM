@@ -1,7 +1,7 @@
 import React from "react";
 import { Cpu, Plug, GaugeCircle, Wifi } from "lucide-react";
 
-export function DeviceInfo() {
+export function DeviceInfoPanel() {
   const info = {
     deviceName: "FIRM Flight Computer",
     firmware: "v1.3.2",

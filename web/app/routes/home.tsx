@@ -1,20 +1,11 @@
 import React from "react";
 import type { Route } from "./+types/home";
-import { PageHeader } from "~/components/PageHeader";
-import { DeviceInfo } from "~/components/DeviceInfo";
+import { Header } from "~/components/Header";
+import { DeviceInfoPanel } from "~/components/DeviceInfoPanel";
 import { GraphsPanel } from "~/components/GraphsPanel";
 import { SettingsPanel } from "~/components/SettingsPanel";
 import { ActionsPanel } from "~/components/ActionsPanel";
-
-export function meta(): Route.MetaDescriptors {
-  return [
-    { title: "FIRM Dashboard" },
-    {
-      name: "description",
-      content: "Dashboard for the FIRM flight computer.",
-    },
-  ];
-}
+import {Footer} from "~/components/Footer";
 
 function getBodyContainerClasses(isConnected: boolean): string {
   let classes = "mx-auto flex max-w-5xl flex-col gap-4 px-6 py-6 transition-opacity";
@@ -25,14 +16,12 @@ function getBodyContainerClasses(isConnected: boolean): string {
 }
 
 export default function Home() {
-  // TODO: replace with real connection state
   const isFirmConnected = true;
-
   const bodyClasses = getBodyContainerClasses(isFirmConnected);
 
   return (
-    <div className="min-h-screen bg-white">
-      <PageHeader />
+    <div className="min-h-screen bg-white flex flex-col">
+      <Header />
 
       <main className={bodyClasses}>
         {/* Optional little status pill */}
@@ -55,11 +44,13 @@ export default function Home() {
           </span>
         </div>
 
-        <DeviceInfo />
+        <DeviceInfoPanel />
         <GraphsPanel />
         <SettingsPanel />
         <ActionsPanel />
       </main>
+
+      <Footer />
     </div>
   );
 }
