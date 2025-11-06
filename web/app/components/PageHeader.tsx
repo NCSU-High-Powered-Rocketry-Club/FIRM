@@ -1,14 +1,10 @@
 import React from "react";
 
-type PageHeaderProps = {
-  title: string;
-};
-
-export function PageHeader(props: PageHeaderProps) {
+export function PageHeader() {
   return (
-    <header className="bg-orange-500 text-white">
+    <header className="bg-theme text-white">
       <div className="mx-auto max-w-5xl px-6 py-6">
-        <h1 className="text-3xl font-bold tracking-tight">{props.title}</h1>
+        <h1 className="text-5xl font-bold tracking-tight">FIRM Dashboard</h1>
       </div>
     </header>
   );
