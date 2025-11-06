@@ -14,12 +14,15 @@
     "clean": "npm run lint:fix && npm run format"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.9",
     "@react-router/node": "^7.9.2",
     "@react-router/serve": "^7.9.2",
     "isbot": "^5.1.31",
+    "lucide-react": "^0.552.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "react-router": "^7.9.2"
+    "react-router": "^7.9.2",
+    "recharts": "^3.3.0"
   },
   "devDependencies": {
     "@react-router/dev": "^7.9.2",
