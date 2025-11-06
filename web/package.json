@@ -1,5 +1,5 @@
 {
-  "name": "",
+  "name": "firm-web-app",
   "private": true,
   "type": "module",
   "scripts": {
@@ -7,8 +7,8 @@
     "dev": "react-router dev",
     "start": "react-router-serve ./build/server/index.js",
     "typecheck": "react-router typegen && tsc",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
-    "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
+    "lint": "eslint app --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "eslint app --ext .js,.jsx,.ts,.tsx --fix",
     "format": "prettier --write ."
   },
   "dependencies": {
