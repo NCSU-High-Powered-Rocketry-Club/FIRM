@@ -34,6 +34,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include "usb_print_debug.h"
 
 /* USER CODE END Includes */
 
@@ -66,6 +67,15 @@ SPI_HandleTypeDef hspi3;
 
 /* USER CODE BEGIN PV */
 
+/* I2C2 runtime state shared across callbacks */
+volatile uint8_t i2c2_tx_buf[128];
+volatile uint16_t i2c2_tx_len = 0;
+volatile uint8_t i2c2_tx_ready = 0;
+volatile uint8_t i2c2_rx_buf[32];
+volatile uint8_t i2c2_pending_addr = 0;
+volatile bool i2c2_recover_request = false;
+volatile uint16_t i2c2_tx_index = 0; /* byte index for multi-byte slave transmit */
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -93,14 +103,6 @@ volatile bool mmc5983ma_has_new_data = false;
 // number of times the DWT timestamp has overflowed. This happens every ~25 seconds
 volatile uint32_t dwt_overflow_count = 0;
 
-// I2C2 slave buffers and state for communication with a Raspberry Pi Zero
-// The Pi will act as I2C master and read the latest serialized packet from this device.
-// Choose a 7-bit slave address (avoid conflicts with onboard sensors). We will use 0x42.
-volatile uint8_t i2c2_tx_buf[128];
-volatile uint16_t i2c2_tx_len = 0;
-volatile bool i2c2_tx_ready = false;
-volatile uint8_t i2c2_rx_buf[32];
-
 /* USER CODE END 0 */
 
 /**
@@ -125,6 +127,30 @@ int main(void)
 
   /* Configure the system clock */
   SystemClock_Config();
+
+  /* USER NOTE: do a full I2C2 peripheral reset and release the bus lines
+    before initializing peripherals. This prevents the MCU from holding SCL
+    low if the peripheral was left in a bad state (clock-stretching forever). */
+  serialPrintStr("I2C2: performing peripheral reset and bus release");
+  HAL_I2C_DeInit(&hi2c2);
+  __HAL_RCC_I2C2_FORCE_RESET();
+  HAL_Delay(10);
+  __HAL_RCC_I2C2_RELEASE_RESET();
+  HAL_Delay(10);
+
+  /* Ensure GPIOB clock enabled and force SCL/SDA high using OD outputs so
+    any stuck low is released and pull-ups can recharge. */
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10|GPIO_PIN_11, GPIO_PIN_SET);
+  {
+   GPIO_InitTypeDef GPIO_InitStruct = {0};
+   GPIO_InitStruct.Pin = GPIO_PIN_10|GPIO_PIN_11;
+   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD; /* drive high but open-drain */
+   GPIO_InitStruct.Pull = GPIO_PULLUP;
+   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  }
+  HAL_Delay(100); /* allow bus to settle with pull-ups */
 
   /* USER CODE BEGIN SysInit */
 
@@ -228,6 +254,16 @@ int main(void)
     MMC5983MAPacket_t mag_packet;
     mmc5983ma_read_data(&mag_packet, &magnetometer_flip);
     
+    /* Populate I2C2 buffer with initial packet so Pi can read immediately */
+    usb_serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
+    memcpy((void*)i2c2_tx_buf, (const void*)&serialized_packet, sizeof(SerializedPacket_t));
+    i2c2_tx_len = (uint16_t)sizeof(SerializedPacket_t);
+    i2c2_tx_ready = 1;
+    
+    /* Enable I2C2 listen mode now that I2C1 master initialization is complete */
+    HAL_I2C_EnableListen_IT(&hi2c2);
+    serialPrintStr("I2C2: Listen enabled with initial packet ready");
+    
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -267,18 +303,20 @@ int main(void)
 
         // if USB serial communication setting is enabled, and new data is collected, serialize
         // and transmit it
-    if (firmSettings.serial_transfer_enabled && any_new_data_collected) {
-      usb_serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
-      usb_transmit_serialized_packet(&serialized_packet);
-      // Also make the last serialized packet available to I2C master (Pi Zero)
-      // Do the buffer copy atomically to avoid a race with the I2C ISR.
-      __disable_irq();
-      memcpy((void*)i2c2_tx_buf, (const void*)&serialized_packet, sizeof(SerializedPacket_t));
-      i2c2_tx_len = (uint16_t)sizeof(SerializedPacket_t);
-      i2c2_tx_ready = true;
-      __enable_irq();
-      any_new_data_collected = false;
-    }
+        if (firmSettings.serial_transfer_enabled && any_new_data_collected) {
+            usb_serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
+            usb_transmit_serialized_packet(&serialized_packet);
+            
+            // Also populate I2C2 TX buffer so Pi Zero can read the latest packet via I2C.
+            // Copy the serialized packet atomically to avoid race with I2C ISR.
+            __disable_irq();
+            memcpy((void*)i2c2_tx_buf, (const void*)&serialized_packet, sizeof(SerializedPacket_t));
+            i2c2_tx_len = (uint16_t)sizeof(SerializedPacket_t);
+            i2c2_tx_ready = 1;
+            __enable_irq();
+            
+            any_new_data_collected = false;
+        }
 
     /* USER CODE END WHILE */
 
@@ -385,7 +423,10 @@ static void MX_I2C2_Init(void)
   hi2c2.Instance = I2C2;
   hi2c2.Init.ClockSpeed = 100000;
   hi2c2.Init.DutyCycle = I2C_DUTYCYCLE_2;
-  hi2c2.Init.OwnAddress1 = 132;
+  /* Use 0x48 (7-bit) slave address. HAL expects the 7-bit address left-shifted
+    in some HAL versions, so use 0x48 << 1 == 0x90 (144). This matches existing
+    tooling that used 144 for a 7-bit address of 0x48. */
+  hi2c2.Init.OwnAddress1 = 144;
   hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
   hi2c2.Init.OwnAddress2 = 0;
@@ -663,63 +704,89 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
     }
 }
 
-/**
- * @brief I2C Address matched callback (called when this device is addressed as slave)
- * @note We use this to start a non-blocking transmit or receive depending on master direction
- */
-void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, uint16_t AddrMatchCode) {
-  if (hi2c->Instance == I2C2) {
-    // Toggle debug pin to indicate address match (use PC0 which is configured as output)
-    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_0);
-    if (TransferDirection == I2C_DIRECTION_TRANSMIT) {
-      // Master will write to us
-      HAL_I2C_Slave_Seq_Receive_IT(hi2c, (uint8_t*)i2c2_rx_buf, (uint16_t)sizeof(i2c2_rx_buf), I2C_FIRST_FRAME);
+/* Helper to re-enable listen mode (safe to call from callbacks) */
+static void i2c2_enable_listen(void) {
+  HAL_I2C_EnableListen_IT(&hi2c2);
+}
+
+/* Address match callback: start sequence transmit or receive */
+void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, uint16_t AddrMatchCode)
+{
+  if (hi2c->Instance != I2C2) return;
+
+  if (TransferDirection == I2C_DIRECTION_TRANSMIT) {
+    /* Master will write to us: prepare receive buffer */
+    HAL_I2C_Slave_Seq_Receive_IT(hi2c, (uint8_t *)i2c2_rx_buf, sizeof(i2c2_rx_buf), I2C_FIRST_AND_LAST_FRAME);
+    serialPrintStr("I2C2: Master->Slave receive started");
+  } else {
+    /* Master will read from us: transmit entire buffer at once */
+    if (i2c2_tx_len == 0 || !i2c2_tx_ready) {
+      /* fallback single zero byte - clear any stale state first */
+      static uint8_t zero = 0x00;
+      i2c2_tx_ready = 0;
+      i2c2_tx_len = 0;
+      i2c2_tx_index = 0;
+      HAL_I2C_Slave_Seq_Transmit_IT(hi2c, &zero, 1, I2C_FIRST_AND_LAST_FRAME);
+      serialPrintStr("I2C2: Slave send fallback 0x00 (single byte)");
     } else {
-      // Master will read from us
-      if (i2c2_tx_ready && i2c2_tx_len > 0) {
-        HAL_I2C_Slave_Seq_Transmit_IT(hi2c, (uint8_t*)i2c2_tx_buf, i2c2_tx_len, I2C_LAST_FRAME);
-      } else {
-        // No data ready, send a single zero byte so master gets something
-        static uint8_t zero = 0;
-        HAL_I2C_Slave_Seq_Transmit_IT(hi2c, &zero, 1, I2C_LAST_FRAME);
-      }
+      /* Send entire buffer at once with FIRST_AND_LAST_FRAME.
+         HAL will handle the byte-by-byte hardware transmission internally. */
+      i2c2_tx_index = 0;
+      char dbg[64];
+      sprintf(dbg, "I2C2: AddrCb sending %d bytes (buffer mode)", (int)i2c2_tx_len);
+      serialPrintStr(dbg);
+      
+      HAL_StatusTypeDef status = HAL_I2C_Slave_Seq_Transmit_IT(hi2c, (uint8_t *)i2c2_tx_buf, i2c2_tx_len, I2C_FIRST_AND_LAST_FRAME);
+      sprintf(dbg, "I2C2: Transmit status=%d", status);
+      serialPrintStr(dbg);
     }
   }
 }
 
-/**
- * @brief Called when a slave transmit completes
- */
-void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *hi2c) {
-  if (hi2c->Instance == I2C2) {
-    // A master finished reading our data. Clear ready flag.
-    i2c2_tx_ready = false;
+/* Slave transmit complete: re-enable listen but keep data available */
+void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *hi2c)
+{
+  if (hi2c->Instance != I2C2) return;
+
+  /* Transfer complete: re-enable listen mode but keep buffer valid for next read.
+     The buffer will be updated when new sensor data arrives in the main loop. */
+  serialPrintStr("I2C2: Slave TX complete; re-enabling listen");
+  i2c2_enable_listen();
+}
+
+/* Slave receive complete */
+void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
+{
+  if (hi2c->Instance != I2C2) return;
+  serialPrintStr("I2C2: Slave RX complete");
+  i2c2_enable_listen();
+}
+
+/* Error callback: handle NACK (AF) from master to stop TX sequence */
+void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c)
+{
+  if (hi2c->Instance != I2C2) return;
+
+  if (hi2c->ErrorCode & HAL_I2C_ERROR_AF) {
+    /* Master NACKed the last byte: end transmit and re-enable listen */
+    i2c2_tx_ready = 0;
     i2c2_tx_len = 0;
-    // Re-enable listen mode to catch future addressings
-    HAL_I2C_EnableListen_IT(hi2c);
+    i2c2_tx_index = 0;
+    serialPrintStr("I2C2: Master NACK (AF) - clearing TX state and re-enabling listen");
+    i2c2_enable_listen();
+  } else {
+    /* other error: log and attempt to re-enable listen */
+    serialPrintStr("I2C2: I2C Error (non-AF)");
+    i2c2_enable_listen();
   }
 }
 
-/**
- * @brief Called when a slave receive completes
- */
-void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c) {
-  if (hi2c->Instance == I2C2) {
-    // Process received data in i2c2_rx_buf as desired. Here we simply re-enable listening.
-    HAL_I2C_EnableListen_IT(hi2c);
-  }
-}
-
-/**
- * @brief I2C Error callback for debugging and recovery
- */
-void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
-  if (hi2c->Instance == I2C2) {
-    // Toggle debug pin to indicate error
-    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_0);
-    // Try to recover by re-enabling listen
-    HAL_I2C_EnableListen_IT(hi2c);
-  }
+/* Listen complete callback: re-enter listen if needed */
+void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c)
+{
+  if (hi2c->Instance != I2C2) return;
+  /* Re-enable listen to be ready for next address match */
+  HAL_I2C_EnableListen_IT(hi2c);
 }
 /* USER CODE END 4 */
 
