@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { Menu } from "@headlessui/react";
+import { ChevronDown } from "lucide-react";
 
 type TelemetryFieldId =
     | "accelX"
@@ -37,9 +39,13 @@ const TELEMETRY_FIELDS: TelemetryField[] = [
     { id: "temperature", label: "Temperature", group: "Barometer" },
 ];
 
+function classNames(...classes: Array<string | boolean | null | undefined>) {
+    return classes.filter(Boolean).join(" ");
+}
+
 export function SettingsPanel() {
     const [deviceName, setDeviceName] = useState<string>("FIRM Flight Computer");
-    const [freqInput, setFreqInput] = useState<string>("100"); // Hz, as string for controlled input
+    const [freqInput, setFreqInput] = useState<string>("100");
     const [freqError, setFreqError] = useState<string | null>(null);
 
     const [selectedFields, setSelectedFields] = useState<Set<TelemetryFieldId>>(
@@ -57,7 +63,6 @@ export function SettingsPanel() {
     );
 
     const handleFreqChange = (value: string) => {
-        // Allow empty (so user can clear and retype) or digits only
         if (value === "" || /^\d*$/.test(value)) {
             setFreqInput(value);
             setFreqError(null);
@@ -72,7 +77,7 @@ export function SettingsPanel() {
 
         const numeric = Number(freqInput);
         if (!Number.isInteger(numeric) || numeric < 1 || numeric > 500) {
-            setFreqError("Frequency must be an integer between 1 and 500 Hz.");
+            setFreqError("Frequency must be between 1 and 500 Hz.");
         } else {
             setFreqError(null);
         }
@@ -81,11 +86,7 @@ export function SettingsPanel() {
     const toggleField = (id: TelemetryFieldId) => {
         setSelectedFields((prev) => {
             const next = new Set(prev);
-            if (next.has(id)) {
-                next.delete(id);
-            } else {
-                next.add(id);
-            }
+            next.has(id) ? next.delete(id) : next.add(id);
             return next;
         });
     };
@@ -93,43 +94,43 @@ export function SettingsPanel() {
     const handleApply = (event: React.FormEvent) => {
         event.preventDefault();
         validateFrequency();
-
-        // You could early-return here if freqError is set,
-        // but that would require validateFrequency to be sync-safe.
-        // For now this just logs the config and leaves real serial
-        // wiring for later.
         const numericFreq = Number(freqInput);
 
-        if (!freqError && Number.isInteger(numericFreq) && numericFreq >= 1 && numericFreq <= 500) {
+        if (!freqError && numericFreq >= 1 && numericFreq <= 500) {
             const config = {
                 deviceName,
                 updateFrequencyHz: numericFreq,
                 fields: Array.from(selectedFields),
             };
-            // TODO: send config to FIRM over serial/WebSocket/etc.
             console.log("Apply FIRM settings:", config);
         }
     };
 
     const groupedFields: Record<string, TelemetryField[]> = TELEMETRY_FIELDS.reduce(
         (acc, field) => {
-            if (!acc[field.group]) {
-                acc[field.group] = [];
-            }
+            if (!acc[field.group]) acc[field.group] = [];
             acc[field.group].push(field);
             return acc;
         },
         {} as Record<string, TelemetryField[]>
     );
 
+    const selectedLabels = TELEMETRY_FIELDS.filter((f) =>
+        selectedFields.has(f.id)
+    ).map((f) => f.label);
+
     return (
-        <section className="mt-4 rounded-xl border border-slate-300 bg-white px-6 pt-3 pb-5 shadow-sm text-slate-900">
+        <section className="mt-4 rounded-xl border border-slate-300 bg-white px-6 pt-3.5 pb-5 shadow-sm text-slate-900">
             <h2 className="mb-3 text-lg font-semibold leading-tight">FIRM Settings</h2>
+
             <form onSubmit={handleApply} className="space-y-4 text-sm">
                 {/* Row 1: Device name & frequency */}
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="flex flex-col gap-1">
-                        <label htmlFor="deviceName" className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                        <label
+                            htmlFor="deviceName"
+                            className="text-xs font-semibold uppercase tracking-wide text-slate-500"
+                        >
                             Device Name
                         </label>
                         <input
@@ -143,7 +144,10 @@ export function SettingsPanel() {
                     </div>
 
                     <div className="flex flex-col gap-1">
-                        <label htmlFor="frequency" className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                        <label
+                            htmlFor="frequency"
+                            className="text-xs font-semibold uppercase tracking-wide text-slate-500"
+                        >
                             Update Frequency (Hz)
                         </label>
                         <div className="flex items-center gap-2">
@@ -165,36 +169,70 @@ export function SettingsPanel() {
                     </div>
                 </div>
 
-                {/* Row 2: Fields selection */}
-                <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Telemetry Fields to Send
+                {/* Row 2: Data Packet Fields */}
+                <div className="flex flex-col gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Data Packet Fields
                     </p>
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                        {Object.entries(groupedFields).map(([groupName, fields]) => (
-                            <div key={groupName}>
-                                <h3 className="mb-1 text-xs font-semibold text-slate-600">
-                                    {groupName}
-                                </h3>
-                                <div className="space-y-1">
+
+                    <Menu as="div" className="relative inline-block text-left">
+                        <div>
+                            <Menu.Button className="inline-flex w-full items-center justify-between rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:border-theme focus:outline-none focus:ring-1 focus:ring-theme md:w-80">
+                <span>
+                  {selectedFields.size === 0
+                      ? "Select fields"
+                      : `${selectedFields.size} field${
+                          selectedFields.size > 1 ? "s" : ""
+                      } selected`}
+                </span>
+                                <ChevronDown className="ml-2 h-4 w-4 text-slate-500" />
+                            </Menu.Button>
+                        </div>
+
+                        <Menu.Items className="absolute left-0 z-20 mt-1 w-72 origin-top-left rounded-md border border-slate-200 bg-white py-2 shadow-lg focus:outline-none">
+                            {Object.entries(groupedFields).map(([groupName, fields]) => (
+                                <div key={groupName} className="py-1">
+                                    <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                                        {groupName}
+                                    </p>
                                     {fields.map((field) => (
-                                        <label
-                                            key={field.id}
-                                            className="flex items-center gap-2 text-sm text-slate-700"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedFields.has(field.id)}
-                                                onChange={() => toggleField(field.id)}
-                                                className="h-4 w-4 rounded border-slate-300 text-theme focus:ring-theme"
-                                            />
-                                            <span>{field.label}</span>
-                                        </label>
+                                        <Menu.Item key={field.id}>
+                                            {({ active }) => (
+                                                <label
+                                                    className={classNames(
+                                                        "flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm text-slate-700",
+                                                        active && "bg-slate-50"
+                                                    )}
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedFields.has(field.id)}
+                                                        onChange={() => toggleField(field.id)}
+                                                        className="h-4 w-4 rounded border-slate-300 accent-theme focus:ring-theme"
+                                                    />
+                                                    <span>{field.label}</span>
+                                                </label>
+                                            )}
+                                        </Menu.Item>
                                     ))}
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </Menu.Items>
+                    </Menu>
+
+                    {/* Selected field chips */}
+                    {selectedFields.size > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                            {selectedLabels.map((label) => (
+                                <span
+                                    key={label}
+                                    className="rounded-full bg-theme px-2 py-0.5 text-xs font-medium text-white shadow-sm"
+                                >
+                  {label}
+                </span>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* Actions */}

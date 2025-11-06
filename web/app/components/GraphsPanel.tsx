@@ -37,16 +37,19 @@ const baroData = [
 ];
 
 export function GraphsPanel() {
+    // If your theme var is called --color-brand instead, swap it here.
+    const themeColor = "var(--color-theme)";
+
     return (
-        <section className="mt-4 rounded-xl border border-slate-300 bg-white px-6 pt-3 pb-4 shadow-sm text-slate-900">
+        <section className="mt-4 rounded-xl border border-slate-300 bg-white px-6 pt-3.5 pb-4 shadow-sm text-slate-900">
             <h2 className="mb-3 text-lg font-semibold leading-tight">Live Graphs</h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 {/* IMU Graph */}
-                <div className="flex flex-col rounded-lg border border-slate-200 bg-slate-50/80 p-4">
+                <div className="flex flex-col rounded-lg border border-slate-300 bg-slate-50/80 p-4">
                     <h3 className="mb-2 text-sm font-semibold text-slate-800">
                         IMU (Accel &amp; Gyro)
                     </h3>
-                    <div className="h-48 text-theme">
+                    <div className="h-48" style={{ color: themeColor }}>
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={imuData}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -85,7 +88,7 @@ export function GraphsPanel() {
                 </div>
 
                 {/* Magnetometer Graph */}
-                <div className="flex flex-col rounded-lg border border-slate-200 bg-slate-50/80 p-4">
+                <div className="flex flex-col rounded-lg border border-slate-300 bg-slate-50/80 p-4">
                     <h3 className="mb-2 text-sm font-semibold text-slate-800">
                         Magnetometer
                     </h3>
@@ -97,8 +100,8 @@ export function GraphsPanel() {
                                 <Radar
                                     name="Field"
                                     dataKey="value"
-                                    stroke="#f97316"
-                                    fill="#f97316"
+                                    stroke={themeColor}
+                                    fill={themeColor}
                                     fillOpacity={0.25}
                                 />
                                 <Legend />
@@ -108,7 +111,7 @@ export function GraphsPanel() {
                 </div>
 
                 {/* Barometer Graph */}
-                <div className="flex flex-col rounded-lg border border-slate-200 bg-slate-50/80 p-4">
+                <div className="flex flex-col rounded-lg border border-slate-300 bg-slate-50/80 p-4">
                     <h3 className="mb-2 text-sm font-semibold text-slate-800">
                         Barometer
                     </h3>
@@ -122,8 +125,9 @@ export function GraphsPanel() {
                                 <Area
                                     type="monotone"
                                     dataKey="altitude"
-                                    stroke="#f97316"
-                                    fill="#fed7aa"
+                                    stroke={themeColor}
+                                    fill={themeColor}
+                                    fillOpacity={0.18}
                                     name="Altitude (m)"
                                 />
                             </AreaChart>
