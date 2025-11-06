@@ -301,19 +301,22 @@ int main(void)
     	    }
     	}
 
-        // if USB serial communication setting is enabled, and new data is collected, serialize
-        // and transmit it
-        if (firmSettings.serial_transfer_enabled && any_new_data_collected) {
+        // Whenever new sensor data is collected, update the I2C2 buffer for the Pi to read
+        if (any_new_data_collected) {
             usb_serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
-            usb_transmit_serialized_packet(&serialized_packet);
             
-            // Also populate I2C2 TX buffer so Pi Zero can read the latest packet via I2C.
+            // Populate I2C2 TX buffer so Pi Zero can read the latest packet via I2C.
             // Copy the serialized packet atomically to avoid race with I2C ISR.
             __disable_irq();
             memcpy((void*)i2c2_tx_buf, (const void*)&serialized_packet, sizeof(SerializedPacket_t));
             i2c2_tx_len = (uint16_t)sizeof(SerializedPacket_t);
             i2c2_tx_ready = 1;
             __enable_irq();
+            
+            // If USB serial communication setting is enabled, also transmit via USB
+            if (firmSettings.serial_transfer_enabled) {
+                usb_transmit_serialized_packet(&serialized_packet);
+            }
             
             any_new_data_collected = false;
         }
