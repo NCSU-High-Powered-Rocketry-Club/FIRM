@@ -9,7 +9,8 @@
     "typecheck": "react-router typegen && tsc",
     "lint": "eslint app --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "eslint app --ext .js,.jsx,.ts,.tsx --fix",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@react-router/node": "^7.9.2",
