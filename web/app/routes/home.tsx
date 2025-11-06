@@ -5,7 +5,7 @@ import { DeviceInfoPanel } from "~/components/DeviceInfoPanel";
 import { GraphsPanel } from "~/components/GraphsPanel";
 import { SettingsPanel } from "~/components/SettingsPanel";
 import { ActionsPanel } from "~/components/ActionsPanel";
-import {Footer} from "~/components/Footer";
+import { Footer } from "~/components/Footer";
 
 function getBodyContainerClasses(isConnected: boolean): string {
   let classes = "mx-auto flex max-w-5xl flex-col gap-4 px-6 py-6 transition-opacity";

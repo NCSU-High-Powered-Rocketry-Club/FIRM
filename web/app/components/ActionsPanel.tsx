@@ -111,7 +111,7 @@ export function ActionsPanel() {
                   leaveFrom="opacity-100"
                   leaveTo="opacity-0"
                 >
-                  <Listbox.Options className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-md border border-slate-200 bg-white py-1 text-sm shadow-lg focus:outline-none">
+                  <Listbox.Options className="absolute z-20 mt-1 w-full origin-top-left rounded-md border border-slate-200 bg-white py-1 text-sm shadow-lg focus:outline-none max-h-30 overflow-y-auto">
                     {LOG_OPTIONS.map((log) => (
                       <Listbox.Option
                         key={log.id}
