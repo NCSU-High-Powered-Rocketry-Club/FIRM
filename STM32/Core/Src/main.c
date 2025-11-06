@@ -16,11 +16,13 @@
  ******************************************************************************
  */
 
-#include "bmp581.h"
-#include "icm45686.h"
+#include <bmp581.h>
+#include <icm45686.h>
 #include "logger.h"
-#include "mmc5983ma.h"
-#include "preprocessor.h"
+#include <mmc5983ma.h>
+#include "data_processing/preprocessor.h"
+#include "usb_serializer.h"
+#include "settings.h"
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -58,6 +60,7 @@ SD_HandleTypeDef hsd;
 DMA_HandleTypeDef hdma_sdio_rx;
 DMA_HandleTypeDef hdma_sdio_tx;
 
+SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi2;
 SPI_HandleTypeDef hspi3;
 
@@ -74,6 +77,7 @@ static void MX_I2C2_Init(void);
 static void MX_SDIO_SD_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_SPI3_Init(void);
+static void MX_SPI1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -86,6 +90,9 @@ static void MX_SPI3_Init(void);
 volatile bool bmp581_has_new_data = false;
 volatile bool icm45686_has_new_data = false;
 volatile bool mmc5983ma_has_new_data = false;
+// number of times the DWT timestamp has overflowed. This happens every ~25 seconds
+volatile uint32_t dwt_overflow_count = 0;
+
 /* USER CODE END 0 */
 
 /**
@@ -125,9 +132,13 @@ int main(void)
   MX_SPI2_Init();
   MX_SPI3_Init();
   MX_USB_DEVICE_Init();
+  MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
 
-    // Enable the trace and debug block in the core so that DWT registers become
+    // We use DWT (Data Watchpoint and Trace unit) to get a high resolution free-running timer
+    // for our data packet timestamps. This allows us to use the clock cycle count instead of a
+    // standard timestamp in milliseconds or similar, while not having any performance penalty.
+    // Enables the trace and debug block in the core so that DWT registers become
     // accessible. This is required before enabling the DWT cycle counter.
     CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
 
@@ -140,10 +151,12 @@ int main(void)
 
 
     // Set the chip select pins to high, this means that they're not selected.
-    // Note: We can't have these in the bmp581/imu init functions, because those somehow mess up
-    // with the initialization.
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // bmp581 pin
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // imu pin
+    // Note: We can't have these in the bmp581/imu/flash chip init functions, because those somehow
+    // mess up with the initialization.
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // bmp581 cs pin
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // icm45686 cs pin
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET); // flash chip cs pin
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET); // mmc5983ma CS pin
     HAL_Delay(500); // purely for debug purposes, allows time to connect to USB serial terminal
 
     if (icm45686_init(&hspi2, GPIOB, GPIO_PIN_9)) {
@@ -154,7 +167,12 @@ int main(void)
         Error_Handler();
     }
     
-    if (mmc5983ma_init(&hi2c1, 0x30)) { // 0x30 is default i2c address for MMC5983MA
+    if (mmc5983ma_init(&hi2c1, 0x30)) {
+        Error_Handler();
+    }
+
+    // set up settings module with flash chip
+    if (settings_init(&hspi1, GPIOC, GPIO_PIN_4)) {
         Error_Handler();
     }
 
@@ -181,17 +199,27 @@ int main(void)
     uint8_t magnetometer_flip = 0;
 
     // Toggle LED:
-    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_1);
+    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_1);
+
+    
+
+    // instance of the calibrated data packet from the preprocessor to be reused
+    CalibratedDataPacket_t calibrated_packet = {0};
+    // instance of the serialized packet, will be reused
+    SerializedPacket_t serialized_packet = {0};
+    serializer_init_packet(&serialized_packet); // initializes the packet length and header bytes
+    
+    // check to verify if any new data has been collected, from any of the sensors
+    bool any_new_data_collected = false;
 
     // the IMU runs into issues when the fifo is full at the very beginning, causing the interrupt
     // to be pulled back low too fast, and the ISR doesn't catch it for whatever reason. Doing
     // this initial read will prevent that.
     ICM45686Packet_t imu_packet;
     icm45686_read_data(&imu_packet);
-
-    // instance of the calibrated data packet from the preprocessor to be reused
-    CalibratedDataPacket_t* calibrated_packet = {0};
-
+    MMC5983MAPacket_t mag_packet;
+    mmc5983ma_read_data(&mag_packet, &magnetometer_flip);
+    
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -205,7 +233,8 @@ int main(void)
     	    if (!bmp581_read_data(bmp581_packet)) {
     	        bmp581_has_new_data = false;
     	        logger_write_entry('B', sizeof(BMP581Packet_t));
-                bmp581_convert_packet(bmp581_packet, calibrated_packet);
+                bmp581_convert_packet(bmp581_packet, &calibrated_packet);
+                any_new_data_collected = true;
     	    }
     	}
 
@@ -214,19 +243,27 @@ int main(void)
     	    if (!icm45686_read_data(icm45686_packet)) {
     	        icm45686_has_new_data = false;
     	        logger_write_entry('I', sizeof(ICM45686Packet_t));
-                icm45686_convert_packet(icm45686_packet, calibrated_packet);
+                icm45686_convert_packet(icm45686_packet, &calibrated_packet);
+                any_new_data_collected = true;
     	    }
     	}
-
     	if (mmc5983ma_has_new_data) {
     	    MMC5983MAPacket_t* mmc5983ma_packet = logger_malloc_packet(sizeof(MMC5983MAPacket_t));
     	    if (!mmc5983ma_read_data(mmc5983ma_packet, &magnetometer_flip)) {
     	        mmc5983ma_has_new_data = false;
     	        logger_write_entry('M', sizeof(MMC5983MAPacket_t));
-                mmc5983ma_convert_packet(mmc5983ma_packet, calibrated_packet);
+                mmc5983ma_convert_packet(mmc5983ma_packet, &calibrated_packet);
+                any_new_data_collected = true;
     	    }
     	}
 
+        // if USB serial communication setting is enabled, and new data is collected, serialize
+        // and transmit it
+        if (firmSettings.serial_transfer_enabled && any_new_data_collected) {
+            usb_serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
+            usb_transmit_serialized_packet(&serialized_packet);
+            any_new_data_collected = false;
+        }
 
     /* USER CODE END WHILE */
 
@@ -378,6 +415,44 @@ static void MX_SDIO_SD_Init(void)
 }
 
 /**
+  * @brief SPI1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI1_Init(void)
+{
+
+  /* USER CODE BEGIN SPI1_Init 0 */
+
+  /* USER CODE END SPI1_Init 0 */
+
+  /* USER CODE BEGIN SPI1_Init 1 */
+
+  /* USER CODE END SPI1_Init 1 */
+  /* SPI1 parameter configuration*/
+  hspi1.Instance = SPI1;
+  hspi1.Init.Mode = SPI_MODE_MASTER;
+  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi1.Init.CRCPolynomial = 10;
+  if (HAL_SPI_Init(&hspi1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI1_Init 2 */
+
+  /* USER CODE END SPI1_Init 2 */
+
+}
+
+/**
   * @brief SPI2 Initialization Function
   * @param None
   * @retval None
@@ -487,18 +562,21 @@ static void MX_GPIO_Init(void)
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0|Feather_LED_Pin|BMP581_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0|Feather_LED_Pin|BMP581_CS_Pin|FLASH_CS_Pin
+                          |DEBUG2_Pin|MMC5983MA_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(ICM45686_CS_GPIO_Port, ICM45686_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, DEBUG0_Pin|DEBUG1_Pin|ICM45686_CS_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : PC0 Feather_LED_Pin BMP581_CS_Pin */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|Feather_LED_Pin|BMP581_CS_Pin;
+  /*Configure GPIO pins : PC0 Feather_LED_Pin BMP581_CS_Pin FLASH_CS_Pin
+                           DEBUG2_Pin MMC5983MA_CS_Pin */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|Feather_LED_Pin|BMP581_CS_Pin|FLASH_CS_Pin
+                          |DEBUG2_Pin|MMC5983MA_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -510,26 +588,35 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : CONF_CHECK_Pin */
+  GPIO_InitStruct.Pin = CONF_CHECK_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(CONF_CHECK_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : DEBUG0_Pin DEBUG1_Pin ICM45686_CS_Pin */
+  GPIO_InitStruct.Pin = DEBUG0_Pin|DEBUG1_Pin|ICM45686_CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : MMC5983MA_Interrupt_Pin */
+  GPIO_InitStruct.Pin = MMC5983MA_Interrupt_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(MMC5983MA_Interrupt_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pin : PB12 */
   GPIO_InitStruct.Pin = GPIO_PIN_12;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : MMC5983MA_Interrupt_Pin */
-  GPIO_InitStruct.Pin = MMC5983MA_Interrupt_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(MMC5983MA_Interrupt_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : ICM45686_CS_Pin */
-  GPIO_InitStruct.Pin = ICM45686_CS_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(ICM45686_CS_GPIO_Port, &GPIO_InitStruct);
-
   /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI2_IRQn);
+
   HAL_NVIC_SetPriority(EXTI3_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI3_IRQn);
 
@@ -557,7 +644,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
         icm45686_has_new_data  = true;
     }
     if (GPIO_Pin == MMC5983MA_Interrupt_Pin) {
-        mmc5983ma_has_new_data  = true;
+        mmc5983ma_has_new_data = true;
     }
 }
 /* USER CODE END 4 */

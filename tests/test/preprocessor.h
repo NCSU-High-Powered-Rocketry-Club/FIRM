@@ -1,16 +1,15 @@
 #pragma once
 #include <stdint.h>
-#include "support/mock_bmp581.h"
-#include "support/mock_mmc5983ma.h"
-#include "support/mock_icm45686.h"
-#include "support/mock_dwt.h"
+#include "mock_bmp581.h"
+#include "mock_mmc5983ma.h"
+#include "mock_icm45686.h"
+#include "mock_dwt.h"
 
 
 /**
  * @brief Calibrated data with timestamp
  */
 typedef struct {
-    double timestamp_sec;
 
     float temperature;
     float pressure;
@@ -23,8 +22,8 @@ typedef struct {
     float magnetic_field_x;
     float magnetic_field_y;
     float magnetic_field_z;
+    double timestamp_sec;
 } CalibratedDataPacket_t;
-
 
 /**
  * @brief Converts raw BMP581 pressure sensor data to SI units
