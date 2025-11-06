@@ -3,6 +3,7 @@ import type { Route } from "./+types/home";
 import { PageHeader } from "~/components/PageHeader";
 import { DeviceInfo } from "~/components/DeviceInfo";
 import { GraphsPanel } from "~/components/GraphsPanel";
+import {SettingsPanel} from "~/components/SettingsPanel";
 
 export function meta(): Route.MetaDescriptors {
   return [
@@ -55,6 +56,7 @@ export default function Home() {
 
         <DeviceInfo />
         <GraphsPanel />
+          <SettingsPanel />
       </main>
     </div>
   );
