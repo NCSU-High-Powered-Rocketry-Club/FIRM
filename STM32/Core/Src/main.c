@@ -256,8 +256,19 @@ int main(void)
     
     /* Populate I2C2 buffer with initial packet so Pi can read immediately */
     usb_serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
-    memcpy((void*)i2c2_tx_buf, (const void*)&serialized_packet, sizeof(SerializedPacket_t));
-    i2c2_tx_len = (uint16_t)sizeof(SerializedPacket_t);
+    
+    // Manually pack the packet into i2c2_tx_buf to avoid struct padding issues
+    // Total: 2 (header) + 2 (length) + 52 (payload: 11 floats + 1 double) + 2 (crc) = 58 bytes
+    uint8_t *buf = (uint8_t *)i2c2_tx_buf;
+    memcpy(buf, &serialized_packet.header, 2);
+    memcpy(buf + 2, &serialized_packet.length, 2);
+    memcpy(buf + 4, &serialized_packet.payload, sizeof(CalibratedDataPacket_t));
+    
+    // Calculate CRC over the packed buffer (without the CRC bytes)
+    uint16_t crc = crc16_ccitt(buf, 56);  // 56 = header(2) + length(2) + payload(52)
+    memcpy(buf + 56, &crc, 2);
+    
+    i2c2_tx_len = 58;
     i2c2_tx_ready = 1;
     
     /* Enable I2C2 listen mode now that I2C1 master initialization is complete */
@@ -305,11 +316,20 @@ int main(void)
         if (any_new_data_collected) {
             usb_serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
             
-            // Populate I2C2 TX buffer so Pi Zero can read the latest packet via I2C.
-            // Copy the serialized packet atomically to avoid race with I2C ISR.
+            // Manually pack the packet into i2c2_tx_buf to avoid struct padding issues
+            // Total: 2 (header) + 2 (length) + 52 (payload: 11 floats + 1 double) + 2 (crc) = 58 bytes
+            uint8_t *buf = (uint8_t *)i2c2_tx_buf;
+            
             __disable_irq();
-            memcpy((void*)i2c2_tx_buf, (const void*)&serialized_packet, sizeof(SerializedPacket_t));
-            i2c2_tx_len = (uint16_t)sizeof(SerializedPacket_t);
+            memcpy(buf, &serialized_packet.header, 2);
+            memcpy(buf + 2, &serialized_packet.length, 2);
+            memcpy(buf + 4, &serialized_packet.payload, sizeof(CalibratedDataPacket_t));
+            
+            // Calculate CRC over the packed buffer (without the CRC bytes)
+            uint16_t crc = crc16_ccitt(buf, 56);  // 56 = header(2) + length(2) + payload(52)
+            memcpy(buf + 56, &crc, 2);
+            
+            i2c2_tx_len = 58;
             i2c2_tx_ready = 1;
             __enable_irq();
             

@@ -1,6 +1,6 @@
 from firm import FIRM
 
-firm = FIRM(port="/dev/ttyACM0", baudrate=115200)
+firm = FIRM(port="COM7", baudrate=115200)
 firm.initialize()
 prev_packet_time = None
 while True:

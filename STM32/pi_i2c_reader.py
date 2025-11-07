@@ -174,9 +174,9 @@ class STM32I2CReader:
         
         try:
             # Unpack the packet (little-endian format)
-            # Format: H H (header, length) + f f fff fff fff d (11 floats + 1 double) + H (crc)
-            # Total: 2 + 2 + 4 + 4 + 12 + 12 + 12 + 8 + 2 = 58 bytes
-            unpacked = struct.unpack('<HH fff fff fff fff d H', data)
+            # Format: HH (4) + 11 floats (44) + 1 double (8) + H (2) = 58 bytes
+            # Structure: header, length, temp, pressure, accel(3), gyro(3), mag(3), timestamp, crc
+            unpacked = struct.unpack('<HH 11f d H', data)
             
             packet.header = unpacked[0]
             packet.length = unpacked[1]
@@ -192,7 +192,7 @@ class STM32I2CReader:
             packet.mag_x = unpacked[10]
             packet.mag_y = unpacked[11]
             packet.mag_z = unpacked[12]
-            packet.timestamp = int(unpacked[13])  # timestamp_sec as integer for display
+            packet.timestamp = unpacked[13]  # timestamp_sec (double)
             packet.altitude = 0.0  # Not in this packet format
             packet.reserved = 0
             packet.crc = unpacked[14]
