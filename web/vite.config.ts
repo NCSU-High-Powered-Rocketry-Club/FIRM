@@ -6,4 +6,7 @@ import tsconfigPaths from "vite-tsconfig-paths";
 export default defineConfig(({ command }) => ({
   base: command === "serve" ? "/" : "/FIRM-Web-App/",
   plugins: [tailwindcss(), reactRouter(), tsconfigPaths()],
+  optimizeDeps: {
+    exclude: ["firm-client"],
+  },
 }));
