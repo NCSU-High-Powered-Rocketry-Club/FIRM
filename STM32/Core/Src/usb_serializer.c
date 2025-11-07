@@ -5,7 +5,9 @@ void serializer_init_packet(SerializedPacket_t *serialized_packet) {
     // random header I chose, no significance behind this. It is used as a start value
     // so that the decoder knows where the packet starts
     serialized_packet->header = 0xA55A;
-    serialized_packet->length = sizeof(CalibratedDataPacket_t);
+    // Length is the manually packed size: 11 floats (44) + 1 double (8) = 52 bytes
+    // Note: sizeof(CalibratedDataPacket_t) = 56 due to padding, but we pack manually
+    serialized_packet->length = 52;
 }
 
 void usb_serialize_calibrated_packet(const CalibratedDataPacket_t *packet, SerializedPacket_t *serialized_packet) {

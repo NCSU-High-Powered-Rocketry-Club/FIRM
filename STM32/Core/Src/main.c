@@ -260,20 +260,52 @@ int main(void)
     // Manually pack the packet into i2c2_tx_buf to avoid struct padding issues
     // Total: 2 (header) + 2 (length) + 52 (payload: 11 floats + 1 double) + 2 (crc) = 58 bytes
     uint8_t *buf = (uint8_t *)i2c2_tx_buf;
-    memcpy(buf, &serialized_packet.header, 2);
-    memcpy(buf + 2, &serialized_packet.length, 2);
-    memcpy(buf + 4, &serialized_packet.payload, sizeof(CalibratedDataPacket_t));
+    size_t offset = 0;
+    
+    // Pack header and length
+    memcpy(buf + offset, &serialized_packet.header, 2);
+    offset += 2;
+    memcpy(buf + offset, &serialized_packet.length, 2);
+    offset += 2;
+    
+    // Pack payload fields individually to avoid padding (11 floats + 1 double = 52 bytes)
+    memcpy(buf + offset, &serialized_packet.payload.temperature, sizeof(float));
+    offset += sizeof(float);
+    memcpy(buf + offset, &serialized_packet.payload.pressure, sizeof(float));
+    offset += sizeof(float);
+    memcpy(buf + offset, &serialized_packet.payload.accel_x, sizeof(float));
+    offset += sizeof(float);
+    memcpy(buf + offset, &serialized_packet.payload.accel_y, sizeof(float));
+    offset += sizeof(float);
+    memcpy(buf + offset, &serialized_packet.payload.accel_z, sizeof(float));
+    offset += sizeof(float);
+    memcpy(buf + offset, &serialized_packet.payload.angular_rate_x, sizeof(float));
+    offset += sizeof(float);
+    memcpy(buf + offset, &serialized_packet.payload.angular_rate_y, sizeof(float));
+    offset += sizeof(float);
+    memcpy(buf + offset, &serialized_packet.payload.angular_rate_z, sizeof(float));
+    offset += sizeof(float);
+    memcpy(buf + offset, &serialized_packet.payload.magnetic_field_x, sizeof(float));
+    offset += sizeof(float);
+    memcpy(buf + offset, &serialized_packet.payload.magnetic_field_y, sizeof(float));
+    offset += sizeof(float);
+    memcpy(buf + offset, &serialized_packet.payload.magnetic_field_z, sizeof(float));
+    offset += sizeof(float);
+    memcpy(buf + offset, &serialized_packet.payload.timestamp_sec, sizeof(double));
+    offset += sizeof(double);
     
     // Calculate CRC over the packed buffer (without the CRC bytes)
     uint16_t crc = crc16_ccitt(buf, 56);  // 56 = header(2) + length(2) + payload(52)
-    memcpy(buf + 56, &crc, 2);
+    memcpy(buf + offset, &crc, 2);
     
     i2c2_tx_len = 58;
     i2c2_tx_ready = 1;
     
     /* Enable I2C2 listen mode now that I2C1 master initialization is complete */
     HAL_I2C_EnableListen_IT(&hi2c2);
-    serialPrintStr("I2C2: Listen enabled with initial packet ready");
+    char debug_msg[64];
+    snprintf(debug_msg, sizeof(debug_msg), "I2C2: Init CRC=0x%04X, offset=%u", crc, (unsigned)offset);
+    serialPrintStr(debug_msg);
     
   /* USER CODE END 2 */
 
@@ -319,19 +351,52 @@ int main(void)
             // Manually pack the packet into i2c2_tx_buf to avoid struct padding issues
             // Total: 2 (header) + 2 (length) + 52 (payload: 11 floats + 1 double) + 2 (crc) = 58 bytes
             uint8_t *buf = (uint8_t *)i2c2_tx_buf;
+            size_t offset = 0;
             
             __disable_irq();
-            memcpy(buf, &serialized_packet.header, 2);
-            memcpy(buf + 2, &serialized_packet.length, 2);
-            memcpy(buf + 4, &serialized_packet.payload, sizeof(CalibratedDataPacket_t));
+            // Pack header and length
+            memcpy(buf + offset, &serialized_packet.header, 2);
+            offset += 2;
+            memcpy(buf + offset, &serialized_packet.length, 2);
+            offset += 2;
+            
+            // Pack payload fields individually to avoid padding (11 floats + 1 double = 52 bytes)
+            memcpy(buf + offset, &serialized_packet.payload.temperature, sizeof(float));
+            offset += sizeof(float);
+            memcpy(buf + offset, &serialized_packet.payload.pressure, sizeof(float));
+            offset += sizeof(float);
+            memcpy(buf + offset, &serialized_packet.payload.accel_x, sizeof(float));
+            offset += sizeof(float);
+            memcpy(buf + offset, &serialized_packet.payload.accel_y, sizeof(float));
+            offset += sizeof(float);
+            memcpy(buf + offset, &serialized_packet.payload.accel_z, sizeof(float));
+            offset += sizeof(float);
+            memcpy(buf + offset, &serialized_packet.payload.angular_rate_x, sizeof(float));
+            offset += sizeof(float);
+            memcpy(buf + offset, &serialized_packet.payload.angular_rate_y, sizeof(float));
+            offset += sizeof(float);
+            memcpy(buf + offset, &serialized_packet.payload.angular_rate_z, sizeof(float));
+            offset += sizeof(float);
+            memcpy(buf + offset, &serialized_packet.payload.magnetic_field_x, sizeof(float));
+            offset += sizeof(float);
+            memcpy(buf + offset, &serialized_packet.payload.magnetic_field_y, sizeof(float));
+            offset += sizeof(float);
+            memcpy(buf + offset, &serialized_packet.payload.magnetic_field_z, sizeof(float));
+            offset += sizeof(float);
+            memcpy(buf + offset, &serialized_packet.payload.timestamp_sec, sizeof(double));
+            offset += sizeof(double);
             
             // Calculate CRC over the packed buffer (without the CRC bytes)
             uint16_t crc = crc16_ccitt(buf, 56);  // 56 = header(2) + length(2) + payload(52)
-            memcpy(buf + 56, &crc, 2);
+            memcpy(buf + offset, &crc, 2);
             
             i2c2_tx_len = 58;
             i2c2_tx_ready = 1;
             __enable_irq();
+            
+            char debug_msg[32];
+            snprintf(debug_msg, sizeof(debug_msg), "CRC=0x%04X", crc);
+            serialPrintStr(debug_msg);
             
             // If USB serial communication setting is enabled, also transmit via USB
             if (firmSettings.serial_transfer_enabled) {
