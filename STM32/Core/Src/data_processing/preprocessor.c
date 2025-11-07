@@ -41,15 +41,15 @@ void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, CalibratedDataPacket_t 
     int32_t mag_binary_x, mag_binary_y, mag_binary_z;
 
     // extract magnetic field bytes as 32 bit integer, preserving sign
-    mag_binary_x = (((int32_t)((int8_t)packet->mag_x_msb) << 10) |
+    mag_binary_x = (((int32_t)(packet->mag_x_msb) << 10) |
                   ((int32_t)packet->mag_x_mid << 2) |
                   ((int32_t)(packet->mag_xyz_lsb >> 6))) - 131072;
                   
-    mag_binary_y = (((int32_t)((int8_t)packet->mag_y_msb) << 10) |
+    mag_binary_y = (((int32_t)(packet->mag_y_msb) << 10) |
                   ((int32_t)packet->mag_y_mid << 2) |
                   ((int32_t)((packet->mag_xyz_lsb & 0b00110000) >> 4))) - 131072;
                   
-    mag_binary_z = (((int32_t)((int8_t)packet->mag_z_msb) << 10) |
+    mag_binary_z = (((int32_t)(packet->mag_z_msb) << 10) |
                   ((int32_t)packet->mag_z_mid << 2) |
                   ((int32_t)((packet->mag_xyz_lsb & 0b00001100) >> 2))) - 131072;
     
