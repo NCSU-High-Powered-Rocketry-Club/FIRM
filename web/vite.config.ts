@@ -3,7 +3,12 @@ import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
-export default defineConfig(({ command }) => ({
-  base: command === "serve" ? "/" : "/FIRM-Web-App/",
-  plugins: [tailwindcss(), reactRouter(), tsconfigPaths()],
-}));
+export default defineConfig(({ command }) => {
+  // Use custom base from environment variable
+  const prodBase = process.env.VITE_BASE ?? "/FIRM-Web-App/";
+
+  return {
+    base: command === "serve" ? "/" : prodBase,
+    plugins: [tailwindcss(), reactRouter(), tsconfigPaths()],
+  };
+});
