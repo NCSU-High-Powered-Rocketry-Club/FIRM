@@ -128,30 +128,6 @@ int main(void)
   /* Configure the system clock */
   SystemClock_Config();
 
-  /* USER NOTE: do a full I2C2 peripheral reset and release the bus lines
-    before initializing peripherals. This prevents the MCU from holding SCL
-    low if the peripheral was left in a bad state (clock-stretching forever). */
-  serialPrintStr("I2C2: performing peripheral reset and bus release");
-  HAL_I2C_DeInit(&hi2c2);
-  __HAL_RCC_I2C2_FORCE_RESET();
-  HAL_Delay(10);
-  __HAL_RCC_I2C2_RELEASE_RESET();
-  HAL_Delay(10);
-
-  /* Ensure GPIOB clock enabled and force SCL/SDA high using OD outputs so
-    any stuck low is released and pull-ups can recharge. */
-  __HAL_RCC_GPIOB_CLK_ENABLE();
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10|GPIO_PIN_11, GPIO_PIN_SET);
-  {
-   GPIO_InitTypeDef GPIO_InitStruct = {0};
-   GPIO_InitStruct.Pin = GPIO_PIN_10|GPIO_PIN_11;
-   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD; /* drive high but open-drain */
-   GPIO_InitStruct.Pull = GPIO_PULLUP;
-   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-  }
-  HAL_Delay(100); /* allow bus to settle with pull-ups */
-
   /* USER CODE BEGIN SysInit */
 
   /* USER CODE END SysInit */
@@ -513,9 +489,6 @@ static void MX_I2C2_Init(void)
   hi2c2.Instance = I2C2;
   hi2c2.Init.ClockSpeed = 100000;
   hi2c2.Init.DutyCycle = I2C_DUTYCYCLE_2;
-  /* Use 0x48 (7-bit) slave address. HAL expects the 7-bit address left-shifted
-    in some HAL versions, so use 0x48 << 1 == 0x90 (144). This matches existing
-    tooling that used 144 for a 7-bit address of 0x48. */
   hi2c2.Init.OwnAddress1 = 144;
   hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
