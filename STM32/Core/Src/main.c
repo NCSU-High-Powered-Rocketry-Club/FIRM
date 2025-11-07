@@ -394,8 +394,10 @@ int main(void)
             i2c2_tx_ready = 1;
             __enable_irq();
             
-            char debug_msg[32];
-            snprintf(debug_msg, sizeof(debug_msg), "CRC=0x%04X", crc);
+            // Debug: Print first few bytes and CRC
+            char debug_msg[100];
+            snprintf(debug_msg, sizeof(debug_msg), "I2C: [%02X %02X %02X %02X...] CRC=0x%04X @ buf[56-57]=[%02X %02X]", 
+                    buf[0], buf[1], buf[2], buf[3], crc, buf[56], buf[57]);
             serialPrintStr(debug_msg);
             
             // If USB serial communication setting is enabled, also transmit via USB
