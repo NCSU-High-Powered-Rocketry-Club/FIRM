@@ -116,7 +116,7 @@ DRESULT SD_write (BYTE, const BYTE*, DWORD, UINT);
 DRESULT SD_ioctl (BYTE, BYTE, void*);
 #endif  /* _USE_IOCTL == 1 */
 
-static volatile uint8_t WriteStatus = 0, ReadStatus = 0;
+static volatile  UINT  WriteStatus = 0, ReadStatus = 0;
 
 const Diskio_drvTypeDef  SD_Driver =
 {
