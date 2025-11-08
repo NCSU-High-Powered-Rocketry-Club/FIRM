@@ -1,0 +1,9 @@
+[package]
+name = "pi_i2c_reader_rust"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+i2cdev = "0.5"
+byteorder = "1.4"
+ctrlc = "3.2"
