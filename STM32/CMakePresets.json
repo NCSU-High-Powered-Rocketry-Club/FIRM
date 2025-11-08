@@ -11,14 +11,14 @@
             }
         },
         {
-            "name": "FIRM Debug",
+            "name": "FIRM-Configure-Debug",
             "inherits": "default",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug"
             }
         },
         {
-            "name": "FIRM Release",
+            "name": "FIRM-Configure-Release",
             "inherits": "default",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
@@ -27,12 +27,12 @@
     ],
     "buildPresets": [
         {
-            "name": "FIRM Debug",
-            "configurePreset": "FIRM Debug"
+            "name": "FIRM-Debug",
+            "configurePreset": "FIRM-Configure-Debug"
         },
         {
-            "name": "FIRM Release",
-            "configurePreset": "FIRM Release"
+            "name": "FIRM-Release",
+            "configurePreset": "FIRM-Configure-Release"
         }
     ]
 }
