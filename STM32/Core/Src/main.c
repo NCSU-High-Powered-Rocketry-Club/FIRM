@@ -45,7 +45,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define ENABLE_MAGNETOMETER 0
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -68,13 +68,17 @@ SPI_HandleTypeDef hspi3;
 /* USER CODE BEGIN PV */
 
 /* I2C2 runtime state shared across callbacks */
-volatile uint8_t i2c2_tx_buf[128];
+/* Use a small double-buffer so the main loop can prepare a new packet
+  while a master is reading the current one. We avoid overwriting the
+  buffer currently being transmitted. */
+volatile uint8_t i2c2_tx_buf[2][128];
+volatile uint8_t i2c2_active_buf = 0; /* index of buffer currently published */
 volatile uint16_t i2c2_tx_len = 0;
-volatile uint8_t i2c2_tx_ready = 0;
+volatile uint8_t i2c2_tx_ready = 0; /* set when active buffer contains valid data */
+volatile uint8_t i2c2_tx_pending = 0; /* set when an updated packet is waiting to be swapped in */
+volatile uint8_t i2c2_transmitting = 0; /* non-zero while a master read is in progress */
 volatile uint8_t i2c2_rx_buf[32];
-volatile uint8_t i2c2_pending_addr = 0;
-volatile bool i2c2_recover_request = false;
-volatile uint16_t i2c2_tx_index = 0; /* byte index for multi-byte slave transmit */
+volatile uint8_t i2c2_rx_len = 0;
 
 /* USER CODE END PV */
 
@@ -82,7 +86,9 @@ volatile uint16_t i2c2_tx_index = 0; /* byte index for multi-byte slave transmit
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
+#if ENABLE_MAGNETOMETER
 static void MX_I2C1_Init(void);
+#endif
 static void MX_I2C2_Init(void);
 static void MX_SDIO_SD_Init(void);
 static void MX_SPI2_Init(void);
@@ -135,7 +141,9 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
+#if ENABLE_MAGNETOMETER
   MX_I2C1_Init();
+#endif
   MX_I2C2_Init();
   MX_SDIO_SD_Init();
   MX_FATFS_Init();
@@ -177,9 +185,11 @@ int main(void)
         Error_Handler();
     }
     
+#if ENABLE_MAGNETOMETER
     if (mmc5983ma_init(&hi2c1, 0x30)) {
         Error_Handler();
     }
+#endif
 
     // set up settings module with flash chip
     if (settings_init(&hspi1, GPIOC, GPIO_PIN_4)) {
@@ -195,18 +205,24 @@ int main(void)
     
     // get scale factor values for each sensor to put in header
     HeaderFields header_fields = {
-        bmp581_get_temp_scale_factor(),
-        bmp581_get_pressure_scale_factor(),
-        icm45686_get_accel_scale_factor(),
-        icm45686_get_gyro_scale_factor(),
-        mmc5983ma_get_magnetic_field_scale_factor(),
+  bmp581_get_temp_scale_factor(),
+  bmp581_get_pressure_scale_factor(),
+  icm45686_get_accel_scale_factor(),
+  icm45686_get_gyro_scale_factor(),
+#if ENABLE_MAGNETOMETER
+  mmc5983ma_get_magnetic_field_scale_factor(),
+#else
+  0.0f,
+#endif
     };
     
 
     logger_write_header(&header_fields);
 
+#if ENABLE_MAGNETOMETER
     // incrementing value for magnetometer calibration
     uint8_t magnetometer_flip = 0;
+#endif
 
     // Toggle LED:
     HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_1);
@@ -227,55 +243,62 @@ int main(void)
     // this initial read will prevent that.
     ICM45686Packet_t imu_packet;
     icm45686_read_data(&imu_packet);
+#if ENABLE_MAGNETOMETER
     MMC5983MAPacket_t mag_packet;
     mmc5983ma_read_data(&mag_packet, &magnetometer_flip);
+#endif
     
     /* Populate I2C2 buffer with initial packet so Pi can read immediately */
     usb_serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
     
-    // Manually pack the packet into i2c2_tx_buf to avoid struct padding issues
-    // Total: 2 (header) + 2 (length) + 52 (payload: 11 floats + 1 double) + 2 (crc) = 58 bytes
-    uint8_t *buf = (uint8_t *)i2c2_tx_buf;
-    size_t offset = 0;
+  // Manually pack the packet into the inactive buffer to avoid struct padding issues
+  // Total: 2 (header) + 2 (length) + 52 (payload: 11 floats + 1 double) + 2 (crc) = 58 bytes
+  uint8_t *buf = (uint8_t *)i2c2_tx_buf[1 - i2c2_active_buf];
+  size_t offset = 0;
     
-    // Pack header and length
-    memcpy(buf + offset, &serialized_packet.header, 2);
-    offset += 2;
-    memcpy(buf + offset, &serialized_packet.length, 2);
-    offset += 2;
+  // Pack header and length
+  memcpy(buf + offset, &serialized_packet.header, 2);
+  offset += 2;
+  memcpy(buf + offset, &serialized_packet.length, 2);
+  offset += 2;
     
-    // Pack payload fields individually to avoid padding (11 floats + 1 double = 52 bytes)
-    memcpy(buf + offset, &serialized_packet.payload.temperature, sizeof(float));
-    offset += sizeof(float);
-    memcpy(buf + offset, &serialized_packet.payload.pressure, sizeof(float));
-    offset += sizeof(float);
-    memcpy(buf + offset, &serialized_packet.payload.accel_x, sizeof(float));
-    offset += sizeof(float);
-    memcpy(buf + offset, &serialized_packet.payload.accel_y, sizeof(float));
-    offset += sizeof(float);
-    memcpy(buf + offset, &serialized_packet.payload.accel_z, sizeof(float));
-    offset += sizeof(float);
-    memcpy(buf + offset, &serialized_packet.payload.angular_rate_x, sizeof(float));
-    offset += sizeof(float);
-    memcpy(buf + offset, &serialized_packet.payload.angular_rate_y, sizeof(float));
-    offset += sizeof(float);
-    memcpy(buf + offset, &serialized_packet.payload.angular_rate_z, sizeof(float));
-    offset += sizeof(float);
-    memcpy(buf + offset, &serialized_packet.payload.magnetic_field_x, sizeof(float));
-    offset += sizeof(float);
-    memcpy(buf + offset, &serialized_packet.payload.magnetic_field_y, sizeof(float));
-    offset += sizeof(float);
-    memcpy(buf + offset, &serialized_packet.payload.magnetic_field_z, sizeof(float));
-    offset += sizeof(float);
-    memcpy(buf + offset, &serialized_packet.payload.timestamp_sec, sizeof(double));
-    offset += sizeof(double);
+  // Pack payload fields individually to avoid padding (11 floats + 1 double = 52 bytes)
+  memcpy(buf + offset, &serialized_packet.payload.temperature, sizeof(float));
+  offset += sizeof(float);
+  memcpy(buf + offset, &serialized_packet.payload.pressure, sizeof(float));
+  offset += sizeof(float);
+  memcpy(buf + offset, &serialized_packet.payload.accel_x, sizeof(float));
+  offset += sizeof(float);
+  memcpy(buf + offset, &serialized_packet.payload.accel_y, sizeof(float));
+  offset += sizeof(float);
+  memcpy(buf + offset, &serialized_packet.payload.accel_z, sizeof(float));
+  offset += sizeof(float);
+  memcpy(buf + offset, &serialized_packet.payload.angular_rate_x, sizeof(float));
+  offset += sizeof(float);
+  memcpy(buf + offset, &serialized_packet.payload.angular_rate_y, sizeof(float));
+  offset += sizeof(float);
+  memcpy(buf + offset, &serialized_packet.payload.angular_rate_z, sizeof(float));
+  offset += sizeof(float);
+  memcpy(buf + offset, &serialized_packet.payload.magnetic_field_x, sizeof(float));
+  offset += sizeof(float);
+  memcpy(buf + offset, &serialized_packet.payload.magnetic_field_y, sizeof(float));
+  offset += sizeof(float);
+  memcpy(buf + offset, &serialized_packet.payload.magnetic_field_z, sizeof(float));
+  offset += sizeof(float);
+  memcpy(buf + offset, &serialized_packet.payload.timestamp_sec, sizeof(double));
+  offset += sizeof(double);
     
-    // Calculate CRC over the packed buffer (without the CRC bytes)
-    uint16_t crc = crc16_ccitt(buf, 56);  // 56 = header(2) + length(2) + payload(52)
-    memcpy(buf + offset, &crc, 2);
+  // Calculate CRC over the packed buffer (without the CRC bytes)
+  uint16_t crc = crc16_ccitt(buf, 56);  // 56 = header(2) + length(2) + payload(52)
+  memcpy(buf + offset, &crc, 2);
     
-    i2c2_tx_len = 58;
-    i2c2_tx_ready = 1;
+  /* Publish into the active buffer since no transfer is in progress yet */
+  i2c2_tx_len = 58;
+  /* swap inactive -> active */
+  i2c2_active_buf = 1 - i2c2_active_buf;
+  i2c2_tx_ready = 1;
+  i2c2_tx_pending = 0;
+  i2c2_transmitting = 0;
     
     /* Enable I2C2 listen mode now that I2C1 master initialization is complete */
     HAL_I2C_EnableListen_IT(&hi2c2);
@@ -310,26 +333,30 @@ int main(void)
                 any_new_data_collected = true;
     	    }
     	}
-    	if (mmc5983ma_has_new_data) {
-    	    MMC5983MAPacket_t* mmc5983ma_packet = logger_malloc_packet(sizeof(MMC5983MAPacket_t));
-    	    if (!mmc5983ma_read_data(mmc5983ma_packet, &magnetometer_flip)) {
-    	        mmc5983ma_has_new_data = false;
-    	        logger_write_entry('M', sizeof(MMC5983MAPacket_t));
+#if ENABLE_MAGNETOMETER
+        if (mmc5983ma_has_new_data) {
+            MMC5983MAPacket_t* mmc5983ma_packet = logger_malloc_packet(sizeof(MMC5983MAPacket_t));
+            if (!mmc5983ma_read_data(mmc5983ma_packet, &magnetometer_flip)) {
+                mmc5983ma_has_new_data = false;
+                logger_write_entry('M', sizeof(MMC5983MAPacket_t));
                 mmc5983ma_convert_packet(mmc5983ma_packet, &calibrated_packet);
                 any_new_data_collected = true;
-    	    }
-    	}
+            }
+        }
+#endif
 
         // Whenever new sensor data is collected, update the I2C2 buffer for the Pi to read
         if (any_new_data_collected) {
             usb_serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
             
-            // Manually pack the packet into i2c2_tx_buf to avoid struct padding issues
-            // Total: 2 (header) + 2 (length) + 52 (payload: 11 floats + 1 double) + 2 (crc) = 58 bytes
-            uint8_t *buf = (uint8_t *)i2c2_tx_buf;
+      // Manually pack the packet into the inactive buffer to avoid races with
+      // an ongoing I2C read. If a master is currently reading, we mark the
+      // prepared packet as pending and it will be swapped in when the
+      // transfer completes.
+      uint8_t inactive = 1 - i2c2_active_buf;
+      uint8_t *buf = (uint8_t *)i2c2_tx_buf[inactive];
             size_t offset = 0;
             
-            __disable_irq();
             // Pack header and length
             memcpy(buf + offset, &serialized_packet.header, 2);
             offset += 2;
@@ -363,18 +390,21 @@ int main(void)
             offset += sizeof(double);
             
             // Calculate CRC over the packed buffer (without the CRC bytes)
-            uint16_t crc = crc16_ccitt(buf, 56);  // 56 = header(2) + length(2) + payload(52)
-            memcpy(buf + offset, &crc, 2);
-            
-            i2c2_tx_len = 58;
-            i2c2_tx_ready = 1;
-            __enable_irq();
-            
-            // Debug: Print first few bytes and CRC
-            char debug_msg[100];
-            snprintf(debug_msg, sizeof(debug_msg), "I2C: [%02X %02X %02X %02X...] CRC=0x%04X @ buf[56-57]=[%02X %02X]", 
-                    buf[0], buf[1], buf[2], buf[3], crc, buf[56], buf[57]);
-            serialPrintStr(debug_msg);
+      uint16_t crc = crc16_ccitt(buf, 56);  // 56 = header(2) + length(2) + payload(52)
+      memcpy(buf + offset, &crc, 2);
+
+      /* If no transfer in progress, swap the buffers immediately and publish.
+         Otherwise mark pending and let the TxCplt callback perform the swap. */
+      if (!i2c2_transmitting) {
+        i2c2_tx_len = 58;
+        i2c2_active_buf = inactive;
+        i2c2_tx_ready = 1;
+        i2c2_tx_pending = 0;
+      } else {
+        /* queue the prepared buffer to be swapped in after the current read */
+        i2c2_tx_len = 58; /* still store the length for the pending buffer */
+        i2c2_tx_pending = 1;
+      }
             
             // If USB serial communication setting is enabled, also transmit via USB
             if (firmSettings.serial_transfer_enabled) {
@@ -442,6 +472,7 @@ void SystemClock_Config(void)
   * @param None
   * @retval None
   */
+#if ENABLE_MAGNETOMETER
 static void MX_I2C1_Init(void)
 {
 
@@ -470,6 +501,7 @@ static void MX_I2C1_Init(void)
   /* USER CODE END I2C1_Init 2 */
 
 }
+#endif
 
 /**
   * @brief I2C2 Initialization Function
@@ -732,6 +764,15 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
+#if !ENABLE_MAGNETOMETER
+  /* Keep I2C1 pins pulled up while peripheral is disabled */
+  GPIO_InitStruct.Pin = GPIO_PIN_6|GPIO_PIN_7;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+#endif
+
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI2_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI2_IRQn);
@@ -778,42 +819,36 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, ui
   if (hi2c->Instance != I2C2) return;
 
   if (TransferDirection == I2C_DIRECTION_TRANSMIT) {
-    /* Master will write to us: prepare receive buffer */
+    /* Master will write to us */
+    i2c2_rx_len = 0;
     HAL_I2C_Slave_Seq_Receive_IT(hi2c, (uint8_t *)i2c2_rx_buf, sizeof(i2c2_rx_buf), I2C_FIRST_AND_LAST_FRAME);
-    serialPrintStr("I2C2: Master->Slave receive started");
   } else {
-    /* Master will read from us: transmit entire buffer at once */
-    if (i2c2_tx_len == 0 || !i2c2_tx_ready) {
-      /* fallback single zero byte - clear any stale state first */
-      static uint8_t zero = 0x00;
-      i2c2_tx_ready = 0;
-      i2c2_tx_len = 0;
-      i2c2_tx_index = 0;
-      HAL_I2C_Slave_Seq_Transmit_IT(hi2c, &zero, 1, I2C_FIRST_AND_LAST_FRAME);
-      serialPrintStr("I2C2: Slave send fallback 0x00 (single byte)");
+    /* Master will read from us */
+    if (i2c2_tx_ready && i2c2_tx_len > 0) {
+      /* mark transmitting so the main loop won't swap the active buffer */
+      i2c2_transmitting = 1;
+      HAL_I2C_Slave_Seq_Transmit_IT(hi2c, (uint8_t *)i2c2_tx_buf[i2c2_active_buf], i2c2_tx_len, I2C_FIRST_AND_LAST_FRAME);
     } else {
-      /* Send entire buffer at once with FIRST_AND_LAST_FRAME.
-         HAL will handle the byte-by-byte hardware transmission internally. */
-      i2c2_tx_index = 0;
-      char dbg[64];
-      sprintf(dbg, "I2C2: AddrCb sending %d bytes (buffer mode)", (int)i2c2_tx_len);
-      serialPrintStr(dbg);
-      
-      HAL_StatusTypeDef status = HAL_I2C_Slave_Seq_Transmit_IT(hi2c, (uint8_t *)i2c2_tx_buf, i2c2_tx_len, I2C_FIRST_AND_LAST_FRAME);
-      sprintf(dbg, "I2C2: Transmit status=%d", status);
-      serialPrintStr(dbg);
+      /* Send zero byte if no data ready */
+      static uint8_t zero = 0x00;
+      i2c2_transmitting = 1;
+      HAL_I2C_Slave_Seq_Transmit_IT(hi2c, &zero, 1, I2C_FIRST_AND_LAST_FRAME);
     }
   }
 }
 
-/* Slave transmit complete: re-enable listen but keep data available */
+/* Slave transmit complete */
 void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *hi2c)
 {
   if (hi2c->Instance != I2C2) return;
-
-  /* Transfer complete: re-enable listen mode but keep buffer valid for next read.
-     The buffer will be updated when new sensor data arrives in the main loop. */
-  serialPrintStr("I2C2: Slave TX complete; re-enabling listen");
+  /* transfer finished; clear transmitting flag and swap in any pending update */
+  i2c2_transmitting = 0;
+  if (i2c2_tx_pending) {
+    /* swap active -> the buffer prepared earlier */
+    i2c2_active_buf = 1 - i2c2_active_buf;
+    i2c2_tx_pending = 0;
+    i2c2_tx_ready = 1;
+  }
   i2c2_enable_listen();
 }
 
@@ -821,27 +856,28 @@ void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *hi2c)
 void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
 {
   if (hi2c->Instance != I2C2) return;
-  serialPrintStr("I2C2: Slave RX complete");
+  i2c2_rx_len = hi2c->XferCount;
   i2c2_enable_listen();
 }
 
-/* Error callback: handle NACK (AF) from master to stop TX sequence */
+/* Error callback */
 void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c)
 {
   if (hi2c->Instance != I2C2) return;
-
-  if (hi2c->ErrorCode & HAL_I2C_ERROR_AF) {
-    /* Master NACKed the last byte: end transmit and re-enable listen */
-    i2c2_tx_ready = 0;
-    i2c2_tx_len = 0;
-    i2c2_tx_index = 0;
-    serialPrintStr("I2C2: Master NACK (AF) - clearing TX state and re-enabling listen");
-    i2c2_enable_listen();
-  } else {
-    /* other error: log and attempt to re-enable listen */
-    serialPrintStr("I2C2: I2C Error (non-AF)");
-    i2c2_enable_listen();
+  
+  /* Clear all error flags and re-enable listen */
+  __HAL_I2C_CLEAR_FLAG(hi2c, I2C_FLAG_BERR | I2C_FLAG_ARLO | I2C_FLAG_OVR);
+  /* AF (NACK) is a normal condition when a master finishes reading; clearing
+     it is fine but ensure we also exit transmitting state so pending data can
+     be published. */
+  __HAL_I2C_CLEAR_FLAG(hi2c, I2C_FLAG_AF);
+  i2c2_transmitting = 0;
+  if (i2c2_tx_pending) {
+    i2c2_active_buf = 1 - i2c2_active_buf;
+    i2c2_tx_pending = 0;
+    i2c2_tx_ready = 1;
   }
+  i2c2_enable_listen();
 }
 
 /* Listen complete callback: re-enter listen if needed */
