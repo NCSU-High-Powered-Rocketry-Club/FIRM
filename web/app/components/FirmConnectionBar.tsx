@@ -1,6 +1,6 @@
 // src/components/FirmConnectionBar.tsx
 import React from "react";
-import {useFirm} from "~/contexts/FirmContext";
+import { useFirm } from "~/contexts/FirmContext";
 
 export function FirmConnectionBar() {
   const { isConnected, isConnecting, connect } = useFirm();
@@ -16,9 +16,7 @@ export function FirmConnectionBar() {
       >
         <span
           className={
-            isConnected
-              ? "h-2 w-2 rounded-full bg-green-500"
-              : "h-2 w-2 rounded-full bg-gray-500"
+            isConnected ? "h-2 w-2 rounded-full bg-green-500" : "h-2 w-2 rounded-full bg-gray-500"
           }
         />
         {isConnected ? "FIRM connected" : "No device connected"}
@@ -36,11 +34,7 @@ export function FirmConnectionBar() {
               : "border-gray-300 text-gray-700 hover:bg-gray-100"
         }`}
       >
-        {isConnected
-          ? "Connected"
-          : isConnecting
-            ? "Connecting..."
-            : "Connect to FIRM"}
+        {isConnected ? "Connected" : isConnecting ? "Connecting..." : "Connect to FIRM"}
       </button>
     </div>
   );

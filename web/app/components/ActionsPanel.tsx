@@ -40,7 +40,7 @@ export function ActionsPanel() {
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-4 text-sm">
         {/* Calibrate IMU – 1/4 */}
-        <div className="col-span-1 flex flex-col justify-between rounded-lg border border-white bg-slate-50/70">
+        <div className="col-span-1 flex flex-col justify-between rounded-lg border border-white bg-white">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Calibrate IMU
@@ -64,8 +64,7 @@ export function ActionsPanel() {
           </div>
         </div>
 
-        {/* Calibrate Magnetometer – 1/4 */}
-        <div className="col-span-1 flex flex-col justify-between rounded-lg border border-white bg-slate-50/70">
+        <div className="col-span-1 flex flex-col justify-between rounded-lg border border-white bg-white">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Calibrate Magnetometer
@@ -89,8 +88,7 @@ export function ActionsPanel() {
           </div>
         </div>
 
-        {/* Download Log File – 2/4 */}
-        <div className="col-span-1 md:col-span-2 flex flex-col justify-between rounded-lg border border-white bg-slate-50/70">
+        <div className="col-span-1 md:col-span-2 flex flex-col justify-between rounded-lg border border-white bg-white">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Download Log File

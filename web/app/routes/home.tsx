@@ -6,11 +6,10 @@ import { SettingsPanel } from "~/components/SettingsPanel";
 import { ActionsPanel } from "~/components/ActionsPanel";
 import { Footer } from "~/components/Footer";
 import { FirmConnectionBar } from "~/components/FirmConnectionBar";
-import {FirmProvider, useFirm} from "~/contexts/FirmContext";
+import { FirmProvider, useFirm } from "~/contexts/FirmContext";
 
 function getBodyContainerClasses(isConnected: boolean): string {
-  let classes =
-    "mx-auto flex max-w-5xl flex-col gap-4 px-6 py-6 transition-opacity";
+  let classes = "mx-auto flex max-w-5xl flex-col gap-4 px-6 py-6 transition-opacity";
   if (!isConnected) {
     classes = classes + " opacity-40 pointer-events-none";
   }

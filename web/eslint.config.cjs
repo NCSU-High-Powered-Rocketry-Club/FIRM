@@ -44,6 +44,16 @@ module.exports = [
       ...reactHooksPlugin.configs.recommended.rules,
       // Turn off rules that conflict with Prettier
       ...prettierConfig.rules,
+
+      "no-undef": "off",
+      "no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          varsIgnorePattern: "^_",
+          argsIgnorePattern: "^_",
+        },
+      ],
     },
   },
 ];

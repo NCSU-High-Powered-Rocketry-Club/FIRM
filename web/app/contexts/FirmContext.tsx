@@ -1,11 +1,5 @@
 // src/firm/FirmContext.tsx
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useState,
-  type ReactNode,
-} from "react";
+import React, { createContext, useCallback, useContext, useState, type ReactNode } from "react";
 import { FIRM as FirmClient } from "firm-client";
 
 export type FirmInstance = FirmClient;
