@@ -253,15 +253,17 @@ int main(void)
     
   // Manually pack the packet into the inactive buffer to avoid struct padding issues
   // Total: 2 (header) + 2 (length) + 52 (payload: 11 floats + 1 double) + 2 (crc) = 58 bytes
+  uint32_t primask = __get_PRIMASK();
+  __disable_irq();
   uint8_t *buf = (uint8_t *)i2c2_tx_buf[1 - i2c2_active_buf];
   size_t offset = 0;
-    
+
   // Pack header and length
   memcpy(buf + offset, &serialized_packet.header, 2);
   offset += 2;
   memcpy(buf + offset, &serialized_packet.length, 2);
   offset += 2;
-    
+
   // Pack payload fields individually to avoid padding (11 floats + 1 double = 52 bytes)
   memcpy(buf + offset, &serialized_packet.payload.temperature, sizeof(float));
   offset += sizeof(float);
@@ -287,11 +289,11 @@ int main(void)
   offset += sizeof(float);
   memcpy(buf + offset, &serialized_packet.payload.timestamp_sec, sizeof(double));
   offset += sizeof(double);
-    
+
   // Calculate CRC over the packed buffer (without the CRC bytes)
   uint16_t crc = crc16_ccitt(buf, 56);  // 56 = header(2) + length(2) + payload(52)
   memcpy(buf + offset, &crc, 2);
-    
+
   /* Publish into the active buffer since no transfer is in progress yet */
   i2c2_tx_len = 58;
   /* swap inactive -> active */
@@ -299,6 +301,7 @@ int main(void)
   i2c2_tx_ready = 1;
   i2c2_tx_pending = 0;
   i2c2_transmitting = 0;
+  __set_PRIMASK(primask);
     
     /* Enable I2C2 listen mode now that I2C1 master initialization is complete */
     HAL_I2C_EnableListen_IT(&hi2c2);
@@ -353,8 +356,10 @@ int main(void)
       // an ongoing I2C read. If a master is currently reading, we mark the
       // prepared packet as pending and it will be swapped in when the
       // transfer completes.
-      uint8_t inactive = 1 - i2c2_active_buf;
-      uint8_t *buf = (uint8_t *)i2c2_tx_buf[inactive];
+  uint8_t inactive = 1 - i2c2_active_buf;
+  uint32_t primask = __get_PRIMASK();
+  __disable_irq();
+  uint8_t *buf = (uint8_t *)i2c2_tx_buf[inactive];
             size_t offset = 0;
             
             // Pack header and length
@@ -400,10 +405,12 @@ int main(void)
         i2c2_active_buf = inactive;
         i2c2_tx_ready = 1;
         i2c2_tx_pending = 0;
+        __set_PRIMASK(primask);
       } else {
         /* queue the prepared buffer to be swapped in after the current read */
         i2c2_tx_len = 58; /* still store the length for the pending buffer */
         i2c2_tx_pending = 1;
+        __set_PRIMASK(primask);
       }
             
             // If USB serial communication setting is enabled, also transmit via USB
