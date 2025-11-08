@@ -102,5 +102,12 @@ __pycache__/
 *.pyd
 .venv/
 
+# Jetbrains
+.idea/
+.idea/**/*
+cmake-build-debug
+cmake-build-release
+build/
+
 # tests
 /tests/build

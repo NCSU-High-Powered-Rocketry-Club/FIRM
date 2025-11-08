@@ -267,6 +267,8 @@ int main(void)
 
   /* We should never get here as control is now taken by the scheduler */
 
+    Error_Handler();
+
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
@@ -709,6 +711,7 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
+      HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, 1);
     osDelay(1);
   }
   /* USER CODE END 5 */
