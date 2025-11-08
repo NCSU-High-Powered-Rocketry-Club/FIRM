@@ -11,9 +11,7 @@
     "lint:fix": "eslint app --ext .js,.jsx,.ts,.tsx --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "clean": "npm run lint:fix && npm run format",
-    "predeploy": "npm run build && xcopy build\\client build\\gh-pages /E /I /Y",
-    "deploy": "gh-pages -d build/gh-pages"
+    "clean": "npm run lint:fix && npm run format"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",
