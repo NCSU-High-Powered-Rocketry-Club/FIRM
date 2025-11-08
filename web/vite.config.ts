@@ -10,5 +10,8 @@ export default defineConfig(({ command }) => {
   return {
     base: command === "serve" ? "/" : prodBase,
     plugins: [tailwindcss(), reactRouter(), tsconfigPaths()],
+    optimizeDeps: {
+      exclude: ["firm-client"],
+    },
   };
 });

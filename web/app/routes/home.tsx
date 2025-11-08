@@ -5,6 +5,8 @@ import { GraphsPanel } from "~/components/GraphsPanel";
 import { SettingsPanel } from "~/components/SettingsPanel";
 import { ActionsPanel } from "~/components/ActionsPanel";
 import { Footer } from "~/components/Footer";
+import { FirmConnectionBar } from "~/components/FirmConnectionBar";
+import { FirmProvider, useFirm } from "~/contexts/FirmContext";
 
 function getBodyContainerClasses(isConnected: boolean): string {
   let classes = "mx-auto flex max-w-5xl flex-col gap-4 px-6 py-6 transition-opacity";
@@ -15,34 +17,27 @@ function getBodyContainerClasses(isConnected: boolean): string {
 }
 
 export default function Home() {
-  const isFirmConnected = true;
-  const bodyClasses = getBodyContainerClasses(isFirmConnected);
+  return (
+    <FirmProvider>
+      <HomeContent />
+    </FirmProvider>
+  );
+}
+
+// Real page content: consumes the firm state
+function HomeContent() {
+  const { isConnected } = useFirm();
+  const bodyClasses = getBodyContainerClasses(isConnected);
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <Header />
 
-      <main className={bodyClasses}>
-        {/* Optional little status pill */}
-        <div className="mb-2 text-sm text-gray-600">
-          <span
-            className={
-              isFirmConnected
-                ? "inline-flex items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800"
-                : "inline-flex items-center gap-1 rounded-full bg-gray-200 px-3 py-1 text-xs font-medium text-gray-700"
-            }
-          >
-            <span
-              className={
-                isFirmConnected
-                  ? "h-2 w-2 rounded-full bg-green-500"
-                  : "h-2 w-2 rounded-full bg-gray-500"
-              }
-            />
-            {isFirmConnected ? "FIRM connected" : "No device connected"}
-          </span>
-        </div>
+      {/* Pill + button, always clickable */}
+      <FirmConnectionBar />
 
+      {/* Panels that get dimmed when disconnected */}
+      <main className={bodyClasses}>
         <DeviceInfoPanel />
         <GraphsPanel />
         <SettingsPanel />
