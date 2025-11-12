@@ -655,6 +655,25 @@ void StartupTask(void* argument) {
         Error_Handler();
     }
 
+    // get scale factor values for each sensor to put in header
+    HeaderFields header_fields = {
+        bmp581_get_temp_scale_factor(),
+        bmp581_get_pressure_scale_factor(),
+        icm45686_get_accel_scale_factor(),
+        icm45686_get_gyro_scale_factor(),
+        mmc5983ma_get_magnetic_field_scale_factor(),
+    };
+
+    logger_write_header(&header_fields);
+
+    // the IMU runs into issues when the fifo is full at the very beginning, causing the interrupt
+    // to be pulled back low too fast, and the ISR doesn't catch it for whatever reason. Doing
+    // this initial read will prevent that.
+    // ICM45686Packet_t imu_packet;
+    // icm45686_read_data(&imu_packet);
+    // MMC5983MAPacket_t mag_packet;
+    // mmc5983ma_read_data(&mag_packet, &magnetometer_flip);
+
     // init usb device
     MX_USB_DEVICE_Init();
 
