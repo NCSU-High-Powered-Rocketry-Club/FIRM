@@ -1,7 +1,9 @@
 import threading
 
+from ._firm import FIRM
 
-def calibrate_magnetometer(firm, calibration_duration_seconds=180):
+
+def calibrate_magnetometer(firm: FIRM, calibration_duration_seconds=180):
     """
     Calibrates FIRM's magnetometer for the specified duration. During calibration, the function
     continuously collects data packets from FIRM. FIRM should be physically rotated in all

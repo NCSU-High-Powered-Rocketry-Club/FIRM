@@ -27,7 +27,6 @@ class FIRM:
     Args:
         port (str): Serial port to connect to (e.g., "/dev/ttyACM0" or "COM3").
         baudrate (int): Baud rate for the serial connection
-
     """
 
     __slots__ = (
@@ -57,7 +56,11 @@ class FIRM:
         self.close()
 
     def initialize(self):
-        """Open serial and prepare for parsing packets by spawning a new thread."""
+        """Open serial and prepare for parsing packets by spawning a new thread.
+
+        Raises:
+            TimeoutError: If no packets are received within 1 second of initialization.
+        """
         if not self._serial_port.is_open:
             self._serial_port.open()
         self._bytes_stored.clear()
@@ -67,6 +70,9 @@ class FIRM:
                 target=self._serial_reader, name="Packet-Reader-Thread", daemon=True
             )
             self._serial_reader_thread.start()
+
+        # Check if the serial port is returning packets. This will raise TimeoutError if not.
+        self.get_data_packets(timeout=1.0)
 
     def close(self):
         """Close the serial port, and stop the packet reader thread."""
@@ -95,22 +101,30 @@ class FIRM:
     def get_data_packets(
         self,
         block: bool = True,
+        timeout: float = 0.0,
     ) -> list[FIRMPacket]:
         """
         Retrieve FIRMPacket objects parsed by the background thread.
 
         Args:
             block: If True, wait for at least one packet.
+            timeout: Maximum time to wait in seconds for a packet if `block` is ``True``.
 
         Returns:
             List of FIRMPacket objects.
+
+        Raises:
+            TimeoutError: If no packets are available within the specified timeout.
         """
         firm_packets: list[FIRMPacket] = []
 
         if block:
             # Keep waiting until we successfully get a packet
             while not firm_packets:
-                packet = self._packet_queue.get()
+                try:
+                    packet = self._packet_queue.get(timeout=timeout)
+                except queue.Empty as e:
+                    raise TimeoutError from e
                 firm_packets.append(packet)
 
         while self._packet_queue.qsize() > 0:
