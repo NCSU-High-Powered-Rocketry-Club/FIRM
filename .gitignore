@@ -62,20 +62,44 @@ dkms.conf
 # Python version file
 .python-version
 
-# KiCad backups
-/KiCad/FIRM-backups
-/KiCad/FIRM_Interestlaunch/FIRM_Interestlaunch-backups
+# Kicad Temporary files
+*.000
 *.bak
+*.bck
+*.kicad_pcb-bak
+*.kicad_sch-bak
+*-backups
+*-cache*
+*-bak
+*-bak*
+*~
+~*
+_autosave-*
+\#auto_saved_files\#
+*.tmp
+*-save.pro
+*-save.kicad_pcb
+fp-info-cache
+~*.lck
+\#auto_saved_files#
 
-# KiCad cache
-/KiCad/fp-info-cache
-/KiCad/FIRM_Interestlaunch/fp-info-cache
+# Kicad Netlist files (exported from Eeschema)
+*.net
 
-# KiCad local stuff
-/KiCad/#auto_saved_files#
-/KiCad/_autosave-FIRM.kicad_sch
+# Kicad Autorouter files (exported from Pcbnew)
+*.dsn
+*.ses
+
+# Kicad Exported BOM files
+*.xml
+*.csv
+
+# Kicad Archived Backups (KiCad 6.0)
+**/*-backups/*.zip
+
+# Kicad Local project settings
 *.kicad_prl
-*.lck
+# SnapEDA files:
 how-to-import.htm
 
 
