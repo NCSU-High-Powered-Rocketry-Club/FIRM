@@ -26,6 +26,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "cmsis_os.h"
 #include "fatfs.h"
 #include "usb_device.h"
 
@@ -64,6 +65,13 @@ SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi2;
 SPI_HandleTypeDef hspi3;
 
+/* Definitions for defaultTask */
+osThreadId_t defaultTaskHandle;
+const osThreadAttr_t defaultTask_attributes = {
+  .name = "defaultTask",
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -78,6 +86,8 @@ static void MX_SDIO_SD_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_SPI3_Init(void);
 static void MX_SPI1_Init(void);
+void StartupTask(void *argument);
+
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -99,41 +109,24 @@ volatile uint32_t dwt_overflow_count = 0;
   * @brief  The application entry point.
   * @retval int
   */
-int main(void)
-{
+int main(void) {
+    /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+    HAL_Init();
 
-  /* USER CODE BEGIN 1 */
+    /* Configure the system clock */
+    SystemClock_Config();
 
-  /* USER CODE END 1 */
-
-  /* MCU Configuration--------------------------------------------------------*/
-
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
-
-  /* USER CODE BEGIN Init */
-
-  /* USER CODE END Init */
-
-  /* Configure the system clock */
-  SystemClock_Config();
-
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
-
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_DMA_Init();
-  MX_I2C1_Init();
-  MX_I2C2_Init();
-  MX_SDIO_SD_Init();
-  MX_FATFS_Init();
-  MX_SPI2_Init();
-  MX_SPI3_Init();
-  MX_USB_DEVICE_Init();
-  MX_SPI1_Init();
-  /* USER CODE BEGIN 2 */
+    /* Initialize all configured peripherals */
+    MX_GPIO_Init();
+    MX_DMA_Init();
+    MX_I2C1_Init();
+    MX_I2C2_Init();
+    MX_SDIO_SD_Init();
+    MX_FATFS_Init();
+    MX_SPI2_Init();
+    MX_SPI3_Init();
+    MX_SPI1_Init();
+    /* USER CODE BEGIN 2 */
 
     // We use DWT (Data Watchpoint and Trace unit) to get a high resolution free-running timer
     // for our data packet timestamps. This allows us to use the clock cycle count instead of a
@@ -145,10 +138,9 @@ int main(void)
     // Clear the DWT clock cycle counter to start counting from zero.
     DWT->CYCCNT = 0;
 
-    // Enable the DWT cycle counter itself. Once active, it increments each CPU  
+    // Enable the DWT cycle counter itself. Once active, it increments each CPU
     // clock cycle so we can use clock cycles as data packet timestamps.
     DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
-
 
     // Set the chip select pins to high, this means that they're not selected.
     // Note: We can't have these in the bmp581/imu/flash chip init functions, because those somehow
@@ -166,7 +158,7 @@ int main(void)
     if (bmp581_init(&hspi2, GPIOC, GPIO_PIN_2)) {
         Error_Handler();
     }
-    
+
     if (mmc5983ma_init(&hi2c1, 0x30)) {
         Error_Handler();
     }
@@ -176,13 +168,7 @@ int main(void)
         Error_Handler();
     }
 
-    // Setup the SD card
-    FRESULT res = logger_init(&hdma_sdio_tx);
-    if (res) {
-        serialPrintStr("Failed to initialized the logger (SD card)");
-        Error_Handler();
-    }
-    
+    /*
     // get scale factor values for each sensor to put in header
     HeaderFields header_fields = {
         bmp581_get_temp_scale_factor(),
@@ -191,24 +177,19 @@ int main(void)
         icm45686_get_gyro_scale_factor(),
         mmc5983ma_get_magnetic_field_scale_factor(),
     };
-    
+
 
     logger_write_header(&header_fields);
 
     // incrementing value for magnetometer calibration
     uint8_t magnetometer_flip = 0;
 
-    // Toggle LED:
-    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_1);
-
-    
-
     // instance of the calibrated data packet from the preprocessor to be reused
     CalibratedDataPacket_t calibrated_packet = {0};
     // instance of the serialized packet, will be reused
     SerializedPacket_t serialized_packet = {0};
     serializer_init_packet(&serialized_packet); // initializes the packet length and header bytes
-    
+
     // check to verify if any new data has been collected, from any of the sensors
     bool any_new_data_collected = false;
 
@@ -219,43 +200,56 @@ int main(void)
     icm45686_read_data(&imu_packet);
     MMC5983MAPacket_t mag_packet;
     mmc5983ma_read_data(&mag_packet, &magnetometer_flip);
-    
-  /* USER CODE END 2 */
+*/
+    /* Init scheduler */
+    osKernelInitialize();
+
+    // create default task
+    defaultTaskHandle = osThreadNew(StartupTask, NULL, &defaultTask_attributes);
+
+    /* Start scheduler */
+    osKernelStart();
+
+    Error_Handler();
+
+    /* We should never get here as control is now taken by the scheduler */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
     // This is the main loop. It's constantly checking to see if any of the sensors have
     // new data to read, and if so, logs it.
+
+/*
     while (1) {
         if (bmp581_has_new_data) {
             BMP581Packet_t* bmp581_packet = logger_malloc_packet(sizeof(BMP581Packet_t));
-    	    if (!bmp581_read_data(bmp581_packet)) {
-    	        bmp581_has_new_data = false;
-    	        logger_write_entry('B', sizeof(BMP581Packet_t));
+            if (!bmp581_read_data(bmp581_packet)) {
+                bmp581_has_new_data = false;
+                logger_write_entry('B', sizeof(BMP581Packet_t));
                 bmp581_convert_packet(bmp581_packet, &calibrated_packet);
                 any_new_data_collected = true;
-    	    }
-    	}
+            }
+        }
 
-    	if (icm45686_has_new_data) {
-    	    ICM45686Packet_t* icm45686_packet = logger_malloc_packet(sizeof(ICM45686Packet_t)); 
-    	    if (!icm45686_read_data(icm45686_packet)) {
-    	        icm45686_has_new_data = false;
-    	        logger_write_entry('I', sizeof(ICM45686Packet_t));
+        if (icm45686_has_new_data) {
+            ICM45686Packet_t* icm45686_packet = logger_malloc_packet(sizeof(ICM45686Packet_t));
+            if (!icm45686_read_data(icm45686_packet)) {
+                icm45686_has_new_data = false;
+                logger_write_entry('I', sizeof(ICM45686Packet_t));
                 icm45686_convert_packet(icm45686_packet, &calibrated_packet);
                 any_new_data_collected = true;
-    	    }
-    	}
-    	if (mmc5983ma_has_new_data) {
-    	    MMC5983MAPacket_t* mmc5983ma_packet = logger_malloc_packet(sizeof(MMC5983MAPacket_t));
-    	    if (!mmc5983ma_read_data(mmc5983ma_packet, &magnetometer_flip)) {
-    	        mmc5983ma_has_new_data = false;
-    	        logger_write_entry('M', sizeof(MMC5983MAPacket_t));
+            }
+        }
+        if (mmc5983ma_has_new_data) {
+            MMC5983MAPacket_t* mmc5983ma_packet = logger_malloc_packet(sizeof(MMC5983MAPacket_t));
+            if (!mmc5983ma_read_data(mmc5983ma_packet, &magnetometer_flip)) {
+                mmc5983ma_has_new_data = false;
+                logger_write_entry('M', sizeof(MMC5983MAPacket_t));
                 mmc5983ma_convert_packet(mmc5983ma_packet, &calibrated_packet);
                 any_new_data_collected = true;
-    	    }
-    	}
+            }
+        }
 
         // if USB serial communication setting is enabled, and new data is collected, serialize
         // and transmit it
@@ -264,13 +258,9 @@ int main(void)
             usb_transmit_serialized_packet(&serialized_packet);
             any_new_data_collected = false;
         }
-
-    /* USER CODE END WHILE */
-
-    /* USER CODE BEGIN 3 */
     }
+    */
 
-  /* USER CODE END 3 */
 }
 
 /**
@@ -539,10 +529,10 @@ static void MX_DMA_Init(void)
 
   /* DMA interrupt init */
   /* DMA2_Stream3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
   /* DMA2_Stream6_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
 
 }
@@ -614,13 +604,13 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI2_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI2_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI2_IRQn);
 
-  HAL_NVIC_SetPriority(EXTI3_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI3_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI3_IRQn);
 
-  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
@@ -648,6 +638,53 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
     }
 }
 /* USER CODE END 4 */
+
+/* USER CODE BEGIN Header_StartDefaultTask */
+/**
+  * @brief  Function implementing the defaultTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_StartDefaultTask */
+void StartupTask(void* argument) {
+
+    // Setup the SD card
+    FRESULT res = logger_init(&hdma_sdio_tx);
+    if (res) {
+        serialPrintStr("Failed to initialized the logger (SD card)");
+        Error_Handler();
+    }
+
+    // init usb device
+    MX_USB_DEVICE_Init();
+
+    for (;;) {
+        HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_1);
+        osDelay(500);
+    }
+}
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM2 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM2)
+  {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+
+  /* USER CODE END Callback 1 */
+}
 
 /**
   * @brief  This function is executed in case of error occurrence.
