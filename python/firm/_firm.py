@@ -31,13 +31,13 @@ class FIRM:
 
     __slots__ = (
         "_bytes_stored",
+        "_current_pressure_alt",
+        "_current_pressure_altitude_offset",
         "_packet_queue",
         "_serial_port",
         "_serial_reader_thread",
         "_stop_event",
         "_struct",
-        "_current_pressure_altitude_offset",
-        "_current_pressure_alt",
     )
 
     def __init__(self, port: str, baudrate: int = 115_200):
@@ -138,7 +138,7 @@ class FIRM:
 
     def zero_out_pressure_altitude(self):
         """
-        Zeroes out the current pressure altitude reading, setting it as the new reference (0 meters).
+        Zeroes out the current pressure altitude reading, setting it as the new reference (0 meters)
         """
         self._current_pressure_altitude_offset = self._current_pressure_alt
 
