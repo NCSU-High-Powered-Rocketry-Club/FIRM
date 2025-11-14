@@ -135,7 +135,7 @@ class FIRM:
             firm_packets.append(self._packet_queue.get_nowait())
 
         return firm_packets
-    
+
     def zero_out_pressure_altitude(self):
         """
         Zeroes out the current pressure altitude reading, setting it as the new reference (0 meters).
@@ -237,19 +237,23 @@ class FIRM:
             mag_z_microteslas=mag_z_microteslas,
             pressure_altitude_meters=self._calculate_pressure_altitude(pressure_pascals),
         )
-    
-    def _calculate_pressure_altitude(self, pressure_pascals: float, sea_level_pressure_pascals: float = 101325.0) -> float:
+
+    def _calculate_pressure_altitude(
+        self, pressure_pascals: float, sea_level_pressure_pascals: float = 101325.0
+    ) -> float:
         """
         Calculate altitude in meters from pressure using the barometric formula.
 
         Args:
             pressure_pascals: Measured pressure in pascals.
             sea_level_pressure_pascals: Sea level standard atmospheric pressure in pascals.
-        
+
         Returns:
             Altitude in meters.
         """
-        self._current_pressure_alt = 44330.0 * (1.0 - (pressure_pascals / sea_level_pressure_pascals) ** (1/5.255))
+        self._current_pressure_alt = 44330.0 * (
+            1.0 - (pressure_pascals / sea_level_pressure_pascals) ** (1 / 5.255)
+        )
         return self._current_pressure_alt - self._current_pressure_altitude_offset
 
     def _verify_crc(self, data: memoryview, header_pos: int, crc_start: int) -> bool:
