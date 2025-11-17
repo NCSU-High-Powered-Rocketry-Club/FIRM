@@ -1,8 +1,77 @@
-# FIRM Device Documentation
+# FIRM Documentation
 
-Welcome to the FIRM device docs.
+Welcome to the documentation for **FIRM**--the completely custom flight computer aimed at being a highly accurate,
+low-cost, and plug-and-play solution for any hobby rocketry data collection needs.
 
-This is a **dummy page** to confirm MkDocs + Material are wired up correctly.
+---
 
-- React app: [`/`](../)
-- Docs: `/docs/` (this page)
+## Two Ways to Use These Docs
+
+Most people will come here in one of two roles:
+
+### 👾 I just want to *use* FIRM
+
+If you just want to use FIRM as an end user to collect flight data, you can skip the contributor docs and jump straight
+to the user docs.
+
+Start here:
+
+- **[Quick Start](users/getting-started.md)** - what FIRM is, what you need, and how to use it.
+- **[Configuring Your Device](users/configuring-firm.md)** - using the web app to view live data and edit settings.
+- **[Logging & Downloading Data](users/data-logging.md)** - how to run a collect and download flight data.
+- **[Troubleshooting](users/troubleshooting.md)** - common problems and how to fix them.
+
+---
+
+### 🛠️ I want to *contribute* to FIRM
+
+Developing FIRM is a collaborative effort involving many technologies and disciplines. If you're interested in
+programming, the different parts of FIRM span many programming languages including C, Rust, Python, and TypeScript. If
+you're interested in hardware design, FIRM's PCB designs are created using KiCad.
+
+Start here:
+
+- **[Contributor Overview](contributors/overview.md)** – what FIRM is as a system and how all the pieces fit together.
+- **[Environment Setup (VS Code, Python, Git)](contributors/environment-setup.md)** – how to set up your development
+  environment(s).
+- **[Hardware & KiCad](contributors/hardware-kicad.md)** – how we organize the KiCad projects, conventions, and best
+  practices.
+- **[Firmware & Web App Workflow](contributors/dev-workflow.md)** – how to make changes to the different parts of FIRM.
+
+---
+
+## What These Docs Are (and Aren’t)
+
+These docs are:
+
+- A **end-user guide** for people who want to use FIRM to collect flight data.
+- A **handbook for new members** who want to help contribute to FIRM.
+- A **quick-reference** for experienced contributors who forgot some detail.
+- A place to store the **rationale behind design decisions** so we don’t lose that context in Slack or random Google
+  Docs.
+
+These docs are **not**:
+
+- A full electronics or programming course.
+- A step-by-step "how to build FIRM from zero" tutorial *(this is subject to change)*.
+
+Instead, they focus on *our* implementation and choices.
+
+---
+
+## Safety
+
+FIRM is a delicate piece of hardware, you have to be careful about how you handle it.
+
+Make sure you're:
+- Cautious about not shorting things on the board.
+- Protecting the board inside the rocket during flight.
+- Not abusing USB ports or power supplies.
+
+---
+
+These docs are a work in progress and are hosted in
+our [FIRM-Web-App repo](https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM-Web-App). If anything feels confusing, 
+incomplete, or out of date, please open an issue or PR - future you (and other members) will appreciate it.
+
+---
