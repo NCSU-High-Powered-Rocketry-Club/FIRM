@@ -91,7 +91,7 @@ jobs:
       # Combine React app + MkDocs into one site
       - name: Prepare combined site
         run: |
-          mkdir public
+          mkdir -p public
 
           # React app at root
           if [ -d build/client ]; then
