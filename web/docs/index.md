@@ -3,6 +3,13 @@
 Welcome to the documentation for **FIRM**--the completely custom flight computer aimed at being a highly accurate,
 low-cost, and plug-and-play solution for any hobby rocketry data collection needs.
 
+## What Is FIRM?
+
+FIRM (Filtered Inertial Rotation Module) is a fully custom **flight computer** designed to:
+
+- Measure acceleration, rotation, pressure, temperature, and magnetic field.
+- Deliver high-quality, low-cost flight data with accuracy and precision on par or better than commercial solutions.
+- Be extremely user-friendly and versatile, allowing for easy integration into any type of rocket.
 ---
 
 ## Two Ways to Use These Docs

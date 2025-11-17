@@ -135,12 +135,14 @@ source = { virtual = "." }
 dependencies = [
     { name = "mkdocs" },
     { name = "mkdocs-material" },
+    { name = "watchdog" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "mkdocs", specifier = ">=1.6,<2.0" },
     { name = "mkdocs-material", specifier = ">=9.5,<10.0" },
+    { name = "watchdog", specifier = ">=6.0.0" },
 ]
 
 [[package]]
