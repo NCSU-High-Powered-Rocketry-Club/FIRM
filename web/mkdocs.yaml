@@ -1,0 +1,10 @@
+site_name: FIRM Device Docs
+site_url: https://firm.ncsurocketry.org/docs/
+
+docs_dir: docs
+
+theme:
+  name: material
+
+nav:
+  - Home: index.md
