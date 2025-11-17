@@ -8,3 +8,6 @@
 
 .idea/
 .vscode/
+.venv/
+
+.eslintcache

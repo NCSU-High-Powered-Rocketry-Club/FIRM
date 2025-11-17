@@ -28,3 +28,26 @@ jobs:
 
       - name: Check Prettier formatting
         run: npm run format:check
+
+  docs-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          version: "0.7.13"
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Install docs dependencies
+        run: uv sync --frozen
+
+      - name: Build MkDocs site
+        run: uv run mkdocs build --clean --site-dir site

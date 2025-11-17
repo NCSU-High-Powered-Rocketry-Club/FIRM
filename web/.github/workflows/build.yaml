@@ -27,6 +27,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Detect package manager
         id: detect-package-manager
         run: |
@@ -44,11 +45,13 @@ jobs:
             echo "Unable to determine package manager"
             exit 1
           fi
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: ${{ steps.detect-package-manager.outputs.manager }}
+
       - name: Restore cache
         uses: actions/cache@v4
         with:
@@ -59,16 +62,53 @@ jobs:
           # If source files changed but packages didn't, rebuild from a prior cache.
           restore-keys: |
             ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json', '**/yarn.lock') }}-
+
       - name: Install dependencies
         run: ${{ steps.detect-package-manager.outputs.manager }} ${{ steps.detect-package-manager.outputs.command }}
-      - name: Build
+
+      - name: Build React app
         env:
           VITE_BASE: "/"
         run: ${{ steps.detect-package-manager.outputs.manager }} run build
+
+      # MkDocs build
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          version: "0.7.13"
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Install docs dependencies
+        run: uv sync --frozen
+
+      - name: Build MkDocs site
+        run: uv run mkdocs build --clean --site-dir site
+      # Combine React app + MkDocs into one site
+      - name: Prepare combined site
+        run: |
+          mkdir public
+
+          # React app at root
+          if [ -d build/client ]; then
+            cp -r build/client/* public/
+          else
+            echo "React build output directory build/client not found"
+            exit 1
+          fi
+
+          # MkDocs under /docs
+          mkdir -p public/docs
+          cp -r site/* public/docs/
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./build/client
+          path: ./public
 
   # Deployment job
   deploy:

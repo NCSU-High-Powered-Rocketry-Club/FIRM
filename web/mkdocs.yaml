@@ -1,0 +1,32 @@
+site_name: FIRM Documentation
+site_url: https://firm.ncsurocketry.org/docs/
+
+docs_dir: docs
+
+theme:
+  name: material
+  logo: assets/logo/white-firm-logo.png
+  favicon: assets/logo/favicon.ico
+  features:
+    - navigation.tabs
+    - navigation.indexes
+    - content.code.copy
+    - content.action.edit
+    - search.suggest
+    - search.highlight
+
+nav:
+  - Home: index.md
+  - Using FIRM:
+      - Quick Start: users/getting-started.md
+      - Configuring Your Device: users/configuring-firm.md
+      - Logging & Downloading Data: users/data-logging.md
+      - Troubleshooting: users/troubleshooting.md
+  - Contributing to FIRM:
+      - Contributor Overview: contributors/overview.md
+      - Environment Setup (VS Code, Python, Git): contributors/environment-setup.md
+      - Hardware & KiCad: contributors/hardware-kicad.md
+      - Firmware & Web App Workflow: contributors/dev-workflow.md
+
+extra_css:
+  - extra.css
