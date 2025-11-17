@@ -9,3 +9,5 @@
 .idea/
 .vscode/
 .venv/
+
+.eslintcache

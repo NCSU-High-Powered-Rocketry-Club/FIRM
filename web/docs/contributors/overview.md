@@ -48,8 +48,6 @@ Or if you're interested in the electronics/PCB design, you should follow **[the 
 
 ## Keeping our Docs Up-to-Date
 
-Because FIRM touches so many technologies, **no one person remembers everything**.
-
 If you notice missing, outdated, or confusing information:
 
 - Please open an issue or a PR.

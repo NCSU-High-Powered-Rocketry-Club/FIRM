@@ -1,0 +1,22 @@
+# Dependencies
+node_modules
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Build output
+dist
+build
+coverage
+.out
+.tmp
+
+# React Router / framework artifacts
+.react-router
+.next
+.out
+.vercel
+
+# Other common generated stuff
+*.log
+.DS_Store
