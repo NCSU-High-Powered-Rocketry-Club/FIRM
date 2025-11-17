@@ -1,20 +1,30 @@
 :root {
-    --md-primary-fg-color: #f85e39;
-    --md-primary-fg-color--light: #ff9478;
-    --md-primary-fg-color--dark: #d14729;
+  --md-primary-fg-color: #f85e39;
+  --md-primary-fg-color--light: #ff9478;
+  --md-primary-fg-color--dark: #d14729;
 }
 
 body,
 .md-typeset {
-    font-family: "Inter", ui-sans-serif, system-ui, sans-serif,
-    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  font-family:
+    "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", "Noto Color Emoji";
 }
 
 /* Make ALL headers bold */
-h1, h2, h3, h4, h5, h6,
-.md-typeset h1, .md-typeset h2, .md-typeset h3,
-.md-typeset h4, .md-typeset h5, .md-typeset h6 {
-    font-weight: 600 !important;
-    color: black !important;
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4,
+.md-typeset h5,
+.md-typeset h6 {
+  font-weight: 600 !important;
+  color: black !important;
 }
 /* TODO: add a footer */

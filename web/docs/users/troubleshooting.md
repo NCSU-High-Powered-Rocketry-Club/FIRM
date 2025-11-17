@@ -9,7 +9,7 @@ This page collects **common problems** that end users might encounter and sugges
 Possible causes:
 
 - USB cable is **power-only** (try a known good data cable).
-- Board not powered, physically damaged. or MicroSD card not inserted properly.
+- Board not powered, physically damaged, or MicroSD card not inserted properly.
 
 Checklist:
 
@@ -43,6 +43,6 @@ TODO: merge this with No Data in Logs
 
 ## When to Ask for Help
 
-If you've gone through the relevant sections, and you're still stuck, contact someone from the FIRM team for help. 
+If you've gone through the relevant sections, and you're still stuck, contact someone from the FIRM team for help.
 
 ---

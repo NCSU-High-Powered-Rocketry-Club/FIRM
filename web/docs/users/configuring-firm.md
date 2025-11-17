@@ -85,7 +85,6 @@ After making changes:
 - **Apply Settings** writes the configuration to the device.
 - **Reset** restores all fields back to their defaults.
 
-
 Make sure to save a copy of your settings once you're done!
 
 ---

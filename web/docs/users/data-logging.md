@@ -23,8 +23,8 @@ FIRM is designed to keep things as simple as possible:
 
 This means that you can:
 
-- Download the full “raw device log” later *even if no computer was connected*.
-- Still read/stream real-time data if a computer *is* connected.
+- Download the full “raw device log” later _even if no computer was connected_.
+- Still read/stream real-time data if a computer _is_ connected.
 
 ---
 
@@ -41,7 +41,7 @@ You'll see something like this:
 
 ![Download Log UI](../assets/download-log.png)
 
-Use the dropdown to pick which recorded session you want (usually just *Most Recent Session*), then click:
+Use the dropdown to pick which recorded session you want (usually just _Most Recent Session_), then click:
 
 **Download Log**
 
@@ -91,16 +91,10 @@ That's it--just plug it into your device and start reading data!
 
 ---
 
-[//]: # (## Summary)
-
-[//]: # ()
-[//]: # (- FIRM automatically starts logging when powered.)
-
-[//]: # (- You can download the "raw device log" anytime using the web app.)
-
-[//]: # (- FIRM streams live data to any connected computer.)
-
-[//]: # (- Use the **FIRM-Client** library to read data in Python, JS/TS, Rust, or &#40;soon&#41; Arduino.)
-
-[//]: # (- The guide for using the client library is in the other repo; this page just explains how FIRM produces data.)
-
+[//]: # "## Summary"
+[//]: #
+[//]: # "- FIRM automatically starts logging when powered."
+[//]: # '- You can download the "raw device log" anytime using the web app.'
+[//]: # "- FIRM streams live data to any connected computer."
+[//]: # "- Use the **FIRM-Client** library to read data in Python, JS/TS, Rust, or (soon) Arduino."
+[//]: # "- The guide for using the client library is in the other repo; this page just explains how FIRM produces data."

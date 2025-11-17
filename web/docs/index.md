@@ -10,13 +10,14 @@ FIRM (Filtered Inertial Rotation Module) is a fully custom **flight computer** d
 - Measure acceleration, rotation, pressure, temperature, and magnetic field.
 - Deliver high-quality, low-cost flight data with accuracy and precision on par or better than commercial solutions.
 - Be extremely user-friendly and versatile, allowing for easy integration into any type of rocket.
+
 ---
 
 ## Two Ways to Use These Docs
 
 Most people will come here in one of two roles:
 
-### 👾 I just want to *use* FIRM
+### 👾 I just want to _use_ FIRM
 
 If you just want to use FIRM as an end user to collect flight data, you can skip the contributor docs and jump straight
 to the user docs.
@@ -30,7 +31,7 @@ Start here:
 
 ---
 
-### 🛠️ I want to *contribute* to FIRM
+### 🛠️ I want to _contribute_ to FIRM
 
 Developing FIRM is a collaborative effort involving many technologies and disciplines. If you're interested in
 programming, the different parts of FIRM span many programming languages including C, Rust, Python, and TypeScript. If
@@ -47,11 +48,29 @@ Start here:
 
 ---
 
+## Safety
+
+FIRM is a delicate piece of hardware, you have to be careful about how you handle it.
+
+Make sure you're:
+
+- Cautious about not shorting things on the board.
+- Protecting the board inside the rocket during flight.
+- Not abusing USB ports or power supplies.
+
+---
+
+These docs are a work in progress and are hosted in
+our [FIRM-Web-App repo](https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM-Web-App). If anything feels confusing,
+incomplete, or out of date, please open an issue or PR - future you (and other members) will appreciate it.
+
+---
+
 ## What These Docs Are (and Aren’t)
 
 These docs are:
 
-- A **end-user guide** for people who want to use FIRM to collect flight data.
+- An **end-user guide** for people who want to use FIRM to collect flight data.
 - A **handbook for new members** who want to help contribute to FIRM.
 - A **quick-reference** for experienced contributors who forgot some detail.
 - A place to store the **rationale behind design decisions** so we don’t lose that context in Slack or random Google
@@ -60,25 +79,8 @@ These docs are:
 These docs are **not**:
 
 - A full electronics or programming course.
-- A step-by-step "how to build FIRM from zero" tutorial *(this is subject to change)*.
+- A step-by-step "how to build FIRM from zero" tutorial _(this is subject to change)_.
 
-Instead, they focus on *our* implementation and choices.
-
----
-
-## Safety
-
-FIRM is a delicate piece of hardware, you have to be careful about how you handle it.
-
-Make sure you're:
-- Cautious about not shorting things on the board.
-- Protecting the board inside the rocket during flight.
-- Not abusing USB ports or power supplies.
-
----
-
-These docs are a work in progress and are hosted in
-our [FIRM-Web-App repo](https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM-Web-App). If anything feels confusing, 
-incomplete, or out of date, please open an issue or PR - future you (and other members) will appreciate it.
+Instead, they focus on _our_ implementation and choices.
 
 ---
