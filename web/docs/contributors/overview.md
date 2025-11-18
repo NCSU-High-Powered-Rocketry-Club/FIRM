@@ -42,7 +42,7 @@ If you're new to FIRM, you should probably first **[skim the user docs](../users
 
 Next, if you're interested in programming, you should follow **[these steps](environment-setup.md)** to set up your development environment.
 
-Or if you're interested in the electronics/PCB design, you should follow **[the steps](hardware-kicad.md)** to get KiCad and learn our design process/practices.
+Or if you're interested in the electronics/PCB design, you should follow **[the steps](kidcad-setup.md)** to get KiCad and learn our design process/practices.
 
 ---
 

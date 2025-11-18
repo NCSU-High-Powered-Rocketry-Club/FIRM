@@ -30,8 +30,7 @@ You do **not** need to know how to write code or anything about electronics for 
 
 1. Insert the MicroSD card into the FIRM device.
 2. Plug your cable into your laptop and into the USB-C port on the FIRM device.
-3. Confirm that you see a green LED 🟢 (means that it's receiving power) and an orange LED 🟠 (means that the micro SD card is
-   working properly) on the FIRM device.
+3. Confirm that you see a green LED 🟢 (means that it's receiving power) and an orange LED 🟠 (means that all code/sensors are working properly) on the FIRM device.
 
 > ⚠️ **Safety Note**  
 > When working with the exposed FIRM board, be careful not to short any components together with any pieces of metal
@@ -44,7 +43,7 @@ You do **not** need to know how to write code or anything about electronics for 
 ## Step 2 - Open the Web App
 
 1. Open your browser (we recommend **Chrome** or **Edge**--**Firefox** will not work).
-2. Go to **https://firm.ncsurocketry.org/**.
+2. Go to **[https://firm.ncsurocketry.org/](https://firm.ncsurocketry.org/)**.
 3. The page should load the **FIRM Web App**, which runs entirely in your browser.
 
 > ❌ Eventually there will be a downloadable version of the app for when you don't have an internet connection.

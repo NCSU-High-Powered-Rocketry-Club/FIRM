@@ -33,7 +33,7 @@ This means that you can:
 After a test or flight:
 
 1. Plug your FIRM device into your laptop.
-2. Open the FIRM Web App at **https://firm.ncsurocketry.org/**
+2. Open the FIRM Web App at **[https://firm.ncsurocketry.org/](https://firm.ncsurocketry.org/)**
 3. Connect to the device using the **Connect to FIRM** button.
 4. Scroll down to the **Download Log File** section.
 
@@ -63,7 +63,7 @@ We've built a cross-language client library to make this painless. Currently, we
 - **Arduino library (planned)**
 
 All of these are maintained in this repo:  
-https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM-Client
+**[https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM-Client](https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM-Client)**
 
 ### What this means for you
 
