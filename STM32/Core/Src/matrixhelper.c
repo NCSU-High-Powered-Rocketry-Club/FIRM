@@ -13,9 +13,9 @@ void symmetric(arm_matrix_instance_f32 *enter_matrix){
     }
 
     if (indicator){
-        arm_mat_trans_f32(enter_matrix, *ptr_output_matrix);
-        arm_mat_add_f32(enter_matrix, *ptr_output_matrix, *ptr_output_matrix);
-        arm_mat_scale_f32 (*ptr_output_matrix, scale_val, *ptr_output_matrix);
+        arm_mat_trans_f32(enter_matrix, ptr_output_matrix);
+        arm_mat_add_f32(enter_matrix, ptr_output_matrix, ptr_output_matrix);
+        arm_mat_scale_f32 (ptr_output_matrix, scale_val, ptr_output_matrix);
     }
     
 }
