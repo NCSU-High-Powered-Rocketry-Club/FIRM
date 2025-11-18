@@ -60,6 +60,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
    Core/Inc
+   Drivers/CMSIS-DSP/Include
    Core/Inc/data_processing
    Libraries/ICM45686
    Libraries/BMP581
