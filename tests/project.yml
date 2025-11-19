@@ -108,7 +108,7 @@
     - ../STM32/Core/Inc/**
   :support:
     - test/support
-  :libraries: []
+  :libraries: ["../STM32/Drivers/CMSIS/Include/**","..STM32/Drivers/CMSIS/Include/cmsis_compiler.h"]
 
 # You can even specify specific files to add or remove from your test
 # and release collections. Usually it's better to use paths and let
