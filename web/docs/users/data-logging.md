@@ -10,7 +10,7 @@ This page focuses on:
 
 ---
 
-## How Logging Works
+## 📜 How Logging Works
 
 FIRM is designed to keep things as simple as possible:
 
@@ -28,7 +28,7 @@ This means that you can:
 
 ---
 
-## Downloading the Raw FIRM Device Log File
+## ⬇️ Downloading the Raw FIRM Device Log File
 
 After a test or flight:
 
@@ -51,7 +51,7 @@ This gives you a `.csv` log file containing what the device recorded internally.
 
 ---
 
-## Streaming Data to Other Devices (Python, JS/TS, Rust, Arduino, etc.)
+## 🖥️ Connecting FIRM Other Devices
 
 While the device is logging internally, it also **streams data** to whatever system it's plugged into.
 
@@ -65,7 +65,7 @@ We've built a cross-language client library to make this painless. Currently, we
 All of these are maintained in this repo:  
 **[https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM-Client](https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM-Client)**
 
-### What this means for you
+### 👨‍🚀 What this means for you
 
 As long as you:
 

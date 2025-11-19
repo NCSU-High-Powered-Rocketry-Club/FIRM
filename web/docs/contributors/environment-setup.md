@@ -6,7 +6,7 @@ You do _not_ need to be an expert, but you should know how to clone a repo, open
 
 ---
 
-# Firmware Development
+# 💡 Firmware Development
 
 This is for contributors who want to work on the **embedded firmware** that runs on the FIRM device itself, written in **C**.
 
@@ -15,7 +15,7 @@ Follow the setup instructions from the main FIRM repo:
 
 ---
 
-# FIRM Client Development
+# 🖥️ FIRM Client Development
 
 The FIRM Client handles **parsing live FIRM data** and packing it into an easy-to-use format. Its core is written in **Rust**, with libraries for **Python, JavaScript/TypeScript, and (eventually) Arduino**.
 
@@ -24,7 +24,7 @@ Follow the setup instructions from the FIRM Client repo:
 
 ---
 
-# Web App Development
+# 🌐 Web App Development
 
 The FIRM Web App lets users configure the device and view live data directly in the browser. It's written in **TypeScript** and uses **React** and **Tailwind CSS**.
 

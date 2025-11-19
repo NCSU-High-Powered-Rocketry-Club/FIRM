@@ -60,7 +60,7 @@ Make sure you're:
 ---
 
 These docs are a work in progress and are hosted in
-our [FIRM-Web-App repo](https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM-Web-App). If anything feels confusing,
+our **[FIRM-Web-App repo](https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM-Web-App)**. If anything feels confusing,
 incomplete, or out of date, please open an issue or PR - future you (and other members) will appreciate it.
 
 ---
@@ -78,8 +78,8 @@ These docs are:
 These docs are **not**:
 
 - A full electronics or programming course.
-- A step-by-step "how to build FIRM from scratch" tutorial _(this is subject to change)_.
+- A step-by-step "how to build FIRM from scratch" tutorial *(this is subject to change)*.
 
-Instead, they focus on _our_ implementation and choices.
+Instead, they focus on *our* implementation and choices.
 
 ---

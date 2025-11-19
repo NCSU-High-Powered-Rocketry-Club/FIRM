@@ -5,11 +5,11 @@ This page explains how to **configure settings on FIRM** using the web app and a
 We assume you've already:
 
 - Connected the device to your computer, and
-- Verified it is successfully communnicating (see [Quick Start](getting-started.md)).
+- Verified it is successfully communnicating (see **[Quick Start](getting-started.md)**).
 
 ---
 
-## Device Name
+## 🏷️ Device Name
 
 This is simply the label FIRM reports to the app.  
 You can name it whatever helps you keep track of your device, for example:
@@ -22,7 +22,7 @@ There's no functional impact - it's just for organization.
 
 ---
 
-## Data Packet Fields
+## 📝 Data Packet Fields
 
 TODO: this needs to be updated once sensor data is finalized
 
@@ -49,7 +49,7 @@ You can select as many or as few as you want.
 
 ---
 
-## Update Frequency (1-500 Hz)
+## 〰️ Update Frequency (1-500 Hz)
 
 This controls how often FIRM sends sensor updates to the web app.
 
@@ -67,7 +67,7 @@ Use **100 Hz**, unless you specifically need a higher rate.
 
 ---
 
-## Protocol
+## 🔗 Protocol
 
 This tells the web app how to talk to the device.
 
@@ -78,7 +78,7 @@ Leave this set to **USB**.
 
 ---
 
-## Apply / Reset
+## 🔄 Apply / Reset
 
 After making changes:
 
@@ -90,4 +90,4 @@ Make sure to save a copy of your settings once you're done!
 ---
 
 If you want to run a test or actually start logging data, continue to  
-➡️ [Logging & Downloading Data](data-logging.md)
+➡️ **[Logging & Downloading Data](data-logging.md)**
