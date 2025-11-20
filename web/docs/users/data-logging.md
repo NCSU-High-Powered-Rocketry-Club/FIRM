@@ -37,10 +37,6 @@ After a test or flight:
 3. Connect to the device using the **Connect to FIRM** button.
 4. Scroll down to the **Download Log File** section.
 
-You'll see something like this:
-
-![Download Log UI](../assets/download-log.png)
-
 Use the dropdown to pick which recorded session you want (usually just _Most Recent Session_), then click:
 
 **Download Log**

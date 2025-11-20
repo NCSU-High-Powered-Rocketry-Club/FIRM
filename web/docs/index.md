@@ -78,8 +78,8 @@ These docs are:
 These docs are **not**:
 
 - A full electronics or programming course.
-- A step-by-step "how to build FIRM from scratch" tutorial *(this is subject to change)*.
+- A step-by-step "how to build FIRM from scratch" tutorial _(this is subject to change)_.
 
-Instead, they focus on *our* implementation and choices.
+Instead, they focus on _our_ implementation and choices.
 
 ---
