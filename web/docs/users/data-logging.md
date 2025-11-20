@@ -10,7 +10,7 @@ This page focuses on:
 
 ---
 
-## How Logging Works
+## 📜 How Logging Works
 
 FIRM is designed to keep things as simple as possible:
 
@@ -28,18 +28,14 @@ This means that you can:
 
 ---
 
-## Downloading the Raw FIRM Device Log File
+## ⬇️ Downloading the Raw FIRM Device Log File
 
 After a test or flight:
 
 1. Plug your FIRM device into your laptop.
-2. Open the FIRM Web App at **https://firm.ncsurocketry.org/**
+2. Open the FIRM Web App at **[https://firm.ncsurocketry.org/](https://firm.ncsurocketry.org/)**
 3. Connect to the device using the **Connect to FIRM** button.
 4. Scroll down to the **Download Log File** section.
-
-You'll see something like this:
-
-![Download Log UI](../assets/download-log.png)
 
 Use the dropdown to pick which recorded session you want (usually just _Most Recent Session_), then click:
 
@@ -51,7 +47,7 @@ This gives you a `.csv` log file containing what the device recorded internally.
 
 ---
 
-## Streaming Data to Other Devices (Python, JS/TS, Rust, Arduino, etc.)
+## 🖥️ Connecting FIRM Other Devices
 
 While the device is logging internally, it also **streams data** to whatever system it's plugged into.
 
@@ -63,9 +59,9 @@ We've built a cross-language client library to make this painless. Currently, we
 - **Arduino library (planned)**
 
 All of these are maintained in this repo:  
-https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM-Client
+**[https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM-Client](https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM-Client)**
 
-### What this means for you
+### 👨‍🚀 What this means for you
 
 As long as you:
 

@@ -14,7 +14,7 @@ The primary goal of these instructions is to give **new members** a clear, struc
 
 ---
 
-## Intended Audience
+## 👨‍💻 Intended Audience
 
 These docs will provide resources to help anyone contribute to FIRM, but having some or all of the following skills will be helpful:
 
@@ -24,7 +24,7 @@ These docs will provide resources to help anyone contribute to FIRM, but having 
 
 ---
 
-## High-Level Architecture
+## 🛠️ High-Level Architecture
 
 At a very high level, the FIRM ecosystem includes:
 
@@ -36,17 +36,17 @@ TODO: maybe make a diagram here?
 
 ---
 
-## Getting Started as a Contributor
+## 👾 Getting Started as a Contributor
 
 If you're new to FIRM, you should probably first **[skim the user docs](../users/getting-started.md)** so you know what the device looks like from an end user's perspective.
 
 Next, if you're interested in programming, you should follow **[these steps](environment-setup.md)** to set up your development environment.
 
-Or if you're interested in the electronics/PCB design, you should follow **[the steps](hardware-kicad.md)** to get KiCad and learn our design process/practices.
+Or if you're interested in the electronics/PCB design, you should follow **[the steps](kidcad-setup.md)** to get KiCad and learn our design process/practices.
 
 ---
 
-## Keeping our Docs Up-to-Date
+## ✏️ Keeping our Docs Up-to-Date
 
 If you notice missing, outdated, or confusing information:
 

@@ -17,7 +17,7 @@ FIRM (Filtered Inertial Rotation Module) is a fully custom **flight computer** d
 
 Most people will come here in one of two roles:
 
-### 👾 I just want to _use_ FIRM
+### 👾 I Just Want to Use FIRM
 
 If you just want to use FIRM as an end user to collect flight data, you can skip the contributor docs and jump straight
 to the user docs.
@@ -31,7 +31,7 @@ Start here:
 
 ---
 
-### 🛠️ I want to _contribute_ to FIRM
+### 🛠️ I Want to Contribute to FIRM
 
 Developing FIRM is a collaborative effort involving many technologies and disciplines. If you're interested in
 programming, the different parts of FIRM span many programming languages including C, Rust, Python, and TypeScript. If
@@ -42,9 +42,8 @@ Start here:
 - **[Contributor Overview](contributors/overview.md)** – what FIRM is as a system and how all the pieces fit together.
 - **[Environment Setup (VS Code, Python, Git)](contributors/environment-setup.md)** – how to set up your development
   environment(s).
-- **[Hardware & KiCad](contributors/hardware-kicad.md)** – how we organize the KiCad projects, conventions, and best
+- **[Hardware & KiCad](contributors/kidcad-setup.md)** – how we organize the KiCad projects, conventions, and best
   practices.
-- **[Firmware & Web App Workflow](contributors/dev-workflow.md)** – how to make changes to the different parts of FIRM.
 
 ---
 
@@ -61,7 +60,7 @@ Make sure you're:
 ---
 
 These docs are a work in progress and are hosted in
-our [FIRM-Web-App repo](https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM-Web-App). If anything feels confusing,
+our **[FIRM-Web-App repo](https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM-Web-App)**. If anything feels confusing,
 incomplete, or out of date, please open an issue or PR - future you (and other members) will appreciate it.
 
 ---
@@ -79,7 +78,7 @@ These docs are:
 These docs are **not**:
 
 - A full electronics or programming course.
-- A step-by-step "how to build FIRM from zero" tutorial _(this is subject to change)_.
+- A step-by-step "how to build FIRM from scratch" tutorial _(this is subject to change)_.
 
 Instead, they focus on _our_ implementation and choices.
 

@@ -11,6 +11,21 @@ body,
     "Segoe UI Symbol", "Noto Color Emoji";
 }
 
+.md-typeset blockquote {
+  color: inherit;
+  opacity: 0.9;
+}
+
+/* Override hover/active/focus states */
+.md-typeset a:hover,
+.md-typeset a:focus,
+.md-nav__link:hover,
+.md-nav__link--active,
+.md-footer a:hover,
+.md-footer a:focus {
+  color: var(--md-primary-fg-color--light) !important;
+}
+
 /* Make ALL headers bold */
 h1,
 h2,

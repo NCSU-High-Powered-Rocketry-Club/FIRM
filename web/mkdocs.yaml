@@ -25,8 +25,7 @@ nav:
   - Contributing to FIRM:
       - Contributor Overview: contributors/overview.md
       - Environment Setup (VS Code, Python, Git): contributors/environment-setup.md
-      - Hardware & KiCad: contributors/hardware-kicad.md
-      - Firmware & Web App Workflow: contributors/dev-workflow.md
+      - Hardware & KiCad: contributors/kidcad-setup.md
 
 extra_css:
   - extra.css
