@@ -32,6 +32,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "firm_tasks.h"
+
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -149,7 +151,7 @@ int main(void) {
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // icm45686 cs pin
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET); // flash chip cs pin
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET); // mmc5983ma CS pin
-    HAL_Delay(500); // purely for debug purposes, allows time to connect to USB serial terminal
+    // HAL_Delay(500); // purely for debug purposes, allows time to connect to USB serial terminal
 
     if (icm45686_init(&hspi2, GPIOB, GPIO_PIN_9)) {
         Error_Handler();
@@ -204,63 +206,30 @@ int main(void) {
     /* Init scheduler */
     osKernelInitialize();
 
+    // setup queues
+    dataQueue = xQueueCreate(256, sizeof(ICM45686Packet_t));
+
     // create default task
     defaultTaskHandle = osThreadNew(StartupTask, NULL, &defaultTask_attributes);
+
+    // setup other tasks
+    BaseType_t status = xTaskCreate(TaskCollectBarData, "Collect Bar Data", 128,
+                                    NULL, FIRM_TASK_DEFAULT_PRIORITY, &hBarDataTask);
+    if (pdPASS != status) Error_Handler();
+
+    status = xTaskCreate(TaskCollectIMUData, "Collect IMU Data", 128,
+        NULL, FIRM_TASK_DEFAULT_PRIORITY, &hImuDataTask);
+    if (pdPASS != status) Error_Handler();
+
+    status = xTaskCreate(TaskCollectBarData, "Collect Bar Data", 128,
+        NULL, FIRM_TASK_DEFAULT_PRIORITY, &hBarDataTask);
+    if (pdPASS != status) Error_Handler();
 
     /* Start scheduler */
     osKernelStart();
 
+    // Go to error handler if freertos kernel fails to start
     Error_Handler();
-
-    /* We should never get here as control is now taken by the scheduler */
-
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
-
-    // This is the main loop. It's constantly checking to see if any of the sensors have
-    // new data to read, and if so, logs it.
-
-/*
-    while (1) {
-        if (bmp581_has_new_data) {
-            BMP581Packet_t* bmp581_packet = logger_malloc_packet(sizeof(BMP581Packet_t));
-            if (!bmp581_read_data(bmp581_packet)) {
-                bmp581_has_new_data = false;
-                logger_write_entry('B', sizeof(BMP581Packet_t));
-                bmp581_convert_packet(bmp581_packet, &calibrated_packet);
-                any_new_data_collected = true;
-            }
-        }
-
-        if (icm45686_has_new_data) {
-            ICM45686Packet_t* icm45686_packet = logger_malloc_packet(sizeof(ICM45686Packet_t));
-            if (!icm45686_read_data(icm45686_packet)) {
-                icm45686_has_new_data = false;
-                logger_write_entry('I', sizeof(ICM45686Packet_t));
-                icm45686_convert_packet(icm45686_packet, &calibrated_packet);
-                any_new_data_collected = true;
-            }
-        }
-        if (mmc5983ma_has_new_data) {
-            MMC5983MAPacket_t* mmc5983ma_packet = logger_malloc_packet(sizeof(MMC5983MAPacket_t));
-            if (!mmc5983ma_read_data(mmc5983ma_packet, &magnetometer_flip)) {
-                mmc5983ma_has_new_data = false;
-                logger_write_entry('M', sizeof(MMC5983MAPacket_t));
-                mmc5983ma_convert_packet(mmc5983ma_packet, &calibrated_packet);
-                any_new_data_collected = true;
-            }
-        }
-
-        // if USB serial communication setting is enabled, and new data is collected, serialize
-        // and transmit it
-        if (firmSettings.serial_transfer_enabled && any_new_data_collected) {
-            usb_serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
-            usb_transmit_serialized_packet(&serialized_packet);
-            any_new_data_collected = false;
-        }
-    }
-    */
-
 }
 
 /**
@@ -628,13 +597,13 @@ static void MX_GPIO_Init(void)
  */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
     if (GPIO_Pin == BMP581_Interrupt_Pin) {
-        bmp581_has_new_data  = true;
+        xTaskNotifyGive(hBarDataTask);
     }
     if (GPIO_Pin == ICM45686_Interrupt_Pin) {
-        icm45686_has_new_data  = true;
+        xTaskNotifyGive(hImuDataTask);
     }
     if (GPIO_Pin == MMC5983MA_Interrupt_Pin) {
-        mmc5983ma_has_new_data = true;
+        xTaskNotifyGive(hMagDataTask);
     }
 }
 /* USER CODE END 4 */
