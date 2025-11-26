@@ -14,81 +14,62 @@
 
 #include <string.h>
 
-char buffer0[BUFFER_SIZE];
-char buffer1[BUFFER_SIZE];
+/**
+ * @brief Ensure that there is enough space available in the current buffer.
+ * @note Swaps buffers if necessary, when other buffer is full
+ * 
+ * @param capacity the number of bytes to ensure capacity of
+ * @retval File Status error code, 0 on success.
+ */
+static FRESULT logger_ensure_capacity(int capacity);
 
-char* current_buffer = buffer0;
-UINT current_offset = 0;
+/**
+ * @brief Logs the type and clock cycle timestamp. This will be writen as 1 byte for the type
+ *        and three bytes (uint24) for the clock cycle count. The clock cycle count will overflow
+ *        every ~0.1 seconds.
+ * @note advances the current offset variable for the buffer
+ * 
+ * @param type the character that signifies the type of packet being logged
+ * @retval None
+ */
+static void logger_log_type_timestamp(char type);
 
-FIL log_file;
-FATFS fs;
+/**
+ * @brief writes a filled buffer to the Micro SD Card via DMA
+ * 
+ * @retval File Status error code, 0 on success.
+ */
+static FRESULT logger_write();
 
-extern DMA_HandleTypeDef hdma_sdio_tx; // Link to the DMA handler to check if busy
+/**
+ * @brief swaps the buffers for the DMA logging when one gets full
+ */
+static void logger_swap_buffers();
+ 
+/**
+ * This is the size in bytes of the type of packet and the timestamp associated
+ * with it.
+ */
+static const int packet_metadata_size = 4;
+
+static char  buffer0[SD_SECTOR_SIZE];
+static char  buffer1[SD_SECTOR_SIZE];
+static char* current_buffer = buffer0;
+static size_t current_offset = 0;
+static FATFS fs;
+static FIL log_file;
+static DMA_HandleTypeDef* hdma_sdio_tx; // Link to the DMA handler to check if busy
 
 TCHAR file_name[32] = {'\0'};
 
-FRESULT logger_write() {
-    if (HAL_DMA_GetState(&hdma_sdio_tx) != HAL_DMA_STATE_READY) {
-        serialPrintStr("Full");
-        return FR_DISK_ERR;
+
+FRESULT logger_init(DMA_HandleTypeDef* dma_sdio_tx_handle) {
+    // set the dma handle to the static variable
+    if (dma_sdio_tx_handle == NULL) {
+        return FR_DENIED;
     }
+    hdma_sdio_tx = dma_sdio_tx_handle;
 
-    // Pad the buffer
-    for (UINT i = current_offset; i < BUFFER_SIZE; i++) {
-        current_buffer[i] = 0;
-    }
-
-    UINT bytes_written = 0;
-
-    // Set fast write so that it doesn't block on the dma request
-    // See SD_write for fast implementation
-    // We need to set it back because some of the internal SD card functions (like f_expand and
-    // f_sync) need the old behavior
-    sd_FastWriteFlag = 1;
-    // We need to log exactly BUFFER_SIZE = sector size in order for this to work in future writes.
-    FRESULT fr = f_write(&log_file, current_buffer, BUFFER_SIZE, &bytes_written);
-    sd_FastWriteFlag = 0;
-
-    if (fr != FR_OK) {
-        serialPrintStr("ERR logger_write");
-        return fr;
-    }
-    serialPrintStr(file_name);
-
-    return fr;
-}
-
-void logger_swap_buffers() {
-    if (current_buffer == buffer0) {
-        current_buffer = buffer1;
-    } else {
-        current_buffer = buffer0;
-    }
-
-    current_offset = 0;
-}
-
-// Writes the header to the log file
-void logger_write_header() {
-    // The length needs to be 4 byte aligned because the struts we are logging are 4 byte aligned
-    // (they have floats).
-    const char* header = "FIRM LOG v0.1\n";
-    size_t len = strlen(header);
-    int padded_len = (int)(((len + 3) / 4) * 4);
-
-    logger_ensure_capacity(padded_len);
-
-    strncpy(current_buffer + current_offset, header, len + 1);
-
-    // Fill the remaining space with zeros
-    for (int i = (int)len; i < padded_len; i++) {
-        current_buffer[current_offset + i] = 0;
-    }
-
-    current_offset += padded_len;
-}
-
-FRESULT logger_init() {
     // Re-initialize SD
     if (BSP_SD_Init() != MSD_OK) {
         return FR_NOT_READY;
@@ -148,13 +129,47 @@ FRESULT logger_init() {
     }
     f_sync(&log_file);
 
-    logger_write_header();
-
     return fr;
 }
 
-FRESULT logger_ensure_capacity(int capacity) {
-    if (current_offset + capacity > BUFFER_SIZE) {
+FRESULT logger_write_header(HeaderFields* sensor_scale_factors) {
+    const char* firm_log_header = "FIRM LOG v1.0\n";
+    size_t header_len = strlen(firm_log_header);
+    size_t scale_factor_len = sizeof(HeaderFields);
+    size_t len = header_len + scale_factor_len;
+
+    FRESULT error_status = logger_ensure_capacity(len);
+    if (error_status) {
+        return error_status;
+    }
+
+    // copy "FIRM LOG" text
+    memcpy(current_buffer + current_offset, firm_log_header, header_len);
+
+    // copy sensor scale factor struct
+    memcpy(current_buffer + current_offset + header_len, sensor_scale_factors, scale_factor_len);
+
+    current_offset += len;
+
+    return error_status;
+}
+
+void* logger_malloc_packet(size_t capacity) {
+    if (logger_ensure_capacity(capacity + packet_metadata_size)) {
+        return NULL;
+    }
+    return &current_buffer[current_offset + packet_metadata_size];
+}
+
+void logger_write_entry(char type, size_t packet_size) {
+    logger_log_type_timestamp(type);
+    // advance current offset by packet size
+    current_offset += packet_size;
+}
+
+
+static FRESULT logger_ensure_capacity(int capacity) {
+    if (current_offset + capacity > SD_SECTOR_SIZE) {
         logger_write();
 
         logger_swap_buffers();
@@ -164,11 +179,53 @@ FRESULT logger_ensure_capacity(int capacity) {
     return FR_OK;
 }
 
-void logger_log_type_timestamp(char type) {
-    // This should advance by TYPE_TIMESTAMP_SIZE
+static void logger_log_type_timestamp(char type) {
     current_buffer[current_offset++] = type;
-    uint32_t current_time = HAL_GetTick();
-    current_buffer[current_offset++] = (char)((current_time >> 16) & 0xFF);
-    current_buffer[current_offset++] = (char)((current_time >> 8) & 0xFF);
-    current_buffer[current_offset++] = (char)(current_time & 0xFF);
+    uint32_t current_time = DWT->CYCCNT;
+    current_buffer[current_offset++] = (current_time >> 16) & 0xFF;
+    current_buffer[current_offset++] = (current_time >> 8) & 0xFF;
+    current_buffer[current_offset++] = current_time & 0xFF;
+}
+
+
+static FRESULT logger_write() {
+    if (HAL_DMA_GetState(hdma_sdio_tx) != HAL_DMA_STATE_READY) {
+        serialPrintStr("Full");
+        return FR_DISK_ERR;
+    }
+
+    // Pad the buffer
+    for (int i = current_offset; i < SD_SECTOR_SIZE; i++) {
+        current_buffer[i] = 0;
+    }
+
+    UINT bytes_written = 0;
+
+    // Set fast write so that it doesn't block on the dma request
+    // See SD_write for fast implementation
+    // We need to set it back because some of the internal SD card functions (like f_expand and
+    // f_sync) need the old behavior
+    sd_FastWriteFlag = 1;
+    // We need to log exactly BUFFER_SIZE = sector size in order for this to work in future writes.
+    FRESULT fr = f_write(&log_file, current_buffer, SD_SECTOR_SIZE, &bytes_written);
+    sd_FastWriteFlag = 0;
+
+    if (fr != FR_OK) {
+        serialPrintStr("ERR logger_write");
+        return fr;
+    } else {
+        //serialPrintStr(file_name);
+    }
+
+    return fr;
+}
+
+static void logger_swap_buffers() {
+    if (current_buffer == buffer0) {
+        current_buffer = buffer1;
+    } else {
+        current_buffer = buffer0;
+    }
+
+    current_offset = 0;
 }

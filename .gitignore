@@ -62,19 +62,69 @@ dkms.conf
 # Python version file
 .python-version
 
-# KiCad backups
-/KiCad/FIRM-backups
-/KiCad/FIRM_Interestlaunch/FIRM_Interestlaunch-backups
+# Kicad Temporary files
+*.000
+*.bak
+*.bck
+*.kicad_pcb-bak
+*.kicad_sch-bak
+*-backups
+*-cache*
+*-bak
+*-bak*
+*~
+~*
+_autosave-*
+\#auto_saved_files\#
+*.tmp
+*-save.pro
+*-save.kicad_pcb
+fp-info-cache
+~*.lck
+\#auto_saved_files#
 
-# KiCad cache
-/KiCad/fp-info-cache
-/KiCad/FIRM_Interestlaunch/fp-info-cache
+# Kicad Netlist files (exported from Eeschema)
+*.net
+
+# Kicad Autorouter files (exported from Pcbnew)
+*.dsn
+*.ses
+
+# Kicad Exported BOM files
+*.xml
+*.csv
+
+# Kicad Archived Backups (KiCad 6.0)
+**/*-backups/*.zip
+
+# Kicad Local project settings
+*.kicad_prl
+# SnapEDA files:
+how-to-import.htm
+
 
 # FIRM code
 /STM32/build
 mx.scratch
-/STM32/.vscode
+.vscode
 /STM32/CMakeFiles
 /STM32/CMakeCache.txt
 /STM32/build.ninja
 cmake_install.cmake
+/STM32/compile_commands.json
+
+# log files in python-scripts folder
+python/scripts/*.TXT
+python/scripts/*.csv
+KiCad/production
+KiCad/fabrication-toolkit-options.json
+
+# Python files:
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+
+# tests
+/tests/build

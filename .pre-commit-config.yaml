@@ -7,30 +7,13 @@ repos:
     rev: v21.1.2
     hooks:
       - id: clang-format
-        files: ^STM32/Core/.*\.(c|h)$   # Only run on C source and header files
-        exclude: ^STM32/Core/(Src/(system_stm32f4xx|syscalls|sysmem|stm32f4xx_hal_msp|stm32f4xx_it|main)|Inc/(stm32f4xx_hal_conf|stm32f4xx_it|main))\.(c|h)$
-  
-  - repo: https://github.com/cpp-linter/cpp-linter-hooks
-    rev: v1.1.3
+        files: ^Core/.*\.(c|h)$   # Only run on C source and header files
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: v0.14.3
     hooks:
-      - id: clang-tidy
-        args: [
-          '--extra-arg=-DDEBUG',
-          '--extra-arg=-DSTM32F405xx',
-          '--extra-arg=-DUSE_HAL_DRIVER',
-          '--extra-arg=-ISTM32/Core/Inc',
-          '--extra-arg=-ISTM32/Drivers/STM32F4xx_HAL_Driver/Inc',
-          '--extra-arg=-ISTM32/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy',
-          '--extra-arg=-ISTM32/Drivers/CMSIS/Device/ST/STM32F4xx/Include',
-          '--extra-arg=-ISTM32/Drivers/CMSIS/Include',
-          '--extra-arg=-ISTM32/FATFS/Target',
-          '--extra-arg=-ISTM32/FATFS/App',
-          '--extra-arg=-ISTM32/USB_DEVICE/App',
-          '--extra-arg=-ISTM32/USB_DEVICE/Target',
-          '--extra-arg=-ISTM32/Middlewares/Third_Party/FatFs/src',
-          '--extra-arg=-ISTM32/Middlewares/ST/STM32_USB_Device_Library/Core/Inc',
-          '--extra-arg=-ISTM32/Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc',
-          '--extra-arg=-std=gnu11',
-        ]
-        files: ^STM32/Core/.*\.(c|h)$
-        exclude: ^STM32/Core/(Src/(system_stm32f4xx|syscalls|sysmem|stm32f4xx_hal_msp|stm32f4xx_it|main)|Inc/(stm32f4xx_hal_conf|stm32f4xx_it|main))\.(c|h)$
+      # Run the linter.
+      - id: ruff-check
+      # Run the formatter.
+      - id: ruff-format

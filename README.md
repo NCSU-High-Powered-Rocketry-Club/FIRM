@@ -26,36 +26,37 @@ To set up the project, follow these steps (assuming you have Git/Github Desktop,
 git clone https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM.git
 ```
 
-2. Download the STM32CubeIDE from the [STMicroelectronics website](https://www.st.com/en/development-tools/stm32cubeide.html) and install it on your machine.
+2. Download the STM32CubeCLT from the [STMicroelectronics website](https://www.st.com/en/development-tools/stm32cubeclt.html) and install it on your machine.
 
-3. Open STM32CubeIDE and import the project:
-   - Go to `File` > `Import`.
-   - Select `General` > `Existing Projects into Workspace` and click `Next`.
-   - Browse to the cloned repository location and select it.
-   - Click `Finish`.
+3. Install the [STM32 VS Code Extension](https://marketplace.visualstudio.com/items?itemName=stmicroelectronics.stm32-vscode-extension).
 
-4. You'll find our source files in the `Core/Src` directory and header files in the `Core/Inc` directory.
+4. Restart VS Code.
 
-5. Run `uv sync`.
+5. Open the STM32 folder of the repo in VS Code and use the extension to import the folder with the
+"Import CMake project" button.
 
-6. Run `pre-commit install` to set up the git hook for automatic code formatting and linting, using `clang-format` and `clang-tidy`. The linting configuration can be found in `.clang-tidy` at the repository root.
+6. Configure your workspace by accepting the default settings from the pop-up messages in VS Code.
+
+7. Click the "Build" button on the bottom status bar to build the project.
+
+8. Run `uv sync`.
+
+9. Run `uv run pre-commit install` to set up the git hook for automatic code formatting, using `clang-format`.
 
 
-## Code Quality Tools
+## KiCad Files
 
-This project uses automated code quality tools:
-- **clang-format**: Automatically formats C code according to the style defined in `.clang-format`
-- **clang-tidy**: Performs static analysis to catch bugs, performance issues, and style violations. Configuration in `.clang-tidy` includes checks for:
-  - Bug-prone code patterns (bugprone-*)
-  - Static analysis (clang-analyzer-*)
-  - Performance issues (performance-*)
-  - Readability improvements (readability-*)
-  - Portability concerns (portability-*)
+The KiCad files are located in the `KiCad` directory. To open the project, open the `FIRM.kicad_pro` file using KiCad.
 
-Both tools run automatically on commit via pre-commit hooks. To run them manually:
-```bash
-uv run pre-commit run --all-files
-```
+### Custom symbols, footprints, and 3D models
+
+We have a custom library for symbols, footprints, and 3D models.
+
+You can find the symbols under `KiCad/symbols`. Every individual component's symbol should go into its respective directory, e.g. the ICM-45686's symbol goes under `sensors/`. You must also add that symbol to the project library, e.g. in `KiCad/symbols/sensors.kicad_sym` (i.e. open Symbol Editor, enter the "sensors" library, then click "File" > "Import" > "Symbol" to add the new symbol to the project library).
+
+You can find the footprints under `KiCad/footprints`. Every individual component footprint should go into its respective directory, e.g. the ICM-45686's footprint goes under `sensors.pretty/`.
+
+3D models go under `KiCad/3dmodels`. The 3D models are then assigned to the footprints using the Footprint Editor in KiCad.
 
 
 ## Building the project
