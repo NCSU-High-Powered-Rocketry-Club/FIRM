@@ -30,16 +30,18 @@ git clone https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM.git
 
 3. Install the [STM32 VS Code Extension](https://marketplace.visualstudio.com/items?itemName=stmicroelectronics.stm32-vscode-extension).
 
-4. Open the STM32 folder of the repo in VS Code and use the extension to import the folder with the
+4. Restart VS Code.
+
+5. Open the STM32 folder of the repo in VS Code and use the extension to import the folder with the
 "Import CMake project" button.
 
-5. Configure your workspace by accepting the default settings from the pop-up messages in VS Code.
+6. Configure your workspace by accepting the default settings from the pop-up messages in VS Code.
 
-6. Click the "Build" button on the bottom status bar to build the project.
+7. Click the "Build" button on the bottom status bar to build the project.
 
-7. Run `uv sync`.
+8. Run `uv sync`.
 
-8. Run `uv run pre-commit install` to set up the git hook for automatic code formatting, using `clang-format`.
+9. Run `uv run pre-commit install` to set up the git hook for automatic code formatting, using `clang-format`.
 
 
 ## KiCad Files
