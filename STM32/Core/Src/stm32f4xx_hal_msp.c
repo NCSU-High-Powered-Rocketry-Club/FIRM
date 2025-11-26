@@ -74,6 +74,8 @@ void HAL_MspInit(void)
   __HAL_RCC_PWR_CLK_ENABLE();
 
   /* System interrupt init*/
+  /* PendSV_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(PendSV_IRQn, 15, 0);
 
   /* USER CODE BEGIN MspInit 1 */
 
@@ -283,7 +285,7 @@ void HAL_SD_MspInit(SD_HandleTypeDef* hsd)
     __HAL_LINKDMA(hsd,hdmatx,hdma_sdio_tx);
 
     /* SDIO interrupt Init */
-    HAL_NVIC_SetPriority(SDIO_IRQn, 0, 0);
+    HAL_NVIC_SetPriority(SDIO_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(SDIO_IRQn);
     /* USER CODE BEGIN SDIO_MspInit 1 */
 
