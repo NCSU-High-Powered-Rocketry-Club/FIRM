@@ -60,8 +60,8 @@ static const uint8_t ord_config = 0x37;
 static const uint8_t cmd = 0x7E;
 
 // device scale factor
-static const int scale_factor_celcius = 65536.0F;
-static const int scale_factor_pascal = 64.0F;
+static const float scale_factor_celcius = 65536.0F;
+static const float scale_factor_pascal = 64.0F;
 
 // BMP581 SPI config settings
 static SPISettings spiSettings;

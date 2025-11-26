@@ -17,3 +17,23 @@ repos:
       - id: ruff-check
       # Run the formatter.
       - id: ruff-format
+
+  - repo: https://github.com/cpp-linter/cpp-linter-hooks
+    rev: v1.1.9
+    hooks:
+      - id: clang-tidy
+        args: ["-p=STM32/build", "--warnings-as-errors=*"]
+        additional_dependencies: ['clang-tidy']
+        files: ^STM32/.*\.(c|h)$
+        exclude: |
+          (?x)^(
+              STM32/Drivers/|
+              STM32/Middlewares/|
+              STM32/USB_DEVICE/|
+              STM32/FATFS/|
+              STM32/cmake/|
+              STM32/Core/Src/system_stm32f4xx\.c|
+              STM32/Core/Src/sysmem\.c|
+              STM32/Core/Src/syscalls\.c|
+              STM32/Core/Inc/stm32f4xx_hal_conf\.h
+          )

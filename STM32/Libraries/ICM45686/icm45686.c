@@ -93,7 +93,7 @@ static const uint8_t ipreg_sys1_reg_166 = 0xA6; // IPREG_SYS1 register
 static const uint8_t ipreg_sys2_reg_123 = 0x7B; // IPREG_SYS2 register
 
 static const float hi_res_fifo_accel_scale_factor = 16384.0F;
-static const float hi_res_fifo_gyro_scale_factor = 131.072;
+static const float hi_res_fifo_gyro_scale_factor = 131.072F;
 static const float base_accel_scale_factor = 1024.0F;
 static const float base_gyro_scale_factor = 8.192F;
 
