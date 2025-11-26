@@ -1,6 +1,6 @@
 #include "preprocessor.h"
 
-static const float pi = 3.14159265358979323846;
+static const float pi = 3.14159265358979323846F;
 static uint32_t dwt_overflow_count = 0;
 static uint32_t last_cyccnt = 0;
 
