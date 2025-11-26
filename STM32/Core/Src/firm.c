@@ -28,7 +28,7 @@ uint8_t magnetometer_flip = 0;
 SerializedPacket_t serialized_packet = {0};
 
 
-void initialize_firm(struct SPIHandles* spi_handles_ptr, struct I2CHandles* i2c_handles_ptr, struct DMAHandles* dma_handles_ptr) {
+int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DMAHandles* dma_handles_ptr) {
     // We use DWT (Data Watchpoint and Trace unit) to get a high resolution free-running timer
     // for our data packet timestamps. This allows us to use the clock cycle count instead of a
     // standard timestamp in milliseconds or similar, while not having any performance penalty.
@@ -54,27 +54,27 @@ void initialize_firm(struct SPIHandles* spi_handles_ptr, struct I2CHandles* i2c_
     HAL_Delay(500); // purely for debug purposes, allows time to connect to USB serial terminal
 
     if (icm45686_init(spi_handles_ptr->hspi2, GPIOB, GPIO_PIN_9)) {
-        Error_Handler();
+        return 1;
     }
 
     if (bmp581_init(spi_handles_ptr->hspi2, GPIOC, GPIO_PIN_2)) {
-        Error_Handler();
+        return 1;
     }
     
     if (mmc5983ma_init(i2c_handles_ptr->hi2c1, 0x30)) {
-        Error_Handler();
+        return 1;
     }
 
     // set up settings module with flash chip
     if (settings_init(spi_handles_ptr->hspi1, GPIOC, GPIO_PIN_4)) {
-        Error_Handler();
+        return 1;
     }
 
     // Setup the SD card
     FRESULT res = logger_init(dma_handles_ptr->hdma_sdio_tx);
     if (res) {
         serialPrintStr("Failed to initialized the logger (SD card)");
-        Error_Handler();
+        return 1;
     }
     
     // get scale factor values for each sensor to put in header
@@ -101,7 +101,7 @@ void initialize_firm(struct SPIHandles* spi_handles_ptr, struct I2CHandles* i2c_
     icm45686_read_data(&imu_packet);
     MMC5983MAPacket_t mag_packet;
     mmc5983ma_read_data(&mag_packet, &magnetometer_flip);
-}
+};
 
 
 void loop_firm(void) {

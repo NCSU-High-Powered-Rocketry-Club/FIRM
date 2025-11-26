@@ -11,23 +11,27 @@ extern volatile bool icm45686_has_new_data;
 extern volatile bool mmc5983ma_has_new_data;
 
 
-extern struct SPIHandles {
+// Struct to contain all SPI handles for the firm initialization function
+typedef struct {
     SPI_HandleTypeDef* hspi1;
     SPI_HandleTypeDef* hspi2;
     SPI_HandleTypeDef* hspi3;
-} spi_handles;
+} SPIHandles;
 
-extern struct I2CHandles {
+// Struct to contain all I2C handles for the firm initialization function
+typedef struct {
     I2C_HandleTypeDef* hi2c1;
     I2C_HandleTypeDef* hi2c2;
-} i2c_handles;
+} I2CHandles;
 
-extern struct DMAHandles {
+
+// Struct to contain all DMA handles for the firm initialization function
+ typedef struct {
     DMA_HandleTypeDef* hdma_sdio_rx;
     DMA_HandleTypeDef* hdma_sdio_tx;
-} dma_handles;
+} DMAHandles;
 
 
-void initialize_firm(struct SPIHandles* spi_handles, struct I2CHandles* i2c_handles, struct DMAHandles* dma_handles);
+int initialize_firm(SPIHandles* spi_handles, I2CHandles* i2c_handles, DMAHandles* dma_handles);
 
 void loop_firm(void);

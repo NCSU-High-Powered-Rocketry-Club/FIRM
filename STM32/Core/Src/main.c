@@ -128,21 +128,23 @@ int main(void)
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
 
-  struct SPIHandles spi_handles = {
+  SPIHandles spi_handles = {
     .hspi1 = &hspi1,
     .hspi2 = &hspi2,
     .hspi3 = &hspi3,
   };
-  struct I2CHandles i2c_handles = {
+  I2CHandles i2c_handles = {
     .hi2c1 = &hi2c1,
     .hi2c2 = &hi2c2,
   };
-  struct DMAHandles dma_handles = {
+  DMAHandles dma_handles = {
     .hdma_sdio_rx = &hdma_sdio_rx,
     .hdma_sdio_tx = &hdma_sdio_tx,
   };
 
-  initialize_firm(&spi_handles, &i2c_handles, &dma_handles);
+  if (initialize_firm(&spi_handles, &i2c_handles, &dma_handles)) {
+      Error_Handler();
+  };
 
   /* USER CODE END 2 */
 
