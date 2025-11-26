@@ -1,14 +1,13 @@
 #pragma once
-#include "bmp581.h"
-#include "mmc5983ma.h"
-#include "icm45686.h"
+#include <bmp581.h>
+#include <mmc5983ma.h>
+#include <icm45686.h>
 
 
 /**
  * @brief Calibrated data with timestamp
  */
 typedef struct {
-    double timestamp_sec;
 
     float temperature;
     float pressure;
@@ -21,6 +20,7 @@ typedef struct {
     float magnetic_field_x;
     float magnetic_field_y;
     float magnetic_field_z;
+    double timestamp_sec;
 } CalibratedDataPacket_t;
 
 

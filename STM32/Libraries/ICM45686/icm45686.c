@@ -6,7 +6,6 @@
  */
 
 #include "icm45686.h"
-#include "firm_utils.h"
 #include "spi_utils.h"
 
 /**

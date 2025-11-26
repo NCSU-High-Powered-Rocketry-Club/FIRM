@@ -2,6 +2,11 @@ import struct
 import pandas as pd
 import sys
 import os
+import struct
+import sys
+
+import pandas as pd
+
 
 # identifier for each packet type
 BMP581_ID = 'B'
@@ -49,7 +54,7 @@ class Decoder:
         if (next_clock_count < self.last_clock_count):
             next_clock_count += (2**24)
         return next_clock_count - self.last_clock_count
-    
+
     def read_packet(self):
         try:
             # read packet ID
@@ -84,7 +89,7 @@ class Decoder:
                 data = self.convert_mmc5983ma(bytes)
                 self.mmc5983ma_data.append(data)
                 return True
-            
+
             # if not an ID byte, most likely garbage data at end of file
             return False
         except:
@@ -99,7 +104,7 @@ class Decoder:
         self.bmp581_scale_factors = scale_factors[0 : 2]
         self.icm45686_scale_factors = scale_factors[2 : 4]
         self.mmc5983ma_scale_factor = scale_factors[4]
-    
+
     def convert_bmp581(self, binary_packet):
         temp_pressure = struct.unpack('<II', binary_packet[0 : 3] + b'\00' + binary_packet[3 : 6] + b'\00')
         data = [
@@ -108,7 +113,7 @@ class Decoder:
             temp_pressure[1] / self.bmp581_scale_factors[1],
         ]
         return data
-    
+
     def convert_icm45686(self, binary_packet):
         accel_x_bin = (binary_packet[0] << 12) | (binary_packet[1] << 4) | (binary_packet[12] >> 4)
         accel_y_bin = (binary_packet[2] << 12) | (binary_packet[3] << 4) | (binary_packet[13] >> 4)
@@ -135,20 +140,19 @@ class Decoder:
             gyro_z_bin / self.icm45686_scale_factors[1],
         ]
         return data
-    
+
     def convert_mmc5983ma(self, binary_packet):
         mag_x_bin = (binary_packet[0] << 10) | (binary_packet[1] << 2) | (binary_packet[6] >> 6)
         mag_y_bin = (binary_packet[2] << 10) | (binary_packet[3] << 2) | ((binary_packet[6] & 0x30) >> 4)
         mag_z_bin = (binary_packet[4] << 10) | (binary_packet[5] << 2) | ((binary_packet[6] & 0x0C))
-        
+
         data = [
             self.timestamp_seconds,
-            mag_x_bin / self.mmc5983ma_scale_factor,
-            mag_y_bin / self.mmc5983ma_scale_factor,
-            mag_z_bin / self.mmc5983ma_scale_factor,
+            (mag_x_bin - 131072) / self.mmc5983ma_scale_factor,
+            (mag_y_bin - 131072) / self.mmc5983ma_scale_factor,
+            (mag_z_bin - 131072) / self.mmc5983ma_scale_factor,
         ]
         return data
-
 
 def decode(path):
     with open(path, 'rb') as f:
@@ -156,7 +160,6 @@ def decode(path):
         while (decoder.read_packet()):
             continue
 
-        # make each sensor data list as separate df
         bmp581_df = pd.DataFrame(decoder.bmp581_data, columns=['timestamp', 'temperature', 'pressure'])
         icm45686_df = pd.DataFrame(decoder.icm45686_data, columns=['timestamp', 'accel_x', 'accel_y', 'accel_z', 'gyro_x', 'gyro_y', 'gyro_z'])
         mmc5983ma_df = pd.DataFrame(decoder.mmc5983ma_data, columns=['timestamp', 'mag_x', 'mag_y', 'mag_z'])
@@ -165,7 +168,6 @@ def decode(path):
         bmp581_df.to_csv("BMP581_data.csv", index=False)
         icm45686_df.to_csv("ICM45686_data.csv", index=False)
         mmc5983ma_df.to_csv("MMC5983MA_data.csv", index=False)
-
 
 if __name__ == "__main__":
     if len(sys.argv) == 2:

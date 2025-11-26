@@ -44,20 +44,28 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-    Core/Src/bmp581.c
-    Core/Src/firm_utils.c
-    Core/Src/icm45686.c
+    Libraries/BMP581/bmp581.c
+    Libraries/W25Q128JV/w25q128jv.c
+    Libraries/MMC5983MA/mmc5983ma.c
+    Libraries/ICM45686/icm45686.c
+    Libraries/SPIUtils/spi_utils.c
     Core/Src/logger.c
-    Core/Src/mmc5983ma.c
-    Core/Src/spi_utils.c
     Core/Src/usb_print_debug.c
-    Core/Src/preprocessor.c
+    Core/Src/data_processing/preprocessor.c
+    Core/Src/settings.c
+    Core/Src/usb_serializer.c
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
    Core/Inc
    Drivers/CMSIS-DSP/Include
+   Core/Inc/data_processing
+   Libraries/ICM45686
+   Libraries/BMP581
+   Libraries/MMC5983MA
+   Libraries/W25Q128JV
+   Libraries/SPIUtils
 )
 
 # Add project symbols (macros)

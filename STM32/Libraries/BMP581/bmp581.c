@@ -5,7 +5,7 @@
  *      Author: Wlsan
  */
 #include "bmp581.h"
-#include "spi_utils.h"
+#include <spi_utils.h>
 #include <stdint.h>
 
 
@@ -16,7 +16,7 @@ typedef struct {
     SPI_HandleTypeDef* hspi;
     GPIO_TypeDef* cs_channel;
     uint16_t cs_pin;
-} SPISettings;  
+} SPISettings;
 
 /**
  * @brief Starts up and resets the BMP581, confirms the SPI read/write functionality is working
@@ -157,6 +157,12 @@ static int bmp581_setup_device(bool soft_reset_complete) {
     read_registers(chip_status, &result, 1);
     if (result == 0x00) {
         serialPrintStr("\tBMP581 wrongly initialized in I2C mode");
+        uint8_t read_check;
+        read_registers(chip_id, &read_check, 1);
+        if (read_check != 0x50) {
+            serialPrintStr("\tBMP581 chip ID read failed, device is most likely not wired correctly");
+        }
+        
         return 1;
     }
     if (result == 0x01) {
@@ -194,6 +200,7 @@ static int bmp581_setup_device(bool soft_reset_complete) {
         return 1;
     }
     write_register(fifo_sel, 0b00000000); // set back to default
+
     // verify device is ready to be configured
     read_registers(status, &result, 1);
     if (result & 0x04) {
@@ -204,9 +211,10 @@ static int bmp581_setup_device(bool soft_reset_complete) {
         serialPrintStr("\tNVM command error, refer to datasheet for source of error");
         return 1;
     }
-
-
+    
     if (soft_reset_complete) {
+        
+
         // verify software reset is recognized as complete by the interrupt status register
         read_registers(int_status, &result, 1);
         if (!(result & 0x10)) { // check that bit 4 (POR) is 1
