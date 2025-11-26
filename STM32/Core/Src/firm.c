@@ -101,6 +101,7 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
     icm45686_read_data(&imu_packet);
     MMC5983MAPacket_t mag_packet;
     mmc5983ma_read_data(&mag_packet, &magnetometer_flip);
+    return 0;
 };
 
 
