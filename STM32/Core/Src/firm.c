@@ -6,6 +6,7 @@
 #include "usb_serializer.h"
 #include "settings.h"
 #include "firm.h"
+#include "led.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -51,32 +52,43 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // icm45686 cs pin
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET); // flash chip cs pin
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET); // mmc5983ma CS pin
+
+    // Indicate that initialization is in progress:
+    led_set_status(UNINITIALIZED);
+
     HAL_Delay(500); // purely for debug purposes, allows time to connect to USB serial terminal
 
     if (icm45686_init(spi_handles_ptr->hspi2, GPIOB, GPIO_PIN_9)) {
+        led_set_status(IMU_FAIL);
         return 1;
     }
 
     if (bmp581_init(spi_handles_ptr->hspi2, GPIOC, GPIO_PIN_2)) {
+        led_set_status(BMP581_FAIL);
         return 1;
     }
     
     if (mmc5983ma_init(i2c_handles_ptr->hi2c1, 0x30)) {
+        led_set_status(MMC5983MA_FAIL);
         return 1;
     }
 
     // set up settings module with flash chip
     if (settings_init(spi_handles_ptr->hspi1, GPIOC, GPIO_PIN_4)) {
+        led_set_status(FLASH_CHIP_FAIL);
         return 1;
     }
 
     // Setup the SD card
     FRESULT res = logger_init(dma_handles_ptr->hdma_sdio_tx);
     if (res) {
-        serialPrintStr("Failed to initialized the logger (SD card)");
+        led_set_status(SD_CARD_FAIL);
         return 1;
     }
     
+    // Indicate that all sensors initialized successfully
+    led_set_status(ALL_SENSORS_OK);
+
     // get scale factor values for each sensor to put in header
     HeaderFields header_fields = {
         bmp581_get_temp_scale_factor(),
@@ -85,13 +97,10 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
         icm45686_get_gyro_scale_factor(),
         mmc5983ma_get_magnetic_field_scale_factor(),
     };
-    
 
+
+    // write the header to the log file
     logger_write_header(&header_fields);
-
-    // Toggle LED:
-    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_1);
-
     serializer_init_packet(&serialized_packet); // initializes the packet length and header bytes
     
     // the IMU runs into issues when the fifo is full at the very beginning, causing the interrupt
