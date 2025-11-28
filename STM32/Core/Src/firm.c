@@ -3,6 +3,7 @@
 #include "logger.h"
 #include <mmc5983ma.h>
 #include "data_processing/preprocessor.h"
+#include "usb_print_debug.h"
 #include "usb_serializer.h"
 #include "settings.h"
 #include "firm.h"
@@ -110,6 +111,38 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
     icm45686_read_data(&imu_packet);
     MMC5983MAPacket_t mag_packet;
     mmc5983ma_read_data(&mag_packet, &magnetometer_flip);
+    BMP581Packet_t bmp_packet;
+    bmp581_read_data(&bmp_packet);
+
+    // Wait for interrupts to fire
+    HAL_Delay(10);
+
+    // Check if interrupts fired
+    uint8_t interrupt_leds = 0b000;
+    // Blink LEDs to indicate any failed interrupts
+    for (int i = 0; i < 5; i++) {
+        if (bmp581_has_new_data && icm45686_has_new_data && mmc5983ma_has_new_data) {
+            break; // all interrupts fired successfully
+        }
+        if (!icm45686_has_new_data) {
+            serialPrintStr("IMU didn't interrupt");
+            interrupt_leds |= FAILED_INTERRUPT_IMU;
+        }
+        if (!bmp581_has_new_data) {
+            serialPrintStr("BMP581 didn't interrupt");
+            interrupt_leds |= FAILED_INTERRUPT_BMP;
+        }
+        if (!mmc5983ma_has_new_data) {
+            serialPrintStr("MMC5983MA didn't interrupt");
+            interrupt_leds |= FAILED_INTERRUPT_MAG;
+        }
+        led_set_status(interrupt_leds);
+        HAL_Delay(500);
+        led_set_status(ALL_SENSORS_OK);
+        interrupt_leds = 0b000;
+        HAL_Delay(500);
+    }
+
     return 0;
 };
 

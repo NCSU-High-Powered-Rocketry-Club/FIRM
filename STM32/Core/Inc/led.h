@@ -12,6 +12,11 @@
 #define SD_CARD_FAIL    0b010
 #define ALL_SENSORS_OK  0b000
 
+// Failed interrupt triggered LEDs:
+#define FAILED_INTERRUPT_IMU  0b100
+#define FAILED_INTERRUPT_BMP  0b010
+#define FAILED_INTERRUPT_MAG  0b001
+
 /**
  * @brief Sets all 3 LEDs based on the given status byte.
  *
