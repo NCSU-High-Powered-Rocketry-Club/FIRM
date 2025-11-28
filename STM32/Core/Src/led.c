@@ -1,4 +1,5 @@
 #include "led.h"
+#include "stm32f4xx_hal.h"
 
 
 void led_set_status(uint8_t status) {

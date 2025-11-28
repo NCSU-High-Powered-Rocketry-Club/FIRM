@@ -1,6 +1,6 @@
 #pragma once
 
-#include "stm32f4xx_hal.h"
+#include <stdint.h>
 
 // LED status definitions
 // 3-bit status codes for the 3 LEDs Blue, Yellow, and Red - in order.
