@@ -17,3 +17,45 @@ repos:
       - id: ruff-check
       # Run the formatter.
       - id: ruff-format
+
+  - repo: https://github.com/cpp-linter/cpp-linter-hooks
+    rev: v1.1.9
+    hooks:
+      - id: clang-tidy
+        args: [
+          "--warnings-as-errors=*",
+          "--extra-arg=-ISTM32/Core/Inc",
+          "--extra-arg=-ISTM32/Core/Inc/data_processing",
+          "--extra-arg=-ISTM32/Drivers/STM32F4xx_HAL_Driver/Inc",
+          "--extra-arg=-ISTM32/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy",
+          "--extra-arg=-ISTM32/Drivers/CMSIS/Device/ST/STM32F4xx/Include",
+          "--extra-arg=-ISTM32/Drivers/CMSIS/Include",
+          "--extra-arg=-ISTM32/Middlewares/ST/STM32_USB_Device_Library/Core/Inc",
+          "--extra-arg=-ISTM32/Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc",
+          "--extra-arg=-ISTM32/Middlewares/Third_Party/FatFs/src",
+          "--extra-arg=-ISTM32/FATFS/Target",
+          "--extra-arg=-ISTM32/FATFS/App",
+          "--extra-arg=-ISTM32/USB_DEVICE/App",
+          "--extra-arg=-ISTM32/USB_DEVICE/Target",
+          "--extra-arg=-ISTM32/Libraries/BMP581",
+          "--extra-arg=-ISTM32/Libraries/ICM45686",
+          "--extra-arg=-ISTM32/Libraries/MMC5983MA",
+          "--extra-arg=-ISTM32/Libraries/SPIUtils",
+          "--extra-arg=-ISTM32/Libraries/W25Q128JV",
+          "--extra-arg=-DSTM32F405xx",
+          "--extra-arg=-DUSE_HAL_DRIVER"
+        ]
+        additional_dependencies: ['clang-tidy']
+        files: ^STM32/.*\.(c|h)$
+        exclude: |
+          (?x)^(
+              STM32/Drivers/|
+              STM32/Middlewares/|
+              STM32/USB_DEVICE/|
+              STM32/FATFS/|
+              STM32/cmake/|
+              STM32/Core/Src/system_stm32f4xx\.c|
+              STM32/Core/Src/sysmem\.c|
+              STM32/Core/Src/syscalls\.c|
+              STM32/Core/Inc/stm32f4xx_hal_conf\.h
+          )

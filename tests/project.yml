@@ -103,9 +103,10 @@
     - src/**
     - ../STM32/Core/Src/**
   :include:
-    - test/support
-    - src/** # In simple projects, this entry often duplicates :source
     - ../STM32/Core/Inc/**
+    - ../STM32/Drivers/CMSIS/Include/**
+    - ../STM32/Drivers/CMSIS-DSP/Include/**
+    
   :support:
     - test/support
   :libraries: []
@@ -116,6 +117,8 @@
 :files:
   :test: []
   :source: []
+  :include: []
+
 
 # Compilation symbols to be injected into builds
 # See documentation for advanced options:
@@ -131,17 +134,13 @@
   :use_test_definition: FALSE 
 
 # Configure additional command line flags provided to tools used in each build step
-# :flags:
-#   :release:
-#     :compile:         # Add '-Wall' and '--02' to compilation of all files in release target
-#       - -Wall
-#       - --O2
-#   :test:
-#     :compile:
-#       '(_|-)special': # Add '-pedantic' to compilation of all files in all test executables with '_special' or '-special' in their names
-#         - -pedantic
-#       '*':            # Add '-foo' to compilation of all files in all test executables
-#         - -foo
+# CMSIS-DSP functions are pre-compiled and linked here
+:flags:
+  :test:
+    :link:
+      - arm_mat_trans_f32.o
+      - arm_mat_add_f32.o
+      - arm_mat_scale_f32.o
 
 # Configuration Options specific to CMock. See CMock docs for details
 :cmock:
@@ -314,29 +313,6 @@
 #        - ./subprojectA/include
 #      :build_root: ./subprojectA/build
 #      :defines: []
-
-# :command_hooks:
-#   :pre_mock_preprocess:
-#   :post_mock_preprocess:
-#   :pre_test_preprocess:
-#   :post_test_preprocess:
-#   :pre_mock_generate:
-#   :post_mock_generate:
-#   :pre_runner_generate:
-#   :post_runner_generate:
-#   :pre_compile_execute:
-#   :post_compile_execute:
-#   :pre_link_execute:
-#   :post_link_execute:
-#   :pre_test_fixture_execute:
-#   :post_test_fixture_execute:
-#   :pre_test:
-#   :post_test:
-#   :pre_release:
-#   :post_release:
-#   :pre_build:
-#   :post_build:
-#   :post_error:
 
 ################################################################
 # TOOLCHAIN CONFIGURATION

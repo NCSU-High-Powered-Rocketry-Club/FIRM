@@ -21,7 +21,7 @@
  * @param capacity the number of bytes to ensure capacity of
  * @retval File Status error code, 0 on success.
  */
-static FRESULT logger_ensure_capacity(int capacity);
+static FRESULT logger_ensure_capacity(size_t capacity);
 
 /**
  * @brief Logs the type and clock cycle timestamp. This will be writen as 1 byte for the type
@@ -122,7 +122,7 @@ FRESULT logger_init(DMA_HandleTypeDef* dma_sdio_tx_handle) {
         }
 
         // 2e8 bytes = (1 hour * ((8192 bytes * 4.4hz) * 1.5))
-        fr = f_expand(&log_file, 2e8, 1);
+        fr = f_expand(&log_file, (FSIZE_t)2e8, 1);
         if (fr != FR_OK) {
             return fr;
         }
@@ -144,6 +144,7 @@ FRESULT logger_write_header(HeaderFields* sensor_scale_factors) {
     }
 
     // copy "FIRM LOG" text
+    // NOLINTNEXTLINE(bugprone-not-null-terminated-result)
     memcpy(current_buffer + current_offset, firm_log_header, header_len);
 
     // copy sensor scale factor struct
@@ -168,7 +169,7 @@ void logger_write_entry(char type, size_t packet_size) {
 }
 
 
-static FRESULT logger_ensure_capacity(int capacity) {
+static FRESULT logger_ensure_capacity(size_t capacity) {
     if (current_offset + capacity > SD_SECTOR_SIZE) {
         logger_write();
 
@@ -182,9 +183,9 @@ static FRESULT logger_ensure_capacity(int capacity) {
 static void logger_log_type_timestamp(char type) {
     current_buffer[current_offset++] = type;
     uint32_t current_time = DWT->CYCCNT;
-    current_buffer[current_offset++] = (current_time >> 16) & 0xFF;
-    current_buffer[current_offset++] = (current_time >> 8) & 0xFF;
-    current_buffer[current_offset++] = current_time & 0xFF;
+    current_buffer[current_offset++] = (char)((current_time >> 16) & 0xFF);
+    current_buffer[current_offset++] = (char)((current_time >> 8) & 0xFF);
+    current_buffer[current_offset++] = (char)(current_time & 0xFF);
 }
 
 
@@ -195,7 +196,7 @@ static FRESULT logger_write() {
     }
 
     // Pad the buffer
-    for (int i = current_offset; i < SD_SECTOR_SIZE; i++) {
+    for (size_t i = current_offset; i < SD_SECTOR_SIZE; i++) {
         current_buffer[i] = 0;
     }
 
@@ -213,9 +214,9 @@ static FRESULT logger_write() {
     if (fr != FR_OK) {
         serialPrintStr("ERR logger_write");
         return fr;
-    } else {
-        //serialPrintStr(file_name);
     }
+    
+    //serialPrintStr(file_name);
 
     return fr;
 }

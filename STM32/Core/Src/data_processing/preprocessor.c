@@ -1,8 +1,11 @@
 #include "preprocessor.h"
 
-static const float pi = 3.14159265358979323846;
-static uint32_t dwt_overflow_count = 0;
-static uint32_t last_cyccnt = 0;
+static const float pi = 3.14159265358979323846F;
+// number of times the DWT timestamp has overflowed. This happens every ~25 seconds
+static volatile uint32_t dwt_overflow_count = 0;
+// last recorded DWT cycle count 
+static volatile uint32_t last_cyccnt = 0;
+
 
 /**
  * @brief Updates dwt overflow counter and returns current timestamp

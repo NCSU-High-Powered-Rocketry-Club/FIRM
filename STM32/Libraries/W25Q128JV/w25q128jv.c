@@ -342,17 +342,18 @@ void w25q128jv_write_sector(uint8_t *pbuf,
     int32_t wlength;
     uint32_t ofs;
 
-    if ((length + offset) > W25Q128JV_SECTOR_SIZE)
+    if ((length + offset) > W25Q128JV_SECTOR_SIZE) {
         wlength = W25Q128JV_SECTOR_SIZE - offset;
-    else
-        wlength = length;
+    } else {
+        wlength = (int32_t)length;
+    }
 
     wpage = w25q128jv_sector2page(sector_num) + (offset / W25Q128JV_PAGE_SIZE);
     ofs = offset % W25Q128JV_PAGE_SIZE;
     do {
         w25q128jv_write_page(pbuf, wpage, ofs, wlength);
         wpage++;
-        wlength -= W25Q128JV_PAGE_SIZE - ofs;
+        wlength -= (int32_t)(W25Q128JV_PAGE_SIZE - ofs);
         pbuf += W25Q128JV_PAGE_SIZE - ofs;
         ofs = 0;
     } while (wlength > 0);
@@ -372,17 +373,18 @@ void w25q128jv_write_block(uint8_t *pbuf,
     int32_t wlength;
     uint32_t ofs;
 
-    if ((length + offset) > W25Q128JV_BLOCK_SIZE)
+    if ((length + offset) > W25Q128JV_BLOCK_SIZE) {
         wlength = W25Q128JV_BLOCK_SIZE - offset;
-    else
-        wlength = length;
+    } else {
+        wlength = (int32_t)length;
+    }
 
     wpage = w25q128jv_sector2page(block_num) + (offset / W25Q128JV_PAGE_SIZE);
     ofs = offset % W25Q128JV_PAGE_SIZE;
     do {
         w25q128jv_write_page(pbuf, wpage, ofs, wlength);
         wpage++;
-        wlength -= W25Q128JV_PAGE_SIZE - ofs;
+        wlength -= (int32_t)(W25Q128JV_PAGE_SIZE - ofs);
         pbuf += W25Q128JV_PAGE_SIZE - ofs;
         ofs = 0;
     } while (wlength > 0);
@@ -453,17 +455,18 @@ void w25q128jv_read_sector(uint8_t *pbuf,
     int32_t rlength;
     uint32_t ofs;
 
-    if ((length + offset) > W25Q128JV_SECTOR_SIZE)
+    if ((length + offset) > W25Q128JV_SECTOR_SIZE) {
         rlength = W25Q128JV_SECTOR_SIZE - offset;
-    else
-        rlength = length;
+    } else {
+        rlength = (int32_t)length;
+    }
 
     rpage = w25q128jv_sector2page(sector_num) + (offset / W25Q128JV_PAGE_SIZE);
     ofs = offset % W25Q128JV_PAGE_SIZE;
     do {
         w25q128jv_read_page(pbuf, rpage, ofs, rlength);
         rpage++;
-        rlength -= W25Q128JV_PAGE_SIZE - ofs;
+        rlength -= (int32_t)(W25Q128JV_PAGE_SIZE - ofs);
         pbuf += W25Q128JV_PAGE_SIZE - ofs;
         ofs = 0;
     } while (rlength > 0);
@@ -483,17 +486,18 @@ void w25q128jv_read_block(uint8_t *pbuf,
     int32_t rlength;
     uint32_t ofs;
 
-    if ((length + offset) > W25Q128JV_BLOCK_SIZE)
+    if ((length + offset) > W25Q128JV_BLOCK_SIZE) {
         rlength = W25Q128JV_BLOCK_SIZE - offset;
-    else
-        rlength = length;
+    } else {
+        rlength = (int32_t)length;
+    }
 
     rpage = w25q128jv_block2page(block_num) + (offset / W25Q128JV_PAGE_SIZE);
     ofs = offset % W25Q128JV_PAGE_SIZE;
     do {
         w25q128jv_read_page(pbuf, rpage, ofs, rlength);
         rpage++;
-        rlength -= W25Q128JV_PAGE_SIZE - ofs;
+        rlength -= (int32_t)(W25Q128JV_PAGE_SIZE - ofs);
         pbuf += W25Q128JV_PAGE_SIZE - ofs;
         ofs = 0;
     } while (rlength > 0);

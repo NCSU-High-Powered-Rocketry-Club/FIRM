@@ -172,7 +172,6 @@ int setup_device(bool soft_reset_complete) {
         }
     }
     return 0;
-
 }
 
 static HAL_StatusTypeDef read_registers(uint8_t reg_addr, uint8_t* buffer, size_t len) {
