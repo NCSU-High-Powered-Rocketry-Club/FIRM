@@ -1,1 +1,2 @@
-* text=auto eol=crlf
+* text=auto eol=lf
+tests/build/* text=auto eol=lf
