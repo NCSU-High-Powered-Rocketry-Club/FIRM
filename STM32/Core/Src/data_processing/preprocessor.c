@@ -1,8 +1,11 @@
 #include "preprocessor.h"
 
-static const float pi = 3.14159265358979323846;
-static uint32_t dwt_overflow_count = 0;
-static uint32_t last_cyccnt = 0;
+static const float pi = 3.14159265358979323846F;
+// number of times the DWT timestamp has overflowed. This happens every ~25 seconds
+static volatile uint32_t dwt_overflow_count = 0;
+// last recorded DWT cycle count 
+static volatile uint32_t last_cyccnt = 0;
+
 
 /**
  * @brief Updates dwt overflow counter and returns current timestamp
@@ -41,15 +44,15 @@ void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, CalibratedDataPacket_t 
     int32_t mag_binary_x, mag_binary_y, mag_binary_z;
 
     // extract magnetic field bytes as 32 bit integer, preserving sign
-    mag_binary_x = (((int32_t)((int8_t)packet->mag_x_msb) << 10) |
+    mag_binary_x = (((int32_t)(packet->mag_x_msb) << 10) |
                   ((int32_t)packet->mag_x_mid << 2) |
                   ((int32_t)(packet->mag_xyz_lsb >> 6))) - 131072;
                   
-    mag_binary_y = (((int32_t)((int8_t)packet->mag_y_msb) << 10) |
+    mag_binary_y = (((int32_t)(packet->mag_y_msb) << 10) |
                   ((int32_t)packet->mag_y_mid << 2) |
                   ((int32_t)((packet->mag_xyz_lsb & 0b00110000) >> 4))) - 131072;
                   
-    mag_binary_z = (((int32_t)((int8_t)packet->mag_z_msb) << 10) |
+    mag_binary_z = (((int32_t)(packet->mag_z_msb) << 10) |
                   ((int32_t)packet->mag_z_mid << 2) |
                   ((int32_t)((packet->mag_xyz_lsb & 0b00001100) >> 2))) - 131072;
     

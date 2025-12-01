@@ -60,8 +60,8 @@ static const uint8_t ord_config = 0x37;
 static const uint8_t cmd = 0x7E;
 
 // device scale factor
-static const int scale_factor_celcius = 65536.0F;
-static const int scale_factor_pascal = 64.0F;
+static const float scale_factor_celcius = 65536.0F;
+static const float scale_factor_pascal = 64.0F;
 
 // BMP581 SPI config settings
 static SPISettings spiSettings;
@@ -75,7 +75,6 @@ int bmp581_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_p
     spiSettings.hspi = hspi;
     spiSettings.cs_channel = cs_channel;
     spiSettings.cs_pin = cs_pin;
-
 
     serialPrintStr("Beginning BMP581 initialization");
     // sets up the BMP581 in SPI mode and ensures SPI is working

@@ -26,6 +26,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "firm.h"
 #include "fatfs.h"
 #include "usb_device.h"
 
@@ -85,14 +86,6 @@ static void MX_SPI1_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-// These flags can be changed at any time from the interrupts. When they are set
-// to true, it means that the corresponding sensor has new data ready to be read.
-volatile bool bmp581_has_new_data = false;
-volatile bool icm45686_has_new_data = false;
-volatile bool mmc5983ma_has_new_data = false;
-// number of times the DWT timestamp has overflowed. This happens every ~25 seconds
-volatile uint32_t dwt_overflow_count = 0;
-
 /* USER CODE END 0 */
 
 /**
@@ -135,91 +128,24 @@ int main(void)
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
 
-    // We use DWT (Data Watchpoint and Trace unit) to get a high resolution free-running timer
-    // for our data packet timestamps. This allows us to use the clock cycle count instead of a
-    // standard timestamp in milliseconds or similar, while not having any performance penalty.
-    // Enables the trace and debug block in the core so that DWT registers become
-    // accessible. This is required before enabling the DWT cycle counter.
-    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+  SPIHandles spi_handles = {
+    .hspi1 = &hspi1,
+    .hspi2 = &hspi2,
+    .hspi3 = &hspi3,
+  };
+  I2CHandles i2c_handles = {
+    .hi2c1 = &hi2c1,
+    .hi2c2 = &hi2c2,
+  };
+  DMAHandles dma_handles = {
+    .hdma_sdio_rx = &hdma_sdio_rx,
+    .hdma_sdio_tx = &hdma_sdio_tx,
+  };
 
-    // Clear the DWT clock cycle counter to start counting from zero.
-    DWT->CYCCNT = 0;
+  if (initialize_firm(&spi_handles, &i2c_handles, &dma_handles)) {
+      Error_Handler();
+  };
 
-    // Enable the DWT cycle counter itself. Once active, it increments each CPU  
-    // clock cycle so we can use clock cycles as data packet timestamps.
-    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
-
-
-    // Set the chip select pins to high, this means that they're not selected.
-    // Note: We can't have these in the bmp581/imu/flash chip init functions, because those somehow
-    // mess up with the initialization.
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // bmp581 cs pin
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // icm45686 cs pin
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET); // flash chip cs pin
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET); // mmc5983ma CS pin
-    HAL_Delay(500); // purely for debug purposes, allows time to connect to USB serial terminal
-
-    if (icm45686_init(&hspi2, GPIOB, GPIO_PIN_9)) {
-        Error_Handler();
-    }
-
-    if (bmp581_init(&hspi2, GPIOC, GPIO_PIN_2)) {
-        Error_Handler();
-    }
-    
-    if (mmc5983ma_init(&hi2c1, 0x30)) {
-        Error_Handler();
-    }
-
-    // set up settings module with flash chip
-    if (settings_init(&hspi1, GPIOC, GPIO_PIN_4)) {
-        Error_Handler();
-    }
-
-    // Setup the SD card
-    FRESULT res = logger_init(&hdma_sdio_tx);
-    if (res) {
-        serialPrintStr("Failed to initialized the logger (SD card)");
-        Error_Handler();
-    }
-    
-    // get scale factor values for each sensor to put in header
-    HeaderFields header_fields = {
-        bmp581_get_temp_scale_factor(),
-        bmp581_get_pressure_scale_factor(),
-        icm45686_get_accel_scale_factor(),
-        icm45686_get_gyro_scale_factor(),
-        mmc5983ma_get_magnetic_field_scale_factor(),
-    };
-    
-
-    logger_write_header(&header_fields);
-
-    // incrementing value for magnetometer calibration
-    uint8_t magnetometer_flip = 0;
-
-    // Toggle LED:
-    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_1);
-
-    
-
-    // instance of the calibrated data packet from the preprocessor to be reused
-    CalibratedDataPacket_t calibrated_packet = {0};
-    // instance of the serialized packet, will be reused
-    SerializedPacket_t serialized_packet = {0};
-    serializer_init_packet(&serialized_packet); // initializes the packet length and header bytes
-    
-    // check to verify if any new data has been collected, from any of the sensors
-    bool any_new_data_collected = false;
-
-    // the IMU runs into issues when the fifo is full at the very beginning, causing the interrupt
-    // to be pulled back low too fast, and the ISR doesn't catch it for whatever reason. Doing
-    // this initial read will prevent that.
-    ICM45686Packet_t imu_packet;
-    icm45686_read_data(&imu_packet);
-    MMC5983MAPacket_t mag_packet;
-    mmc5983ma_read_data(&mag_packet, &magnetometer_flip);
-    
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -228,47 +154,11 @@ int main(void)
     // This is the main loop. It's constantly checking to see if any of the sensors have
     // new data to read, and if so, logs it.
     while (1) {
-        if (bmp581_has_new_data) {
-            BMP581Packet_t* bmp581_packet = logger_malloc_packet(sizeof(BMP581Packet_t));
-    	    if (!bmp581_read_data(bmp581_packet)) {
-    	        bmp581_has_new_data = false;
-    	        logger_write_entry('B', sizeof(BMP581Packet_t));
-                bmp581_convert_packet(bmp581_packet, &calibrated_packet);
-                any_new_data_collected = true;
-    	    }
-    	}
-
-    	if (icm45686_has_new_data) {
-    	    ICM45686Packet_t* icm45686_packet = logger_malloc_packet(sizeof(ICM45686Packet_t)); 
-    	    if (!icm45686_read_data(icm45686_packet)) {
-    	        icm45686_has_new_data = false;
-    	        logger_write_entry('I', sizeof(ICM45686Packet_t));
-                icm45686_convert_packet(icm45686_packet, &calibrated_packet);
-                any_new_data_collected = true;
-    	    }
-    	}
-    	if (mmc5983ma_has_new_data) {
-    	    MMC5983MAPacket_t* mmc5983ma_packet = logger_malloc_packet(sizeof(MMC5983MAPacket_t));
-    	    if (!mmc5983ma_read_data(mmc5983ma_packet, &magnetometer_flip)) {
-    	        mmc5983ma_has_new_data = false;
-    	        logger_write_entry('M', sizeof(MMC5983MAPacket_t));
-                mmc5983ma_convert_packet(mmc5983ma_packet, &calibrated_packet);
-                any_new_data_collected = true;
-    	    }
-    	}
-
-        // if USB serial communication setting is enabled, and new data is collected, serialize
-        // and transmit it
-        if (firmSettings.serial_transfer_enabled && any_new_data_collected) {
-            usb_serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
-            usb_transmit_serialized_packet(&serialized_packet);
-            any_new_data_collected = false;
-        }
-
+      loop_firm();
+    }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    }
 
   /* USER CODE END 3 */
 }

@@ -2,6 +2,7 @@ from firm import FIRM
 
 firm = FIRM(port="/dev/ttyACM0", baudrate=115200)
 firm.initialize()
+firm.zero_out_pressure_altitude()
 prev_packet_time = None
 while True:
     packets = firm.get_data_packets(block=False)

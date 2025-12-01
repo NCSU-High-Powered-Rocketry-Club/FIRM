@@ -19,6 +19,7 @@ class FIRMPacket(Struct):
         mag_x_microteslas (float): Magnetic field in the X direction in microteslas.
         mag_y_microteslas (float): Magnetic field in the Y direction in microteslas.
         mag_z_microteslas (float): Magnetic field in the Z direction in microteslas.
+        pressure_altitude_meters (float): Calculated altitude from pressure in meters.
     """
 
     timestamp_seconds: float
@@ -37,3 +38,5 @@ class FIRMPacket(Struct):
     mag_x_microteslas: float
     mag_y_microteslas: float
     mag_z_microteslas: float
+
+    pressure_altitude_meters: float
