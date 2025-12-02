@@ -138,9 +138,11 @@
 :flags:
   :test:
     :link:
-      - arm_mat_trans_f32.o
-      - arm_mat_add_f32.o
-      - arm_mat_scale_f32.o
+      - MatrixFunctions/arm_mat_trans_f32.o
+      - MatrixFunctions/arm_mat_add_f32.o
+      - MatrixFunctions/arm_mat_scale_f32.o
+      - MatrixFunctions/arm_mat_cholesky_f32.o
+      - QuaternionMathFunctions/arm_quaternion_norm_f32.o
 
 # Configuration Options specific to CMock. See CMock docs for details
 :cmock:

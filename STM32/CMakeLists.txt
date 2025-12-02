@@ -56,6 +56,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/usb_serializer.c
     Core/Src/firm.c
     Core/Src/matrixhelper.c
+    Core/Src/data_processing/unscented_kalman_filter.c
+    Core/Src/kalman_filter_config.c
 )
 
 # Add include paths

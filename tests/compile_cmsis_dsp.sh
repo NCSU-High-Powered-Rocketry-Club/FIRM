@@ -12,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUTPUT_DIR="${SCRIPT_DIR}"
 CMSIS_INCLUDE="${SCRIPT_DIR}/../STM32/Drivers/CMSIS-DSP/Include"
 CMSIS_ARM_INCLUDE="${SCRIPT_DIR}/../STM32/Drivers/CMSIS/Include"
-SOURCE_BASE="${SCRIPT_DIR}/../STM32/Drivers/CMSIS-DSP/Source/MatrixFunctions"
+SOURCE_BASE="${SCRIPT_DIR}/../STM32/Drivers/CMSIS-DSP/Source"
 
 # Parse functions from arguments
 FUNCTIONS=("$@")

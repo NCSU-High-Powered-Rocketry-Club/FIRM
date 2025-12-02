@@ -20,7 +20,6 @@ $CMSISInclude = Join-Path $CMSISInclude "Include"
 $CMSISARMInclude = Join-Path (Join-Path (Join-Path $FirmRoot "STM32") "Drivers") "CMSIS"
 $CMSISARMInclude = Join-Path $CMSISARMInclude "Include"
 $SourceBase = Join-Path (Join-Path (Join-Path (Join-Path $FirmRoot "STM32") "Drivers") "CMSIS-DSP") "Source"
-$SourceBase = Join-Path $SourceBase "MatrixFunctions"
 
 $OutputDir = "."
 

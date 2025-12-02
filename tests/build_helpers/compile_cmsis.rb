@@ -8,7 +8,7 @@ require 'rbconfig'
 # Get the parent directory (tests root)
 script_dir = File.expand_path(File.dirname(__FILE__))
 tests_root = File.dirname(script_dir)
-functions = %w[arm_mat_trans_f32 arm_mat_add_f32 arm_mat_scale_f32]
+functions = %w[MatrixFunctions/arm_mat_trans_f32 MatrixFunctions/arm_mat_add_f32 MatrixFunctions/arm_mat_scale_f32 QuaternionMathFunctions/arm_quaternion_norm_f32 MatrixFunctions/arm_mat_cholesky_f32]
 
 if RbConfig::CONFIG['host_os'] =~ /mswin|mingw/
   # Windows - use PowerShell
