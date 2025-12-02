@@ -55,7 +55,7 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET); // mmc5983ma CS pin
 
     // Indicate that initialization is in progress:
-    led_set_status(UNINITIALIZED);
+    led_set_status(FIRM_UNINITIALIZED);
 
     HAL_Delay(500); // purely for debug purposes, allows time to connect to USB serial terminal
 
@@ -88,7 +88,7 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
     }
     
     // Indicate that all sensors initialized successfully
-    led_set_status(ALL_SENSORS_OK);
+    led_set_status(FIRM_INITIALIZED);
 
     // get scale factor values for each sensor to put in header
     HeaderFields header_fields = {
@@ -138,7 +138,7 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
         }
         led_set_status(interrupt_leds);
         HAL_Delay(500);
-        led_set_status(ALL_SENSORS_OK);
+        led_set_status(FIRM_INITIALIZED);
         interrupt_leds = 0b000;
         HAL_Delay(500);
     }
