@@ -8,7 +8,23 @@ require 'rbconfig'
 # Get the parent directory (tests root)
 script_dir = File.expand_path(File.dirname(__FILE__))
 tests_root = File.dirname(script_dir)
-functions = %w[MatrixFunctions/arm_mat_trans_f32 MatrixFunctions/arm_mat_add_f32 MatrixFunctions/arm_mat_scale_f32 QuaternionMathFunctions/arm_quaternion_norm_f32 MatrixFunctions/arm_mat_cholesky_f32]
+# Canonical list of CMSIS-DSP functions / files to compile for tests.
+# Edit this list when tests require additional CMSIS functions or tables.
+functions = [
+  'CommonTables/arm_common_tables',
+  'FastMathFunctions/arm_sin_f32',
+  'FastMathFunctions/arm_cos_f32',
+  'MatrixFunctions/arm_mat_trans_f32',
+  'MatrixFunctions/arm_mat_add_f32',
+  'MatrixFunctions/arm_mat_scale_f32',
+  'MatrixFunctions/arm_mat_cholesky_f32',
+  'QuaternionMathFunctions/arm_quaternion_norm_f32',
+  'QuaternionMathFunctions/arm_quaternion_product_single_f32',
+  'QuaternionMathFunctions/arm_quaternion_conjugate_f32'
+]
+
+# Note: This script intentionally ignores command-line args. The test helper
+# is the single source-of-truth for which CMSIS objects are required.
 
 if RbConfig::CONFIG['host_os'] =~ /mswin|mingw/
   # Windows - use PowerShell

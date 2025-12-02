@@ -43,3 +43,26 @@ void test_symmetric_negative_vals(void) {
     float expected[9] = {-1.7, -1.85, -2.45, -1.85, -8.0, 1.2, -2.45, 1.2, 1.8};
     TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-6, expected, m.pData, 9);
 }
+
+void test_rotvec_to_quat_no_rotation(void) {
+    float rotvec[3] = {0.0F, 0.0F, 0.0F};
+    float quat[4];
+    rotvec_to_quat(rotvec, quat);
+
+    float exp[4] = {1.0F, 0.0F, 0.0F, 0.0F};
+    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-6, exp, quat, 4);
+}
+
+void test_rotvec_to_quat(void) {
+    float rotvec[3] = {2.0F, 4.0F, 6.0F};
+    float quat[4];
+    rotvec_to_quat(rotvec, quat);
+    float exp[4] = {-0.82529906, -0.15092133, -0.30184265, -0.45276398};
+    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-6, exp, quat, 4);
+
+    float rotvec2[3] = {-0.4F, -0.1F, -3.9F};
+    float quat2[4];
+    rotvec_to_quat(rotvec2, quat2);
+    float exp2[4] = {-0.38025392, -0.09433399, -0.0235835, -0.91975642};
+    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-5, exp2, quat2, 4);
+}

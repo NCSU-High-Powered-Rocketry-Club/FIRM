@@ -10,6 +10,7 @@ typedef struct {
     float *X; // state vector
     float *P; // covariance matrix
     float *test;
+    void (*state_transition_function)(float*, float);
 
 } UKF;
 
@@ -33,4 +34,5 @@ int ukf_predict(UKF *ukfh, float delta_time);
 #ifdef TEST
 float* ukf_test_get_Wm(void);
 float* ukf_test_get_Wc(void);
+float* ukf_test_get_sigmas_f(void);
 #endif

@@ -116,15 +116,9 @@
 # Ceedling do the work for you!
 :files:
   :test: []
-  :source: []
-  :include: []
+  :source:
 
 
-# Compilation symbols to be injected into builds
-# See documentation for advanced options:
-#  - Test name matchers for different symbols per test executable build
-#  - Referencing symbols in multiple lists using advanced YAML
-#  - Specifiying symbols used during test preprocessing
 :defines:
   :test:
     - TEST # Simple list option to add symbol 'TEST' to compilation of all files in all test executables
@@ -138,11 +132,16 @@
 :flags:
   :test:
     :link:
-      - MatrixFunctions/arm_mat_trans_f32.o
-      - MatrixFunctions/arm_mat_add_f32.o
-      - MatrixFunctions/arm_mat_scale_f32.o
-      - MatrixFunctions/arm_mat_cholesky_f32.o
-      - QuaternionMathFunctions/arm_quaternion_norm_f32.o
+      - cmsis_objs/arm_sin_f32.o
+      - cmsis_objs/arm_cos_f32.o
+      - cmsis_objs/arm_mat_trans_f32.o
+      - cmsis_objs/arm_mat_add_f32.o
+      - cmsis_objs/arm_mat_scale_f32.o
+      - cmsis_objs/arm_mat_cholesky_f32.o
+      - cmsis_objs/arm_quaternion_norm_f32.o
+      - cmsis_objs/arm_quaternion_product_single_f32.o
+      - cmsis_objs/arm_quaternion_conjugate_f32.o
+      - cmsis_objs/arm_common_tables.o
 
 # Configuration Options specific to CMock. See CMock docs for details
 :cmock:

@@ -73,20 +73,28 @@ void test_initial_values() {
 
     TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-6, exp_initial_x, ukf.X, 22);
     TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-6, exp_initial_p, ukf.P, 21*21);
+}
+
+void test_predict(void) {
+    UKF ukf;
+    int ret = ukf_init(&ukf);
+    TEST_ASSERT_FALSE(ret); // false when no error
 
     ukf.X[21] = 1;
+    ukf.X[20] = -0.5F;
     ret = ukf_predict(&ukf, 1e-3);
     TEST_ASSERT_FALSE(ret);
-    TEST_ASSERT_FLOAT_WITHIN(1e-3, 0.7071, ukf.X[18]);
-    TEST_ASSERT_FLOAT_WITHIN(1e-3, 0, ukf.X[19]);
-    TEST_ASSERT_FLOAT_WITHIN(1e-3, 0, ukf.X[20]);
-    TEST_ASSERT_FLOAT_WITHIN(1e-3, 0.7071, ukf.X[21]);
-
-    TEST_ASSERT_FLOAT_WITHIN(1e-6, 4.58257799e-2, ukf.test[0]);
-    TEST_ASSERT_FLOAT_WITHIN(1e-6, 4.58257799e-2, ukf.test[21]);
-    TEST_ASSERT_FLOAT_WITHIN(1e-6, 1.44913881e-02, ukf.test[21*21 - 1]);
-
     
+    float *sigmas_f = ukf_test_get_sigmas_f();
+    TEST_ASSERT_FLOAT_WITHIN(1e-5, 4.58257799e-02, sigmas_f[22]); // first value of second row (First positive chol)
+    TEST_ASSERT_FLOAT_WITHIN(1e-5, -4.58257340e-02, sigmas_f[22 * 22 + 4]); // 5th value of 23rd row (first negative chol)
+    TEST_ASSERT_FLOAT_WITHIN(1e-6, 1.87082791e-05, sigmas_f[3 * 22 + 15]); // 16th value of 4th row
 
-
+    // test quaternion rows (pos and neg)
+    float *quat_row_2 = &sigmas_f[22 * 1 + 18];
+    float *quat_row_23 = &sigmas_f[22 * 22 + 18];
+    float quat_row_2_exp[4] = {0.658506118F, -0.00763561762F, -0.302528398F, 0.689048589F};
+    float quat_row_23_exp[4] = {0.673777354F, 0.00763561762F, -0.363613339F, 0.643234883F};
+    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-5, quat_row_2_exp, quat_row_2, 4);
+    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-5, quat_row_23_exp, quat_row_23, 4);
 }
