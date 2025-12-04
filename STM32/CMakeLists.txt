@@ -57,6 +57,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/firm.c
     Core/Src/matrixhelper.c
     Core/Src/data_processing/unscented_kalman_filter.c
+    Core/Src/data_processing/ukf_functions.c
     Core/Src/kalman_filter_config.c
 )
 

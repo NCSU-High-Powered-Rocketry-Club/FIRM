@@ -7,11 +7,12 @@
  * @brief UKF parameters
  */
 typedef struct {
-    float *X; // state vector
-    float *P; // covariance matrix
-    float *test;
-    void (*state_transition_function)(float*, float);
-
+    double *X; // state vector
+    double *P; // covariance matrix
+    double *Q; // process noise matrix
+    double *test;
+    int flight_state; // 0 - 4 for standby - landed
+    void (*state_transition_function)(const double*, double, int, double*);
 } UKF;
 
 /**
@@ -26,13 +27,16 @@ int ukf_init(UKF *ukfh);
  * @brief UKF predict step
  * 
  * @param ukfh pointer to UKF parameters
- * @param delta_time time difference float in seconds between this predict step and last predict step
+ * @param delta_time time difference in seconds between this predict step and last predict step
  * @return 0 on success, 1 on failure
  */
-int ukf_predict(UKF *ukfh, float delta_time);
+int ukf_predict(UKF *ukfh, double delta_time);
 
 #ifdef TEST
-float* ukf_test_get_Wm(void);
-float* ukf_test_get_Wc(void);
-float* ukf_test_get_sigmas_f(void);
+double* ukf_test_get_Wm(void);
+double* ukf_test_get_Wc(void);
+double* ukf_test_get_sigmas_f(void);
+void ukf_test_get_sigma_points(double sigmas[][UKF_STATE_DIMENSION]);
+double* ukf_test_get_residuals(void);
+double* ukf_test_get_weighted_vector_sigmas(void);
 #endif

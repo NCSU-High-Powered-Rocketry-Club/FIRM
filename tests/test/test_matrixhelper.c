@@ -5,21 +5,21 @@ void setup(void) {}
 void tearDown(void) {}
 
 void test_symmetric_2x2(void) {
-    arm_matrix_instance_f32 m;
-    float data[4] = {1.0, 2.0, 3.0, 4.0};
+    arm_matrix_instance_f64 m;
+    double data[4] = {1.0, 2.0, 3.0, 4.0};
     m.numRows = 2;
     m.numCols = 2;
     m.pData = data;
 
     int ret = symmetric(&m);
     TEST_ASSERT_FALSE(ret); // test for return value of 0
-    float expected[4] = {1.0, 2.5, 2.5, 4.0};
-    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-6, expected, m.pData, 4);
+    double expected[4] = {1.0, 2.5, 2.5, 4.0};
+    TEST_ASSERT_DOUBLE_ARRAY_WITHIN(1e-6, expected, m.pData, 4);
 }
 
 void test_symmetric_bad_size(void) {
-    arm_matrix_instance_f32 m;
-    float data[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    arm_matrix_instance_f64 m;
+    double data[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
     m.numRows = 2;
     m.numCols = 3;
     m.pData = data;
@@ -27,42 +27,74 @@ void test_symmetric_bad_size(void) {
     int ret = symmetric(&m);
     TEST_ASSERT(ret); // test for return value of 1
     // array value should not be modified.
-    float expected[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
-    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-6, expected, m.pData, 6);
+    double expected[6] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+    TEST_ASSERT_DOUBLE_ARRAY_WITHIN(1e-6, expected, m.pData, 6);
 }
 
 void test_symmetric_negative_vals(void) {
-    arm_matrix_instance_f32 m;
-    float data[9] = {-1.7, 4.7, -6.2, -8.4, -8.0, 6.6, 1.3, -4.2, 1.8};
+    arm_matrix_instance_f64 m;
+    double data[9] = {-1.7, 4.7, -6.2, -8.4, -8.0, 6.6, 1.3, -4.2, 1.8};
     m.numRows = 3;
     m.numCols = 3;
     m.pData = data;
 
     int ret = symmetric(&m);
     TEST_ASSERT_FALSE(ret);
-    float expected[9] = {-1.7, -1.85, -2.45, -1.85, -8.0, 1.2, -2.45, 1.2, 1.8};
-    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-6, expected, m.pData, 9);
+    double expected[9] = {-1.7, -1.85, -2.45, -1.85, -8.0, 1.2, -2.45, 1.2, 1.8};
+    TEST_ASSERT_DOUBLE_ARRAY_WITHIN(1e-6, expected, m.pData, 9);
 }
 
 void test_rotvec_to_quat_no_rotation(void) {
-    float rotvec[3] = {0.0F, 0.0F, 0.0F};
-    float quat[4];
+    double rotvec[3] = {0.0, 0.0, 0.0};
+    double quat[4];
     rotvec_to_quat(rotvec, quat);
 
-    float exp[4] = {1.0F, 0.0F, 0.0F, 0.0F};
-    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-6, exp, quat, 4);
+    double exp[4] = {1.0, 0.0, 0.0, 0.0};
+    TEST_ASSERT_DOUBLE_ARRAY_WITHIN(1e-6, exp, quat, 4);
 }
 
 void test_rotvec_to_quat(void) {
-    float rotvec[3] = {2.0F, 4.0F, 6.0F};
-    float quat[4];
+    double rotvec[3] = {2.0, 4.0, 6.0};
+    double quat[4];
     rotvec_to_quat(rotvec, quat);
-    float exp[4] = {-0.82529906, -0.15092133, -0.30184265, -0.45276398};
-    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-6, exp, quat, 4);
+    double exp[4] = {-0.82529906, -0.15092133, -0.30184265, -0.45276398};
+    TEST_ASSERT_DOUBLE_ARRAY_WITHIN(1e-6, exp, quat, 4);
 
-    float rotvec2[3] = {-0.4F, -0.1F, -3.9F};
-    float quat2[4];
+    double rotvec2[3] = {-0.4, -0.1, -3.9};
+    double quat2[4];
     rotvec_to_quat(rotvec2, quat2);
-    float exp2[4] = {-0.38025392, -0.09433399, -0.0235835, -0.91975642};
-    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-5, exp2, quat2, 4);
+    double exp2[4] = {-0.38025392, -0.09433399, -0.0235835, -0.91975642};
+    TEST_ASSERT_DOUBLE_ARRAY_WITHIN(1e-5, exp2, quat2, 4);
+
+    double rotvec3[3] = {0.64, 0.02, -0.03};
+    double quat3[4];
+    rotvec_to_quat(rotvec3, quat3);
+    double exp3[4] = {0.94907568160697, 0.314549404407839, 0.00982966888774497, -0.0147445033316174};
+    TEST_ASSERT_DOUBLE_ARRAY_WITHIN(1e-5, exp3, quat3, 4);
+}
+
+void test_quat_to_rotvec(void) {
+    double quat[4] = {0.949, 0.315, 0.0098, -0.0147};
+    double rotvec[3];
+    quat_to_rotvec(quat, rotvec);
+    double exp[3] = {0.64090345, 0.01993922, -0.02990883};
+    TEST_ASSERT_DOUBLE_ARRAY_WITHIN(1e-5, exp, rotvec, 3);
+
+    double quat2[4] = {-0.438, -1.89345, 0.98543, 4.389};
+    double rotvec2[3];
+    quat_to_rotvec(quat2, rotvec2);
+    double exp2[3] = {-1.28826116, 0.6704646, 2.98617773};
+    TEST_ASSERT_DOUBLE_ARRAY_WITHIN(1e-4, exp2, rotvec2, 3);
+}
+
+void test_backwards_compat_quat_rotvec(void) {
+    // test that we can turn a rotation vector into a quaternion, then back into rotvec
+    // and get the same value back
+    double rotvec[3] = {0.834, -0.372, -1.247};
+    double quat[4];
+    rotvec_to_quat(rotvec, quat);
+    double exp[3];
+    memcpy(exp, rotvec, 3 * sizeof(double));
+    quat_to_rotvec(quat, rotvec);
+    TEST_ASSERT_DOUBLE_ARRAY_WITHIN(1e-5, exp, rotvec, 3);
 }
