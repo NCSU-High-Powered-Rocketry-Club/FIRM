@@ -81,6 +81,12 @@ void mat_add_f64(const arm_matrix_instance_f64 *pSrcA, const arm_matrix_instance
     }
 }
 
+// cmsis-dsp doesnt have f64 matrix/vector multiply
+void mat_vec_mult_f64(const arm_matrix_instance_f64 *pSrcA, const double *pVec, double *pDst) {
+    for (int i = 0; i < pSrcA->numRows; i++) {
+        arm_dot_prod_f64(&pSrcA->pData[i*pSrcA->numCols], pVec, pSrcA->numCols, &pDst[i]);
+    }
+}
 
 // Quaternion norm
 void quaternion_normalize_f64(double *quat) {

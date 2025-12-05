@@ -6,13 +6,17 @@
 /**
  * @brief UKF parameters
  */
-typedef struct {
+typedef struct UKF {
     double *X; // state vector
     double *P; // covariance matrix
     double *Q; // process noise matrix
-    double *test;
     int flight_state; // 0 - 4 for standby - landed
     void (*state_transition_function)(const double*, double, int, double*);
+    void (*measurement_function)(const double*, const struct UKF*, double*);
+    double *measurement_errors; // associated errors for each measurement
+
+    double initial_pressure;
+    double mag_world[3];
 } UKF;
 
 /**

@@ -98,3 +98,17 @@ void test_backwards_compat_quat_rotvec(void) {
     quat_to_rotvec(quat, rotvec);
     TEST_ASSERT_DOUBLE_ARRAY_WITHIN(1e-5, exp, rotvec, 3);
 }
+
+void test_mat_vec_mult_f64(void) {
+    // 3x3 matrix times 3 element vector
+    double mat_data[9] = {-4.5, 8.7, -3.3, 6.2, -1.7, 3.7, 1.2, -1.4, -6.6};
+    arm_matrix_instance_f64 mat = {3, 3, mat_data};
+    double vec[3] = {-2.5, 6.6, 2.3};
+    double result[3];
+
+    // confirmed with a matrix multiply calculator online
+    double exp[3] = {61.08, -18.21, -27.42};
+    mat_vec_mult_f64(&mat, vec, result);
+    TEST_ASSERT_DOUBLE_ARRAY_WITHIN(1e-9, exp, result, 3);
+
+}

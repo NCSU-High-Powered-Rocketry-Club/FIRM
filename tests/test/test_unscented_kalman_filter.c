@@ -328,6 +328,12 @@ void test_predict_multiple_iterations(void) {
             2.19195174e-01, -6.80412926e-02
         }
     };
+    double exp_last_P_row_5[21] = {
+        3.67055683,  3.71855774,  3.67055683,  8.71944422,  8.95944723,  8.71944422,    
+        1.9697    ,  2.01869   ,  1.9697    ,  1.9697    ,  1.9697    ,  1.9697    ,    
+        1.9697    ,  1.9697    ,  1.9697    ,  1.9697    ,  1.9697    ,  1.9697    ,    
+        2.56750218, -0.11499923,  2.60575662,
+    };
 
     // do 5 predict iterations
     for (int i = 0; i < 5; i++) {
@@ -341,4 +347,5 @@ void test_predict_multiple_iterations(void) {
         TEST_ASSERT_EQUAL_MESSAGE(0, ret, message);
         TEST_ASSERT_DOUBLE_ARRAY_WITHIN_MESSAGE(1e-7, exp_X[i], ukf.X, 22, message);
     }
+    TEST_ASSERT_DOUBLE_ARRAY_WITHIN(1e-7, exp_last_P_row_5, &ukf.P[21*4], 21);
 }

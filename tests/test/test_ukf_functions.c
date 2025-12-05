@@ -76,3 +76,35 @@ void test_state_transition_function_freefall(void) {
     ukf_state_transition_function(sigmas, dt, state, prediction);
     TEST_ASSERT_DOUBLE_ARRAY_WITHIN(1e-7, expected, prediction, 22);
 }
+
+void test_measurement_function(void) {
+    UKF ukf;
+    ukf.initial_pressure = 101328;
+    ukf.mag_world[0] = 0.30942637;
+    ukf.mag_world[1] = 0.92827912;
+    ukf.mag_world[2] = -0.20628425;
+
+    double input_sigmas_f[22] = {
+        2.939400000e+01,  2.45960000e+00,  5.46970000e+00,  1.46970000e+02,
+        1.079801570e+01,  7.34850786e+00,  3.00000000e+01,  2.00001604e+00,
+        2.500008020e+00,  6.40000545e+00,  2.00005452e-01, -2.99994548e-01,
+        -5.99994548e-01,  5.45181321e-06,  5.45181322e-06,  5.45181323e-06,
+        5.451813200e-06,  5.45181320e-06,  5.05660013e-01,  8.43914113e-01,
+        1.499743390e-01, -9.81051397e-02
+    };
+    double exp_measurement_sigmas[10] = {
+        1.012623060e+05,  1.92882000e+01, -1.12037029e+01, -3.35659378e+00,   
+        2.673943930e+02, -2.51188247e+02, -1.71884160e+01,  4.97872079e-01,
+        -4.72774960e-01,  7.27053801e-01
+    };
+    double measurement_sigmas[10];
+    ukf_measurement_function(input_sigmas_f, &ukf, measurement_sigmas);
+    // delta of 1e-7 doesnt work too well when the first element is 1e+5, so we will just scale
+    // it down
+    exp_measurement_sigmas[0] /= 1e5;
+    measurement_sigmas[0] /= 1e5;
+    // also 6th element
+    exp_measurement_sigmas[5] /= 1e3;
+    measurement_sigmas[5] /= 1e3;
+    TEST_ASSERT_DOUBLE_ARRAY_WITHIN(1e-7, exp_measurement_sigmas, measurement_sigmas, 10);
+}

@@ -134,9 +134,14 @@
     :link:
       - cmsis_objs/arm_mat_cholesky_f64.o
       - cmsis_objs/arm_mat_mult_f64.o
+      - cmsis_objs/arm_mat_inverse_f64.o
+      - cmsis_objs/arm_mat_sub_f64.o
+      - cmsis_objs/arm_mat_trans_f64.o
       - cmsis_objs/arm_scale_f64.o
       - cmsis_objs/arm_sub_f64.o
+      - cmsis_objs/arm_add_f64.o
       - cmsis_objs/arm_mult_f64.o
+      - cmsis_objs/arm_dot_prod_f64.o
 
 # Configuration Options specific to CMock. See CMock docs for details
 :cmock:

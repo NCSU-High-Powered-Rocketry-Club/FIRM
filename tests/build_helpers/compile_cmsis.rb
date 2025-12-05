@@ -13,9 +13,14 @@ tests_root = File.dirname(script_dir)
 functions = [
   'MatrixFunctions/arm_mat_cholesky_f64',
   'MatrixFunctions/arm_mat_mult_f64',
+  'MatrixFunctions/arm_mat_inverse_f64',
+  'MatrixFunctions/arm_mat_sub_f64',
+  'MatrixFunctions/arm_mat_trans_f64',
   'BasicMathFunctions/arm_scale_f64',
   'BasicMathFunctions/arm_sub_f64',
-  'BasicMathFunctions/arm_mult_f64'
+  'BasicMathFunctions/arm_add_f64',
+  'BasicMathFunctions/arm_mult_f64',
+  'BasicMathFunctions/arm_dot_prod_f64',
 ]
 
 # Note: This script intentionally ignores command-line args. The test helper

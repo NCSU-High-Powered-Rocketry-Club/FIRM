@@ -32,6 +32,6 @@ extern double ukf_initial_state_covariance_diag[UKF_STATE_DIMENSION - 1];
  * doi: 10.2514/6.2004-5120
  */
 #define UKF_SIGMA_SPREAD_ALPHA 1e-2
-#define UKF_SIMGA_WEIGHT_BETA 2
+#define UKF_SIGMA_WEIGHT_BETA 2
 #define UKF_SIGMA_TERTIARY_KAPPA 0
 
