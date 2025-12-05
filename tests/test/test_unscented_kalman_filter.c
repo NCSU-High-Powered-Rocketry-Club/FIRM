@@ -137,7 +137,17 @@ void test_predict_sigmas_f(void) {
 
 
     ret = ukf_predict(&ukf, 0.1);
-    TEST_ASSERT_FALSE(ret);
+    TEST_ASSERT_EQUAL(0, ret);
+    double *q_scaled = ukf_test_get_Q_scaled();
+    TEST_ASSERT_FLOAT_WITHIN(1e-7, -20.9979, ukf_test_get_lambda());
+    double exp_q_scaled[21] = {
+        0.0021,     0.0021,     0.0021,     0.0021,     0.0021,     0.0021,      
+        0.002121,   0.0021,     0.0021,     0.0021,     0.0021,     0.0021,      
+        0.0021,     0.0021,     0.0021,     0.0021,     0.0021,     0.0021,      
+        0.0021,     0.0021,     0.0021,
+    };
+    TEST_ASSERT_DOUBLE_ARRAY_WITHIN(1e-7, exp_q_scaled, &q_scaled[21*6], 21);
+    
 
     // sanity checking a sigma point, pre state transition function
     double sigma_points[43][22];
@@ -190,7 +200,7 @@ void test_predict_unscented_transform(void) {
     UKF ukf;
     int ret = ukf_init(&ukf);
     ukf.state_transition_function = ukf_state_transition_function;
-    TEST_ASSERT_FALSE(ret); // false when no error
+    TEST_ASSERT_EQUAL(0, ret); // false when no error
     ukf.X[2] = 4.0;
     ukf.X[4] = 1.0;
     ukf.X[6] = 30.0;
@@ -212,7 +222,7 @@ void test_predict_unscented_transform(void) {
 
 
     ret = ukf_predict(&ukf, 0.1);
-    TEST_ASSERT_FALSE(ret);
+    TEST_ASSERT_EQUAL(0, ret);
 
     double *Wm = ukf_test_get_Wm();
     double exp_Wm[4] = {-9999.00000001, 238.0952381, 238.0952381, 238.0952381};
@@ -235,12 +245,100 @@ void test_predict_unscented_transform(void) {
         -2.5812685e-15, -3.15025783e-15,  9.73778145e-01, -2.00354183e-01,
         4.35728055e-02,  9.85684307e-02,
     };
-    TEST_ASSERT_DOUBLE_ARRAY_WITHIN(1e-2, exp_X, ukf.X, 22);
+    TEST_ASSERT_DOUBLE_ARRAY_WITHIN(1e-7, exp_X, ukf.X, 22);
     double exp_P_first_row[21] = {
-        0.12100101, 0.121, 0.121, 0.2177781, 0.217778, 0.217778,
-        0.11, 0.11, 0.11, 0.11, 0.11, 0.11,
-        0.11, 0.11, 0.11, 0.11, 0.11, 0.11,
-        0.07628881, 0.1802419, -0.07941346,
+        1.21000101,  1.21,        1.21,        2.1777801,   2.17778,     2.17778,
+        1.1,         1.1,         1.1,         1.1,       1.1,         1.1,
+        1.1,         1.1,         1.1,         1.1,       1.1,         1.1,
+        0.76287306,  1.8024096,  -0.79415629,
     };
-    TEST_ASSERT_DOUBLE_ARRAY_WITHIN(1e-4, exp_P_first_row, ukf.P, 22);
+    double exp_P_last_row[21] = {
+        -0.79415629, -0.79415629, -0.79415629, -1.42933693, -1.42933693, -1.42933693,
+        -0.72196027, -0.72196027, -0.72196027, -0.72196032, -0.72196106, -0.72195966,
+        -0.72196027, -0.72196027, -0.72196027, -0.72196027, -0.72196027, -0.72196027,
+        -0.68221574, -1.22450985,  0.64794935,
+    };
+    TEST_ASSERT_DOUBLE_ARRAY_WITHIN(1e-7, exp_P_last_row, &ukf.P[21*20], 21);
+}
+
+void test_predict_multiple_iterations(void) {
+    UKF ukf;
+    int ret = ukf_init(&ukf);
+    ukf.state_transition_function = ukf_state_transition_function;
+    TEST_ASSERT_EQUAL(0, ret); // false when no error
+    ukf.X[2] = 4.0;
+    ukf.X[4] = 1.0;
+    ukf.X[6] = 30.0;
+    ukf.X[7] = 2.0;
+    ukf.X[8] = 2.5;
+    ukf.X[9] = 6.4;
+    ukf.X[10] = 0.2;
+    ukf.X[11] = -0.3;
+    ukf.X[12] = -0.6;
+    ukf.X[18] = 4.0;
+    ukf.X[19] = -2.0;
+    ukf.X[20] = -0.1;
+    ukf.X[21] = 0.5;
+    ukf.flight_state = 3;
+    for (int i = 0; i < 21*21; i++) {
+        // initialize Q as all 10's
+        ukf.Q[i] = 1;
+    }
+
+    
+    double exp_X[5][22] = {
+        {
+            1.49186219e-16,  1.00000000e-01,  4.00000000e+00,  2.93940000e+01,
+            2.95960000e+00,  1.46970000e+00,  3.00000000e+01,  2.00000000e+00,
+            2.50000000e+00,  6.40000000e+00,  2.00000000e-01, -3.00000000e-01,
+            -6.0000000e-01, -1.38777878e-16, -3.05311332e-16, -3.19189120e-16,
+            4.16333634e-16, -1.38777878e-17,  9.83341585e-01, -1.53492113e-01,
+            1.82000677e-02,  9.56465122e-02,
+        },
+        {
+            2.93940000e+00,  3.95960000e-01,  4.14697000e+00,  5.87880000e+01,
+            4.91920000e+00,  2.93940000e+00,  3.00000000e+01,  2.00000000e+00,
+            2.50000000e+00,  6.40000000e+00,  2.00000000e-01, -3.00000000e-01,
+            -6.0000000e-01,  8.78926561e-16, -7.39487836e-16,  2.83503379e-16,
+            4.07213945e-15, -2.67643051e-16,  9.85393308e-01,  1.47069363e-01,
+            5.93868548e-02,  6.19986454e-02,
+        },
+        {
+            8.81820000e+00,  8.87880000e-01,  4.44091000e+00,  8.81820000e+01,
+            6.87880000e+00,  4.40910000e+00,  3.00000000e+01,  2.00000000e+00,
+            2.50000000e+00,  6.40000000e+00,  2.00000000e-01, -3.00000000e-01,
+            -6.0000000e-01,  6.87721239e-16, -3.91693580e-16, -7.79421982e-16,
+            5.28441638e-15, -1.28383699e-15,  9.00557437e-01,  4.22561210e-01,
+            1.01673903e-01,  1.00371170e-02,
+        },
+        {
+            1.76364000e+01,  1.57576000e+00,  4.88182000e+00,  1.17576000e+02,
+            8.83840000e+00,  5.87880000e+00,  3.00000000e+01,  2.00000000e+00,
+            2.50000000e+00,  6.40000000e+00,  2.00000000e-01, -3.00000000e-01,
+            -6.0000000e-01, -6.30563217e-16, -9.62493867e-16, -2.53440911e-15,
+            8.51872125e-15,  7.33102428e-17,  7.48288246e-01,  6.43120173e-01,
+            1.55796895e-01, -4.67811082e-02,
+        },
+        {
+            2.93940000e+01,  2.45960000e+00,  5.46970000e+00,  1.46970000e+02,
+            1.07980000e+01,  7.34850000e+00,  3.00000000e+01,  2.00000000e+00,
+            2.50000000e+00,  6.40000000e+00,  2.00000000e-01, -3.00000000e-01,
+            -6.0000000e-01, -7.23224431e-16, -1.75249056e-15,  7.90730775e-17,
+            1.17010618e-14,  1.08603319e-15,  5.59719613e-01,  7.96264914e-01,
+            2.19195174e-01, -6.80412926e-02
+        }
+    };
+
+    // do 5 predict iterations
+    for (int i = 0; i < 5; i++) {
+        char message[15];
+        strcpy(message, "iteration: ");
+        char num[2];
+        sprintf(num, "%d", i);
+        strcat(message, num);
+
+        ret = ukf_predict(&ukf, 0.1);
+        TEST_ASSERT_EQUAL_MESSAGE(0, ret, message);
+        TEST_ASSERT_DOUBLE_ARRAY_WITHIN_MESSAGE(1e-7, exp_X[i], ukf.X, 22, message);
+    }
 }

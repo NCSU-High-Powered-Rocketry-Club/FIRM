@@ -132,20 +132,11 @@
 :flags:
   :test:
     :link:
-      - cmsis_objs/arm_sin_f32.o
-      - cmsis_objs/arm_cos_f32.o
-      - cmsis_objs/arm_mat_trans_f32.o
-      - cmsis_objs/arm_mat_add_f32.o
-      - cmsis_objs/arm_mat_scale_f32.o
       - cmsis_objs/arm_mat_cholesky_f64.o
-      - cmsis_objs/arm_quaternion_norm_f32.o
-      - cmsis_objs/arm_quaternion_product_single_f32.o
-      - cmsis_objs/arm_quaternion_conjugate_f32.o
-      - cmsis_objs/arm_common_tables.o
+      - cmsis_objs/arm_mat_mult_f64.o
       - cmsis_objs/arm_scale_f64.o
-      - cmsis_objs/arm_sub_f32.o
-      - cmsis_objs/arm_mult_f32.o
-      - cmsis_objs/arm_mat_mult_f32.o
+      - cmsis_objs/arm_sub_f64.o
+      - cmsis_objs/arm_mult_f64.o
 
 # Configuration Options specific to CMock. See CMock docs for details
 :cmock:

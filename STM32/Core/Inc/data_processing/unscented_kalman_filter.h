@@ -33,10 +33,12 @@ int ukf_init(UKF *ukfh);
 int ukf_predict(UKF *ukfh, double delta_time);
 
 #ifdef TEST
+double ukf_test_get_lambda(void);
 double* ukf_test_get_Wm(void);
 double* ukf_test_get_Wc(void);
 double* ukf_test_get_sigmas_f(void);
 void ukf_test_get_sigma_points(double sigmas[][UKF_STATE_DIMENSION]);
 double* ukf_test_get_residuals(void);
 double* ukf_test_get_weighted_vector_sigmas(void);
+double* ukf_test_get_Q_scaled(void);
 #endif

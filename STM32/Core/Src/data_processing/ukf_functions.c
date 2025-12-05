@@ -6,11 +6,7 @@ void ukf_state_transition_function(const double *sigmas, const double dt, const 
 
     // get quaternion elements and normalize
     double quat[4] = {sigmas[18], sigmas[19], sigmas[20], sigmas[21]};
-    double quat_norm;
-    arm_quaternion_norm_f64(quat, &quat_norm, 1);
-    for (int i = 0; i < 4; i++) {
-        quat[i] /= quat_norm;
-    }
+    quaternion_normalize_f64(quat);
 
     // copy over states 7 - 21
     memcpy(&prediction[6], &sigmas[6], sizeof(double) * (UKF_STATE_DIMENSION - 6));
@@ -27,7 +23,7 @@ void ukf_state_transition_function(const double *sigmas, const double dt, const 
         rotvec_to_quat(delta_theta, delta_quat);
         // next quat = quat * delta_q
         double next_q[4];
-        arm_quaternion_product_single_f64(quat, delta_quat, next_q);
+        quaternion_product_f64(quat, delta_quat, next_q);
         memcpy(&prediction[18], next_q, sizeof(double) * 4);
         
 

@@ -1,6 +1,6 @@
 #include "matrixhelper.h"
 
-int symmetric(arm_matrix_instance_f64 *enter_matrix) {
+int symmetrize(arm_matrix_instance_f64 *enter_matrix) {
     uint16_t mat_rows = enter_matrix->numRows;
     uint16_t mat_cols = enter_matrix->numCols;
     double scale_val = 0.5;
@@ -65,50 +65,34 @@ void quat_to_rotvec(const double quat[4], double rotvec[3]) {
     rotvec[2] = z * scale;
 }
 
-// Wrapper implementations for CMSIS-DSP functions that don't have f64 versions
-// These implement double-precision versions using manual algorithms or wrapping f32 functions
-
-// Scale matrix: pDst = scale * pSrc
-void arm_mat_scale_f64_wrapper(const arm_matrix_instance_f64 *pSrc, double scale, arm_matrix_instance_f64 *pDst) {
-    uint32_t numElements = pSrc->numRows * pSrc->numCols;
-    for (uint32_t i = 0; i < numElements; i++) {
+// cmsis-dsp doesnt have f64 matrix scale
+void mat_scale_f64(const arm_matrix_instance_f64 *pSrc, double scale, arm_matrix_instance_f64 *pDst) {
+    int numElements = pSrc->numRows * pSrc->numCols;
+    for (int i = 0; i < numElements; i++) {
         pDst->pData[i] = pSrc->pData[i] * scale;
     }
 }
 
-// Add matrices: pDst = pSrcA + pSrcB
-void arm_mat_add_f64_wrapper(const arm_matrix_instance_f64 *pSrcA, const arm_matrix_instance_f64 *pSrcB, arm_matrix_instance_f64 *pDst) {
-    uint32_t numElements = pSrcA->numRows * pSrcA->numCols;
-    for (uint32_t i = 0; i < numElements; i++) {
+// cmsis-dsp doesnt have f64 matrix add
+void mat_add_f64(const arm_matrix_instance_f64 *pSrcA, const arm_matrix_instance_f64 *pSrcB, arm_matrix_instance_f64 *pDst) {
+    int numElements = pSrcA->numRows * pSrcA->numCols;
+    for (int i = 0; i < numElements; i++) {
         pDst->pData[i] = pSrcA->pData[i] + pSrcB->pData[i];
     }
 }
 
 
-// Subtract vectors: pDst[i] = pSrcA[i] - pSrcB[i]
-void arm_sub_f64_wrapper(const double *pSrcA, const double *pSrcB, double *pDst, uint32_t blockSize) {
-    for (uint32_t i = 0; i < blockSize; i++) {
-        pDst[i] = pSrcA[i] - pSrcB[i];
-    }
-}
-
-// Multiply vectors element-wise: pDst[i] = pSrcA[i] * pSrcB[i]
-void arm_mult_f64_wrapper(const double *pSrcA, const double *pSrcB, double *pDst, uint32_t blockSize) {
-    for (uint32_t i = 0; i < blockSize; i++) {
-        pDst[i] = pSrcA[i] * pSrcB[i];
-    }
-}
-
 // Quaternion norm
-void arm_quaternion_norm_f64_wrapper(const double *pInputQ, double *pNorm, uint32_t numQ) {
-    (void)numQ;  // Unused - we only handle single quaternion
-    *pNorm = sqrt(pInputQ[0] * pInputQ[0] + pInputQ[1] * pInputQ[1] + 
-                  pInputQ[2] * pInputQ[2] + pInputQ[3] * pInputQ[3]);
+void quaternion_normalize_f64(double *quat) {
+    double norm = sqrt(quat[0] * quat[0] + quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
+    quat[0] /= norm;
+    quat[1] /= norm;
+    quat[2] /= norm;
+    quat[3] /= norm;
 }
 
-// Quaternion product (single precision version)
 // out = q1 * q2 (Hamilton product)
-void arm_quaternion_product_single_f64_wrapper(const double *q1, const double *q2, double *out) {
+void quaternion_product_f64(const double *q1, const double *q2, double *out) {
     double w1 = q1[0], x1 = q1[1], y1 = q1[2], z1 = q1[3];
     double w2 = q2[0], x2 = q2[1], y2 = q2[2], z2 = q2[3];
     
