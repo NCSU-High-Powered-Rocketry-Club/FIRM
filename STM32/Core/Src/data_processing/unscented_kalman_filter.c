@@ -61,7 +61,7 @@ static int calculate_sigmas_f(UKF *ukfh, double dt);
 
 static int unscented_transform_f(void);
 
-static void unscented_transform_h(double measurement_mean[UKF_MEASUREMENT_DIMENSION], arm_matrix_instance_f64 *innovation_cov);
+static int unscented_transform_h(double measurement_mean[UKF_MEASUREMENT_DIMENSION], arm_matrix_instance_f64 *innovation_cov);
 
 static int calculate_cross_covariance(const double *measurement_mean, arm_matrix_instance_f64 *P_cross_covariance);
 
@@ -82,6 +82,7 @@ int ukf_init(UKF *ukfh) {
     ukfh->X = X;
     ukfh->P = P.pData;
     ukfh->Q = Q.pData;
+    ukfh->R = R.pData;
     ukfh->flight_state = 0;
     ukfh->measurement_errors = measurement_errors;
 
@@ -126,19 +127,26 @@ int ukf_update(UKF *ukfh, double *measurement) {
 
     // perform unscented transform to find mean of measurement sigma points, and the covariance of
     // the measurments
-    unscented_transform_h(predicted_measurement, &innovation_covariance);
-    
-    // compute cross covariance between sigma points in state space (sigmas_f) and in measurement space (sigmas_h)
-    if (arm_mat_inverse_f64(&innovation_covariance, &innovation_covariance_inverse)) 
+    if (unscented_transform_h(predicted_measurement, &innovation_covariance))
         return 1;
-    if (calculate_cross_covariance(predicted_measurement, &P_cross_covariance)) {
+    
+    // the arm_mat_inverse_f64 function says that the input matrix is const, but it actually
+    // modifies it, so we are temporarily storing innovation data somewhere else and replacing it
+    // after
+    memcpy(kalman_gain_data, innovation_data, sizeof(innovation_data));
+    if (arm_mat_inverse_f64(&innovation_covariance, &innovation_covariance_inverse)) 
         return 2;
-    }
+    memcpy(innovation_data, kalman_gain_data, sizeof(innovation_data));
 
+    // compute cross covariance between sigma points in state space (sigmas_f) and in measurement space (sigmas_h)
+    if (calculate_cross_covariance(predicted_measurement, &P_cross_covariance)) {
+        return 3;
+    }
+    
     // calculate the kalman gain, which defines how much to weigh the prediction by compared
     // to the sensor measurements
     if (arm_mat_mult_f64(&P_cross_covariance, &innovation_covariance_inverse, &kalman_gain)) {
-        return 1;
+        return 4;
     }
 
     // calculate measurement error metric for debug and state change purposes. These values can
@@ -148,7 +156,7 @@ int ukf_update(UKF *ukfh, double *measurement) {
     arm_sub_f64(measurement, predicted_measurement, measurement_residuals, UKF_MEASUREMENT_DIMENSION);
     mat_vec_mult_f64(&innovation_covariance_inverse, measurement_residuals, ukfh->measurement_errors);
     arm_mult_f64(measurement_residuals, ukfh->measurement_errors, ukfh->measurement_errors, UKF_MEASUREMENT_DIMENSION);
-
+    
     // calculate the change in the state vector based on kalman gain
     double delta_x[UKF_STATE_DIMENSION - 1];
     mat_vec_mult_f64(&kalman_gain, measurement_residuals, delta_x);
@@ -166,24 +174,25 @@ int ukf_update(UKF *ukfh, double *measurement) {
     for (int i = 0; i < UKF_STATE_DIMENSION - 4; i++) {
         X[i] += delta_x[i];
     }
-
+    
     // compute next covariance matrix, P
     // new_P = P - (kalman_gain * innovation_covariance * kalman_gain^T)
     double kalman_gain_transpose_data[UKF_MEASUREMENT_DIMENSION * (UKF_STATE_DIMENSION - 1)];
     arm_matrix_instance_f64 kalman_gain_transpose = {UKF_MEASUREMENT_DIMENSION, UKF_STATE_DIMENSION - 1, kalman_gain_transpose_data};
     if (arm_mat_trans_f64(&kalman_gain, &kalman_gain_transpose))
-        return 1;
+        return 5;
     double temp_matrix_data[UKF_MEASUREMENT_DIMENSION * (UKF_STATE_DIMENSION - 1)];
     arm_matrix_instance_f64 temp_matrix = {UKF_MEASUREMENT_DIMENSION, UKF_STATE_DIMENSION - 1, temp_matrix_data};
     if (arm_mat_mult_f64(&innovation_covariance, &kalman_gain_transpose, &temp_matrix))
-        return 1;
+        return 6;
     arm_matrix_instance_f64 *negative_delta_P = &Q_scaled; // reusing this matrix
     if (negative_delta_P->numCols != (UKF_STATE_DIMENSION - 1) || negative_delta_P->numRows != (UKF_STATE_DIMENSION - 1))
-        return 1;
+        return 7;
     if (arm_mat_mult_f64(&kalman_gain, &temp_matrix, negative_delta_P))
-        return 1;
+        return 8;
     if (arm_mat_sub_f64(&P, negative_delta_P, &P))
-        return 1;
+        return 9;
+    
     return 0;
 }
 
@@ -349,7 +358,7 @@ static int unscented_transform_f() {
     return 0;
 }
 
-static void unscented_transform_h(double measurement_mean[UKF_MEASUREMENT_DIMENSION], arm_matrix_instance_f64 *innovation_cov) {
+static int unscented_transform_h(double measurement_mean[UKF_MEASUREMENT_DIMENSION], arm_matrix_instance_f64 *innovation_cov) {
     // change all the temp residual matrix sizes to intended sizes (because unscented_transform_f
     // reuses them)
     temp_residuals.numCols = UKF_MEASUREMENT_DIMENSION;
@@ -380,17 +389,16 @@ static void unscented_transform_h(double measurement_mean[UKF_MEASUREMENT_DIMENS
     }
 
     // transpose residuals
-    for (int j = 0; j < UKF_MEASUREMENT_DIMENSION; j++) {
-        for (int i = 0; i < UKF_NUM_SIGMAS; i++) {
-            temp_residuals_transpose_data[j * UKF_NUM_SIGMAS + i] = temp_residuals_data[i * UKF_MEASUREMENT_DIMENSION + j];
-        }
-    }
+    if (arm_mat_trans_f64(&temp_residuals, &temp_residuals_transpose))
+        return 1;
 
     // Compute P = residuals^T @ weighted_residuals
-    arm_mat_mult_f64(&temp_residuals_transpose, &weighted_residuals, innovation_cov);
+    if (arm_mat_mult_f64(&temp_residuals_transpose, &weighted_residuals, innovation_cov))
+        return 1;
 
     // Add noise covariance R to P
     mat_add_f64(innovation_cov, &R, innovation_cov);
+    return 0;
 }
 
 static int calculate_cross_covariance(const double *measurement_mean, arm_matrix_instance_f64 *P_cross_covariance) {
@@ -464,8 +472,11 @@ double ukf_test_get_lambda(void) { return lambda_scaling_parameter; }
 double* ukf_test_get_Wm(void) { return Wm; }
 double* ukf_test_get_Wc(void) { return Wc; }
 double* ukf_test_get_sigmas_f(void) { return sigmas_f; }
+double* ukf_test_get_sigmas_h(void) { return sigmas_h; }
 void ukf_test_get_sigma_points(double sigmas[UKF_NUM_SIGMAS][UKF_STATE_DIMENSION]) { memcpy(sigmas, sigma_points, UKF_NUM_SIGMAS * UKF_STATE_DIMENSION * sizeof(double));}
 double* ukf_test_get_residuals(void) { return temp_residuals_data; }
 double* ukf_test_get_weighted_vector_sigmas(void) { return weighted_vector_sigmas; }
 double* ukf_test_get_Q_scaled(void) { return Q_scaled_data; }
+double* ukf_test_get_S(void) { return innovation_data; }
+double* ukf_test_get_pred_z(void) { return predicted_measurement; }
 #endif

@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-void setup(void) {}
+void setUp(void) {}
 void tearDown(void) {}
 
 void test_state_transition_function_const_input(void) {

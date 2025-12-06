@@ -10,6 +10,7 @@ typedef struct UKF {
     double *X; // state vector
     double *P; // covariance matrix
     double *Q; // process noise matrix
+    double *R; // measurement nosie matrix
     int flight_state; // 0 - 4 for standby - landed
     void (*state_transition_function)(const double*, double, int, double*);
     void (*measurement_function)(const double*, const struct UKF*, double*);
@@ -36,13 +37,18 @@ int ukf_init(UKF *ukfh);
  */
 int ukf_predict(UKF *ukfh, double delta_time);
 
+int ukf_update(UKF *ukfh, double *measurement);
+
 #ifdef TEST
 double ukf_test_get_lambda(void);
 double* ukf_test_get_Wm(void);
 double* ukf_test_get_Wc(void);
 double* ukf_test_get_sigmas_f(void);
+double* ukf_test_get_sigmas_h(void);
 void ukf_test_get_sigma_points(double sigmas[][UKF_STATE_DIMENSION]);
 double* ukf_test_get_residuals(void);
 double* ukf_test_get_weighted_vector_sigmas(void);
 double* ukf_test_get_Q_scaled(void);
+double* ukf_test_get_S(void);
+double* ukf_test_get_pred_z(void);
 #endif

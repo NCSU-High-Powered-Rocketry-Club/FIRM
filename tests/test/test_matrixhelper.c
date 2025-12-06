@@ -1,7 +1,7 @@
 #include "unity.h"
 #include "matrixhelper.h"
 
-void setup(void) {}
+void setUp(void) {}
 void tearDown(void) {}
 
 void test_symmetrize_2x2(void) {

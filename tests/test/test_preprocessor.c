@@ -1,7 +1,7 @@
 #include "unity.h"
 #include "preprocessor.h"
 
-void setup(void) {}
+void setUp(void) {}
 void tearDown(void) {}
 
 void test_bmp581_convert_packet_missing_data(void) {
