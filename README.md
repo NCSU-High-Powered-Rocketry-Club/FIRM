@@ -41,28 +41,32 @@ git clone https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM.git
 
 8. Run `uv sync`.
 
-9. Run `uv run pre-commit install` to set up the git hook for automatic code formatting, using `clang-format`.
-
-
-## KiCad Files
-
-The KiCad files are located in the `KiCad` directory. To open the project, open the `FIRM.kicad_pro` file using KiCad.
-
-### Custom symbols, footprints, and 3D models
-
-We have a custom library for symbols, footprints, and 3D models.
-
-You can find the symbols under `KiCad/symbols`. Every individual component's symbol should go into its respective directory, e.g. the ICM-45686's symbol goes under `sensors/`. You must also add that symbol to the project library, e.g. in `KiCad/symbols/sensors.kicad_sym` (i.e. open Symbol Editor, enter the "sensors" library, then click "File" > "Import" > "Symbol" to add the new symbol to the project library).
-
-You can find the footprints under `KiCad/footprints`. Every individual component footprint should go into its respective directory, e.g. the ICM-45686's footprint goes under `sensors.pretty/`.
-
-3D models go under `KiCad/3dmodels`. The 3D models are then assigned to the footprints using the Footprint Editor in KiCad.
+9. Run `uv run pre-commit install` to set up the git hook for automatic code formatting and linting, using `clang-format` & `clang-tidy`.
 
 
 ## Building the project
 
+In VS Code, press `Ctrl+Shift+B` to bring up the build menu.
+Then click "CMake: build". You should see the build output in the terminal.
 
-If you are using STM32CubeIDE, you can build the project by clicking on the hammer icon or by going to `Project` > `Build All`.
+## Flashing the firmware
+
+To flash the firmware onto the STM32 microcontroller, follow these steps:
+
+1. Connect the ST-Link Debugger to your computer, and jump the GND, SWDIO, and SWCLK pins from the ST-Link onto FIRM (see the back of the PCB for pin locations).
+
+2. Power FIRM via a USB-C cable or another power source.
+
+3. In VSCode, hit `Ctrl+Shift+P` to open the command palette. Then search for `Run Task` and select it. Then select the option which says to flash via SWD. 
+
+
+### Running the debugger
+
+Running the debugger is very similar to flashing the firmware.
+
+Make sure you still have the ST-Link hooked onto FIRM, and then go to the Run and Debug tab on the left side of VS Code (or hit `Ctrl+Shift+D`).
+
+Then simply click the green play button at the top of the sidebar to start a debugging session.
 
 
 ## Third party licenses

@@ -62,47 +62,6 @@ dkms.conf
 # Python version file
 .python-version
 
-# Kicad Temporary files
-*.000
-*.bak
-*.bck
-*.kicad_pcb-bak
-*.kicad_sch-bak
-*-backups
-*-cache*
-*-bak
-*-bak*
-*~
-~*
-_autosave-*
-\#auto_saved_files\#
-*.tmp
-*-save.pro
-*-save.kicad_pcb
-fp-info-cache
-~*.lck
-\#auto_saved_files#
-
-# Kicad Netlist files (exported from Eeschema)
-*.net
-
-# Kicad Autorouter files (exported from Pcbnew)
-*.dsn
-*.ses
-
-# Kicad Exported BOM files
-*.xml
-*.csv
-
-# Kicad Archived Backups (KiCad 6.0)
-**/*-backups/*.zip
-
-# Kicad Local project settings
-*.kicad_prl
-# SnapEDA files:
-how-to-import.htm
-
-
 # FIRM code
 /STM32/build
 mx.scratch
@@ -113,11 +72,9 @@ mx.scratch
 cmake_install.cmake
 /STM32/compile_commands.json
 
-# log files in python-scripts folder
+# log files in python/scripts folder
 python/scripts/*.TXT
 python/scripts/*.csv
-KiCad/production
-KiCad/fabrication-toolkit-options.json
 
 # Python files:
 __pycache__/
