@@ -1,7 +1,9 @@
 #pragma once
-#include <bmp581.h>
-#include <mmc5983ma.h>
-#include <icm45686.h>
+#include <stdint.h>
+#include "mock_bmp581.h"
+#include "mock_mmc5983ma.h"
+#include "mock_icm45686.h"
+#include "mock_dwt.h"
 
 
 /**
@@ -23,13 +25,12 @@ typedef struct {
     double timestamp_sec;
 } CalibratedDataPacket_t;
 
-
 /**
  * @brief Converts raw BMP581 pressure sensor data to SI units
  * @note Temperature converted to Celcius, pressure converted to Pascals
  * 
  * @param packet Pointer to a BMP581Packet_t structure containing raw sensor data
- * @param result_packet Pointer to a CalibratedDataPacket where the result of the preprocessor
+ * @param result_packet Pointer to a CalibratedDataPacket where the result of the pre-processed data
  *                      will be stored
  */
 void bmp581_convert_packet(BMP581Packet_t *packet, CalibratedDataPacket_t *result_packet);
@@ -39,7 +40,7 @@ void bmp581_convert_packet(BMP581Packet_t *packet, CalibratedDataPacket_t *resul
  * @note Magnetic field data converted to microtesla
  * 
  * @param packet Pointer to an MMC5983MAPacket_t structure containing raw sensor data
- * @param result_packet Pointer to a CalibratedDataPacket where the result of the preprocessor
+ * @param result_packet Pointer to a CalibratedDataPacket where the result of the pre-processed data
  *                      will be stored
  */
 void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, CalibratedDataPacket_t *result_packet);
@@ -50,8 +51,7 @@ void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, CalibratedDataPacket_t 
  * @note Acceleration converted to g's, angular rate converted to radians per second
  * 
  * @param packet Pointer to an ICM45686Packet_t structure containing raw sensor data
- * @param result_packet Pointer to a CalibratedDataPacket where the result of the preprocessor
+ * @param result_packet Pointer to a CalibratedDataPacket where the result of the pre-processed data
  *                      will be stored
  */
 void icm45686_convert_packet(ICM45686Packet_t *packet, CalibratedDataPacket_t *result_packet);
-

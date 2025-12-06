@@ -51,7 +51,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Libraries/SPIUtils/spi_utils.c
     Core/Src/logger.c
     Core/Src/usb_print_debug.c
-    Core/Src/data_processing/preprocessor.c
+    Core/Src/data_processing/data_preprocess.c
     Core/Src/settings.c
     Core/Src/usb_serializer.c
     Core/Src/firm.c

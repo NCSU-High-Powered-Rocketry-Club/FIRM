@@ -464,7 +464,7 @@ static int calculate_cross_covariance(const double *measurement_mean, arm_matrix
     if (status != ARM_MATH_SUCCESS) {
         return 1;
     }
-
+    return 0;
 }
 
 #ifdef TEST

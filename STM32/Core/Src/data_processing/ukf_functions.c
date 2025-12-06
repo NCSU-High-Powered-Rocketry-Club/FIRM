@@ -170,3 +170,7 @@ void ukf_measurement_function(const double *sigmas, const UKF *ukfh, double *mea
     measurement_sigmas[8] = mag_vy;  // y
     measurement_sigmas[9] = -mag_vz; // z (flipped)
 }
+
+void calculate_initial_orientation(const double *imu_accel, const double *mag_field, double *init_quaternion, double *mag_world_frame) {
+    
+}

@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 
-/* Minimal mock of the Cortex-M DWT register block used by preprocessor.c for unit tests.
+/* Minimal mock of the Cortex-M DWT register block used by data_preprocess.c for unit tests.
  * We provide a static instance and a macro `DWT` so code that uses DWT->CYCCNT works
  * without pulling in CMSIS/HAL headers or defining HAL types.
  */
