@@ -23,7 +23,7 @@ FIRM is designed to keep things as simple as possible:
 
 This means that you can:
 
-- Download the full “raw device log” later _even if no computer was connected_.
+- Download the full "raw device log" later _even if no computer was connected_.
 - Still read/stream real-time data if a computer _is_ connected.
 
 ---

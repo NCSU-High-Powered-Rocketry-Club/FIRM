@@ -32,13 +32,11 @@ At a very high level, the FIRM ecosystem includes:
 - **Firmware** - code running on the microcontroller: sensor drivers, data logging, communication.
 - **Connected Device** - a device that connects to FIRM and receives data (e.g. a laptop, Raspberry Pi, etc.).
 
-TODO: maybe make a diagram here?
-
----
+## ![FIRM Flowchart.png](../assets/images/FIRM%20Flowchart.png)
 
 ## 👾 Getting Started as a Contributor
 
-If you're new to FIRM, you should probably first **[skim the user docs](../users/getting-started.md)** so you know what the device looks like from an end user's perspective.
+If you're new to FIRM, you should probably first **[skim the user docs](../users/quick-start.md)** so you know what the device looks like from an end user's perspective.
 
 Next, if you're interested in programming, you should follow **[these steps](environment-setup.md)** to set up your development environment.
 

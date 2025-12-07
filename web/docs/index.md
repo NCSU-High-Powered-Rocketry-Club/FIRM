@@ -5,6 +5,8 @@ low-cost, and plug-and-play solution for any hobby rocketry data collection need
 
 ## What Is FIRM?
 
+![firm_plugged_in.png](assets/images/firm_plugged_in.png)
+
 FIRM (Filtered Inertial Rotation Module) is a fully custom **flight computer** designed to:
 
 - Measure acceleration, rotation, pressure, temperature, and magnetic field.
@@ -13,7 +15,7 @@ FIRM (Filtered Inertial Rotation Module) is a fully custom **flight computer** d
 
 ---
 
-## Two Ways to Use These Docs
+## What Will These Docs Cover?
 
 Most people will come here in one of two roles:
 
@@ -24,7 +26,7 @@ to the user docs.
 
 Start here:
 
-- **[Quick Start](users/getting-started.md)** - what FIRM is, what you need, and how to use it.
+- **[Quick Start](users/quick-start.md)** - what FIRM is, what you need, and how to use it.
 - **[Configuring Your Device](users/configuring-firm.md)** - using the web app to view live data and edit settings.
 - **[Logging & Downloading Data](users/data-logging.md)** - how to run a collect and download flight data.
 - **[Troubleshooting](users/troubleshooting.md)** - common problems and how to fix them.
