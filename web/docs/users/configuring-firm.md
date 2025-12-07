@@ -5,7 +5,7 @@ This page explains how to **configure settings on FIRM** using the web app and a
 We assume you've already:
 
 - Connected the device to your computer, and
-- Verified it is successfully communnicating (see **[Quick Start](getting-started.md)**).
+- Verified it is successfully communnicating (see **[Quick Start](quick-start.md)**).
 
 ---
 

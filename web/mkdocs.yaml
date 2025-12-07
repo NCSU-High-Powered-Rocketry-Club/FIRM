@@ -18,7 +18,7 @@ theme:
 nav:
   - Home: index.md
   - Using FIRM:
-      - Quick Start: users/getting-started.md
+      - Quick Start: users/quick-start.md
       - Configuring Your Device: users/configuring-firm.md
       - Logging & Downloading Data: users/data-logging.md
       - Troubleshooting: users/troubleshooting.md

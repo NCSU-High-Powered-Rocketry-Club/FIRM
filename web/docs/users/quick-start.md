@@ -5,6 +5,10 @@ This page is for **end users** who have a FIRM device and want to get from:
 > "I have this board in my hand"  
 > → "I've verified it's reading data, and I've set it up."
 
+This means it will detail how to connect to the FIRM device and use the web app. The **[Configuring Your Device](configuring-firm.md)** page
+will go over how to use the web app to change settings and view live data. The **[Logging & Downloading Data](data-logging.md)** page will go
+over how to log flight data and download it.
+
 If you want to contribute to the firmware, PCBs, or web app, see **[Contributor Overview](../contributors/overview.md)**.
 
 ---
@@ -15,22 +19,25 @@ To follow this guide, you should have:
 
 - A **Windows or Linux laptop**.
 - One **FIRM device**.
-- A **USB-C power + data cable** (Anything that plugs into your laptop to Type C).
+- A **USB-C power + data cable** (Can be USB-C to USB-C, USB-A to USB-C, etc.).
 - A **32GB V30 U3 MicroSD card**.
 
 You do **not** need to know how to write code or anything about electronics for this page.
 
 > ⚠️ **Linux Users**  
 > This guide is mostly for Windows users. If you're using Linux, you're probably technology-savvy enough to figure
-> it out on your own. Weirdo.
+> it out on your own. *Weirdo*.
 
 ---
 
 ## 🔌 Step 1 - Connect FIRM to Your Computer
 
-1. Insert the MicroSD card into the FIRM device.
+1. Insert the MicroSD card into the FIRM device. It uses a clamshell design, so if you have to open it, gently push down on the cover and slide out, then you can open it and place the sd card in it.
+![microsd_card_slot.png](../assets/images/microsd_card_slot.png)
 2. Plug your cable into your laptop and into the USB-C port on the FIRM device.
-3. Confirm that you see a green LED 🟢 (means that it's receiving power) and an orange LED 🟠 (means that all code/sensors are working properly) on the FIRM device.
+![usb_c_port.png](../assets/images/usb_c_port.png)
+3. Confirm that you see a green LED 🟢 (means that it's receiving power). If you see any other color LEDs, that means something isn't working properly. Check the **[Troubleshooting](troubleshooting.md)** page for help.
+![green_led.png](../assets/images/green_led.png)
 
 > ⚠️ **Safety Note**  
 > When working with the exposed FIRM board, be careful not to short any components together with any pieces of metal
@@ -53,8 +60,7 @@ You do **not** need to know how to write code or anything about electronics for 
 ## 💻 Step 3 - Connect via Serial
 
 1. In the FIRM Web App click on the `Connect to Firm` button.
-2. A dialog should pop up showing available serial ports, click the one corresponding to the FIRM device. This should
-   contain `STM32` in it. TODO: Make this more clear.
+2. A dialog should pop up showing available serial ports, click the one corresponding to the FIRM device. The name should contain `STM32` in it.
 3. Click **Connect**.
 
 Now you should see that the app has connected to the FIRM device. Confirm you see **live status** from the device by
