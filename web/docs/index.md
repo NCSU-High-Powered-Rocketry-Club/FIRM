@@ -4,6 +4,7 @@ Welcome to the documentation for **FIRM**--the completely custom flight computer
 low-cost, and plug-and-play solution for any hobby rocketry data collection needs.
 
 ## What Is FIRM?
+
 ![firm_plugged_in.png](assets/images/firm_plugged_in.png)
 
 FIRM (Filtered Inertial Rotation Module) is a fully custom **flight computer** designed to:

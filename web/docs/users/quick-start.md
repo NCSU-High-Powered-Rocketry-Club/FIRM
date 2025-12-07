@@ -26,18 +26,18 @@ You do **not** need to know how to write code or anything about electronics for 
 
 > ⚠️ **Linux Users**  
 > This guide is mostly for Windows users. If you're using Linux, you're probably technology-savvy enough to figure
-> it out on your own. *Weirdo*.
+> it out on your own. _Weirdo_.
 
 ---
 
 ## 🔌 Step 1 - Connect FIRM to Your Computer
 
 1. Insert the MicroSD card into the FIRM device. It uses a clamshell design, so if you have to open it, gently push down on the cover and slide out, then you can open it and place the sd card in it.
-![microsd_card_slot.png](../assets/images/microsd_card_slot.png)
+   ![microsd_card_slot.png](../assets/images/microsd_card_slot.png)
 2. Plug your cable into your laptop and into the USB-C port on the FIRM device.
-![usb_c_port.png](../assets/images/usb_c_port.png)
+   ![usb_c_port.png](../assets/images/usb_c_port.png)
 3. Confirm that you see a green LED 🟢 (means that it's receiving power). If you see any other color LEDs, that means something isn't working properly. Check the **[Troubleshooting](troubleshooting.md)** page for help.
-![green_led.png](../assets/images/green_led.png)
+   ![green_led.png](../assets/images/green_led.png)
 
 > ⚠️ **Safety Note**  
 > When working with the exposed FIRM board, be careful not to short any components together with any pieces of metal

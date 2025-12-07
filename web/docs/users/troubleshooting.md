@@ -9,6 +9,7 @@ This page collects **common problems** that end users might encounter and sugges
 Possible causes:
 
 - USB cable is **power-only** (try a known good data cable).
+- USB-C is flipped the wrong way. Unplug it and replug it rotated 180 degrees. _We don't know why this happens, but we're working on a fix._
 - Board not powered, physically damaged, or MicroSD card not inserted properly.
 
 Checklist:
@@ -27,25 +28,25 @@ The board uses 3 LEDs (Blue, Yellow, Red) to indicate operational status.
 
 These LEDs will always stay lit up to indicate the initialization status. When FIRM is booting up, you should see all 3 LEDs lit for 0.5 seconds.
 
-| Status | Blue | Yellow | Red |
-| :--- | :---: | :---: | :---: |
-| Bootup | 🔵 | 🟡 | 🔴 |
-| IMU Fail | 🔵 | 🟡 | ⚫ |
-| BMP581 Fail | 🔵 | ⚫ | 🔴 |
-| MMC5983MA Fail | 🔵 | ⚫ | ⚫ |
-| Flash Chip Fail | ⚫ | 🟡 | 🔴 |
-| SD Card Fail | ⚫ | 🟡 | ⚫ |
-| All Sensors OK | ⚫ | ⚫ | ⚫ |
+| Status          | Blue | Yellow | Red |
+| :-------------- | :--: | :----: | :-: |
+| Bootup          |  🔵  |   🟡   | 🔴  |
+| IMU Fail        |  🔵  |   🟡   | ⚫  |
+| BMP581 Fail     |  🔵  |   ⚫   | 🔴  |
+| MMC5983MA Fail  |  🔵  |   ⚫   | ⚫  |
+| Flash Chip Fail |  ⚫  |   🟡   | 🔴  |
+| SD Card Fail    |  ⚫  |   🟡   | ⚫  |
+| All Sensors OK  |  ⚫  |   ⚫   | ⚫  |
 
 ### Interrupt Failures
 
 If a sensor's interrupt is not firing, the LEDs will blink 5 times.
 
-| Status | Blue | Yellow | Red |
-| :--- | :---: | :---: | :---: |
-| Failed IMU Interrupt | 🔵 | ⚫ | ⚫ |
-| Failed BMP Interrupt | ⚫ | 🟡 | ⚫ |
-| Failed Magnetometer Interrupt | ⚫ | ⚫ | 🔴 |
+| Status                        | Blue | Yellow | Red |
+| :---------------------------- | :--: | :----: | :-: |
+| Failed IMU Interrupt          |  🔵  |   ⚫   | ⚫  |
+| Failed BMP Interrupt          |  ⚫  |   🟡   | ⚫  |
+| Failed Magnetometer Interrupt |  ⚫  |   ⚫   | 🔴  |
 
 ## Web App Can't Connect via Serial
 
