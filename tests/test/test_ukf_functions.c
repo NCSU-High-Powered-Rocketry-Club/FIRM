@@ -108,3 +108,27 @@ void test_measurement_function(void) {
     measurement_sigmas[5] /= 1e3;
     TEST_ASSERT_DOUBLE_ARRAY_WITHIN(1e-7, exp_measurement_sigmas, measurement_sigmas, 10);
 }
+
+void test_initial_quaternion_avab(void) {
+    double acc_raw[3] = {0.66354551,-0.70960469,0.01006805};
+    double mag_raw[3] = {-0.90131203,-0.09004472,-0.42370813};
+    double quat[4];
+    double mag_world[3];
+    double quat_exp[4] = {0.652742028009966, 0.25655059546948, -0.65498123710736, 0.281263605663803};
+    double mag_world_exp[3] = {-0.22320774,-0.39001031,-0.89334778};
+    calculate_initial_orientation(acc_raw, mag_raw, quat, mag_world);
+    TEST_ASSERT_DOUBLE_ARRAY_WITHIN(1e-7, quat_exp, quat, 4);
+    TEST_ASSERT_DOUBLE_ARRAY_WITHIN(1e-7, mag_world_exp, mag_world, 3);
+}
+
+void test_initial_quaternion_nc(void) {
+    double acc_raw[3] = {-0.714738281250000, 0.683763789062500, -0.002533593750000};
+    double mag_raw[3] = {0.949800688591410, -0.186446599203042, 0.251229611305882};
+    double quat[4];
+    double mag_world[3];
+    double quat_exp[4] = {-0.118113970323671, -0.695245545201947, -0.133844470601829, 0.696253100230472};
+    double mag_world_exp[3] = {0.164819239805933, 0.283198344327452, -0.944792737038121};
+    calculate_initial_orientation(acc_raw, mag_raw, quat, mag_world);
+    TEST_ASSERT_DOUBLE_ARRAY_WITHIN(1e-7, quat_exp, quat, 4);
+    TEST_ASSERT_DOUBLE_ARRAY_WITHIN(1e-7, mag_world_exp, mag_world, 3);
+}
