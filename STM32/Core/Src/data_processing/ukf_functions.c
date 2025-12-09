@@ -1,5 +1,6 @@
 #include "ukf_functions.h"
 
+static const double sqrt2 = 1.414213562373095;
 static const double pi = 3.141592653589793;
 
 void ukf_state_transition_function(const double *sigmas, const double dt, const int state, double *prediction) {
@@ -116,7 +117,6 @@ void ukf_measurement_function(const double *sigmas, const UKF *ukfh, double *mea
     quaternion_product_f64(temp_acc, quat_state, acc_vehicle);
 
     // rotate vehicle frame accel 45 degrees ccw to align with how imu is mounted on FIRM board
-    double sqrt2 = sqrt(2.0);
     double acc_vx = acc_vehicle[1];
     double acc_vy = acc_vehicle[2];
     double acc_vz = acc_vehicle[3];
@@ -172,5 +172,37 @@ void ukf_measurement_function(const double *sigmas, const UKF *ukfh, double *mea
 }
 
 void calculate_initial_orientation(const double *imu_accel, const double *mag_field, double *init_quaternion, double *mag_world_frame) {
-    
+    double norm_acc = sqrt(imu_accel[0] * imu_accel[0] + imu_accel[1] * imu_accel[1] + imu_accel[2] * imu_accel[2]);
+    double norm_mag = sqrt(mag_field[0] * mag_field[0] + mag_field[1] * mag_field[1] + mag_field[2] * mag_field[2]);
+    double acc_vehicle[3] = {
+        (imu_accel[0] / sqrt2 - imu_accel[1] / sqrt2) / norm_acc,
+        (imu_accel[0] / sqrt2 + imu_accel[1] / sqrt2) / norm_acc,
+        imu_accel[2] / norm_acc,
+    };
+    double mag_vehicle_quat[4] = {
+        0.0,
+        mag_field[0] / norm_mag,
+        mag_field[1] / norm_mag,
+        -mag_field[2] / norm_mag,
+    };
+
+    double roll = atan2(acc_vehicle[1], acc_vehicle[2]);
+    double pitch = atan2(-acc_vehicle[0], sqrt(acc_vehicle[1] * acc_vehicle[1] + acc_vehicle[2] * acc_vehicle[2]));
+    double mx2 = mag_vehicle_quat[1] * cos(pitch) + mag_vehicle_quat[3] * sin(pitch);
+    double my2 = mag_vehicle_quat[1] * sin(roll) * sin(pitch) + mag_vehicle_quat[2] * cos(roll) - mag_vehicle_quat[3] * sin(roll) * cos(pitch);
+    double yaw = atan2(-my2, mx2);
+
+    init_quaternion[0] = cos(roll * 0.5) * cos(pitch * 0.5) * cos(yaw * 0.5) + sin(roll * 0.5) * sin(pitch * 0.5) * sin(yaw * 0.5);
+    init_quaternion[1] = sin(roll * 0.5) * cos(pitch * 0.5) * cos(yaw * 0.5) - cos(roll * 0.5) * sin(pitch * 0.5) * sin(yaw * 0.5);
+    init_quaternion[2] = cos(roll * 0.5) * sin(pitch * 0.5) * cos(yaw * 0.5) + sin(roll * 0.5) * cos(pitch * 0.5) * sin(yaw * 0.5);
+    init_quaternion[3] = cos(roll * 0.5) * cos(pitch * 0.5) * sin(yaw * 0.5) - sin(roll * 0.5) * sin(pitch * 0.5) * cos(yaw * 0.5);
+
+    double quat_conj[4] = {init_quaternion[0], -init_quaternion[1], -init_quaternion[2], -init_quaternion[3]};
+    double temp[4];
+    double mag_world[4];
+    quaternion_product_f64(init_quaternion, mag_vehicle_quat, temp);
+    quaternion_product_f64(temp, quat_conj, mag_world);
+    mag_world_frame[0] = mag_world[1];
+    mag_world_frame[1] = mag_world[2];
+    mag_world_frame[2] = mag_world[3];
 }
