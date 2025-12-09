@@ -19,7 +19,6 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "firm.h"
 #include "fatfs.h"
 #include "usb_device.h"
 
@@ -126,16 +125,16 @@ int main(void)
     .hspi2 = &hspi2,
     .hspi3 = &hspi3,
   };
-  I2CHandles i2c_handles = {
-    .hi2c1 = &hi2c1,
-    .hi2c2 = &hi2c2,
-  };
+//   I2CHandles i2c_handles = {
+//     .hi2c1 = &hi2c1,
+//     .hi2c2 = &hi2c2,
+//   };
   DMAHandles dma_handles = {
     .hdma_sdio_rx = &hdma_sdio_rx,
     .hdma_sdio_tx = &hdma_sdio_tx,
   };
 
-  if (initialize_firm(&spi_handles, &i2c_handles, &dma_handles)) {
+  if (initialize_firm(&spi_handles, &dma_handles)) {
       Error_Handler();
   };
 

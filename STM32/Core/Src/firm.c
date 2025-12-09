@@ -23,14 +23,11 @@ bool any_new_data_collected = false;
 // instance of the calibrated data packet from the preprocessor to be reused
 CalibratedDataPacket_t calibrated_packet = {0};
 
-// incrementing value for magnetometer calibration
-uint8_t magnetometer_flip = 0;
-
 // instance of the serialized packet, will be reused
 SerializedPacket_t serialized_packet = {0};
 
 
-int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DMAHandles* dma_handles_ptr) {
+int initialize_firm(SPIHandles* spi_handles_ptr, DMAHandles* dma_handles_ptr) {
     // We use DWT (Data Watchpoint and Trace unit) to get a high resolution free-running timer
     // for our data packet timestamps. This allows us to use the clock cycle count instead of a
     // standard timestamp in milliseconds or similar, while not having any performance penalty.
@@ -57,22 +54,22 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
     // Indicate that initialization is in progress:
     led_set_status(FIRM_UNINITIALIZED);
 
-    HAL_Delay(500); // purely for debug purposes, allows time to connect to USB serial terminal
-
+    HAL_Delay(3000); // purely for debug purposes, allows time to connect to USB serial terminal
+    if (mmc5983ma_init(spi_handles_ptr->hspi2, GPIOC, GPIO_PIN_7)) {
+        led_set_status(MMC5983MA_FAIL);
+        return 1;
+    }
     if (icm45686_init(spi_handles_ptr->hspi2, GPIOB, GPIO_PIN_9)) {
         led_set_status(IMU_FAIL);
         return 1;
     }
-
+    HAL_Delay(100);
     if (bmp581_init(spi_handles_ptr->hspi2, GPIOC, GPIO_PIN_2)) {
         led_set_status(BMP581_FAIL);
-        return 1;
+        //return 1;
     }
+    HAL_Delay(100);
     
-    if (mmc5983ma_init(i2c_handles_ptr->hi2c1, 0x30)) {
-        led_set_status(MMC5983MA_FAIL);
-        return 1;
-    }
 
     // set up settings module with flash chip
     if (settings_init(spi_handles_ptr->hspi1, GPIOC, GPIO_PIN_4)) {
@@ -110,7 +107,7 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
     ICM45686Packet_t imu_packet;
     icm45686_read_data(&imu_packet);
     MMC5983MAPacket_t mag_packet;
-    mmc5983ma_read_data(&mag_packet, &magnetometer_flip);
+    mmc5983ma_read_data(&mag_packet);
     BMP581Packet_t bmp_packet;
     bmp581_read_data(&bmp_packet);
 
@@ -169,7 +166,7 @@ void loop_firm(void) {
     }
     if (mmc5983ma_has_new_data) {
         MMC5983MAPacket_t* mmc5983ma_packet = logger_malloc_packet(sizeof(MMC5983MAPacket_t));
-        if (!mmc5983ma_read_data(mmc5983ma_packet, &magnetometer_flip)) {
+        if (!mmc5983ma_read_data(mmc5983ma_packet)) {
             mmc5983ma_has_new_data = false;
             logger_write_entry('M', sizeof(MMC5983MAPacket_t));
             mmc5983ma_convert_packet(mmc5983ma_packet, &calibrated_packet);

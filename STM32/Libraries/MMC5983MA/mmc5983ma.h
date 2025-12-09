@@ -7,6 +7,7 @@
 
 #pragma once
 #include "usb_print_debug.h"
+#include "spi_utils.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -30,17 +31,16 @@ typedef struct {
  * @param device_i2c_addr the 7-bit MMC5983MA's i2c device address, default is 0x30
  * @ret error status, returns 0 on success, 1 on failure
  */
-int mmc5983ma_init(I2C_HandleTypeDef* hi2c, uint8_t device_i2c_addr);
+int mmc5983ma_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin);
 
 /**
  * @brief reads data from the MMC5983MA
  *
  * @param packet pointer to the Magnetometer packet where the data will be stored
- * @param flip counter that must be incremented to determine which read cycle will flip polarity
  *
  * @ret error status, returns 0 on success, 1 on failure
  */
-int mmc5983ma_read_data(MMC5983MAPacket_t* packet, uint8_t* flip);
+int mmc5983ma_read_data(MMC5983MAPacket_t* packet);
 
 /**
  * @brief gets the scale factor of the magnetometer readings to convert to microteslas.
