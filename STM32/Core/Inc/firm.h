@@ -31,6 +31,11 @@ typedef struct {
     DMA_HandleTypeDef* hdma_sdio_tx;
 } DMAHandles;
 
+// Struct to contain all UART handles for the firm initialization function
+typedef struct {
+    UART_HandleTypeDef* huart1;
+} UARTHandles;
+
 
 /**
  * @brief Initializes firm, including all sensors and the logger
@@ -38,9 +43,10 @@ typedef struct {
  * @param spi_handles struct containing all SPI handles, from the HAL
  * @param i2c_handles struct containing all I2C handles, from the HAL
  * @param dma_handles struct containing all DMA handles, from the HAL
+ * @param uart_handles struct containing all UART handles, from the HAL
  * @retval Whether FIRM successfully initialized, 0 on successful write
  */
-int initialize_firm(SPIHandles* spi_handles, I2CHandles* i2c_handles, DMAHandles* dma_handles);
+int initialize_firm(SPIHandles* spi_handles, I2CHandles* i2c_handles, DMAHandles* dma_handles, UARTHandles* uart_handles);
 
 /**
  * @brief The main loop which checks if any of the sensors have new data, reads it, logs it, and

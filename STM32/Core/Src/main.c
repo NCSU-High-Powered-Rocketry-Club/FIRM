@@ -138,8 +138,11 @@ int main(void)
     .hdma_sdio_rx = &hdma_sdio_rx,
     .hdma_sdio_tx = &hdma_sdio_tx,
   };
+  UARTHandles uart_handles = {
+    .huart1 = &huart1,
+  };
 
-  if (initialize_firm(&spi_handles, &i2c_handles, &dma_handles)) {
+  if (initialize_firm(&spi_handles, &i2c_handles, &dma_handles, &uart_handles)) {
       Error_Handler();
   };
 
