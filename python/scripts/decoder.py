@@ -18,7 +18,11 @@ BMP581_SIZE = 6
 ICM45686_SIZE = 15
 MMC5983MA_SIZE = 7
 HEADER_SIZE_TEXT = 14 # size of the "FIRM LOG vx.x" text
-HEADER_NUM_FLOATS = 5 # number of scale factor floats in the header
+HEADER_UID_SIZE = 8
+HEADER_DEVICE_NAME_LEN = 33
+HEADER_COMM_SIZE = 1 # 1 byte to determine if serial is enabled or not
+HEADER_CAL_SIZE = (3 + 9) * 3 * 4 # 3 offsets, 3x3 scale factor matrix, 3 sensors, 4 bytes per float
+HEADER_NUM_SCALE_FACTORS = 5 # number of scale factor floats in the header
 
 def twos_complement(val, bits):
     if (val & (1 << (bits - 1))) != 0:
@@ -99,7 +103,27 @@ class Decoder:
 
     def read_header(self, file):
         file.read(HEADER_SIZE_TEXT)
-        scale_factor_bytes = file.read(HEADER_NUM_FLOATS * 4)
+        uid_b = file.read(HEADER_UID_SIZE)
+        
+        device_name_b = file.read(HEADER_DEVICE_NAME_LEN)
+        comms_b = file.read(HEADER_COMM_SIZE)
+        padding_bytes = 8 - (HEADER_UID_SIZE + HEADER_DEVICE_NAME_LEN + HEADER_COMM_SIZE) % 8
+        file.read(padding_bytes)
+        calibration_b = file.read(HEADER_CAL_SIZE)
+
+        self.uid = struct.unpack("<Q", uid_b)[0]
+        device_name_format_string = "<" + str(HEADER_DEVICE_NAME_LEN) + "s"
+        name_bytes, = struct.unpack("<33s", device_name_b)
+        self.device_name = name_bytes.rstrip(b"\x00").decode("utf-8")
+        self.serial_transfer = struct.unpack("?", comms_b)[0]
+
+        cal_format_string = "<" + ("f" * int(HEADER_CAL_SIZE / 4))
+        calibrations = struct.unpack(cal_format_string, calibration_b)
+        self.accel_cal = calibrations[0 : 12]
+        self.gyro_cal = calibrations[12 : 24]
+        self.mag_cal = calibrations[24 : 36]
+
+        scale_factor_bytes = file.read(HEADER_NUM_SCALE_FACTORS * 4)
         scale_factors = struct.unpack('<fffff', scale_factor_bytes)
         self.bmp581_scale_factors = scale_factors[0 : 2]
         self.icm45686_scale_factors = scale_factors[2 : 4]
@@ -154,6 +178,29 @@ class Decoder:
         ]
         return data
 
+def write_to_csv(data: pd.DataFrame, filename, decoder: Decoder):
+    with open(filename, "w") as f:
+        f.write(f"{decoder.device_name},{str(decoder.uid)}\n")
+        f.write(f"serial transfer:,{str(decoder.serial_transfer)}\n")
+        f.write("ICM45686 Acceleration Calibration,")
+        for cal in decoder.accel_cal:
+            f.write(f"{cal},")
+        f.write("\nICM45686 Gyroscope Calibration,")
+        for cal in decoder.gyro_cal:
+            f.write(f"{cal},")
+        f.write("\nICM45686 Magnetometer Calibration,")
+        for cal in decoder.mag_cal:
+            f.write(f"{cal},")
+        f.write(f"\n\nScale Factors\nAccel,Gyro,Mag,Pressure,Temp\n")
+        scale_factors_full = [decoder.icm45686_scale_factors, decoder.mmc5983ma_scale_factor, decoder.bmp581_scale_factors]
+        
+        # this flattens the array
+        scale_factors = [sf for sensor in scale_factors_full for sf in (sensor if isinstance(sensor, (list, tuple)) else [sensor])]
+        for sf in scale_factors:
+            f.write(f"{sf},")
+        f.write("\n\n")
+    data.to_csv(filename, mode="a", index=False)
+
 def decode(path):
     with open(path, 'rb') as f:
         decoder = Decoder(f)
@@ -165,9 +212,10 @@ def decode(path):
         mmc5983ma_df = pd.DataFrame(decoder.mmc5983ma_data, columns=['timestamp', 'mag_x', 'mag_y', 'mag_z'])
 
         # write to csv
-        bmp581_df.to_csv("BMP581_data.csv", index=False)
-        icm45686_df.to_csv("ICM45686_data.csv", index=False)
-        mmc5983ma_df.to_csv("MMC5983MA_data.csv", index=False)
+    
+        write_to_csv(bmp581_df, "BMP581_data.csv", decoder)
+        write_to_csv(icm45686_df, "ICM45686_data.csv", decoder)
+        write_to_csv(mmc5983ma_df, "MMC5983MA_data.csv", decoder)
 
 if __name__ == "__main__":
     if len(sys.argv) == 2:

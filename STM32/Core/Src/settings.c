@@ -63,6 +63,7 @@ static void settings_write_defaults(void) {
     // TODO: determine settings to use
     w25q128jv_read_UID((uint8_t*)&firmSettings.device_uid, 8);
     firmSettings.serial_transfer_enabled = true;
+    strcpy(firmSettings.device_name, "FIRM Device");
 
     // Erase sector 0 first (4 KB, covers our 1024 bytes)
     w25q128jv_erase_sector(0);
