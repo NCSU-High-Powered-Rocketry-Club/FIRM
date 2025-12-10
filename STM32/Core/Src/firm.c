@@ -26,8 +26,11 @@ CalibratedDataPacket_t calibrated_packet = {0};
 // instance of the serialized packet, will be reused
 SerializedPacket_t serialized_packet = {0};
 
+static UART_HandleTypeDef* firm_huart1;
 
-int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DMAHandles* dma_handles_ptr) {
+int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DMAHandles* dma_handles_ptr, UARTHandles* uart_handles_ptr) {
+    firm_huart1 = uart_handles_ptr->huart1;
+
     // We use DWT (Data Watchpoint and Trace unit) to get a high resolution free-running timer
     // for our data packet timestamps. This allows us to use the clock cycle count instead of a
     // standard timestamp in milliseconds or similar, while not having any performance penalty.
@@ -176,9 +179,14 @@ void loop_firm(void) {
 
     // if USB serial communication setting is enabled, and new data is collected, serialize
     // and transmit it
-    if (firmSettings.serial_transfer_enabled && any_new_data_collected) {
-        usb_serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
-        usb_transmit_serialized_packet(&serialized_packet);
+    if (any_new_data_collected) {
+        if (firmSettings.usb_transfer_enabled) {
+            usb_serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
+            usb_transmit_serialized_packet(&serialized_packet);
+        }
+        if (firmSettings.uart_transfer_enabled) {
+            HAL_UART_Transmit(firm_huart1, (uint8_t*)&serialized_packet, (uint16_t)sizeof(SerializedPacket_t), 10);
+        }
         any_new_data_collected = false;
     }
 

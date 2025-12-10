@@ -20,7 +20,7 @@ MMC5983MA_SIZE = 7
 HEADER_SIZE_TEXT = 14 # size of the "FIRM LOG vx.x" text
 HEADER_UID_SIZE = 8
 HEADER_DEVICE_NAME_LEN = 33
-HEADER_COMM_SIZE = 1 # 1 byte to determine if serial is enabled or not
+HEADER_COMM_SIZE = 2 # 1 byte for usb, 1 for uart
 HEADER_CAL_SIZE = (3 + 9) * 3 * 4 # 3 offsets, 3x3 scale factor matrix, 3 sensors, 4 bytes per float
 HEADER_NUM_SCALE_FACTORS = 5 # number of scale factor floats in the header
 
@@ -113,9 +113,9 @@ class Decoder:
 
         self.uid = struct.unpack("<Q", uid_b)[0]
         device_name_format_string = "<" + str(HEADER_DEVICE_NAME_LEN) + "s"
-        name_bytes, = struct.unpack("<33s", device_name_b)
+        name_bytes, = struct.unpack(device_name_format_string, device_name_b)
         self.device_name = name_bytes.rstrip(b"\x00").decode("utf-8")
-        self.serial_transfer = struct.unpack("?", comms_b)[0]
+        self.comms = struct.unpack("??", comms_b)
 
         cal_format_string = "<" + ("f" * int(HEADER_CAL_SIZE / 4))
         calibrations = struct.unpack(cal_format_string, calibration_b)
@@ -181,14 +181,15 @@ class Decoder:
 def write_to_csv(data: pd.DataFrame, filename, decoder: Decoder):
     with open(filename, "w") as f:
         f.write(f"{decoder.device_name},{str(decoder.uid)}\n")
-        f.write(f"serial transfer:,{str(decoder.serial_transfer)}\n")
+        f.write(f"usb enabled:,{str(decoder.comms[0])}\n")
+        f.write(f"uart enabled:,{str(decoder.comms[1])}\n")
         f.write("ICM45686 Acceleration Calibration,")
         for cal in decoder.accel_cal:
             f.write(f"{cal},")
         f.write("\nICM45686 Gyroscope Calibration,")
         for cal in decoder.gyro_cal:
             f.write(f"{cal},")
-        f.write("\nICM45686 Magnetometer Calibration,")
+        f.write("\MMC5983MA Magnetometer Calibration,")
         for cal in decoder.mag_cal:
             f.write(f"{cal},")
         f.write(f"\n\nScale Factors\nAccel,Gyro,Mag,Pressure,Temp\n")
