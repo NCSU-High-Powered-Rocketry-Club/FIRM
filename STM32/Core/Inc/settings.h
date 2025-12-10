@@ -42,7 +42,8 @@ typedef struct {
 typedef struct {
     uint64_t device_uid; // flash chip UID
     char device_name[33]; // 32 character limit, plus null-terminator
-    bool serial_transfer_enabled;
+    bool usb_transfer_enabled;
+    bool uart_transfer_enabled;
 } FIRMSettings_t;
 
 // global declaration of FIRM Settings and calibration settings to be used elsewhere in project

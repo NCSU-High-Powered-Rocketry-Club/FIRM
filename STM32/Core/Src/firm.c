@@ -179,10 +179,14 @@ void loop_firm(void) {
 
     // if USB serial communication setting is enabled, and new data is collected, serialize
     // and transmit it
-    if (firmSettings.serial_transfer_enabled && any_new_data_collected) {
-        usb_serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
-        usb_transmit_serialized_packet(&serialized_packet);
-        HAL_UART_Transmit(firm_huart1, (uint8_t*)&serialized_packet, (uint16_t)sizeof(SerializedPacket_t), 10);
+    if (any_new_data_collected) {
+        if (firmSettings.usb_transfer_enabled) {
+            usb_serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
+            usb_transmit_serialized_packet(&serialized_packet);
+        }
+        if (firmSettings.uart_transfer_enabled) {
+            HAL_UART_Transmit(firm_huart1, (uint8_t*)&serialized_packet, (uint16_t)sizeof(SerializedPacket_t), 10);
+        }
         any_new_data_collected = false;
     }
 
