@@ -23,9 +23,6 @@ bool any_new_data_collected = false;
 // instance of the calibrated data packet from the preprocessor to be reused
 CalibratedDataPacket_t calibrated_packet = {0};
 
-// incrementing value for magnetometer calibration
-uint8_t magnetometer_flip = 0;
-
 // instance of the serialized packet, will be reused
 SerializedPacket_t serialized_packet = {0};
 
@@ -113,7 +110,7 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
     ICM45686Packet_t imu_packet;
     icm45686_read_data(&imu_packet);
     MMC5983MAPacket_t mag_packet;
-    mmc5983ma_read_data(&mag_packet, &magnetometer_flip);
+    mmc5983ma_read_data(&mag_packet);
     BMP581Packet_t bmp_packet;
     bmp581_read_data(&bmp_packet);
 
@@ -172,7 +169,7 @@ void loop_firm(void) {
     }
     if (mmc5983ma_has_new_data) {
         MMC5983MAPacket_t* mmc5983ma_packet = logger_malloc_packet(sizeof(MMC5983MAPacket_t));
-        if (!mmc5983ma_read_data(mmc5983ma_packet, &magnetometer_flip)) {
+        if (!mmc5983ma_read_data(mmc5983ma_packet)) {
             mmc5983ma_has_new_data = false;
             logger_write_entry('M', sizeof(MMC5983MAPacket_t));
             mmc5983ma_convert_packet(mmc5983ma_packet, &calibrated_packet);

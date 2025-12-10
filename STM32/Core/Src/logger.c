@@ -8,6 +8,7 @@
 #include "logger.h"
 #include "fatfs.h"
 #include "ff.h"
+#include "settings.h"
 #include "usb_print_debug.h"
 #include <stdint.h>
 #include <stdio.h>
@@ -133,12 +134,13 @@ FRESULT logger_init(DMA_HandleTypeDef* dma_sdio_tx_handle) {
 }
 
 FRESULT logger_write_header(HeaderFields* sensor_scale_factors) {
-    const char* firm_log_header = "FIRM LOG v1.0\n";
+    const char* firm_log_header = "FIRM LOG v1.1\n";
     size_t header_len = strlen(firm_log_header);
     size_t scale_factor_len = sizeof(HeaderFields);
-    size_t len = header_len + scale_factor_len;
+    size_t firm_settings_len = sizeof(firmSettings);
+    size_t calibration_settings_len = sizeof(calibrationSettings);
 
-    FRESULT error_status = logger_ensure_capacity(len);
+    FRESULT error_status = logger_ensure_capacity(header_len + scale_factor_len + firm_settings_len + calibration_settings_len);
     if (error_status) {
         return error_status;
     }
@@ -146,11 +148,16 @@ FRESULT logger_write_header(HeaderFields* sensor_scale_factors) {
     // copy "FIRM LOG" text
     // NOLINTNEXTLINE(bugprone-not-null-terminated-result)
     memcpy(current_buffer + current_offset, firm_log_header, header_len);
-
+    current_offset += header_len;
+    // copy in firm settings
+    memcpy(current_buffer + current_offset, &firmSettings, firm_settings_len);
+    current_offset += firm_settings_len;
+    // copy calibration settings
+    memcpy(current_buffer + current_offset, &calibrationSettings, calibration_settings_len);
+    current_offset += calibration_settings_len;
     // copy sensor scale factor struct
-    memcpy(current_buffer + current_offset + header_len, sensor_scale_factors, scale_factor_len);
-
-    current_offset += len;
+    memcpy(current_buffer + current_offset, sensor_scale_factors, scale_factor_len);
+    current_offset += scale_factor_len;
 
     return error_status;
 }
