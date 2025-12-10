@@ -26,9 +26,11 @@ int settings_init(SPI_HandleTypeDef* flash_hspi, GPIO_TypeDef* flash_cs_channel,
     memcpy(&calibrationSettings, buf, sizeof(CalibrationSettings_t));
     memcpy(&firmSettings, buf + sizeof(CalibrationSettings_t), sizeof(FIRMSettings_t));
 
-    // checksum validation
-    if (firmSettings.checksum != 0xA5A5A5A5) {
-        serialPrintStr("Settings checksum failed, device may need to be configured");
+    // uid validation
+    uint64_t uid;
+    w25q128jv_read_UID((uint8_t *)&uid, 8);
+    if (uid != firmSettings.device_uid) {
+        serialPrintStr("Settings initialization failed, device may need to be configured");
         return 1;
     }
     return 0;
@@ -36,33 +38,27 @@ int settings_init(SPI_HandleTypeDef* flash_hspi, GPIO_TypeDef* flash_cs_channel,
 
 static void settings_write_defaults(void) {
 
-    calibrationSettings.icm45686_accel.offset_gs[0] = 0.0F;
-    calibrationSettings.icm45686_accel.offset_gs[1] = 0.0F;
-    calibrationSettings.icm45686_accel.offset_gs[2] = 0.0F;
-
-    calibrationSettings.icm45686_gyro.offset_dps[0] = 0.0F;
-    calibrationSettings.icm45686_gyro.offset_dps[1] = 0.0F;
-    calibrationSettings.icm45686_gyro.offset_dps[2] = 0.0F;
-
-    calibrationSettings.mmc5983ma_mag.offset_ut[0] = 0.0F;
-    calibrationSettings.mmc5983ma_mag.offset_ut[1] = 0.0F;
-    calibrationSettings.mmc5983ma_mag.offset_ut[2] = 0.0F;
-
-    calibrationSettings.icm45686_accel.scale_multiplier[0] = 1.0F;
-    calibrationSettings.icm45686_accel.scale_multiplier[1] = 1.0F;
-    calibrationSettings.icm45686_accel.scale_multiplier[2] = 1.0F;
-
-    calibrationSettings.icm45686_gyro.scale_multiplier[0] = 1.0F;
-    calibrationSettings.icm45686_gyro.scale_multiplier[1] = 1.0F;
-    calibrationSettings.icm45686_gyro.scale_multiplier[2] = 1.0F;
-
-    calibrationSettings.mmc5983ma_mag.scale_multiplier[0] = 1.0F;
-    calibrationSettings.mmc5983ma_mag.scale_multiplier[1] = 1.0F;
-    calibrationSettings.mmc5983ma_mag.scale_multiplier[2] = 1.0F;
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            if (i != j) {
+                calibrationSettings.icm45686_accel.scale_multiplier[3 * i + j] = 0.0F;
+                calibrationSettings.icm45686_gyro.scale_multiplier[3 * i + j] = 0.0F;
+                calibrationSettings.mmc5983ma_mag.scale_multiplier[3 * i + j] = 0.0F;
+                continue;
+            }
+            calibrationSettings.icm45686_accel.scale_multiplier[3 * i + j] = 1.0F;
+            calibrationSettings.icm45686_gyro.scale_multiplier[3 * i + j] = 1.0F;
+            calibrationSettings.mmc5983ma_mag.scale_multiplier[3 * i + j] = 1.0F;
+        }
+        calibrationSettings.icm45686_accel.offset_gs[i] = 0.0F;
+        calibrationSettings.icm45686_gyro.offset_dps[i] = 0.0F;
+        calibrationSettings.mmc5983ma_mag.offset_ut[i] = 0.0F;
+    }
 
     // TODO: determine settings to use
-    firmSettings.checksum = 0xA5A5A5A5;
+    w25q128jv_read_UID((uint8_t*)&firmSettings.device_uid, 8);
     firmSettings.serial_transfer_enabled = true;
+    strcpy(firmSettings.device_name, "FIRM Device");
 
     // Erase sector 0 first (4 KB, covers our 1024 bytes)
     w25q128jv_erase_sector(0);

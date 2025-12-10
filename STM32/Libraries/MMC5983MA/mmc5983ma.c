@@ -54,7 +54,6 @@ static const uint8_t product_id_val = 0x30; // expected value for the product ID
 static const int data_num_lsb_bits = 131072;
 // value to divide the data by to convert the magnetic field readings to microtesla
 static const float scale_factor = (float)data_num_lsb_bits / 800.0F;
-static const int flip_interval = 10; // number of regular packets between a flipped-sign packet
 
 
 
@@ -92,23 +91,13 @@ int mmc5983ma_init(I2C_HandleTypeDef* hi2c, uint8_t device_i2c_addr) {
     return 0;
 }
 
-int mmc5983ma_read_data(MMC5983MAPacket_t* packet, uint8_t* flip) {
+int mmc5983ma_read_data(MMC5983MAPacket_t* packet) {
     uint8_t data_ready = 0;
     // read status register to make sure data is ready
     read_registers(status, &data_ready, 1);
     if (data_ready & 0x01) { // data ready bit is 0x01
         // manually clear the interrupt signal
         write_register(status, 0b00000001);
-
-        // every flip_interval read cycles, flip the polarity of the magnetometer values
-        // to calibrate the sensor properly
-        if (*flip == flip_interval) {
-            write_register(internal_control0, 0b00010100);
-        }
-        if (*flip == flip_interval + 1) {
-            write_register(internal_control0, 0b00001100);
-            *flip = 0;
-        }
 
         // burst read 7 bytes of data from the first data register
         // first two bytes are magnetometer x
@@ -117,7 +106,6 @@ int mmc5983ma_read_data(MMC5983MAPacket_t* packet, uint8_t* flip) {
         // last byte is 2 bits of LSB x, 2 bits of LSB y, 2 bits of LSB z, and 2 reserved bits
         read_registers(x_out0, (uint8_t*)packet, 7);
         
-        (*flip)++; // incrememt the flip counter
         return 0;
     }
     //serialPrintStr("no data");
