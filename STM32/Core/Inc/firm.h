@@ -40,7 +40,7 @@ typedef struct {
  * @param dma_handles struct containing all DMA handles, from the HAL
  * @retval Whether FIRM successfully initialized, 0 on successful write
  */
-int initialize_firm(SPIHandles* spi_handles, I2CHandles* i2c_handles_ptr, DMAHandles* dma_handles);
+int initialize_firm(SPIHandles* spi_handles, I2CHandles* i2c_handles, DMAHandles* dma_handles);
 
 /**
  * @brief The main loop which checks if any of the sensors have new data, reads it, logs it, and

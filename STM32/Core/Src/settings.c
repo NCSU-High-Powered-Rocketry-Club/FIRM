@@ -1,10 +1,5 @@
 #include "settings.h"
 
-/**
- * When a new FIRM is initialized for the first time, this is the ID it will receive
- */
-#define NEXT_DEVICE_ID 5
-
 FIRMSettings_t firmSettings;
 CalibrationSettings_t calibrationSettings;
 
