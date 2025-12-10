@@ -3,9 +3,11 @@
 #include "logger.h"
 #include <mmc5983ma.h>
 #include "data_processing/data_preprocess.h"
+#include "usb_print_debug.h"
 #include "usb_serializer.h"
 #include "settings.h"
 #include "firm.h"
+#include "led.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -21,14 +23,14 @@ bool any_new_data_collected = false;
 // instance of the calibrated data packet from the preprocessor to be reused
 CalibratedDataPacket_t calibrated_packet = {0};
 
-// incrementing value for magnetometer calibration
-uint8_t magnetometer_flip = 0;
-
 // instance of the serialized packet, will be reused
 SerializedPacket_t serialized_packet = {0};
 
+static UART_HandleTypeDef* firm_huart1;
 
-int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DMAHandles* dma_handles_ptr) {
+int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DMAHandles* dma_handles_ptr, UARTHandles* uart_handles_ptr) {
+    firm_huart1 = uart_handles_ptr->huart1;
+
     // We use DWT (Data Watchpoint and Trace unit) to get a high resolution free-running timer
     // for our data packet timestamps. This allows us to use the clock cycle count instead of a
     // standard timestamp in milliseconds or similar, while not having any performance penalty.
@@ -51,32 +53,43 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // icm45686 cs pin
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET); // flash chip cs pin
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET); // mmc5983ma CS pin
+
+    // Indicate that initialization is in progress:
+    led_set_status(FIRM_UNINITIALIZED);
+
     HAL_Delay(500); // purely for debug purposes, allows time to connect to USB serial terminal
 
     if (icm45686_init(spi_handles_ptr->hspi2, GPIOB, GPIO_PIN_9)) {
+        led_set_status(IMU_FAIL);
         return 1;
     }
 
     if (bmp581_init(spi_handles_ptr->hspi2, GPIOC, GPIO_PIN_2)) {
+        led_set_status(BMP581_FAIL);
         return 1;
     }
     
     if (mmc5983ma_init(i2c_handles_ptr->hi2c1, 0x30)) {
+        led_set_status(MMC5983MA_FAIL);
         return 1;
     }
 
     // set up settings module with flash chip
     if (settings_init(spi_handles_ptr->hspi1, GPIOC, GPIO_PIN_4)) {
+        led_set_status(FLASH_CHIP_FAIL);
         return 1;
     }
 
     // Setup the SD card
     FRESULT res = logger_init(dma_handles_ptr->hdma_sdio_tx);
     if (res) {
-        serialPrintStr("Failed to initialized the logger (SD card)");
+        led_set_status(SD_CARD_FAIL);
         return 1;
     }
     
+    // Indicate that all sensors initialized successfully
+    led_set_status(FIRM_INITIALIZED);
+
     // get scale factor values for each sensor to put in header
     HeaderFields header_fields = {
         bmp581_get_temp_scale_factor(),
@@ -85,13 +98,10 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
         icm45686_get_gyro_scale_factor(),
         mmc5983ma_get_magnetic_field_scale_factor(),
     };
-    
 
+
+    // write the header to the log file
     logger_write_header(&header_fields);
-
-    // Toggle LED:
-    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_1);
-
     serializer_init_packet(&serialized_packet); // initializes the packet length and header bytes
     
     // the IMU runs into issues when the fifo is full at the very beginning, causing the interrupt
@@ -100,7 +110,39 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
     ICM45686Packet_t imu_packet;
     icm45686_read_data(&imu_packet);
     MMC5983MAPacket_t mag_packet;
-    mmc5983ma_read_data(&mag_packet, &magnetometer_flip);
+    mmc5983ma_read_data(&mag_packet);
+    BMP581Packet_t bmp_packet;
+    bmp581_read_data(&bmp_packet);
+
+    // Wait for interrupts to fire
+    HAL_Delay(10);
+
+    // Check if interrupts fired
+    uint8_t interrupt_leds = 0b000;
+    // Blink LEDs to indicate any failed interrupts
+    for (int i = 0; i < 5; i++) {
+        if (bmp581_has_new_data && icm45686_has_new_data && mmc5983ma_has_new_data) {
+            break; // all interrupts fired successfully
+        }
+        if (!icm45686_has_new_data) {
+            serialPrintStr("IMU didn't interrupt");
+            interrupt_leds |= FAILED_INTERRUPT_IMU;
+        }
+        if (!bmp581_has_new_data) {
+            serialPrintStr("BMP581 didn't interrupt");
+            interrupt_leds |= FAILED_INTERRUPT_BMP;
+        }
+        if (!mmc5983ma_has_new_data) {
+            serialPrintStr("MMC5983MA didn't interrupt");
+            interrupt_leds |= FAILED_INTERRUPT_MAG;
+        }
+        led_set_status(interrupt_leds);
+        HAL_Delay(500);
+        led_set_status(FIRM_INITIALIZED);
+        interrupt_leds = 0b000;
+        HAL_Delay(500);
+    }
+
     return 0;
 };
 
@@ -127,7 +169,7 @@ void loop_firm(void) {
     }
     if (mmc5983ma_has_new_data) {
         MMC5983MAPacket_t* mmc5983ma_packet = logger_malloc_packet(sizeof(MMC5983MAPacket_t));
-        if (!mmc5983ma_read_data(mmc5983ma_packet, &magnetometer_flip)) {
+        if (!mmc5983ma_read_data(mmc5983ma_packet)) {
             mmc5983ma_has_new_data = false;
             logger_write_entry('M', sizeof(MMC5983MAPacket_t));
             mmc5983ma_convert_packet(mmc5983ma_packet, &calibrated_packet);
@@ -137,9 +179,14 @@ void loop_firm(void) {
 
     // if USB serial communication setting is enabled, and new data is collected, serialize
     // and transmit it
-    if (firmSettings.serial_transfer_enabled && any_new_data_collected) {
-        usb_serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
-        usb_transmit_serialized_packet(&serialized_packet);
+    if (any_new_data_collected) {
+        if (firmSettings.usb_transfer_enabled) {
+            usb_serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
+            usb_transmit_serialized_packet(&serialized_packet);
+        }
+        if (firmSettings.uart_transfer_enabled) {
+            HAL_UART_Transmit(firm_huart1, (uint8_t*)&serialized_packet, (uint16_t)sizeof(SerializedPacket_t), 10);
+        }
         any_new_data_collected = false;
     }
 
