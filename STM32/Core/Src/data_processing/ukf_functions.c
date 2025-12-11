@@ -3,7 +3,7 @@
 static const double sqrt2 = 1.414213562373095;
 static const double pi = 3.141592653589793;
 
-void ukf_state_transition_function(const double *sigmas, const double dt, const int state, double *prediction) {
+void ukf_state_transition_function(const double *sigmas, const double dt, const State state, double *prediction) {
     memset(prediction, 0, sizeof(double) * UKF_STATE_DIMENSION);
 
     // get quaternion elements and normalize

@@ -7,6 +7,7 @@
 
 // static array allocation
 static double X[UKF_STATE_DIMENSION]; // state vector
+static double measurement_vector[UKF_MEASUREMENT_DIMENSION]; // raw measurements
 static double P_data[(UKF_STATE_DIMENSION - 1) * (UKF_STATE_DIMENSION - 1)]; // covariance matrix
 static double Q_data[(UKF_STATE_DIMENSION - 1) * (UKF_STATE_DIMENSION - 1)]; // process noise matrix
 static double R_data[UKF_MEASUREMENT_DIMENSION * UKF_MEASUREMENT_DIMENSION]; // measurement noise matrix
@@ -23,6 +24,7 @@ static double innovation_inverse_data[UKF_MEASUREMENT_DIMENSION * UKF_MEASUREMEN
 static double P_cross_covariance_data[(UKF_STATE_DIMENSION - 1) * UKF_MEASUREMENT_DIMENSION];
 static double kalman_gain_data[(UKF_STATE_DIMENSION - 1) * UKF_MEASUREMENT_DIMENSION];
 static double measurement_errors[UKF_MEASUREMENT_DIMENSION];
+
 
 static arm_matrix_instance_f64 P = {UKF_STATE_DIMENSION - 1, UKF_STATE_DIMENSION - 1, P_data};
 static arm_matrix_instance_f64 Q = {UKF_STATE_DIMENSION - 1, UKF_STATE_DIMENSION - 1, Q_data};
@@ -67,26 +69,29 @@ static int calculate_cross_covariance(const double *measurement_mean, arm_matrix
 
 
 int ukf_init(UKF *ukfh) {
-    // set covariance, process noise, and measurement noise matrix to all zeros
+    // assign ukf struct to matrix values
+    ukfh->X = X;
+    ukfh->P = P.pData;
+    ukfh->Q = Q.pData;
+    ukfh->R = R.pData;
+    ukfh->flight_state = &state;
+    ukfh->measurement_errors = measurement_errors;
+    ukfh->measurement_vector = measurement_vector;
+    // set covariance matrix to all zeros and initialize state machine
     memset(P_data, 0, sizeof(P_data));
-    memset(Q_data, 0, sizeof(Q_data));
-    memset(R_data, 0, sizeof(R_data));
+    memset(measurement_vector, 0, sizeof(measurement_vector));
+    init_state(ukfh);
+    
+
+    // set inital values of state vector, and initial diagonals of covariance matrix
     for (int i = 0; i < UKF_STATE_DIMENSION - 1; i++) {
-        // set inital values of state vector, and initial diagonals of covariance matrix
         X[i] = ukf_initial_state_estimate[i];
         P_data[i + (UKF_STATE_DIMENSION - 1) * i] = ukf_initial_state_covariance_diag[i];
     }
     // set last element of X (because P is 21 x 21 but X is 22 x 1)
     X[UKF_STATE_DIMENSION - 1] = ukf_initial_state_estimate[UKF_STATE_DIMENSION - 1];
 
-    ukfh->X = X;
-    ukfh->P = P.pData;
-    ukfh->Q = Q.pData;
-    ukfh->R = R.pData;
-    ukfh->flight_state = 0;
-    ukfh->measurement_errors = measurement_errors;
-
-
+    // calculate ukf constants that are needed before running first predict and update
     calculate_sigma_weights();
     return 0;
 }
@@ -116,7 +121,7 @@ int ukf_predict(UKF *ukfh, const double delta_time) {
     return 0;
 }
 
-int ukf_update(UKF *ukfh, double *measurement) {
+int ukf_update(UKF* ukfh, double* measurement) {
     // pass sigmas through the measurement function to determine how the predicted state would
     // be reflected in sensor measurements
     double measurement_sigmas[UKF_MEASUREMENT_DIMENSION];
@@ -161,7 +166,7 @@ int ukf_update(UKF *ukfh, double *measurement) {
     double delta_x[UKF_STATE_DIMENSION - 1];
     mat_vec_mult_f64(&kalman_gain, measurement_residuals, delta_x);
     // if we are not in standby state, do not change the accelerometer/gyroscope offsets at all
-    if (ukfh->flight_state != 0) {
+    if (*(ukfh->flight_state) != STANDBY) {
         memset(&delta_x[12], 0, 6 * sizeof(double));
     }
     // extract rotation vector component of delta_x and change to delta quaternion
@@ -193,6 +198,9 @@ int ukf_update(UKF *ukfh, double *measurement) {
     if (arm_mat_sub_f64(&P, negative_delta_P, &P))
         return 9;
     
+    // update state machine
+    memcpy(ukfh->measurement_vector, measurement, UKF_MEASUREMENT_DIMENSION);
+    state_update(ukfh);
     return 0;
 }
 
@@ -269,7 +277,7 @@ static int calculate_sigmas_f(UKF *ukfh, double dt) {
     for (int i = 0; i < UKF_NUM_SIGMAS; i++) {
         // call the state transition function on each row of the sigma points
         double *output_row = &sigmas_f[i * UKF_STATE_DIMENSION];
-        ukfh->state_transition_function(sigma_points[i], dt, ukfh->flight_state, output_row);
+        ukfh->state_transition_function(sigma_points[i], dt, *(ukfh->flight_state), output_row);
     }
     return 0;
 }

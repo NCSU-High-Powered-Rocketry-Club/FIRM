@@ -3,6 +3,8 @@
 #include "logger.h"
 #include <mmc5983ma.h>
 #include "data_processing/data_preprocess.h"
+#include "data_processing/unscented_kalman_filter.h"
+#include "data_processing/ukf_functions.h"
 #include "usb_print_debug.h"
 #include "usb_serializer.h"
 #include "settings.h"
@@ -17,6 +19,7 @@
 volatile bool bmp581_has_new_data = false;
 volatile bool icm45686_has_new_data = false;
 volatile bool mmc5983ma_has_new_data = false;
+double last_timestamp_sec = 0.0;
 
 // check to verify if any new data has been collected, from any of the sensors
 bool any_new_data_collected = false;
@@ -27,6 +30,8 @@ CalibratedDataPacket_t calibrated_packet = {0};
 SerializedPacket_t serialized_packet = {0};
 
 static UART_HandleTypeDef* firm_huart1;
+
+static UKF ukf;
 
 int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DMAHandles* dma_handles_ptr, UARTHandles* uart_handles_ptr) {
     firm_huart1 = uart_handles_ptr->huart1;
@@ -87,6 +92,14 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
         return 1;
     }
     
+    // initialize the unscented kalman filter
+    if (ukf_init(&ukf)) {
+        led_set_status(UKF_FAIL);
+        return 1;
+    }
+    ukf.measurement_function = ukf_measurement_function;
+    ukf.state_transition_function = ukf_state_transition_function;
+
     // Indicate that all sensors initialized successfully
     led_set_status(FIRM_INITIALIZED);
 
@@ -180,6 +193,29 @@ void loop_firm(void) {
     // if USB serial communication setting is enabled, and new data is collected, serialize
     // and transmit it
     if (any_new_data_collected) {
+        // get norm of magnetometer data
+        double mag_x_2 = (double)calibrated_packet.magnetic_field_x * (double)calibrated_packet.magnetic_field_x;
+        double mag_y_2 = (double)calibrated_packet.magnetic_field_y * (double)calibrated_packet.magnetic_field_y;
+        double mag_z_2 = (double)calibrated_packet.magnetic_field_z * (double)calibrated_packet.magnetic_field_z;
+        double mag_norm = sqrt(mag_x_2 + mag_y_2 + mag_z_2);
+        // update the kalman filter
+        double measurements[UKF_MEASUREMENT_DIMENSION] = {
+            (double)calibrated_packet.pressure,
+            (double)calibrated_packet.accel_x,
+            (double)calibrated_packet.accel_y,
+            (double)calibrated_packet.accel_z,
+            (double)calibrated_packet.angular_rate_x,
+            (double)calibrated_packet.angular_rate_y,
+            (double)calibrated_packet.angular_rate_z,
+            (double)calibrated_packet.magnetic_field_x / mag_norm,
+            (double)calibrated_packet.magnetic_field_y / mag_norm,
+            (double)calibrated_packet.magnetic_field_z / mag_norm,
+        };
+        if (last_timestamp_sec == 0.0)
+            last_timestamp_sec = calibrated_packet.timestamp_sec - 0.001;
+        double delta_timestamp = calibrated_packet.timestamp_sec - last_timestamp_sec;
+        ukf_predict(&ukf, delta_timestamp);
+        ukf_update(&ukf, measurements);
         if (firmSettings.usb_transfer_enabled) {
             usb_serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
             usb_transmit_serialized_packet(&serialized_packet);

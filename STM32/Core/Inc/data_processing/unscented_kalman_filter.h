@@ -1,7 +1,9 @@
 #pragma once
 #include "kalman_filter_config.h"
 #include "matrixhelper.h"
-#include "arm_math.h"
+#include "state_machine.h"
+#include <arm_math.h>
+
 
 /**
  * @brief UKF parameters
@@ -11,10 +13,11 @@ typedef struct UKF {
     double *P; // covariance matrix
     double *Q; // process noise matrix
     double *R; // measurement nosie matrix
-    int flight_state; // 0 - 4 for standby - landed
-    void (*state_transition_function)(const double*, double, int, double*);
+    State* flight_state;
+    void (*state_transition_function)(const double*, double, State, double*);
     void (*measurement_function)(const double*, const struct UKF*, double*);
     double *measurement_errors; // associated errors for each measurement
+    double *measurement_vector; // the raw measurements given to the update function
 
     double initial_pressure;
     double mag_world[3];

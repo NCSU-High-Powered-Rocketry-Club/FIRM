@@ -11,6 +11,7 @@ typedef enum {
     MMC5983MA_FAIL     = 0b100,
     FLASH_CHIP_FAIL    = 0b011,
     SD_CARD_FAIL       = 0b010,
+    UKF_FAIL           = 0b001,
     FIRM_INITIALIZED   = 0b000,
 } LED_Status;
 
