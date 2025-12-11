@@ -180,12 +180,12 @@ void loop_firm(void) {
 
     // if USB serial communication setting is enabled, and new data is collected, serialize
     // and transmit it
-    if (any_new_data_collected) {
-        usb_serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
+    if (any_new_data_collected && (firmSettings.usb_transfer_enabled || firmSettings.uart_transfer_enabled)) {
+        serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
         if (firmSettings.usb_transfer_enabled) {
             usb_transmit_serialized_packet(&serialized_packet);
         }
-        
+
         if (firmSettings.uart_transfer_enabled) {
             // Use DMA for UART transmission if the UART is ready. This avoids
             // blocking the CPU and allows high-throughput transfers.
@@ -198,8 +198,6 @@ void loop_firm(void) {
     }
 
 }
-
-
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
     if (huart == firm_huart1)
