@@ -16,8 +16,6 @@ float ukf_initial_state_estimate[UKF_STATE_DIMENSION] = {
     0.0F, 0.0F, 0.0F,
     0.0F, 0.0F, 1.0F,
     0.0F, 0.0F, 0.0F,
-    0.0F, 0.0F, 0.0F,
-    0.0F, 0.0F, 0.0F,
     1.0F, 0.0F, 0.0F, 0.0F
 };
 
@@ -26,8 +24,6 @@ float ukf_initial_state_covariance_diag[UKF_STATE_DIMENSION - 1] = {
     1e-6F, 1e-6F, 1e-6F,
     1e-1F, 1e-1F, 1e-1F,
     1e-5F, 1e-5F, 1e-5F,
-    1e-4F, 1e-4F, 1e-4F,
-    1e-4F, 1e-4F, 1e-4F,
     1e-1F, 1e-1F, 1e-1F,
 };
 
@@ -37,8 +33,6 @@ float ukf_state_process_covariance_diag[STATE_MACHINE_NUM_STATES][UKF_STATE_DIME
         1e-5F, 1e-5F, 1e-5F, // velocity (x, y, z)
         1e-3F, 1e-3F, 1e-3F, // acceleration (x, y, z)
         1.0F, 1.0F, 1.0F, // gyro (x, y, z)
-        0.0F, 0.0F, 0.0F, // accelerometer offset (x, y, z)
-        0.0F, 0.0F, 0.0F, // gyroscope offset (x, y, z)
         1e-1F, 1e-1F, 1e-1F // orientation (r, p, y)
     },
     { // Motor Burn
@@ -46,8 +40,6 @@ float ukf_state_process_covariance_diag[STATE_MACHINE_NUM_STATES][UKF_STATE_DIME
         1e-2F, 1e-2F, 1e-2F, // velocity (x, y, z)
         1e1F, 1e1F, 1e1F, // acceleration (x, y, z)
         1e4F, 1e4F, 1e4F, // gyro (x, y, z)
-        0.0F, 0.0F, 0.0F, // accelerometer offset (x, y, z)
-        0.0F, 0.0F, 0.0F, // gyroscope offset (x, y, z)
         1e2F, 1e2F, 1e2F // orientation (r, p, y)
     },
     { // Coast
@@ -55,8 +47,6 @@ float ukf_state_process_covariance_diag[STATE_MACHINE_NUM_STATES][UKF_STATE_DIME
         1e-3F, 1e-3F, 1e-3F, // velocity (x, y, z)
         1e1F, 1e1F, 1e1F, // acceleration (x, y, z)
         1e3F, 1e3F, 1e3F, // gyro (x, y, z)
-        0.0F, 0.0F, 0.0F, // accelerometer offset (x, y, z)
-        0.0F, 0.0F, 0.0F, // gyroscope offset (x, y, z)
         1e1F, 1e1F, 1e1F // orientation (r, p, y)
     },
     { // Descent
@@ -64,8 +54,6 @@ float ukf_state_process_covariance_diag[STATE_MACHINE_NUM_STATES][UKF_STATE_DIME
         1.0F, 1.0F, 1.0F, // velocity (x, y, z)
         1.0F, 1.0F, 1.0F, // acceleration (x, y, z)
         1e2F, 1e2F, 1e2F, // gyro (x, y, z)
-        0.0F, 0.0F, 0.0F, // accelerometer offset (x, y, z)
-        0.0F, 0.0F, 0.0F, // gyroscope offset (x, y, z)
         1e1F, 1e1F, 1e1F // orientation (r, p, y)
     },
     { // Landed
@@ -73,8 +61,6 @@ float ukf_state_process_covariance_diag[STATE_MACHINE_NUM_STATES][UKF_STATE_DIME
         1.0F, 1.0F, 1.0F, // velocity (x, y, z)
         1e2F, 1e2F, 1e2F, // acceleration (x, y, z)
         1e2F, 1e2F, 1e2F, // gyro (x, y, z)
-        0.0F, 0.0F, 0.0F, // accelerometer offset (x, y, z)
-        0.0F, 0.0F, 0.0F, // gyroscope offset (x, y, z)
         1.0F, 1.0F, 1.0F // orientation (r, p, y)
     }
 };

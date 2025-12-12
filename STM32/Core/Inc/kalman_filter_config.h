@@ -11,7 +11,7 @@ typedef enum {
 /**
  * @brief Number of states in the Unscented Kalman Filter (UKF) state vector
  */
-#define UKF_STATE_DIMENSION 22
+#define UKF_STATE_DIMENSION 16
 
 /**
  * @brief Number of measurements in the UKF measurement vector

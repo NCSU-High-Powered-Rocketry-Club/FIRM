@@ -80,10 +80,22 @@ void mat_add_f32(const arm_matrix_instance_f32 *pSrcA, const arm_matrix_instance
     }
 }
 
+void mat_sub_f32(const arm_matrix_instance_f32 *pSrcA, const arm_matrix_instance_f32 *pSrcB, arm_matrix_instance_f32 *pDst) {
+    int numElements = pSrcA->numRows * pSrcA->numCols;
+    for (int i = 0; i < numElements; i++) {
+        pDst->pData[i] = pSrcA->pData[i] + pSrcB->pData[i];
+    }
+}
+
 // cmsis-dsp doesnt have f32 matrix/vector multiply
 void mat_vec_mult_f32(const arm_matrix_instance_f32 *pSrcA, const float *pVec, float *pDst) {
-    for (int i = 0; i < pSrcA->numRows; i++) {
-        arm_dot_prod_f32(&pSrcA->pData[i*pSrcA->numCols], pVec, pSrcA->numCols, &pDst[i]);
+    uint16_t rows = pSrcA->numRows;
+    uint16_t cols = pSrcA->numCols;
+    for (int i = 0; i < rows; i++) {
+        pDst[i] = 0.0F;
+        for (int j = 0; j < cols; j++) {
+            pDst[i] += pSrcA->pData[i * cols + j] * pVec[j];
+        }
     }
 }
 
@@ -106,3 +118,55 @@ void quaternion_product_f32(const float *q1, const float *q2, float *out) {
     out[2] = w1*y2 - x1*z2 + y1*w2 + z1*x2;
     out[3] = w1*z2 + x1*y2 - y1*x2 + z1*w2;
 }
+
+void mat_mult_f32(const arm_matrix_instance_f32 *pSrcA, const arm_matrix_instance_f32 *pSrcB, arm_matrix_instance_f32 *pDst) {
+    int a_rows = pSrcA->numRows;
+    int a_cols = pSrcA->numCols;
+    int b_cols = pSrcB->numCols;
+
+    // Naive O(n^3) implementation
+    for (int i = 0; i < a_rows; i++) {
+        for (int j = 0; j < b_cols; j++) {
+            float32_t sum = 0.0F;
+            for (int k = 0; k < a_cols; k++) {
+                sum += pSrcA->pData[i * a_cols + k] * pSrcB->pData[k * b_cols + j];
+            }
+            pDst->pData[i * b_cols + j] = sum;
+        }
+    }
+}
+
+void vec_sub_f32(const float *pSrcA, const float *pSrcB, float *pDst, int length) {
+    for (int i = 0; i < length; i++) {
+        pDst[i] = pSrcA[i] - pSrcB[i];
+    }
+}
+
+void vec_add_f32(const float *pSrcA, const float *pSrcB, float *pDst, int length) {
+    for (int i = 0; i < length; i++) {
+        pDst[i] = pSrcA[i] + pSrcB[i];
+    }
+}
+
+void vec_scale_f32(const float *pSrcA, const float scale, float *pDst, int length) {
+    for (int i = 0; i < length; i++) {
+        pDst[i] = pSrcA[i] * scale;
+    }
+}
+
+void vec_mult_f32(const float *pSrcA, const float *pSrcB, float *pDst, int length) {
+    for (int i = 0; i < length; i++) {
+        pDst[i] = pSrcA[i] * pSrcB[i];
+    }
+}
+
+void mat_trans_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 *pDst) {
+    uint16_t rows = pSrc->numRows;
+    uint16_t cols = pSrc->numCols;
+    for (uint16_t j = 0; j < cols; j++) {
+        for (uint16_t i = 0; i < rows; i++) {
+            pDst->pData[j * rows + i] = pSrc->pData[i * cols + j];
+        }
+    }
+}
+

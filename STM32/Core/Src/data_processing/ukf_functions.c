@@ -5,7 +5,7 @@ void ukf_state_transition_function(const float *sigmas, const float dt, const St
     memset(prediction, 0, sizeof(float) * UKF_STATE_DIMENSION);
 
     // get quaternion elements and normalize
-    float quat[4] = {sigmas[18], sigmas[19], sigmas[20], sigmas[21]};
+    float quat[4] = {sigmas[UKF_STATE_DIMENSION - 4], sigmas[UKF_STATE_DIMENSION - 3], sigmas[UKF_STATE_DIMENSION - 2], sigmas[UKF_STATE_DIMENSION - 1]};
     quaternion_normalize_f32(quat);
 
     // copy over states 7 - 21
@@ -24,7 +24,7 @@ void ukf_state_transition_function(const float *sigmas, const float dt, const St
         // next quat = quat * delta_q
         float next_q[4];
         quaternion_product_f32(quat, delta_quat, next_q);
-        memcpy(&prediction[18], next_q, sizeof(float) * 4);
+        memcpy(&prediction[UKF_STATE_DIMENSION - 4], next_q, sizeof(float) * 4);
         
 
         // calculate next velocity and position
@@ -118,9 +118,9 @@ void ukf_measurement_function(const float *sigmas, const UKF *ukfh, float *measu
     float acc_vx = acc_vehicle[1];
     float acc_vy = acc_vehicle[2];
     float acc_vz = acc_vehicle[3];
-    measurement_sigmas[1] = (acc_vx / SQRT2_F + acc_vy / SQRT2_F) + sigmas[12];  // accel X
-    measurement_sigmas[2] = (-acc_vx / SQRT2_F + acc_vy / SQRT2_F) + sigmas[13]; // accel Y
-    measurement_sigmas[3] = acc_vz + sigmas[14]; // accel Z
+    measurement_sigmas[1] = (acc_vx / SQRT2_F + acc_vy / SQRT2_F);  // accel X
+    measurement_sigmas[2] = (-acc_vx / SQRT2_F + acc_vy / SQRT2_F); // accel Y
+    measurement_sigmas[3] = acc_vz; // accel Z
 
     // clip accel X and accel Y
     float acc_clip = 19.2882F;
@@ -142,9 +142,9 @@ void ukf_measurement_function(const float *sigmas, const UKF *ukfh, float *measu
     float gyro_gx = vehicle_gyro[0];
     float gyro_gy = vehicle_gyro[1];
     float gyro_gz = vehicle_gyro[2];
-    measurement_sigmas[4] = (gyro_gx / SQRT2_F + gyro_gy / SQRT2_F) + sigmas[15]; // gyro x
-    measurement_sigmas[5] = (-gyro_gx / SQRT2_F + gyro_gy / SQRT2_F) + sigmas[16]; // gyro y
-    measurement_sigmas[6] = gyro_gz + sigmas[17]; // gyro z
+    measurement_sigmas[4] = (gyro_gx / SQRT2_F + gyro_gy / SQRT2_F); // gyro x
+    measurement_sigmas[5] = (-gyro_gx / SQRT2_F + gyro_gy / SQRT2_F); // gyro y
+    measurement_sigmas[6] = gyro_gz; // gyro z
 
     // Magnetometer
     float mag_world_q[4] = {

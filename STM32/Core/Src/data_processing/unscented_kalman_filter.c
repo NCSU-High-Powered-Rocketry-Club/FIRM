@@ -152,53 +152,41 @@ int ukf_update(UKF* ukfh, float* measurement) {
     
     // calculate the kalman gain, which defines how much to weigh the prediction by compared
     // to the sensor measurements
-    if (arm_mat_mult_f32(&P_cross_covariance, &innovation_covariance_inverse, &kalman_gain)) {
-        return 4;
-    }
+    mat_mult_f32(&P_cross_covariance, &innovation_covariance_inverse, &kalman_gain);
 
     // calculate measurement error metric for debug and state change purposes. These values can
     // be used to determine when a measurement is outside of the expected range and can help tune
     // the filter, remove outliers, or detecting state changes
     float measurement_residuals[UKF_MEASUREMENT_DIMENSION];
-    arm_sub_f32(measurement, predicted_measurement, measurement_residuals, UKF_MEASUREMENT_DIMENSION);
+    vec_sub_f32(measurement, predicted_measurement, measurement_residuals, UKF_MEASUREMENT_DIMENSION);
     mat_vec_mult_f32(&innovation_covariance_inverse, measurement_residuals, ukfh->measurement_errors);
-    arm_mult_f32(measurement_residuals, ukfh->measurement_errors, ukfh->measurement_errors, UKF_MEASUREMENT_DIMENSION);
+    vec_mult_f32(measurement_residuals, ukfh->measurement_errors, ukfh->measurement_errors, UKF_MEASUREMENT_DIMENSION);
     
     // calculate the change in the state vector based on kalman gain
     float delta_x[UKF_STATE_DIMENSION - 1];
     mat_vec_mult_f32(&kalman_gain, measurement_residuals, delta_x);
     // if we are not in standby state, do not change the accelerometer/gyroscope offsets at all
-    if (*(ukfh->flight_state) != STANDBY) {
-        memset(&delta_x[12], 0, 6 * sizeof(float));
-    }
+
     // extract rotation vector component of delta_x and change to delta quaternion
     float delta_quat[4];
     rotvec_to_quat(&delta_x[UKF_STATE_DIMENSION - 4], delta_quat);
     // update state vector by multiplying the delta quaternion and adding the delta x vector components
     float next_quat[4];
     quaternion_product_f32(delta_quat, &X[UKF_STATE_DIMENSION - 4], next_quat);
-    memcpy(&X[UKF_STATE_DIMENSION - 4], next_quat, sizeof(next_quat));
-    for (int i = 0; i < UKF_STATE_DIMENSION - 4; i++) {
-        X[i] += delta_x[i];
-    }
     
     // compute next covariance matrix, P
     // new_P = P - (kalman_gain * innovation_covariance * kalman_gain^T)
     float kalman_gain_transpose_data[UKF_MEASUREMENT_DIMENSION * (UKF_STATE_DIMENSION - 1)];
     arm_matrix_instance_f32 kalman_gain_transpose = {UKF_MEASUREMENT_DIMENSION, UKF_STATE_DIMENSION - 1, kalman_gain_transpose_data};
-    if (arm_mat_trans_f32(&kalman_gain, &kalman_gain_transpose))
-        return 5;
+    mat_trans_f32(&kalman_gain, &kalman_gain_transpose);
     float temp_matrix_data[UKF_MEASUREMENT_DIMENSION * (UKF_STATE_DIMENSION - 1)];
     arm_matrix_instance_f32 temp_matrix = {UKF_MEASUREMENT_DIMENSION, UKF_STATE_DIMENSION - 1, temp_matrix_data};
-    if (arm_mat_mult_f32(&innovation_covariance, &kalman_gain_transpose, &temp_matrix))
-        return 6;
+    mat_mult_f32(&innovation_covariance, &kalman_gain_transpose, &temp_matrix);
     arm_matrix_instance_f32 *negative_delta_P = &Q_scaled; // reusing this matrix
     if (negative_delta_P->numCols != (UKF_STATE_DIMENSION - 1) || negative_delta_P->numRows != (UKF_STATE_DIMENSION - 1))
         return 7;
-    if (arm_mat_mult_f32(&kalman_gain, &temp_matrix, negative_delta_P))
-        return 8;
-    if (arm_mat_sub_f32(&P, negative_delta_P, &P))
-        return 9;
+    mat_mult_f32(&kalman_gain, &temp_matrix, negative_delta_P);
+    mat_sub_f32(&P, negative_delta_P, &P);
     
     // update state machine
     memcpy(ukfh->measurement_vector, measurement, UKF_MEASUREMENT_DIMENSION);
@@ -309,7 +297,7 @@ static int unscented_transform_f() {
     for (int i = 0; i < UKF_NUM_SIGMAS; i++) {
         
         // scale the vector components by Wm
-        arm_scale_f32(&sigmas_f[i * UKF_STATE_DIMENSION], Wm[i], weighted_vector_sigmas, UKF_STATE_DIMENSION - 4);
+        vec_scale_f32(&sigmas_f[i * UKF_STATE_DIMENSION], Wm[i], weighted_vector_sigmas, UKF_STATE_DIMENSION - 4);
 
         // quaternions can't be simply multiplied and summed like vector components, so they must
         // be converted to change in rotation, in rotation vector form, then scaled/summed like
@@ -324,7 +312,7 @@ static int unscented_transform_f() {
         float delta_rotvec_sigmas[3];
         float weighted_delta_rotvec_sigmas[3];
         quat_to_rotvec(delta_quat, delta_rotvec_sigmas);
-        arm_scale_f32(delta_rotvec_sigmas, Wm[i], weighted_delta_rotvec_sigmas, 3);
+        vec_scale_f32(delta_rotvec_sigmas, Wm[i], weighted_delta_rotvec_sigmas, 3);
 
         // add the vector and rotvec components to the mean vectors
         for (int j = 0; j < (UKF_STATE_DIMENSION - 4); j++) {
@@ -347,7 +335,7 @@ static int unscented_transform_f() {
     memcpy(X, mean_x, sizeof(mean_x));
     // calculate and copy in the vector residuals into the resiudals matrix
     for (int i = 0; i < UKF_NUM_SIGMAS; i++) {
-        arm_sub_f32(&sigmas_f[i * UKF_STATE_DIMENSION], mean_x, &temp_residuals_data[i * (UKF_STATE_DIMENSION - 1)], UKF_STATE_DIMENSION - 4);
+        vec_sub_f32(&sigmas_f[i * UKF_STATE_DIMENSION], mean_x, &temp_residuals_data[i * (UKF_STATE_DIMENSION - 1)], UKF_STATE_DIMENSION - 4);
 
     }
 
@@ -358,13 +346,11 @@ static int unscented_transform_f() {
         }
     }
     for (int i = 0; i < UKF_STATE_DIMENSION - 1; i++) {
-        arm_mult_f32(&temp_residuals_transpose_data[i * UKF_NUM_SIGMAS], Wc, &temp_weighted_residuals_transpose_data[i * UKF_NUM_SIGMAS], UKF_NUM_SIGMAS);
+        vec_mult_f32(&temp_residuals_transpose_data[i * UKF_NUM_SIGMAS], Wc, &temp_weighted_residuals_transpose_data[i * UKF_NUM_SIGMAS], UKF_NUM_SIGMAS);
     }
     
-    int status = arm_mat_mult_f32(&temp_weighted_residuals_transpose, &temp_residuals, &P);
-    if (status) {
-        return 1;
-    }
+    mat_mult_f32(&temp_weighted_residuals_transpose, &temp_residuals, &P);
+
     return 0;
 }
 
@@ -381,30 +367,28 @@ static int unscented_transform_h(float measurement_mean[UKF_MEASUREMENT_DIMENSIO
     float scaled_sigma_measurements[UKF_MEASUREMENT_DIMENSION];
     for (int i = 0; i < UKF_NUM_SIGMAS; i++) {
         // scale row of measurement sigmas by weights
-        arm_scale_f32(&sigmas_h[UKF_MEASUREMENT_DIMENSION * i], Wm[i], scaled_sigma_measurements, UKF_MEASUREMENT_DIMENSION);
+        vec_scale_f32(&sigmas_h[UKF_MEASUREMENT_DIMENSION * i], Wm[i], scaled_sigma_measurements, UKF_MEASUREMENT_DIMENSION);
         // sum all 43 rows of weighted measurement sigmas to the resulting measurement mean
-        arm_add_f32(measurement_mean, scaled_sigma_measurements, measurement_mean, UKF_MEASUREMENT_DIMENSION);
+        vec_add_f32(measurement_mean, scaled_sigma_measurements, measurement_mean, UKF_MEASUREMENT_DIMENSION);
     }
 
     // compute residuals, reuse residuals matrix from sigmas_f
     for (int i = 0; i < UKF_NUM_SIGMAS; i++) {
-        arm_sub_f32(&sigmas_h[i * UKF_MEASUREMENT_DIMENSION], measurement_mean, &temp_residuals_data[i * UKF_MEASUREMENT_DIMENSION], UKF_MEASUREMENT_DIMENSION);
+        vec_sub_f32(&sigmas_h[i * UKF_MEASUREMENT_DIMENSION], measurement_mean, &temp_residuals_data[i * UKF_MEASUREMENT_DIMENSION], UKF_MEASUREMENT_DIMENSION);
     }
 
     // compute weighted residuals with Wc
     float weighted_residuals_data[UKF_NUM_SIGMAS * UKF_MEASUREMENT_DIMENSION];
     arm_matrix_instance_f32 weighted_residuals = {UKF_NUM_SIGMAS, UKF_MEASUREMENT_DIMENSION, weighted_residuals_data};
     for (int i = 0; i < UKF_NUM_SIGMAS; i++) {
-        arm_scale_f32(&temp_residuals_data[i * UKF_MEASUREMENT_DIMENSION], Wc[i], &weighted_residuals_data[i * UKF_MEASUREMENT_DIMENSION], UKF_MEASUREMENT_DIMENSION);
+        vec_scale_f32(&temp_residuals_data[i * UKF_MEASUREMENT_DIMENSION], Wc[i], &weighted_residuals_data[i * UKF_MEASUREMENT_DIMENSION], UKF_MEASUREMENT_DIMENSION);
     }
 
     // transpose residuals
-    if (arm_mat_trans_f32(&temp_residuals, &temp_residuals_transpose))
-        return 1;
+    mat_trans_f32(&temp_residuals, &temp_residuals_transpose);
 
     // Compute P = residuals^T @ weighted_residuals
-    if (arm_mat_mult_f32(&temp_residuals_transpose, &weighted_residuals, innovation_cov))
-        return 1;
+    mat_mult_f32(&temp_residuals_transpose, &weighted_residuals, innovation_cov);
 
     // Add noise covariance R to P
     mat_add_f32(innovation_cov, &R, innovation_cov);
@@ -428,7 +412,7 @@ static int calculate_cross_covariance(const float *measurement_mean, arm_matrix_
         float *dx_row = &temp_residuals_data[i * (UKF_STATE_DIMENSION - 1)];
 
         // Subtract vector part (first 18 elements)
-        arm_sub_f32(sigma_f_row, X, dx_row, UKF_STATE_DIMENSION - 4);
+        vec_sub_f32(sigma_f_row, X, dx_row, UKF_STATE_DIMENSION - 4);
 
         // Quaternion delta for rotvec part
         float quat_sig_f[4];
@@ -453,12 +437,12 @@ static int calculate_cross_covariance(const float *measurement_mean, arm_matrix_
     for (int i = 0; i < UKF_NUM_SIGMAS; i++) {
         const float *sigma_h_row = &sigmas_h[i * UKF_MEASUREMENT_DIMENSION];
         float *dz_row = &dz_res_data[i * UKF_MEASUREMENT_DIMENSION];
-        arm_sub_f32(sigma_h_row, measurement_mean, dz_row, UKF_MEASUREMENT_DIMENSION);
+        vec_sub_f32(sigma_h_row, measurement_mean, dz_row, UKF_MEASUREMENT_DIMENSION);
     }
 
     // Weight dz rows by Wc
     for (int i = 0; i < UKF_NUM_SIGMAS; i++) {
-        arm_scale_f32(&dz_res_data[i * UKF_MEASUREMENT_DIMENSION], Wc[i], &weighted_dz_data[i * UKF_MEASUREMENT_DIMENSION], UKF_MEASUREMENT_DIMENSION);
+        vec_scale_f32(&dz_res_data[i * UKF_MEASUREMENT_DIMENSION], Wc[i], &weighted_dz_data[i * UKF_MEASUREMENT_DIMENSION], UKF_MEASUREMENT_DIMENSION);
     }
     arm_matrix_instance_f32 weighted_dz_mat = {UKF_NUM_SIGMAS, UKF_MEASUREMENT_DIMENSION, weighted_dz_data};
 
@@ -470,10 +454,7 @@ static int calculate_cross_covariance(const float *measurement_mean, arm_matrix_
     }
     
     // Compute P_cross = dx_t @ weighted_dz (21x43 @ 43x10 = 21x10)
-    arm_status status = arm_mat_mult_f32(&temp_residuals_transpose, &weighted_dz_mat, P_cross_covariance);
-    if (status != ARM_MATH_SUCCESS) {
-        return 1;
-    }
+    mat_mult_f32(&temp_residuals_transpose, &weighted_dz_mat, P_cross_covariance);
     return 0;
 }
 
