@@ -1,5 +1,4 @@
 #include "unscented_kalman_filter.h"
-#include "dsp/matrix_functions.h"
 #include "kalman_filter_config.h"
 
 
@@ -68,7 +67,7 @@ static int unscented_transform_h(double measurement_mean[UKF_MEASUREMENT_DIMENSI
 static int calculate_cross_covariance(const double *measurement_mean, arm_matrix_instance_f64 *P_cross_covariance);
 
 
-int ukf_init(UKF *ukfh) {
+int ukf_init(UKF *ukfh, double initial_pressure, double* initial_acceleration, double* initial_magnetic_field) {
     // assign ukf struct to matrix values
     ukfh->X = X;
     ukfh->P = P.pData;
@@ -90,7 +89,9 @@ int ukf_init(UKF *ukfh) {
     }
     // set last element of X (because P is 21 x 21 but X is 22 x 1)
     X[UKF_STATE_DIMENSION - 1] = ukf_initial_state_estimate[UKF_STATE_DIMENSION - 1];
-
+    // set initial quaternion, magnetometer, and pressure
+    calculate_initial_orientation(initial_acceleration, initial_magnetic_field, &X[UKF_STATE_DIMENSION - 4], ukfh->mag_world);
+    ukfh->initial_pressure = initial_pressure;
     // calculate ukf constants that are needed before running first predict and update
     calculate_sigma_weights();
     return 0;
@@ -473,6 +474,42 @@ static int calculate_cross_covariance(const double *measurement_mean, arm_matrix
         return 1;
     }
     return 0;
+}
+
+void calculate_initial_orientation(const double *imu_accel, const double *mag_field, double *init_quaternion, double *mag_world_frame) {
+    double norm_acc = sqrt(imu_accel[0] * imu_accel[0] + imu_accel[1] * imu_accel[1] + imu_accel[2] * imu_accel[2]);
+    double norm_mag = sqrt(mag_field[0] * mag_field[0] + mag_field[1] * mag_field[1] + mag_field[2] * mag_field[2]);
+    double acc_vehicle[3] = {
+        (imu_accel[0] / SQRT2_D - imu_accel[1] / SQRT2_D) / norm_acc,
+        (imu_accel[0] / SQRT2_D + imu_accel[1] / SQRT2_D) / norm_acc,
+        imu_accel[2] / norm_acc,
+    };
+    double mag_vehicle_quat[4] = {
+        0.0,
+        mag_field[0] / norm_mag,
+        mag_field[1] / norm_mag,
+        -mag_field[2] / norm_mag,
+    };
+
+    double roll = atan2(acc_vehicle[1], acc_vehicle[2]);
+    double pitch = atan2(-acc_vehicle[0], sqrt(acc_vehicle[1] * acc_vehicle[1] + acc_vehicle[2] * acc_vehicle[2]));
+    double mx2 = mag_vehicle_quat[1] * cos(pitch) + mag_vehicle_quat[3] * sin(pitch);
+    double my2 = mag_vehicle_quat[1] * sin(roll) * sin(pitch) + mag_vehicle_quat[2] * cos(roll) - mag_vehicle_quat[3] * sin(roll) * cos(pitch);
+    double yaw = atan2(-my2, mx2);
+
+    init_quaternion[0] = cos(roll * 0.5) * cos(pitch * 0.5) * cos(yaw * 0.5) + sin(roll * 0.5) * sin(pitch * 0.5) * sin(yaw * 0.5);
+    init_quaternion[1] = sin(roll * 0.5) * cos(pitch * 0.5) * cos(yaw * 0.5) - cos(roll * 0.5) * sin(pitch * 0.5) * sin(yaw * 0.5);
+    init_quaternion[2] = cos(roll * 0.5) * sin(pitch * 0.5) * cos(yaw * 0.5) + sin(roll * 0.5) * cos(pitch * 0.5) * sin(yaw * 0.5);
+    init_quaternion[3] = cos(roll * 0.5) * cos(pitch * 0.5) * sin(yaw * 0.5) - sin(roll * 0.5) * sin(pitch * 0.5) * cos(yaw * 0.5);
+
+    double quat_conj[4] = {init_quaternion[0], -init_quaternion[1], -init_quaternion[2], -init_quaternion[3]};
+    double temp[4];
+    double mag_world[4];
+    quaternion_product_f64(init_quaternion, mag_vehicle_quat, temp);
+    quaternion_product_f64(temp, quat_conj, mag_world);
+    mag_world_frame[0] = mag_world[1];
+    mag_world_frame[1] = mag_world[2];
+    mag_world_frame[2] = mag_world[3];
 }
 
 #ifdef TEST

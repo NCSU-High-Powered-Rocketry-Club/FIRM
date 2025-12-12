@@ -2,8 +2,9 @@
 #include "kalman_filter_config.h"
 #include "matrixhelper.h"
 #include "state_machine.h"
-#include <arm_math.h>
 
+#define SQRT2_D 1.414213562373095
+#define PI_D 3.141592653589793
 
 /**
  * @brief UKF parameters
@@ -27,9 +28,11 @@ typedef struct UKF {
  * @brief UKF initialization
  * 
  * @param ukfh pointer to UKF parameters
+ * @param initial_acceleration the initial x, y, z acceleration on filter startup
+ * @param initial_magnetic_field the initial x, y, z magnetic field on filter startup
  * @return 0 on success, 1 on failure
  */
-int ukf_init(UKF *ukfh);
+int ukf_init(UKF *ukfh, double initial_pressure, double* initial_acceleration, double* initial_magnetic_field);
 
 /**
  * @brief UKF predict step
@@ -41,6 +44,8 @@ int ukf_init(UKF *ukfh);
 int ukf_predict(UKF *ukfh, double delta_time);
 
 int ukf_update(UKF *ukfh, double *measurement);
+
+void calculate_initial_orientation(const double *imu_accel, const double *mag_field, double *init_quaternion, double *mag_world_frame);
 
 #ifdef TEST
 double ukf_test_get_lambda(void);

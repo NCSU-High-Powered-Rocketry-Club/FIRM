@@ -92,11 +92,7 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
         return 1;
     }
     
-    // initialize the unscented kalman filter
-    if (ukf_init(&ukf)) {
-        led_set_status(UKF_FAIL);
-        return 1;
-    }
+    
     ukf.measurement_function = ukf_measurement_function;
     ukf.state_transition_function = ukf_state_transition_function;
 
@@ -151,11 +147,30 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
         }
         led_set_status(interrupt_leds);
         HAL_Delay(500);
-        led_set_status(FIRM_INITIALIZED);
-        interrupt_leds = 0b000;
-        HAL_Delay(500);
+    }
+    // initialize the unscented kalman filter, first take the data from the first reads of
+    // the sensors and pre-process/calibrate
+    bmp581_convert_packet(&bmp_packet, &calibrated_packet);
+    icm45686_convert_packet(&imu_packet, &calibrated_packet);
+    mmc5983ma_convert_packet(&mag_packet, &calibrated_packet);
+    double init_acc[3] = {
+        (double)calibrated_packet.accel_x,
+        (double)calibrated_packet.accel_y,
+        (double)calibrated_packet.accel_z,
+    };
+    double init_mag[3] = {
+        (double)calibrated_packet.magnetic_field_x,
+        (double)calibrated_packet.magnetic_field_y,
+        (double)calibrated_packet.magnetic_field_z,
+    };
+    if (ukf_init(&ukf, (double)calibrated_packet.pressure, init_acc, init_mag)) {
+        led_set_status(UKF_FAIL);
+        return 1;
     }
 
+    led_set_status(FIRM_INITIALIZED);
+    interrupt_leds = 0b000;
+    HAL_Delay(500);
     return 0;
 };
 
