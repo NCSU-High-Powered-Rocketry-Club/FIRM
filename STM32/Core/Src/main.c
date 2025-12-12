@@ -565,6 +565,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
     }
     if (GPIO_Pin == ICM45686_Interrupt_Pin) {
         icm45686_has_new_data  = true;
+        bmp581_has_new_data = true;
     }
     if (GPIO_Pin == MMC5983MA_Interrupt_Pin) {
         mmc5983ma_has_new_data = true;

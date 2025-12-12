@@ -147,9 +147,18 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
         }
         led_set_status(interrupt_leds);
         HAL_Delay(500);
+        led_set_status(FIRM_INITIALIZED);
+        interrupt_leds = 0b000;
+        HAL_Delay(500);
     }
     // initialize the unscented kalman filter, first take the data from the first reads of
     // the sensors and pre-process/calibrate
+    for (int i = 0; i < 10; i++){
+        icm45686_read_data(&imu_packet);
+        mmc5983ma_read_data(&mag_packet);
+        bmp581_read_data(&bmp_packet);
+        HAL_Delay(10);
+    }
     bmp581_convert_packet(&bmp_packet, &calibrated_packet);
     icm45686_convert_packet(&imu_packet, &calibrated_packet);
     mmc5983ma_convert_packet(&mag_packet, &calibrated_packet);
@@ -168,9 +177,7 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
         return 1;
     }
 
-    led_set_status(FIRM_INITIALIZED);
-    interrupt_leds = 0b000;
-    HAL_Delay(500);
+    
     return 0;
 };
 
@@ -208,6 +215,7 @@ void loop_firm(void) {
     // if USB serial communication setting is enabled, and new data is collected, serialize
     // and transmit it
     if (any_new_data_collected) {
+        uint32_t t1 = HAL_GetTick();
         // get norm of magnetometer data
         double mag_x_2 = (double)calibrated_packet.magnetic_field_x * (double)calibrated_packet.magnetic_field_x;
         double mag_y_2 = (double)calibrated_packet.magnetic_field_y * (double)calibrated_packet.magnetic_field_y;
@@ -229,16 +237,39 @@ void loop_firm(void) {
         if (last_timestamp_sec == 0.0)
             last_timestamp_sec = calibrated_packet.timestamp_sec - 0.001;
         double delta_timestamp = calibrated_packet.timestamp_sec - last_timestamp_sec;
-        ukf_predict(&ukf, delta_timestamp);
-        ukf_update(&ukf, measurements);
-        if (firmSettings.usb_transfer_enabled) {
-            usb_serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
-            usb_transmit_serialized_packet(&serialized_packet);
+        // serialPrintlnInt((int)(*ukf.flight_state));
+        int err = ukf_predict(&ukf, delta_timestamp);
+        if (err) {
+            //serialPrintlnInt(err);
+            //serialPrintStr("err predict");
         }
-        if (firmSettings.uart_transfer_enabled) {
-            HAL_UART_Transmit(firm_huart1, (uint8_t*)&serialized_packet, (uint16_t)sizeof(SerializedPacket_t), 10);
+        if (ukf_update(&ukf, measurements)) {
+            serialPrintStr("err update");
         }
+        // for (int i = 0; i < 12; i++) {
+        //     serialPrintDouble(ukf.X[i]);
+        //     serialPrintStrInline(" ");
+        // }
+        // serialPrintStr("");
+        
+        // serialPrintStrInline("x: ");
+        // serialPrintlnDouble(ukf.measurement_errors[6]);
+        // serialPrintStrInline("y: ");
+        // serialPrintlnDouble(ukf.measurement_errors[7]);
+        // serialPrintStrInline("z: ");
+        // serialPrintlnDouble(ukf.measurement_errors[8]);
+
+
+        // if (firmSettings.usb_transfer_enabled) {
+        //     usb_serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
+        //     usb_transmit_serialized_packet(&serialized_packet);
+        // }
+        // if (firmSettings.uart_transfer_enabled) {
+        //     HAL_UART_Transmit(firm_huart1, (uint8_t*)&serialized_packet, (uint16_t)sizeof(SerializedPacket_t), 10);
+        // }
         any_new_data_collected = false;
+        uint32_t dt = HAL_GetTick() - t1;
+        serialPrintlnInt((int)dt);
     }
 
 }

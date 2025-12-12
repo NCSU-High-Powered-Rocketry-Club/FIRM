@@ -189,7 +189,7 @@ def write_to_csv(data: pd.DataFrame, filename, decoder: Decoder):
         f.write("\nICM45686 Gyroscope Calibration,")
         for cal in decoder.gyro_cal:
             f.write(f"{cal},")
-        f.write("\MMC5983MA Magnetometer Calibration,")
+        f.write("\nMMC5983MA Magnetometer Calibration,")
         for cal in decoder.mag_cal:
             f.write(f"{cal},")
         f.write(f"\n\nScale Factors\nAccel,Gyro,Mag,Pressure,Temp\n")

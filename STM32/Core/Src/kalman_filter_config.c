@@ -24,7 +24,7 @@ double ukf_initial_state_estimate[UKF_STATE_DIMENSION] = {
 double ukf_initial_state_covariance_diag[UKF_STATE_DIMENSION - 1] = {
     1e-6, 1e-6, 1e-6,
     1e-6, 1e-6, 1e-6,
-    1e-2, 1e-2, 1e-2,
+    1e-1, 1e-1, 1e-1,
     1e-5, 1e-5, 1e-5,
     1e-4, 1e-4, 1e-4,
     1e-4, 1e-4, 1e-4,

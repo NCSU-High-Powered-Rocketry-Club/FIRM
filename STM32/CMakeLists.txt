@@ -37,6 +37,10 @@ add_executable(${CMAKE_PROJECT_NAME})
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
 
+target_link_options(${PROJECT_NAME} PRIVATE
+    -u _printf_float
+)
+
 # Link directories setup
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined library search paths
@@ -93,3 +97,4 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 set(CMSISDSP Drivers/CMSIS-DSP)
 set(CMSISCORE "${CMAKE_CURRENT_SOURCE_DIR}/Drivers/CMSIS")
 add_subdirectory(${CMSISDSP}/Source bin_dsp)
+target_link_libraries(${CMAKE_PROJECT_NAME} CMSISDSP)
