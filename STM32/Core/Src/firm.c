@@ -178,8 +178,8 @@ void loop_firm(void) {
         }
     }
 
-    // if USB serial communication setting is enabled, and new data is collected, serialize
-    // and transmit it
+    // If either USB or UART transfer setting is enabled and new data is collected,
+    // serialize and transmit the data over the enabled interfaces.
     if (any_new_data_collected && (firmSettings.usb_transfer_enabled || firmSettings.uart_transfer_enabled)) {
         serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
         if (firmSettings.usb_transfer_enabled) {
