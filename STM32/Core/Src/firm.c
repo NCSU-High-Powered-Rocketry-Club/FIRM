@@ -17,7 +17,7 @@
 volatile bool bmp581_has_new_data = false;
 volatile bool icm45686_has_new_data = false;
 volatile bool mmc5983ma_has_new_data = false;
-volatile bool uart_tx_done = true;
+static volatile bool uart_tx_done = true;
 
 // check to verify if any new data has been collected, from any of the sensors
 bool any_new_data_collected = false;
