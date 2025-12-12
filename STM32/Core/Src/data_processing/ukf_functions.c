@@ -1,34 +1,34 @@
 #include "ukf_functions.h"
 
 
-void ukf_state_transition_function(const double *sigmas, const double dt, const State state, double *prediction) {
-    memset(prediction, 0, sizeof(double) * UKF_STATE_DIMENSION);
+void ukf_state_transition_function(const float *sigmas, const float dt, const State state, float *prediction) {
+    memset(prediction, 0, sizeof(float) * UKF_STATE_DIMENSION);
 
     // get quaternion elements and normalize
-    double quat[4] = {sigmas[18], sigmas[19], sigmas[20], sigmas[21]};
-    quaternion_normalize_f64(quat);
+    float quat[4] = {sigmas[18], sigmas[19], sigmas[20], sigmas[21]};
+    quaternion_normalize_f32(quat);
 
     // copy over states 7 - 21
-    memcpy(&prediction[6], &sigmas[6], sizeof(double) * (UKF_STATE_DIMENSION - 6));
+    memcpy(&prediction[6], &sigmas[6], sizeof(float) * (UKF_STATE_DIMENSION - 6));
 
     if (state == 1 || state == 2 || state == 3) {
         // calculate next quaternion
-        double delta_theta[3] = {
+        float delta_theta[3] = {
             sigmas[9] * dt,
             sigmas[10] * dt,
             sigmas[11] * dt
         };
 
-        double delta_quat[4];
+        float delta_quat[4];
         rotvec_to_quat(delta_theta, delta_quat);
         // next quat = quat * delta_q
-        double next_q[4];
-        quaternion_product_f64(quat, delta_quat, next_q);
-        memcpy(&prediction[18], next_q, sizeof(double) * 4);
+        float next_q[4];
+        quaternion_product_f32(quat, delta_quat, next_q);
+        memcpy(&prediction[18], next_q, sizeof(float) * 4);
         
 
         // calculate next velocity and position
-        double accel_grav[3] = {
+        float accel_grav[3] = {
             sigmas[6] * GRAVITY_METERS_PER_SECOND_SQUARED,
             sigmas[7] * GRAVITY_METERS_PER_SECOND_SQUARED,
             sigmas[8] * GRAVITY_METERS_PER_SECOND_SQUARED
@@ -43,7 +43,7 @@ void ukf_state_transition_function(const double *sigmas, const double dt, const 
 
         // drag model
         if (prediction[5] > UKF_MIN_VEL_FOR_DRAG) {
-            double drag_acc = 0.5 * DRAG_PARAM * prediction[5] * prediction[5];
+            float drag_acc = 0.5F * DRAG_PARAM * prediction[5] * prediction[5];
             prediction[5] += drag_acc * dt;
         }
 
@@ -57,15 +57,15 @@ void ukf_state_transition_function(const double *sigmas, const double dt, const 
 
     if (state == 4) {
         // landed state
-        double grav_vec[3] = {0.0, 0.0, GRAVITY_METERS_PER_SECOND_SQUARED};
+        float grav_vec[3] = {0.0F, 0.0F, GRAVITY_METERS_PER_SECOND_SQUARED};
 
         prediction[3] = sigmas[3] + (sigmas[6] * GRAVITY_METERS_PER_SECOND_SQUARED - grav_vec[0]) * dt;
         prediction[4] = sigmas[4] + (sigmas[7] * GRAVITY_METERS_PER_SECOND_SQUARED - grav_vec[1]) * dt;
         prediction[5] = sigmas[5] + (sigmas[8] * GRAVITY_METERS_PER_SECOND_SQUARED - grav_vec[2]) * dt;
 
         // heavy damping in landed state
-        prediction[3] = sigmas[3] * 1e-2;
-        prediction[4] = sigmas[4] * 1e-2;
+        prediction[3] = sigmas[3] * 1e-2F;
+        prediction[4] = sigmas[4] * 1e-2F;
 
         // position update
         prediction[0] = sigmas[0] + sigmas[3] * dt;
@@ -77,28 +77,28 @@ void ukf_state_transition_function(const double *sigmas, const double dt, const 
 
     if (state == 0) {
         // standby state, set position and velocity to 0
-        memset(&prediction[0], 0, sizeof(double) * 6);
+        memset(&prediction[0], 0, sizeof(float) * 6);
 
         // damping the gyro prediction to drive to 0
-        prediction[9] = sigmas[9] * 0.5;
-        prediction[10] = sigmas[10] * 0.5;
-        prediction[11] = sigmas[11] * 0.5;
+        prediction[9] = sigmas[9] * 0.5F;
+        prediction[10] = sigmas[10] * 0.5F;
+        prediction[11] = sigmas[11] * 0.5F;
 
         return;
     }
 
 }
 
-void ukf_measurement_function(const double *sigmas, const UKF *ukfh, double *measurement_sigmas) {
-    measurement_sigmas[0] = ukfh->initial_pressure * pow((1.0 - (sigmas[2] / 44330.0)), 5.255876);
+void ukf_measurement_function(const float *sigmas, const UKF *ukfh, float *measurement_sigmas) {
+    measurement_sigmas[0] = ukfh->initial_pressure * powf((1.0F - (sigmas[2] / 44330.0F)), 5.255876F);
 
     // normalize quaternions
-    double quat_state[4];
+    float quat_state[4];
     memcpy(quat_state, &sigmas[UKF_STATE_DIMENSION - 4], sizeof(quat_state));
-    quaternion_normalize_f64(quat_state);
+    quaternion_normalize_f32(quat_state);
 
     // conjugate of quaternion state
-    double quat_state_conj[4] = {
+    float quat_state_conj[4] = {
         quat_state[0],
         -quat_state[1],
         -quat_state[2],
@@ -106,64 +106,64 @@ void ukf_measurement_function(const double *sigmas, const UKF *ukfh, double *mea
     };
 
     // global acceleration sigma state as quaternion
-    double global_accel[4] = {0.0, sigmas[6], sigmas[7], sigmas[8]};
+    float global_accel[4] = {0.0F, sigmas[6], sigmas[7], sigmas[8]};
 
     // Rotate to vehicle frame
-    double temp_acc[4];
-    quaternion_product_f64(quat_state_conj, global_accel, temp_acc);
-    double acc_vehicle[4];
-    quaternion_product_f64(temp_acc, quat_state, acc_vehicle);
+    float temp_acc[4];
+    quaternion_product_f32(quat_state_conj, global_accel, temp_acc);
+    float acc_vehicle[4];
+    quaternion_product_f32(temp_acc, quat_state, acc_vehicle);
 
     // rotate vehicle frame accel 45 degrees ccw to align with how imu is mounted on FIRM board
-    double acc_vx = acc_vehicle[1];
-    double acc_vy = acc_vehicle[2];
-    double acc_vz = acc_vehicle[3];
-    measurement_sigmas[1] = (acc_vx / SQRT2_D + acc_vy / SQRT2_D) + sigmas[12];  // accel X
-    measurement_sigmas[2] = (-acc_vx / SQRT2_D + acc_vy / SQRT2_D) + sigmas[13]; // accel Y
+    float acc_vx = acc_vehicle[1];
+    float acc_vy = acc_vehicle[2];
+    float acc_vz = acc_vehicle[3];
+    measurement_sigmas[1] = (acc_vx / SQRT2_F + acc_vy / SQRT2_F) + sigmas[12];  // accel X
+    measurement_sigmas[2] = (-acc_vx / SQRT2_F + acc_vy / SQRT2_F) + sigmas[13]; // accel Y
     measurement_sigmas[3] = acc_vz + sigmas[14]; // accel Z
 
     // clip accel X and accel Y
-    double acc_clip = 19.2882;
-    if (fabs(measurement_sigmas[1]) > acc_clip) {
-        measurement_sigmas[1] = (measurement_sigmas[1] > 0.0) ? acc_clip : -acc_clip;
+    float acc_clip = 19.2882F;
+    if (fabsf(measurement_sigmas[1]) > acc_clip) {
+        measurement_sigmas[1] = (measurement_sigmas[1] > 0.0F) ? acc_clip : -acc_clip;
     }
-    double acc_y_clip = 19.6925;
-    if (fabs(measurement_sigmas[2]) > acc_y_clip) {
-        measurement_sigmas[2] = (measurement_sigmas[2] > 0.0) ? acc_y_clip : -acc_y_clip;
+    float acc_y_clip = 19.6925F;
+    if (fabsf(measurement_sigmas[2]) > acc_y_clip) {
+        measurement_sigmas[2] = (measurement_sigmas[2] > 0.0F) ? acc_y_clip : -acc_y_clip;
     }
 
     // vehicle frame gyro in degrees per second (no global gyro because it is defined in the state
     // vector as vehicle-frame, not global-frame like acceleration)
-    double vehicle_gyro[3];
+    float vehicle_gyro[3];
     for (int i = 0; i < 3; ++i) {
-        vehicle_gyro[i] = sigmas[9 + i] * (180.0 / PI_D);
+        vehicle_gyro[i] = sigmas[9 + i] * (180.0F / PI_F);
     }
     // 45-degree rotation and add biases
-    double gyro_gx = vehicle_gyro[0];
-    double gyro_gy = vehicle_gyro[1];
-    double gyro_gz = vehicle_gyro[2];
-    measurement_sigmas[4] = (gyro_gx / SQRT2_D + gyro_gy / SQRT2_D) + sigmas[15]; // gyro x
-    measurement_sigmas[5] = (-gyro_gx / SQRT2_D + gyro_gy / SQRT2_D) + sigmas[16]; // gyro y
+    float gyro_gx = vehicle_gyro[0];
+    float gyro_gy = vehicle_gyro[1];
+    float gyro_gz = vehicle_gyro[2];
+    measurement_sigmas[4] = (gyro_gx / SQRT2_F + gyro_gy / SQRT2_F) + sigmas[15]; // gyro x
+    measurement_sigmas[5] = (-gyro_gx / SQRT2_F + gyro_gy / SQRT2_F) + sigmas[16]; // gyro y
     measurement_sigmas[6] = gyro_gz + sigmas[17]; // gyro z
 
     // Magnetometer
-    double mag_world_q[4] = {
-        0.0,
+    float mag_world_q[4] = {
+        0.0F,
         ukfh->mag_world[0],
         ukfh->mag_world[1],
         ukfh->mag_world[2]
     };
 
     // Rotate mag_world to vehicle frame: conj * mag_world_q * quat
-    double temp_mag[4];
-    quaternion_product_f64(quat_state_conj, mag_world_q, temp_mag);
-    double mag_vehicle[4];
-    quaternion_product_f64(temp_mag, quat_state, mag_vehicle);
+    float temp_mag[4];
+    quaternion_product_f32(quat_state_conj, mag_world_q, temp_mag);
+    float mag_vehicle[4];
+    quaternion_product_f32(temp_mag, quat_state, mag_vehicle);
 
     // Apply R_vehicle_to_mag: [x, y, -z]
-    double mag_vx = mag_vehicle[1];
-    double mag_vy = mag_vehicle[2];
-    double mag_vz = mag_vehicle[3];
+    float mag_vx = mag_vehicle[1];
+    float mag_vy = mag_vehicle[2];
+    float mag_vz = mag_vehicle[3];
     measurement_sigmas[7] = mag_vx;  // mag_sensor x
     measurement_sigmas[8] = mag_vy;  // y
     measurement_sigmas[9] = -mag_vz; // z (flipped)

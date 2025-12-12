@@ -26,6 +26,7 @@
  * limitations under the License.
  */
 
+#include "dsp/fast_math_functions.h"
 #include "dsp/matrix_functions.h"
 #include "dsp/matrix_utils.h"
 
@@ -413,9 +414,8 @@ ARM_DSP_ATTRIBUTE arm_status arm_mat_cholesky_f32(
        {
          return(ARM_MATH_DECOMPOSITION_FAILURE);
        }
-
-       invSqrtVj = 1.0f/sqrtf(pG[i * n + i]);
-       SCALE_COL_F32(pDst,i,invSqrtVj,i);
+       arm_sqrt_f32(pG[i * n + i], &invSqrtVj);
+       SCALE_COL_F32(pDst,i,1.0F/invSqrtVj,i);
       
     }
 

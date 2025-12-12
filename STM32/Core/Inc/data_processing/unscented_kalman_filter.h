@@ -3,25 +3,25 @@
 #include "matrixhelper.h"
 #include "state_machine.h"
 
-#define SQRT2_D 1.414213562373095
-#define PI_D 3.141592653589793
+#define SQRT2_F 1.414213562373095F
+#define PI_F 3.141592653589793F
 
 /**
  * @brief UKF parameters
  */
 typedef struct UKF {
-    double *X; // state vector
-    double *P; // covariance matrix
-    double *Q; // process noise matrix
-    double *R; // measurement nosie matrix
+    float *X; // state vector
+    float *P; // covariance matrix
+    float *Q; // process noise matrix
+    float *R; // measurement nosie matrix
     State* flight_state;
-    void (*state_transition_function)(const double*, double, State, double*);
-    void (*measurement_function)(const double*, const struct UKF*, double*);
-    double *measurement_errors; // associated errors for each measurement
-    double *measurement_vector; // the raw measurements given to the update function
+    void (*state_transition_function)(const float*, float, State, float*);
+    void (*measurement_function)(const float*, const struct UKF*, float*);
+    float *measurement_errors; // associated errors for each measurement
+    float *measurement_vector; // the raw measurements given to the update function
 
-    double initial_pressure;
-    double mag_world[3];
+    float initial_pressure;
+    float mag_world[3];
 } UKF;
 
 /**
@@ -32,7 +32,7 @@ typedef struct UKF {
  * @param initial_magnetic_field the initial x, y, z magnetic field on filter startup
  * @return 0 on success, 1 on failure
  */
-int ukf_init(UKF *ukfh, double initial_pressure, double* initial_acceleration, double* initial_magnetic_field);
+int ukf_init(UKF *ukfh, float initial_pressure, float* initial_acceleration, float* initial_magnetic_field);
 
 /**
  * @brief UKF predict step
@@ -41,22 +41,22 @@ int ukf_init(UKF *ukfh, double initial_pressure, double* initial_acceleration, d
  * @param delta_time time difference in seconds between this predict step and last predict step
  * @return 0 on success, 1 on failure
  */
-int ukf_predict(UKF *ukfh, double delta_time);
+int ukf_predict(UKF *ukfh, float delta_time);
 
-int ukf_update(UKF *ukfh, double *measurement);
+int ukf_update(UKF *ukfh, float *measurement);
 
-void calculate_initial_orientation(const double *imu_accel, const double *mag_field, double *init_quaternion, double *mag_world_frame);
+void calculate_initial_orientation(const float *imu_accel, const float *mag_field, float *init_quaternion, float *mag_world_frame);
 
 #ifdef TEST
-double ukf_test_get_lambda(void);
-double* ukf_test_get_Wm(void);
-double* ukf_test_get_Wc(void);
-double* ukf_test_get_sigmas_f(void);
-double* ukf_test_get_sigmas_h(void);
-void ukf_test_get_sigma_points(double sigmas[][UKF_STATE_DIMENSION]);
-double* ukf_test_get_residuals(void);
-double* ukf_test_get_weighted_vector_sigmas(void);
-double* ukf_test_get_Q_scaled(void);
-double* ukf_test_get_S(void);
-double* ukf_test_get_pred_z(void);
+float ukf_test_get_lambda(void);
+float* ukf_test_get_Wm(void);
+float* ukf_test_get_Wc(void);
+float* ukf_test_get_sigmas_f(void);
+float* ukf_test_get_sigmas_h(void);
+void ukf_test_get_sigma_points(float sigmas[][UKF_STATE_DIMENSION]);
+float* ukf_test_get_residuals(void);
+float* ukf_test_get_weighted_vector_sigmas(void);
+float* ukf_test_get_Q_scaled(void);
+float* ukf_test_get_S(void);
+float* ukf_test_get_pred_z(void);
 #endif

@@ -2,14 +2,14 @@
 #include <arm_math.h>
 #include <math.h>
 
-int symmetrize(arm_matrix_instance_f64 *enter_matrix);
+int symmetrize(arm_matrix_instance_f32 *enter_matrix);
 
-void rotvec_to_quat(const double rotvec[3], double quat[4]);
+void rotvec_to_quat(const float rotvec[3], float quat[4]);
 
-void quat_to_rotvec(const double quat[4], double rotvec[3]);
+void quat_to_rotvec(const float quat[4], float rotvec[3]);
 
-void mat_scale_f64(const arm_matrix_instance_f64 *pSrc, double scale, arm_matrix_instance_f64 *pDst);
-void mat_add_f64(const arm_matrix_instance_f64 *pSrcA, const arm_matrix_instance_f64 *pSrcB, arm_matrix_instance_f64 *pDst);
-void mat_vec_mult_f64(const arm_matrix_instance_f64 *pSrcA, const double *pVec, double *pDst);
-void quaternion_normalize_f64(double *quat);
-void quaternion_product_f64(const double *q1, const double *q2, double *out);
+void mat_scale_f32(const arm_matrix_instance_f32 *pSrc, float scale, arm_matrix_instance_f32 *pDst);
+void mat_add_f32(const arm_matrix_instance_f32 *pSrcA, const arm_matrix_instance_f32 *pSrcB, arm_matrix_instance_f32 *pDst);
+void mat_vec_mult_f32(const arm_matrix_instance_f32 *pSrcA, const float *pVec, float *pDst);
+void quaternion_normalize_f32(float *quat);
+void quaternion_product_f32(const float *q1, const float *q2, float *out);

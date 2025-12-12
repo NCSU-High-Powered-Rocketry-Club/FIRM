@@ -9,5 +9,5 @@
 
 #include <string.h>
 
-void ukf_state_transition_function(const double *sigmas, double dt, State state, double *prediction);
-void ukf_measurement_function(const double *sigmas, const UKF *ukfh, double *measurement_sigmas);
+void ukf_state_transition_function(const float *sigmas, float dt, State state, float *prediction);
+void ukf_measurement_function(const float *sigmas, const UKF *ukfh, float *measurement_sigmas);

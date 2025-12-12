@@ -26,26 +26,26 @@ typedef enum {
 /**
  * @brief Initial values for the UKF states
  */
-extern double ukf_initial_state_estimate[UKF_STATE_DIMENSION];
+extern float ukf_initial_state_estimate[UKF_STATE_DIMENSION];
 
 /**
  * @brief Initial values for the UKF covariance matrix diagonal elements
  */
-extern double ukf_initial_state_covariance_diag[UKF_STATE_DIMENSION - 1];
+extern float ukf_initial_state_covariance_diag[UKF_STATE_DIMENSION - 1];
 
 /**
  * @brief Diagonal elements for the state process covariance matrices of each flight state
  */
-extern double ukf_state_process_covariance_diag[STATE_MACHINE_NUM_STATES][UKF_STATE_DIMENSION - 1];
+extern float ukf_state_process_covariance_diag[STATE_MACHINE_NUM_STATES][UKF_STATE_DIMENSION - 1];
 
 /**
  * @brief Diagonal elements for the measurement noise covariance matrices of each flight state
  */
-extern double ukf_measurement_noise_covariance_diag[STATE_MACHINE_NUM_STATES][UKF_MEASUREMENT_DIMENSION];
+extern float ukf_measurement_noise_covariance_diag[STATE_MACHINE_NUM_STATES][UKF_MEASUREMENT_DIMENSION];
 
-#define GRAVITY_METERS_PER_SECOND_SQUARED 9.798
-#define UKF_MIN_VEL_FOR_DRAG 25.0
-#define DRAG_PARAM (-2.5e-4)
+#define GRAVITY_METERS_PER_SECOND_SQUARED 9.798F
+#define UKF_MIN_VEL_FOR_DRAG 25.0F
+#define DRAG_PARAM (-2.5e-4F)
 
 
 /**
@@ -54,9 +54,9 @@ extern double ukf_measurement_noise_covariance_diag[STATE_MACHINE_NUM_STATES][UK
  * From page 21 Merwe et al. (2004)
  * doi: 10.2514/6.2004-5120
  */
-#define UKF_SIGMA_SPREAD_ALPHA 1e-2
-#define UKF_SIGMA_WEIGHT_BETA 2
+#define UKF_SIGMA_SPREAD_ALPHA 1e-2F
+#define UKF_SIGMA_WEIGHT_BETA 2.0F
 #define UKF_SIGMA_TERTIARY_KAPPA 0
 
-#define GROUND_ALTITUDE_METERS 20
+#define GROUND_ALTITUDE_METERS 20.0F
 

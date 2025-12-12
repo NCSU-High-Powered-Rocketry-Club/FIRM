@@ -37,8 +37,21 @@ add_executable(${CMAKE_PROJECT_NAME})
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
 
+target_compile_options(${PROJECT_NAME} PRIVATE
+    -Wa,-adhlns=${PROJECT_NAME}.lst
+    -mcpu=cortex-m4
+    -mfpu=fpv4-sp-d16
+    -mfloat-abi=hard
+    -O3
+)
+
 target_link_options(${PROJECT_NAME} PRIVATE
     -u _printf_float
+    -mcpu=cortex-m4
+    -mfpu=fpv4-sp-d16
+    -mfloat-abi=hard
+    -O3
+    -lm
 )
 
 # Link directories setup
@@ -90,6 +103,7 @@ list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
 # Add linked libraries
 target_link_libraries(${CMAKE_PROJECT_NAME}
     stm32cubemx
+    m
 
     # Add user defined libraries
 )

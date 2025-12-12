@@ -162,22 +162,21 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
     bmp581_convert_packet(&bmp_packet, &calibrated_packet);
     icm45686_convert_packet(&imu_packet, &calibrated_packet);
     mmc5983ma_convert_packet(&mag_packet, &calibrated_packet);
-    double init_acc[3] = {
-        (double)calibrated_packet.accel_x,
-        (double)calibrated_packet.accel_y,
-        (double)calibrated_packet.accel_z,
+    float init_acc[3] = {
+        calibrated_packet.accel_x,
+        calibrated_packet.accel_y,
+        calibrated_packet.accel_z,
     };
-    double init_mag[3] = {
-        (double)calibrated_packet.magnetic_field_x,
-        (double)calibrated_packet.magnetic_field_y,
-        (double)calibrated_packet.magnetic_field_z,
+    float init_mag[3] = {
+        calibrated_packet.magnetic_field_x,
+        calibrated_packet.magnetic_field_y,
+        calibrated_packet.magnetic_field_z,
     };
-    if (ukf_init(&ukf, (double)calibrated_packet.pressure, init_acc, init_mag)) {
+    if (ukf_init(&ukf, calibrated_packet.pressure, init_acc, init_mag)) {
         led_set_status(UKF_FAIL);
         return 1;
     }
 
-    
     return 0;
 };
 
@@ -215,30 +214,31 @@ void loop_firm(void) {
     // if USB serial communication setting is enabled, and new data is collected, serialize
     // and transmit it
     if (any_new_data_collected) {
-        uint32_t t1 = HAL_GetTick();
+        
         // get norm of magnetometer data
-        double mag_x_2 = (double)calibrated_packet.magnetic_field_x * (double)calibrated_packet.magnetic_field_x;
-        double mag_y_2 = (double)calibrated_packet.magnetic_field_y * (double)calibrated_packet.magnetic_field_y;
-        double mag_z_2 = (double)calibrated_packet.magnetic_field_z * (double)calibrated_packet.magnetic_field_z;
-        double mag_norm = sqrt(mag_x_2 + mag_y_2 + mag_z_2);
+        float mag_x_2 = calibrated_packet.magnetic_field_x * calibrated_packet.magnetic_field_x;
+        float mag_y_2 = calibrated_packet.magnetic_field_y * calibrated_packet.magnetic_field_y;
+        float mag_z_2 = calibrated_packet.magnetic_field_z * calibrated_packet.magnetic_field_z;
+        float mag_norm = sqrtf(mag_x_2 + mag_y_2 + mag_z_2);
         // update the kalman filter
-        double measurements[UKF_MEASUREMENT_DIMENSION] = {
-            (double)calibrated_packet.pressure,
-            (double)calibrated_packet.accel_x,
-            (double)calibrated_packet.accel_y,
-            (double)calibrated_packet.accel_z,
-            (double)calibrated_packet.angular_rate_x,
-            (double)calibrated_packet.angular_rate_y,
-            (double)calibrated_packet.angular_rate_z,
-            (double)calibrated_packet.magnetic_field_x / mag_norm,
-            (double)calibrated_packet.magnetic_field_y / mag_norm,
-            (double)calibrated_packet.magnetic_field_z / mag_norm,
+        float measurements[UKF_MEASUREMENT_DIMENSION] = {
+            calibrated_packet.pressure,
+            calibrated_packet.accel_x,
+            calibrated_packet.accel_y,
+            calibrated_packet.accel_z,
+            calibrated_packet.angular_rate_x,
+            calibrated_packet.angular_rate_y,
+            calibrated_packet.angular_rate_z,
+            calibrated_packet.magnetic_field_x / mag_norm,
+            calibrated_packet.magnetic_field_y / mag_norm,
+            calibrated_packet.magnetic_field_z / mag_norm,
         };
         if (last_timestamp_sec == 0.0)
             last_timestamp_sec = calibrated_packet.timestamp_sec - 0.001;
         double delta_timestamp = calibrated_packet.timestamp_sec - last_timestamp_sec;
         // serialPrintlnInt((int)(*ukf.flight_state));
-        int err = ukf_predict(&ukf, delta_timestamp);
+        uint32_t t1 = HAL_GetTick();
+        int err = ukf_predict(&ukf, (float)delta_timestamp);
         if (err) {
             //serialPrintlnInt(err);
             //serialPrintStr("err predict");
