@@ -17,6 +17,7 @@
 volatile bool bmp581_has_new_data = false;
 volatile bool icm45686_has_new_data = false;
 volatile bool mmc5983ma_has_new_data = false;
+static volatile bool uart_tx_done = true;
 
 // check to verify if any new data has been collected, from any of the sensors
 bool any_new_data_collected = false;
@@ -44,7 +45,6 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
     // Enable the DWT cycle counter itself. Once active, it increments each CPU  
     // clock cycle so we can use clock cycles as data packet timestamps.
     DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
-
 
     // Set the chip select pins to high, this means that they're not selected.
     // Note: We can't have these in the bmp581/imu/flash chip init functions, because those somehow
@@ -177,17 +177,28 @@ void loop_firm(void) {
         }
     }
 
-    // if USB serial communication setting is enabled, and new data is collected, serialize
-    // and transmit it
-    if (any_new_data_collected) {
+    // If either USB or UART transfer setting is enabled and new data is collected,
+    // serialize and transmit the data over the enabled interfaces.
+    if (any_new_data_collected && (firmSettings.usb_transfer_enabled || firmSettings.uart_transfer_enabled)) {
+        serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
         if (firmSettings.usb_transfer_enabled) {
-            usb_serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
             usb_transmit_serialized_packet(&serialized_packet);
         }
+
         if (firmSettings.uart_transfer_enabled) {
-            HAL_UART_Transmit(firm_huart1, (uint8_t*)&serialized_packet, (uint16_t)sizeof(SerializedPacket_t), 10);
+            // Use DMA for UART transmission if the UART is ready. This avoids
+            // blocking the CPU and allows high-throughput transfers.
+            if (uart_tx_done) {
+                uart_tx_done = false;
+                HAL_UART_Transmit_DMA(firm_huart1, (uint8_t*)&serialized_packet, (uint16_t)sizeof(SerializedPacket_t));
+            }
         }
         any_new_data_collected = false;
     }
 
+}
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
+    if (huart == firm_huart1)
+        uart_tx_done = true;
 }
