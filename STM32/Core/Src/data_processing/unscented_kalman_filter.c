@@ -140,11 +140,13 @@ int ukf_update(UKF* ukfh, float* measurement) {
     // the arm_mat_inverse_f32 function says that the input matrix is const, but it actually
     // modifies it, so we are temporarily storing innovation data somewhere else and replacing it
     // after
+    
     memcpy(kalman_gain_data, innovation_data, sizeof(innovation_data));
     if (arm_mat_inverse_f32(&innovation_covariance, &innovation_covariance_inverse)) 
         return 2;
     memcpy(innovation_data, kalman_gain_data, sizeof(innovation_data));
-
+    
+    
     // compute cross covariance between sigma points in state space (sigmas_f) and in measurement space (sigmas_h)
     if (calculate_cross_covariance(predicted_measurement, &P_cross_covariance)) {
         return 3;
@@ -153,7 +155,7 @@ int ukf_update(UKF* ukfh, float* measurement) {
     // calculate the kalman gain, which defines how much to weigh the prediction by compared
     // to the sensor measurements
     mat_mult_f32(&P_cross_covariance, &innovation_covariance_inverse, &kalman_gain);
-
+    
     // calculate measurement error metric for debug and state change purposes. These values can
     // be used to determine when a measurement is outside of the expected range and can help tune
     // the filter, remove outliers, or detecting state changes

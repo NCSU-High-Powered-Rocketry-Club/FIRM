@@ -21,3 +21,5 @@ void vec_add_f32(const float *pSrcA, const float *pSrcB, float *pDst, int length
 void vec_sub_f32(const float *pSrcA, const float *pSrcB, float *pDst, int length);
 void vec_scale_f32(const float *pSrcA, float scale, float *pDst, int length);
 void vec_mult_f32(const float *pSrcA, const float *pSrcB, float *pDst, int length);
+
+int get_kalman_gain(const arm_matrix_instance_f32 *pxy, const arm_matrix_instance_f32 *s, arm_matrix_instance_f32 *k);

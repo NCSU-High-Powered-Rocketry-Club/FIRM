@@ -28,7 +28,7 @@ void state_update(struct UKF* ukfh) {
             float* errors = ukfh->measurement_errors;
             // the sum of errors in acceleration x, y, and z axis
             float accel_error_sum = fabsf(errors[1]) + fabsf(errors[2]) + fabsf(errors[3]);
-            if (accel_error_sum > 30) {
+            if (accel_error_sum > 30 && 0) {
                 state = MOTOR_BURN;
                 set_state_matrices(ukfh);
             }

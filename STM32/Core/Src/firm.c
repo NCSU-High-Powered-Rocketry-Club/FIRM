@@ -20,6 +20,9 @@ volatile bool bmp581_has_new_data = false;
 volatile bool icm45686_has_new_data = false;
 volatile bool mmc5983ma_has_new_data = false;
 double last_timestamp_sec = 0.0;
+int iters = 0;
+uint32_t t1 = 0;
+
 
 // check to verify if any new data has been collected, from any of the sensors
 bool any_new_data_collected = false;
@@ -182,6 +185,16 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
 
 
 void loop_firm(void) {
+    // uint32_t t1 = DWT->CYCCNT;
+
+    // for (int i = 0; i < 100000; i++) {
+    //     float random_0_1 = (float)rand() / (float)RAND_MAX;
+    //     float sqrt;
+    //     arm_sqrt_f32(random_0_1, &sqrt);
+    // }
+    // uint32_t dt = DWT->CYCCNT - t1;
+    // serialPrintFloat((float)dt / 168000.0F);
+
     if (bmp581_has_new_data) {
         BMP581Packet_t* bmp581_packet = logger_malloc_packet(sizeof(BMP581Packet_t));
         if (!bmp581_read_data(bmp581_packet)) {
@@ -214,12 +227,12 @@ void loop_firm(void) {
     // if USB serial communication setting is enabled, and new data is collected, serialize
     // and transmit it
     if (any_new_data_collected) {
-        
         // get norm of magnetometer data
         float mag_x_2 = calibrated_packet.magnetic_field_x * calibrated_packet.magnetic_field_x;
         float mag_y_2 = calibrated_packet.magnetic_field_y * calibrated_packet.magnetic_field_y;
         float mag_z_2 = calibrated_packet.magnetic_field_z * calibrated_packet.magnetic_field_z;
-        float mag_norm = sqrtf(mag_x_2 + mag_y_2 + mag_z_2);
+        float mag_norm;
+        arm_sqrt_f32(mag_x_2 + mag_y_2 + mag_z_2, &mag_norm);
         // update the kalman filter
         float measurements[UKF_MEASUREMENT_DIMENSION] = {
             calibrated_packet.pressure,
@@ -237,7 +250,7 @@ void loop_firm(void) {
             last_timestamp_sec = calibrated_packet.timestamp_sec - 0.001;
         double delta_timestamp = calibrated_packet.timestamp_sec - last_timestamp_sec;
         // serialPrintlnInt((int)(*ukf.flight_state));
-        uint32_t t1 = DWT->CYCCNT;
+        
         int err = ukf_predict(&ukf, (float)delta_timestamp);
         if (err) {
             //serialPrintlnInt(err);
@@ -268,9 +281,15 @@ void loop_firm(void) {
         //     HAL_UART_Transmit(firm_huart1, (uint8_t*)&serialized_packet, (uint16_t)sizeof(SerializedPacket_t), 10);
         // }
         any_new_data_collected = false;
-        uint32_t t1_cyccnt = DWT->CYCCNT;
-        uint32_t dt_cycles = t1_cyccnt - t1;
-        serialPrintFloat((float)dt_cycles / 168000.0F);
+        iters++;
+        
+        if (iters == 100) {
+            uint32_t t1_cyccnt = DWT->CYCCNT;
+            uint32_t dt_cycles = t1_cyccnt - t1;
+            serialPrintFloat((float)dt_cycles / 168000.0F);
+            t1 = t1_cyccnt;
+            iters = 0;
+        }
     }
 
 }

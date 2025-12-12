@@ -42,12 +42,14 @@ target_compile_options(${PROJECT_NAME} PRIVATE
     -mcpu=cortex-m4
     -mfpu=fpv4-sp-d16
     -mfloat-abi=hard
-    -Ofast
+    -O3
+    -ffast-math
     -flto
     -finline-functions
     -finline-functions-called-once
     -ffunction-sections
     -fdata-sections
+    #-DLOOPUNROLL=ON
 )
 
 target_link_options(${PROJECT_NAME} PRIVATE
@@ -55,12 +57,14 @@ target_link_options(${PROJECT_NAME} PRIVATE
     -mcpu=cortex-m4
     -mfpu=fpv4-sp-d16
     -mfloat-abi=hard
-    -Ofast
+    -O3
+    -ffast-math
     -flto
     -finline-functions
     -finline-functions-called-once
     -ffunction-sections
     -fdata-sections
+    #-DLOOPUNROLL=ON
 )
 
 # Link directories setup

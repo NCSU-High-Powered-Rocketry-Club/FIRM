@@ -11,11 +11,13 @@ tests_root = File.dirname(script_dir)
 # Canonical list of CMSIS-DSP functions / files to compile for tests.
 # Edit this list when tests require additional CMSIS functions or tables.
 functions = [
-  'MatrixFunctions/arm_mat_cholesky_f64',
+  'MatrixFunctions/arm_mat_cholesky_f32',
   'MatrixFunctions/arm_mat_mult_f64',
-  'MatrixFunctions/arm_mat_inverse_f64',
+  'MatrixFunctions/arm_mat_inverse_f32',
   'MatrixFunctions/arm_mat_sub_f64',
   'MatrixFunctions/arm_mat_trans_f64',
+  'MatrixFunctions/arm_mat_solve_lower_triangular_f32',
+  'MatrixFunctions/arm_mat_solve_upper_triangular_f32',
   'BasicMathFunctions/arm_scale_f64',
   'BasicMathFunctions/arm_sub_f64',
   'BasicMathFunctions/arm_add_f64',
