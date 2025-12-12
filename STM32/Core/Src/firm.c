@@ -46,7 +46,6 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
     // clock cycle so we can use clock cycles as data packet timestamps.
     DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 
-
     // Set the chip select pins to high, this means that they're not selected.
     // Note: We can't have these in the bmp581/imu/flash chip init functions, because those somehow
     // mess up with the initialization.
