@@ -36,6 +36,7 @@ typedef struct {
     UART_HandleTypeDef* huart1;
 } UARTHandles;
 
+extern uint32_t t1;
 
 /**
  * @brief Initializes firm, including all sensors and the logger

@@ -21,9 +21,9 @@ static float lambda_scaling_parameter;
 static float predicted_measurement[UKF_MEASUREMENT_DIMENSION];
 static float innovation_data[UKF_MEASUREMENT_DIMENSION * UKF_MEASUREMENT_DIMENSION];
 static float innovation_inverse_data[UKF_MEASUREMENT_DIMENSION * UKF_MEASUREMENT_DIMENSION];
-static float P_cross_covariance_data[(UKF_STATE_DIMENSION - 1) * UKF_MEASUREMENT_DIMENSION];
 static float kalman_gain_data[(UKF_STATE_DIMENSION - 1) * UKF_MEASUREMENT_DIMENSION];
 static float measurement_errors[UKF_MEASUREMENT_DIMENSION];
+static float P_cross_covariance_data[(UKF_STATE_DIMENSION - 1) * UKF_MEASUREMENT_DIMENSION];
 
 
 static arm_matrix_instance_f32 P = {UKF_STATE_DIMENSION - 1, UKF_STATE_DIMENSION - 1, P_data};
@@ -40,12 +40,18 @@ static float temp_residuals_data[UKF_NUM_SIGMAS * (UKF_STATE_DIMENSION - 1)];
 static float temp_residuals_transpose_data[(UKF_STATE_DIMENSION - 1) * UKF_NUM_SIGMAS];
 static float temp_weighted_residuals_transpose_data[(UKF_STATE_DIMENSION - 1) * UKF_NUM_SIGMAS];
 static float weighted_vector_sigmas[UKF_STATE_DIMENSION - 4];
+static float temp_dz_residuals_data[UKF_NUM_SIGMAS * UKF_MEASUREMENT_DIMENSION];
 static float Q_scaled_data[(UKF_STATE_DIMENSION - 1) * (UKF_STATE_DIMENSION - 1)];
+static float temp_rotvec[3];
+static float temp_rotvec2[3];
+static float temp_quat[4];
+static float temp_quat2[4];
 
 // temp matrices
 static arm_matrix_instance_f32 temp_residuals = {UKF_NUM_SIGMAS, UKF_STATE_DIMENSION - 1, temp_residuals_data};
 static arm_matrix_instance_f32 temp_residuals_transpose = {UKF_STATE_DIMENSION - 1, UKF_NUM_SIGMAS, temp_residuals_transpose_data};
 static arm_matrix_instance_f32 temp_weighted_residuals_transpose = {UKF_STATE_DIMENSION - 1, UKF_NUM_SIGMAS, temp_weighted_residuals_transpose_data};
+//static arm_matrix_instance_f32 temp_dz_residuals = {UKF_NUM_SIGMAS, UKF_MEASUREMENT_DIMENSION, temp_dz_residuals_data};
 static arm_matrix_instance_f32 Q_scaled = {UKF_STATE_DIMENSION - 1, UKF_STATE_DIMENSION - 1, Q_scaled_data};
 
 /**
@@ -124,34 +130,26 @@ int ukf_predict(UKF *ukfh, const float delta_time) {
 }
 
 int ukf_update(UKF* ukfh, float* measurement) {
+    
     // pass sigmas through the measurement function to determine how the predicted state would
     // be reflected in sensor measurements
-    float measurement_sigmas[UKF_MEASUREMENT_DIMENSION];
+    
     for (int i = 0; i < UKF_NUM_SIGMAS; i++) {
-        ukfh->measurement_function(&sigmas_f[i * UKF_STATE_DIMENSION], ukfh, measurement_sigmas);
-        memcpy(&sigmas_h[i * UKF_MEASUREMENT_DIMENSION], measurement_sigmas, sizeof(measurement_sigmas));
+        ukfh->measurement_function(&sigmas_f[i * UKF_STATE_DIMENSION], ukfh, &sigmas_h[i * UKF_MEASUREMENT_DIMENSION]);
     }
-
+    
     // perform unscented transform to find mean of measurement sigma points, and the covariance of
     // the measurments
     if (unscented_transform_h(predicted_measurement, &innovation_covariance))
         return 1;
-    
-    // the arm_mat_inverse_f32 function says that the input matrix is const, but it actually
-    // modifies it, so we are temporarily storing innovation data somewhere else and replacing it
-    // after
-    
-    memcpy(kalman_gain_data, innovation_data, sizeof(innovation_data));
-    if (arm_mat_inverse_f32(&innovation_covariance, &innovation_covariance_inverse)) 
-        return 2;
-    memcpy(innovation_data, kalman_gain_data, sizeof(innovation_data));
-    
-    
+
     // compute cross covariance between sigma points in state space (sigmas_f) and in measurement space (sigmas_h)
     if (calculate_cross_covariance(predicted_measurement, &P_cross_covariance)) {
         return 3;
     }
+
     
+    mat_inverse_f32(&innovation_covariance, &innovation_covariance_inverse);
     // calculate the kalman gain, which defines how much to weigh the prediction by compared
     // to the sensor measurements
     mat_mult_f32(&P_cross_covariance, &innovation_covariance_inverse, &kalman_gain);
@@ -170,12 +168,10 @@ int ukf_update(UKF* ukfh, float* measurement) {
     // if we are not in standby state, do not change the accelerometer/gyroscope offsets at all
 
     // extract rotation vector component of delta_x and change to delta quaternion
-    float delta_quat[4];
-    rotvec_to_quat(&delta_x[UKF_STATE_DIMENSION - 4], delta_quat);
+    rotvec_to_quat(&delta_x[UKF_STATE_DIMENSION - 4], temp_quat);
     // update state vector by multiplying the delta quaternion and adding the delta x vector components
-    float next_quat[4];
-    quaternion_product_f32(delta_quat, &X[UKF_STATE_DIMENSION - 4], next_quat);
-    
+    quaternion_product_f32(temp_quat, &X[UKF_STATE_DIMENSION - 4], temp_quat2);
+    memcpy(&X[UKF_STATE_DIMENSION - 4], temp_quat2, sizeof(temp_quat2));
     // compute next covariance matrix, P
     // new_P = P - (kalman_gain * innovation_covariance * kalman_gain^T)
     float kalman_gain_transpose_data[UKF_MEASUREMENT_DIMENSION * (UKF_STATE_DIMENSION - 1)];
@@ -193,6 +189,7 @@ int ukf_update(UKF* ukfh, float* measurement) {
     // update state machine
     memcpy(ukfh->measurement_vector, measurement, UKF_MEASUREMENT_DIMENSION);
     state_update(ukfh);
+    
     return 0;
 }
 
@@ -217,10 +214,8 @@ static int calculate_sigmas_f(UKF *ukfh, float dt) {
     mat_scale_f32(&Q, dt, &Q_scaled);
     mat_add_f32(&P, &Q_scaled, &Q_scaled);
     mat_scale_f32(&Q_scaled, lambda_scaling_parameter + (UKF_STATE_DIMENSION - 1), &Q_scaled);
-    arm_status status = arm_mat_cholesky_f32(&Q_scaled, &cholesky);
-    if (status == ARM_MATH_DECOMPOSITION_FAILURE) {
+    if (mat_cholesky_f32(&Q_scaled, &cholesky))
         return 2; // matrix not positive definite
-    }
     
     // first sigma point is just the state, X
     memcpy(sigma_points[0], X, sizeof(float) * UKF_STATE_DIMENSION);
@@ -244,26 +239,27 @@ static int calculate_sigmas_f(UKF *ukfh, float dt) {
         }
         
         // extract the rotation vector component of the cholesky columns for this loop
-        float chol_rotvec[3] = {
-            cholesky_data[(UKF_STATE_DIMENSION - 1) * (UKF_STATE_DIMENSION - 4) + i],
-            cholesky_data[(UKF_STATE_DIMENSION - 1) * (UKF_STATE_DIMENSION - 3) + i],
-            cholesky_data[(UKF_STATE_DIMENSION - 1) * (UKF_STATE_DIMENSION - 2) + i],
-        };
-        float quat_chol[4];
+        float *chol_rotvec = temp_rotvec;
+        chol_rotvec[0] = cholesky_data[(UKF_STATE_DIMENSION - 1) * (UKF_STATE_DIMENSION - 4) + i];
+        chol_rotvec[1] = cholesky_data[(UKF_STATE_DIMENSION - 1) * (UKF_STATE_DIMENSION - 3) + i];
+        chol_rotvec[2] = cholesky_data[(UKF_STATE_DIMENSION - 1) * (UKF_STATE_DIMENSION - 2) + i];
+
         // convert the rotation vector component to a quaternion
-        rotvec_to_quat(chol_rotvec, quat_chol);
+        rotvec_to_quat(chol_rotvec, temp_quat);
         
         // get quaternion parts of X and sigma points
         float *quat_X = &X[UKF_STATE_DIMENSION - 4];
         float *quat_sigma_plus = &sigma_plus[UKF_STATE_DIMENSION - 4];
         float *quat_sigma_minus = &sigma_minus[UKF_STATE_DIMENSION - 4];
 
-        // quat_plus = quat_X * quat_chol
-        quaternion_product_f32(quat_X, quat_chol, quat_sigma_plus);
+        // quat_plus = quat_X * cholesky quat
+        quaternion_product_f32(quat_X, temp_quat, quat_sigma_plus);
         
-        // quat_minus = quat_X * conj(quat_chol)
-        float quat_chol_conj[4] = {quat_chol[0], -quat_chol[1], -quat_chol[2], -quat_chol[3]};
-        quaternion_product_f32(quat_X, quat_chol_conj, quat_sigma_minus);
+        // quat_minus = quat_X * conj(cholesky quat)
+        temp_quat[1] = -temp_quat[1];
+        temp_quat[2] = -temp_quat[2];
+        temp_quat[3] = -temp_quat[3];
+        quaternion_product_f32(quat_X, temp_quat, quat_sigma_minus);
     }
 
     for (int i = 0; i < UKF_NUM_SIGMAS; i++) {
@@ -280,20 +276,21 @@ static int unscented_transform_f() {
     temp_residuals.numCols = UKF_STATE_DIMENSION - 1;
     temp_residuals_transpose.numRows = UKF_STATE_DIMENSION - 1;
     temp_weighted_residuals_transpose.numRows = UKF_STATE_DIMENSION - 1;
+    temp_weighted_residuals_transpose.numCols = UKF_NUM_SIGMAS;
     // initialize the sigma means vector as all 0
     float mean_x[UKF_STATE_DIMENSION];
-    float mean_delta_rotvec[3];
+    float *mean_delta_rotvec = temp_rotvec;
     
     memset(mean_x, 0, sizeof(mean_x));
-    memset(mean_delta_rotvec, 0, sizeof(mean_delta_rotvec));
+    memset(mean_delta_rotvec, 0, sizeof(temp_rotvec));
     // get the current quaternion state and it's conjugate
     float *quat_state = &X[UKF_STATE_DIMENSION - 4];
-    float quat_state_conj[4] = {
-        quat_state[0],
-        -quat_state[1],
-        -quat_state[2],
-        -quat_state[3],
-    };
+
+    temp_quat[0] = quat_state[0];
+    temp_quat[1] = -quat_state[1];
+    temp_quat[2] = -quat_state[2];
+    temp_quat[3] = -quat_state[3];
+    float *quat_state_conj = temp_quat;
 
     // iterate through sigma points, multiplying by the weights to find the mean of each state
     for (int i = 0; i < UKF_NUM_SIGMAS; i++) {
@@ -308,11 +305,11 @@ static int unscented_transform_f() {
         // absolute orientation.
 
         // find the delta quaternion by multiplying by the conjugate of the current orientation
-        float delta_quat[4];
+        float *delta_quat = temp_quat2;
         quaternion_product_f32(&sigmas_f[i * UKF_STATE_DIMENSION + (UKF_STATE_DIMENSION - 4)], quat_state_conj, delta_quat);
         // convert the delta quaternions to delta rotation vectors, and scale by Wm
-        float delta_rotvec_sigmas[3];
-        float weighted_delta_rotvec_sigmas[3];
+        float *delta_rotvec_sigmas = temp_rotvec2;
+        float *weighted_delta_rotvec_sigmas = temp_rotvec2;
         quat_to_rotvec(delta_quat, delta_rotvec_sigmas);
         vec_scale_f32(delta_rotvec_sigmas, Wm[i], weighted_delta_rotvec_sigmas, 3);
 
@@ -325,12 +322,12 @@ static int unscented_transform_f() {
         mean_delta_rotvec[2] += weighted_delta_rotvec_sigmas[2];
 
         // set the last 3 elements of the row in the residuals matrix to the delta rotvec
-        memcpy(&temp_residuals_data[i * (UKF_STATE_DIMENSION - 1) + (UKF_STATE_DIMENSION - 4)], delta_rotvec_sigmas, sizeof(delta_rotvec_sigmas));
+        memcpy(&temp_residuals_data[i * (UKF_STATE_DIMENSION - 1) + (UKF_STATE_DIMENSION - 4)], delta_rotvec_sigmas, sizeof(temp_rotvec2));
     }
 
     // convert the mean delta rotation vector into a mean delta quaternion, then multiply the
     // delta quaternion to the current quaternion state to find the mean quaternion
-    float mean_delta_quat[4];
+    float *mean_delta_quat = temp_quat2;
     rotvec_to_quat(mean_delta_rotvec, mean_delta_quat);
     quaternion_product_f32(mean_delta_quat, quat_state, &mean_x[UKF_STATE_DIMENSION - 4]);
     // copy the mean x vector into the X state vector
@@ -361,7 +358,9 @@ static int unscented_transform_h(float measurement_mean[UKF_MEASUREMENT_DIMENSIO
     // reuses them)
     temp_residuals.numCols = UKF_MEASUREMENT_DIMENSION;
     temp_residuals_transpose.numRows = UKF_MEASUREMENT_DIMENSION;
-    temp_weighted_residuals_transpose.numRows = UKF_MEASUREMENT_DIMENSION;
+    temp_weighted_residuals_transpose.numRows = UKF_NUM_SIGMAS;
+    temp_weighted_residuals_transpose.numCols = UKF_MEASUREMENT_DIMENSION;
+    arm_matrix_instance_f32 *temp_weighted_residuals = &temp_weighted_residuals_transpose;
 
 
     // set the resulting measurement mean to all 0's
@@ -380,17 +379,15 @@ static int unscented_transform_h(float measurement_mean[UKF_MEASUREMENT_DIMENSIO
     }
 
     // compute weighted residuals with Wc
-    float weighted_residuals_data[UKF_NUM_SIGMAS * UKF_MEASUREMENT_DIMENSION];
-    arm_matrix_instance_f32 weighted_residuals = {UKF_NUM_SIGMAS, UKF_MEASUREMENT_DIMENSION, weighted_residuals_data};
     for (int i = 0; i < UKF_NUM_SIGMAS; i++) {
-        vec_scale_f32(&temp_residuals_data[i * UKF_MEASUREMENT_DIMENSION], Wc[i], &weighted_residuals_data[i * UKF_MEASUREMENT_DIMENSION], UKF_MEASUREMENT_DIMENSION);
+        vec_scale_f32(&temp_residuals_data[i * UKF_MEASUREMENT_DIMENSION], Wc[i], &temp_weighted_residuals->pData[i * UKF_MEASUREMENT_DIMENSION], UKF_MEASUREMENT_DIMENSION);
     }
 
     // transpose residuals
     mat_trans_f32(&temp_residuals, &temp_residuals_transpose);
 
     // Compute P = residuals^T @ weighted_residuals
-    mat_mult_f32(&temp_residuals_transpose, &weighted_residuals, innovation_cov);
+    mat_mult_f32(&temp_residuals_transpose, temp_weighted_residuals, innovation_cov);
 
     // Add noise covariance R to P
     mat_add_f32(innovation_cov, &R, innovation_cov);
@@ -403,50 +400,41 @@ static int calculate_cross_covariance(const float *measurement_mean, arm_matrix_
     temp_residuals.numCols = UKF_STATE_DIMENSION - 1;
     temp_residuals_transpose.numRows = UKF_STATE_DIMENSION - 1;
     temp_residuals_transpose.numCols = UKF_NUM_SIGMAS;
-
-    // Local buffers for dz_res and weighted_dz (43 x 10)
-    float dz_res_data[UKF_NUM_SIGMAS * UKF_MEASUREMENT_DIMENSION];
-    float weighted_dz_data[UKF_NUM_SIGMAS * UKF_MEASUREMENT_DIMENSION];
+    temp_weighted_residuals_transpose.numRows = UKF_NUM_SIGMAS;
+    temp_weighted_residuals_transpose.numCols = UKF_MEASUREMENT_DIMENSION;
+    arm_matrix_instance_f32 *weighted_dz = &temp_weighted_residuals_transpose;
 
     // Compute dx_res (residuals in tangent space) into temp_residuals
     for (int i = 0; i < UKF_NUM_SIGMAS; i++) {
-        const float *sigma_f_row = &sigmas_f[i * UKF_STATE_DIMENSION];
-        float *dx_row = &temp_residuals_data[i * (UKF_STATE_DIMENSION - 1)];
 
         // Subtract vector part (first 18 elements)
-        vec_sub_f32(sigma_f_row, X, dx_row, UKF_STATE_DIMENSION - 4);
+        vec_sub_f32(&sigmas_f[i * UKF_STATE_DIMENSION], X, &temp_residuals_data[i * (UKF_STATE_DIMENSION - 1)], UKF_STATE_DIMENSION - 4);
 
         // Quaternion delta for rotvec part
-        float quat_sig_f[4];
-        for (int j = 0; j < 4; j++) {
-            quat_sig_f[j] = sigma_f_row[UKF_STATE_DIMENSION - 4 + j];
-        }
-        float quat_mean_x[4];
-        for (int j = 0; j < 4; j++) {
-            quat_mean_x[j] = X[UKF_STATE_DIMENSION - 4 + j];
-        }
-        float conj_quat_x[4] = {quat_mean_x[0], -quat_mean_x[1], -quat_mean_x[2], -quat_mean_x[3]};
-        float delta_quat[4];
-        quaternion_product_f32(quat_sig_f, conj_quat_x, delta_quat);
-        float delta_rotvec[3];
+        float *conj_quat_x = temp_quat;
+        conj_quat_x[0] = X[UKF_STATE_DIMENSION - 4];
+        conj_quat_x[1] = -X[UKF_STATE_DIMENSION - 3];
+        conj_quat_x[2] = -X[UKF_STATE_DIMENSION - 2];
+        conj_quat_x[3] = -X[UKF_STATE_DIMENSION - 1];
+        float* delta_quat = temp_quat2;
+        quaternion_product_f32(&sigmas_f[i * UKF_STATE_DIMENSION + UKF_STATE_DIMENSION - 4], conj_quat_x, delta_quat);
+        float *delta_rotvec = temp_rotvec;
         quat_to_rotvec(delta_quat, delta_rotvec);
 
         // Copy rotvec to last 3 of dx_row
-        memcpy(&dx_row[UKF_STATE_DIMENSION - 4], delta_rotvec, sizeof(float) * 3);
+        memcpy(&temp_residuals_data[i * (UKF_STATE_DIMENSION - 1) + UKF_STATE_DIMENSION - 4], delta_rotvec, sizeof(float) * 3);
     }
 
     // Compute dz_res (43 x 10)
     for (int i = 0; i < UKF_NUM_SIGMAS; i++) {
         const float *sigma_h_row = &sigmas_h[i * UKF_MEASUREMENT_DIMENSION];
-        float *dz_row = &dz_res_data[i * UKF_MEASUREMENT_DIMENSION];
-        vec_sub_f32(sigma_h_row, measurement_mean, dz_row, UKF_MEASUREMENT_DIMENSION);
+        vec_sub_f32(sigma_h_row, measurement_mean, &temp_dz_residuals_data[i * UKF_MEASUREMENT_DIMENSION], UKF_MEASUREMENT_DIMENSION);
     }
 
     // Weight dz rows by Wc
     for (int i = 0; i < UKF_NUM_SIGMAS; i++) {
-        vec_scale_f32(&dz_res_data[i * UKF_MEASUREMENT_DIMENSION], Wc[i], &weighted_dz_data[i * UKF_MEASUREMENT_DIMENSION], UKF_MEASUREMENT_DIMENSION);
+        vec_scale_f32(&temp_dz_residuals_data[i * UKF_MEASUREMENT_DIMENSION], Wc[i], &weighted_dz->pData[i * UKF_MEASUREMENT_DIMENSION], UKF_MEASUREMENT_DIMENSION);
     }
-    arm_matrix_instance_f32 weighted_dz_mat = {UKF_NUM_SIGMAS, UKF_MEASUREMENT_DIMENSION, weighted_dz_data};
 
     // Transpose dx_res to dx_t (21 x 43) using temp_residuals_transpose
     for (int j = 0; j < UKF_STATE_DIMENSION - 1; j++) {
@@ -456,7 +444,7 @@ static int calculate_cross_covariance(const float *measurement_mean, arm_matrix_
     }
     
     // Compute P_cross = dx_t @ weighted_dz (21x43 @ 43x10 = 21x10)
-    mat_mult_f32(&temp_residuals_transpose, &weighted_dz_mat, P_cross_covariance);
+    mat_mult_f32(&temp_residuals_transpose, weighted_dz, P_cross_covariance);
     return 0;
 }
 
@@ -468,12 +456,11 @@ void calculate_initial_orientation(const float *imu_accel, const float *mag_fiel
         (imu_accel[0] / SQRT2_F + imu_accel[1] / SQRT2_F) / norm_acc,
         imu_accel[2] / norm_acc,
     };
-    float mag_vehicle_quat[4] = {
-        0.0F,
-        mag_field[0] / norm_mag,
-        mag_field[1] / norm_mag,
-        -mag_field[2] / norm_mag,
-    };
+    float *mag_vehicle_quat = temp_quat;
+    mag_vehicle_quat[0] = 0.0F;
+    mag_vehicle_quat[1] = mag_field[0] / norm_mag;
+    mag_vehicle_quat[2] = mag_field[1] / norm_mag;
+    mag_vehicle_quat[3] = -mag_field[2] / norm_mag;
 
     float roll = atan2f(acc_vehicle[1], acc_vehicle[2]);
     float pitch = atan2f(-acc_vehicle[0], sqrtf(acc_vehicle[1] * acc_vehicle[1] + acc_vehicle[2] * acc_vehicle[2]));

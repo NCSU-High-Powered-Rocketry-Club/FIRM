@@ -170,6 +170,26 @@ void mat_trans_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 
     }
 }
 
+int mat_cholesky_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 *pDst) {
+    int n = pDst->numRows;
+    for (int i = 0; i < n; i++) {
+        pDst->pData[n * i + i] = pSrc->pData[n * i + i];
+        for (int k = 0; k < i; k++)
+	        pDst->pData[n * i + i] -= pDst->pData[n * k + i]*pDst->pData[n * k + i];
+        if (pDst->pData[n * i + i] <= 0)
+            return 1;
+        pDst->pData[n * i + i] = sqrtf(pDst->pData[n * i + i]);
+
+        for (int j = i + 1; j < n; j++) {
+            pDst->pData[n * i + j] = pSrc->pData[n * i + j];
+            for (int k = 0; k < i; k++)
+                pDst->pData[n * i + j] -= pDst->pData[n * k + i]*pDst->pData[n * k + j];
+            pDst->pData[n * i + j] /= pDst->pData[n * i + i];
+        }
+   }
+   return 0;
+}
+
 int get_kalman_gain(const arm_matrix_instance_f32 *pxy, const arm_matrix_instance_f32 *s, arm_matrix_instance_f32 *k) {
     /*
      * Dimensions check:
@@ -206,4 +226,50 @@ int get_kalman_gain(const arm_matrix_instance_f32 *pxy, const arm_matrix_instanc
     /* transpose result to get K (m x n) */
     mat_trans_f32(&pxyT, k);
     return 0;
+}
+
+void mat_inverse_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 *pDst) {
+    uint32_t n = pSrc->numRows;
+    float32_t *A = pSrc->pData;
+    float32_t *inv = pDst->pData;
+
+    uint32_t i, j, k;
+
+    /* Initialize pDst as identity matrix */
+    for (i = 0; i < n; i++) {
+        for (j = 0; j < n; j++) {
+            inv[i*n + j] = (i == j) ? 1.0F : 0.0F;
+        }
+    }
+
+    /* Copy source matrix into a local working buffer */
+    /* NOTE: caller must ensure pDst != pSrc */
+    float32_t tmp[n * n];
+    for (i = 0; i < n*n; i++) {
+        tmp[i] = A[i];
+    }
+
+    /* Gauss–Jordan elimination */
+    for (i = 0; i < n; i++) {
+
+        float32_t diag = tmp[i*n + i];
+
+        /* Normalize pivot row */
+        for (j = 0; j < n; j++) {
+            tmp[i*n + j] /= diag;
+            inv[i*n + j] /= diag;
+        }
+
+        /* Eliminate column i in other rows */
+        for (k = 0; k < n; k++) {
+            if (k == i) continue;
+
+            float32_t factor = tmp[k*n + i];
+
+            for (j = 0; j < n; j++) {
+                tmp[k*n + j] -= factor * tmp[i*n + j];
+                inv[k*n + j] -= factor * inv[i*n + j];
+            }
+        }
+    }
 }

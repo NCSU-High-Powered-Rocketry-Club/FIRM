@@ -227,6 +227,7 @@ void loop_firm(void) {
     // if USB serial communication setting is enabled, and new data is collected, serialize
     // and transmit it
     if (any_new_data_collected) {
+        uint32_t time = DWT->CYCCNT;
         // get norm of magnetometer data
         float mag_x_2 = calibrated_packet.magnetic_field_x * calibrated_packet.magnetic_field_x;
         float mag_y_2 = calibrated_packet.magnetic_field_y * calibrated_packet.magnetic_field_y;
@@ -252,13 +253,16 @@ void loop_firm(void) {
         // serialPrintlnInt((int)(*ukf.flight_state));
         
         int err = ukf_predict(&ukf, (float)delta_timestamp);
+        
         if (err) {
             //serialPrintlnInt(err);
             //serialPrintStr("err predict");
         }
+        
         if (ukf_update(&ukf, measurements)) {
             serialPrintStr("err update");
         }
+        
         // for (int i = 0; i < 12; i++) {
         //     serialPrintDouble(ukf.X[i]);
         //     serialPrintStrInline(" ");
@@ -280,14 +284,13 @@ void loop_firm(void) {
         // if (firmSettings.uart_transfer_enabled) {
         //     HAL_UART_Transmit(firm_huart1, (uint8_t*)&serialized_packet, (uint16_t)sizeof(SerializedPacket_t), 10);
         // }
+        t1 += (DWT->CYCCNT - time);
         any_new_data_collected = false;
         iters++;
         
         if (iters == 100) {
-            uint32_t t1_cyccnt = DWT->CYCCNT;
-            uint32_t dt_cycles = t1_cyccnt - t1;
-            serialPrintFloat((float)dt_cycles / 168000.0F);
-            t1 = t1_cyccnt;
+            serialPrintFloat((float)t1 / 168000.0F);
+            t1 = 0;
             iters = 0;
         }
     }

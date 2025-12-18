@@ -21,6 +21,8 @@ endif()
 # Set the project name
 set(CMAKE_PROJECT_NAME FIRM)
 
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+
 # Enable compile command to ease indexing with e.g. clangd
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
@@ -42,14 +44,7 @@ target_compile_options(${PROJECT_NAME} PRIVATE
     -mcpu=cortex-m4
     -mfpu=fpv4-sp-d16
     -mfloat-abi=hard
-    -O3
-    -ffast-math
-    -flto
-    -finline-functions
-    -finline-functions-called-once
-    -ffunction-sections
-    -fdata-sections
-    #-DLOOPUNROLL=ON
+    -Ofast
 )
 
 target_link_options(${PROJECT_NAME} PRIVATE
@@ -57,14 +52,7 @@ target_link_options(${PROJECT_NAME} PRIVATE
     -mcpu=cortex-m4
     -mfpu=fpv4-sp-d16
     -mfloat-abi=hard
-    -O3
-    -ffast-math
-    -flto
-    -finline-functions
-    -finline-functions-called-once
-    -ffunction-sections
-    -fdata-sections
-    #-DLOOPUNROLL=ON
+    -Ofast
 )
 
 # Link directories setup
@@ -107,7 +95,10 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Add project symbols (macros)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined symbols
+    USE_HAL_DRIVER
+    ARM_MATH_LOOPUNROLL
+    STM32F405xx
+    ARM_MATH_CM4
 )
 
 # Remove wrong libob.a library dependency when using cpp files
