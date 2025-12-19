@@ -227,7 +227,7 @@ void loop_firm(void) {
     // if USB serial communication setting is enabled, and new data is collected, serialize
     // and transmit it
     if (any_new_data_collected) {
-        uint32_t time = DWT->CYCCNT;
+        
         // get norm of magnetometer data
         float mag_x_2 = calibrated_packet.magnetic_field_x * calibrated_packet.magnetic_field_x;
         float mag_y_2 = calibrated_packet.magnetic_field_y * calibrated_packet.magnetic_field_y;
@@ -284,7 +284,7 @@ void loop_firm(void) {
         // if (firmSettings.uart_transfer_enabled) {
         //     HAL_UART_Transmit(firm_huart1, (uint8_t*)&serialized_packet, (uint16_t)sizeof(SerializedPacket_t), 10);
         // }
-        t1 += (DWT->CYCCNT - time);
+        
         any_new_data_collected = false;
         iters++;
         

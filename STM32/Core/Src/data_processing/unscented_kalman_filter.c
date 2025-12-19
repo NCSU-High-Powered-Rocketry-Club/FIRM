@@ -20,7 +20,6 @@ static float Wc[UKF_NUM_SIGMAS]; // sigma point covariance weights
 static float lambda_scaling_parameter;
 static float predicted_measurement[UKF_MEASUREMENT_DIMENSION];
 static float innovation_data[UKF_MEASUREMENT_DIMENSION * UKF_MEASUREMENT_DIMENSION];
-static float innovation_inverse_data[UKF_MEASUREMENT_DIMENSION * UKF_MEASUREMENT_DIMENSION];
 static float kalman_gain_data[(UKF_STATE_DIMENSION - 1) * UKF_MEASUREMENT_DIMENSION];
 static float measurement_errors[UKF_MEASUREMENT_DIMENSION];
 static float P_cross_covariance_data[(UKF_STATE_DIMENSION - 1) * UKF_MEASUREMENT_DIMENSION];
@@ -31,7 +30,6 @@ static arm_matrix_instance_f32 Q = {UKF_STATE_DIMENSION - 1, UKF_STATE_DIMENSION
 static arm_matrix_instance_f32 R = {UKF_MEASUREMENT_DIMENSION, UKF_MEASUREMENT_DIMENSION, R_data};
 static arm_matrix_instance_f32 cholesky = {UKF_STATE_DIMENSION - 1, UKF_STATE_DIMENSION - 1, cholesky_data};
 static arm_matrix_instance_f32 innovation_covariance = {UKF_MEASUREMENT_DIMENSION, UKF_MEASUREMENT_DIMENSION, innovation_data};
-static arm_matrix_instance_f32 innovation_covariance_inverse = {UKF_MEASUREMENT_DIMENSION, UKF_MEASUREMENT_DIMENSION, innovation_inverse_data};
 static arm_matrix_instance_f32 P_cross_covariance = {(UKF_STATE_DIMENSION - 1), UKF_MEASUREMENT_DIMENSION, P_cross_covariance_data};
 static arm_matrix_instance_f32 kalman_gain = {(UKF_STATE_DIMENSION - 1), UKF_MEASUREMENT_DIMENSION, kalman_gain_data};
 
@@ -41,7 +39,6 @@ static float temp_residuals_transpose_data[(UKF_STATE_DIMENSION - 1) * UKF_NUM_S
 static float temp_weighted_residuals_transpose_data[(UKF_STATE_DIMENSION - 1) * UKF_NUM_SIGMAS];
 static float weighted_vector_sigmas[UKF_STATE_DIMENSION - 4];
 static float temp_dz_residuals_data[UKF_NUM_SIGMAS * UKF_MEASUREMENT_DIMENSION];
-static float Q_scaled_data[(UKF_STATE_DIMENSION - 1) * (UKF_STATE_DIMENSION - 1)];
 static float temp_rotvec[3];
 static float temp_rotvec2[3];
 static float temp_quat[4];
@@ -51,8 +48,6 @@ static float temp_quat2[4];
 static arm_matrix_instance_f32 temp_residuals = {UKF_NUM_SIGMAS, UKF_STATE_DIMENSION - 1, temp_residuals_data};
 static arm_matrix_instance_f32 temp_residuals_transpose = {UKF_STATE_DIMENSION - 1, UKF_NUM_SIGMAS, temp_residuals_transpose_data};
 static arm_matrix_instance_f32 temp_weighted_residuals_transpose = {UKF_STATE_DIMENSION - 1, UKF_NUM_SIGMAS, temp_weighted_residuals_transpose_data};
-//static arm_matrix_instance_f32 temp_dz_residuals = {UKF_NUM_SIGMAS, UKF_MEASUREMENT_DIMENSION, temp_dz_residuals_data};
-static arm_matrix_instance_f32 Q_scaled = {UKF_STATE_DIMENSION - 1, UKF_STATE_DIMENSION - 1, Q_scaled_data};
 
 /**
  * @brief calculate sigma point weights
@@ -130,7 +125,7 @@ int ukf_predict(UKF *ukfh, const float delta_time) {
 }
 
 int ukf_update(UKF* ukfh, float* measurement) {
-    
+    uint32_t time = DWT->CYCCNT;
     // pass sigmas through the measurement function to determine how the predicted state would
     // be reflected in sensor measurements
     
@@ -148,7 +143,8 @@ int ukf_update(UKF* ukfh, float* measurement) {
         return 3;
     }
 
-    
+    float innovation_inverse_data[UKF_MEASUREMENT_DIMENSION * UKF_MEASUREMENT_DIMENSION];
+    arm_matrix_instance_f32 innovation_covariance_inverse = {UKF_MEASUREMENT_DIMENSION, UKF_MEASUREMENT_DIMENSION, innovation_inverse_data};
     mat_inverse_f32(&innovation_covariance, &innovation_covariance_inverse);
     // calculate the kalman gain, which defines how much to weigh the prediction by compared
     // to the sensor measurements
@@ -170,8 +166,7 @@ int ukf_update(UKF* ukfh, float* measurement) {
     // extract rotation vector component of delta_x and change to delta quaternion
     rotvec_to_quat(&delta_x[UKF_STATE_DIMENSION - 4], temp_quat);
     // update state vector by multiplying the delta quaternion and adding the delta x vector components
-    quaternion_product_f32(temp_quat, &X[UKF_STATE_DIMENSION - 4], temp_quat2);
-    memcpy(&X[UKF_STATE_DIMENSION - 4], temp_quat2, sizeof(temp_quat2));
+    quaternion_product_f32(temp_quat, &X[UKF_STATE_DIMENSION - 4], &X[UKF_STATE_DIMENSION - 4]);
     // compute next covariance matrix, P
     // new_P = P - (kalman_gain * innovation_covariance * kalman_gain^T)
     float kalman_gain_transpose_data[UKF_MEASUREMENT_DIMENSION * (UKF_STATE_DIMENSION - 1)];
@@ -180,16 +175,15 @@ int ukf_update(UKF* ukfh, float* measurement) {
     float temp_matrix_data[UKF_MEASUREMENT_DIMENSION * (UKF_STATE_DIMENSION - 1)];
     arm_matrix_instance_f32 temp_matrix = {UKF_MEASUREMENT_DIMENSION, UKF_STATE_DIMENSION - 1, temp_matrix_data};
     mat_mult_f32(&innovation_covariance, &kalman_gain_transpose, &temp_matrix);
-    arm_matrix_instance_f32 *negative_delta_P = &Q_scaled; // reusing this matrix
-    if (negative_delta_P->numCols != (UKF_STATE_DIMENSION - 1) || negative_delta_P->numRows != (UKF_STATE_DIMENSION - 1))
-        return 7;
-    mat_mult_f32(&kalman_gain, &temp_matrix, negative_delta_P);
-    mat_sub_f32(&P, negative_delta_P, &P);
+    float negative_delta_P_data[(UKF_STATE_DIMENSION - 1) * (UKF_STATE_DIMENSION - 1)];
+    arm_matrix_instance_f32 negative_delta_P = {UKF_STATE_DIMENSION - 1, UKF_STATE_DIMENSION - 1, negative_delta_P_data};
+    mat_mult_f32(&kalman_gain, &temp_matrix, &negative_delta_P);
+    mat_sub_f32(&P, &negative_delta_P, &P);
     
     // update state machine
     memcpy(ukfh->measurement_vector, measurement, UKF_MEASUREMENT_DIMENSION);
     state_update(ukfh);
-    
+    t1 += (DWT->CYCCNT - time);
     return 0;
 }
 
@@ -209,7 +203,8 @@ static int calculate_sigmas_f(UKF *ukfh, float dt) {
     if (symmetrize(&P)) {
         return 1;
     }
-
+    float Q_scaled_data[(UKF_STATE_DIMENSION - 1) * (UKF_STATE_DIMENSION - 1)];
+    arm_matrix_instance_f32 Q_scaled = {UKF_STATE_DIMENSION - 1, UKF_STATE_DIMENSION - 1, Q_scaled_data};
     // calculate cholesky square root with added noise
     mat_scale_f32(&Q, dt, &Q_scaled);
     mat_add_f32(&P, &Q_scaled, &Q_scaled);
@@ -244,22 +239,21 @@ static int calculate_sigmas_f(UKF *ukfh, float dt) {
         chol_rotvec[1] = cholesky_data[(UKF_STATE_DIMENSION - 1) * (UKF_STATE_DIMENSION - 3) + i];
         chol_rotvec[2] = cholesky_data[(UKF_STATE_DIMENSION - 1) * (UKF_STATE_DIMENSION - 2) + i];
 
-        // convert the rotation vector component to a quaternion
-        rotvec_to_quat(chol_rotvec, temp_quat);
-        
         // get quaternion parts of X and sigma points
         float *quat_X = &X[UKF_STATE_DIMENSION - 4];
         float *quat_sigma_plus = &sigma_plus[UKF_STATE_DIMENSION - 4];
         float *quat_sigma_minus = &sigma_minus[UKF_STATE_DIMENSION - 4];
 
-        // quat_plus = quat_X * cholesky quat
-        quaternion_product_f32(quat_X, temp_quat, quat_sigma_plus);
-        
+        // convert the rotation vector component to a quaternion
+        rotvec_to_quat(chol_rotvec, quat_sigma_plus);
         // quat_minus = quat_X * conj(cholesky quat)
-        temp_quat[1] = -temp_quat[1];
-        temp_quat[2] = -temp_quat[2];
-        temp_quat[3] = -temp_quat[3];
-        quaternion_product_f32(quat_X, temp_quat, quat_sigma_minus);
+        quat_sigma_minus[0] = quat_sigma_plus[0];
+        quat_sigma_minus[1] = -quat_sigma_plus[1];
+        quat_sigma_minus[2] = -quat_sigma_plus[2];
+        quat_sigma_minus[3] = -quat_sigma_plus[3];
+        quaternion_product_f32(quat_X, quat_sigma_minus, quat_sigma_minus);
+        // quat_plus = quat_X * cholesky quat
+        quaternion_product_f32(quat_X, quat_sigma_plus, quat_sigma_plus);
     }
 
     for (int i = 0; i < UKF_NUM_SIGMAS; i++) {
@@ -278,10 +272,9 @@ static int unscented_transform_f() {
     temp_weighted_residuals_transpose.numRows = UKF_STATE_DIMENSION - 1;
     temp_weighted_residuals_transpose.numCols = UKF_NUM_SIGMAS;
     // initialize the sigma means vector as all 0
-    float mean_x[UKF_STATE_DIMENSION];
-    float *mean_delta_rotvec = temp_rotvec;
-    
+    float mean_x[UKF_STATE_DIMENSION - 4];
     memset(mean_x, 0, sizeof(mean_x));
+    float *mean_delta_rotvec = temp_rotvec;
     memset(mean_delta_rotvec, 0, sizeof(temp_rotvec));
     // get the current quaternion state and it's conjugate
     float *quat_state = &X[UKF_STATE_DIMENSION - 4];
@@ -329,13 +322,12 @@ static int unscented_transform_f() {
     // delta quaternion to the current quaternion state to find the mean quaternion
     float *mean_delta_quat = temp_quat2;
     rotvec_to_quat(mean_delta_rotvec, mean_delta_quat);
-    quaternion_product_f32(mean_delta_quat, quat_state, &mean_x[UKF_STATE_DIMENSION - 4]);
+    quaternion_product_f32(mean_delta_quat, quat_state, quat_state);
     // copy the mean x vector into the X state vector
     memcpy(X, mean_x, sizeof(mean_x));
     // calculate and copy in the vector residuals into the resiudals matrix
     for (int i = 0; i < UKF_NUM_SIGMAS; i++) {
-        vec_sub_f32(&sigmas_f[i * UKF_STATE_DIMENSION], mean_x, &temp_residuals_data[i * (UKF_STATE_DIMENSION - 1)], UKF_STATE_DIMENSION - 4);
-
+        vec_sub_f32(&sigmas_f[i * UKF_STATE_DIMENSION], X, &temp_residuals_data[i * (UKF_STATE_DIMENSION - 1)], UKF_STATE_DIMENSION - 4);
     }
 
     // compute updated P matrix
@@ -376,10 +368,7 @@ static int unscented_transform_h(float measurement_mean[UKF_MEASUREMENT_DIMENSIO
     // compute residuals, reuse residuals matrix from sigmas_f
     for (int i = 0; i < UKF_NUM_SIGMAS; i++) {
         vec_sub_f32(&sigmas_h[i * UKF_MEASUREMENT_DIMENSION], measurement_mean, &temp_residuals_data[i * UKF_MEASUREMENT_DIMENSION], UKF_MEASUREMENT_DIMENSION);
-    }
-
-    // compute weighted residuals with Wc
-    for (int i = 0; i < UKF_NUM_SIGMAS; i++) {
+        // compute weighted residuals with Wc
         vec_scale_f32(&temp_residuals_data[i * UKF_MEASUREMENT_DIMENSION], Wc[i], &temp_weighted_residuals->pData[i * UKF_MEASUREMENT_DIMENSION], UKF_MEASUREMENT_DIMENSION);
     }
 
