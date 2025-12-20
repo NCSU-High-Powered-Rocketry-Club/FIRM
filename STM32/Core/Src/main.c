@@ -21,6 +21,7 @@
 #include "logger.h"
 #include <mmc5983ma.h>
 #include "data_processing/preprocessor.h"
+#include "stm32f4xx_hal_gpio.h"
 #include "usb_serializer.h"
 #include "settings.h"
 /* USER CODE END Header */
@@ -71,8 +72,15 @@ SPI_HandleTypeDef hspi3;
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
-  .stack_size = 256 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .stack_size = 4096 * 2,
+  .priority = (osPriority_t) osPriorityAboveNormal,
+};
+
+osThreadId_t blinkTaskHandle;
+const osThreadAttr_t blinkTask_attributes = {
+  .name = "blinkTask",
+  .stack_size = 256,
+  .priority = (osPriority_t) osPriorityLow,
 };
 /* USER CODE BEGIN PV */
 
@@ -89,6 +97,7 @@ static void MX_SPI2_Init(void);
 static void MX_SPI3_Init(void);
 static void MX_SPI1_Init(void);
 void StartupTask(void *argument);
+void blink_task(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -153,6 +162,13 @@ int main(void) {
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET); // mmc5983ma CS pin
     // HAL_Delay(500); // purely for debug purposes, allows time to connect to USB serial terminal
 
+    // disable the ISR so that the interrupts cannot be triggered before the scheduler initializes.
+    // The ISR notifies the sensor tasks to collect data, but calling this before the scheduler is
+    // initialized will suspend the program.
+    HAL_NVIC_DisableIRQ(EXTI2_IRQn);
+    HAL_NVIC_DisableIRQ(EXTI3_IRQn);
+    HAL_NVIC_DisableIRQ(EXTI9_5_IRQn);
+
     if (icm45686_init(&hspi2, GPIOB, GPIO_PIN_9)) {
         Error_Handler();
     }
@@ -211,25 +227,38 @@ int main(void) {
 
     // create default task
     defaultTaskHandle = osThreadNew(StartupTask, NULL, &defaultTask_attributes);
+    blinkTaskHandle = osThreadNew(blink_task, NULL, &blinkTask_attributes);
 
     // setup other tasks
-    BaseType_t status = xTaskCreate(TaskCollectBarData, "Collect Bar Data", 128,
-                                    NULL, FIRM_TASK_DEFAULT_PRIORITY, &hBarDataTask);
+    BaseType_t status = xTaskCreate(TaskCollectBMP581Data, "Collect BMP581 Data", 512,
+                                    NULL, FIRM_TASK_DEFAULT_PRIORITY, &hBMP581DataTask);
     if (pdPASS != status) Error_Handler();
 
-    status = xTaskCreate(TaskCollectIMUData, "Collect IMU Data", 128,
-        NULL, FIRM_TASK_DEFAULT_PRIORITY, &hImuDataTask);
+    status = xTaskCreate(TaskCollectICM45686Data, "Collect ICM45686 Data", 512,
+        NULL, FIRM_TASK_DEFAULT_PRIORITY, &hICM45686DataTask);
     if (pdPASS != status) Error_Handler();
 
-    status = xTaskCreate(TaskCollectBarData, "Collect Bar Data", 128,
-        NULL, FIRM_TASK_DEFAULT_PRIORITY, &hBarDataTask);
+    status = xTaskCreate(TaskCollectMMC5983MAData, "Collect MMC5983MA Data", 512,
+        NULL, FIRM_TASK_DEFAULT_PRIORITY, &hMMC5983MADataTask);
     if (pdPASS != status) Error_Handler();
+
 
     /* Start scheduler */
     osKernelStart();
 
     // Go to error handler if freertos kernel fails to start
     Error_Handler();
+}
+
+void blink() {
+    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0);
+}
+
+void blink_task(void *argument) {
+    for (;;) {
+        HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_1);
+        osDelay(500);
+    }
 }
 
 /**
@@ -498,10 +527,10 @@ static void MX_DMA_Init(void)
 
   /* DMA interrupt init */
   /* DMA2_Stream3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 5, 0);
+  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 6, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
   /* DMA2_Stream6_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 5, 0);
+  HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 6, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
 
 }
@@ -573,13 +602,13 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI2_IRQn, 5, 0);
+  HAL_NVIC_SetPriority(EXTI2_IRQn, 6, 0);
   HAL_NVIC_EnableIRQ(EXTI2_IRQn);
 
-  HAL_NVIC_SetPriority(EXTI3_IRQn, 5, 0);
+  HAL_NVIC_SetPriority(EXTI3_IRQn, 6, 0);
   HAL_NVIC_EnableIRQ(EXTI3_IRQn);
 
-  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 5, 0);
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 6, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
@@ -596,15 +625,18 @@ static void MX_GPIO_Init(void)
  * @retval None
  */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
     if (GPIO_Pin == BMP581_Interrupt_Pin) {
-        xTaskNotifyGive(hBarDataTask);
+        vTaskNotifyGiveFromISR(hBMP581DataTask, &xHigherPriorityTaskWoken);
     }
     if (GPIO_Pin == ICM45686_Interrupt_Pin) {
-        xTaskNotifyGive(hImuDataTask);
+        vTaskNotifyGiveFromISR(hICM45686DataTask, &xHigherPriorityTaskWoken);
     }
     if (GPIO_Pin == MMC5983MA_Interrupt_Pin) {
-        xTaskNotifyGive(hMagDataTask);
+        vTaskNotifyGiveFromISR(hMMC5983MADataTask, &xHigherPriorityTaskWoken);
     }
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 /* USER CODE END 4 */
 
@@ -614,7 +646,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   * @param  argument: Not used
   * @retval None
   */
-/* USER CODE END Header_StartDefaultTask */
 void StartupTask(void* argument) {
 
     // Setup the SD card
@@ -646,11 +677,15 @@ void StartupTask(void* argument) {
     // init usb device
     MX_USB_DEVICE_Init();
 
-    for (;;) {
-        HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_1);
-        osDelay(500);
-    }
+    // re-enable ISR's so that interrupts can trigger the sensor tasks to run
+    HAL_NVIC_EnableIRQ(EXTI2_IRQn);
+    HAL_NVIC_EnableIRQ(EXTI3_IRQn);
+    HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+    vTaskDelete(NULL);
+    
 }
+/* USER CODE END Header_StartDefaultTask */
+
 
 /**
   * @brief  Period elapsed callback in non blocking mode
