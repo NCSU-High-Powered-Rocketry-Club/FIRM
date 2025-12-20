@@ -1,9 +1,15 @@
 #include "firm_tasks.h"
 
-#include "bmp581.h"
-#include "icm45686.h"
-#include "logger.h"
-#include "preprocessor.h"
+
+
+// instance of the calibrated data packet from the preprocessor to be reused
+CalibratedDataPacket_t calibrated_packet = {0};
+
+// instance of the serialized packet, will be reused
+SerializedPacket_t serialized_packet = {0};
+
+static UART_HandleTypeDef* firm_huart1;
+static volatile bool uart_tx_done = true;
 
 // task handles
 osThreadId_t bmp581_task_handle;
@@ -32,6 +38,98 @@ osMutexId_t sensorDataMutexHandle;
 const osMutexAttr_t sensorDataMutex_attributes = {
   .name = "sensorDataMutex"
 };
+
+int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DMAHandles* dma_handles_ptr, UARTHandles* uart_handles_ptr) {
+  firm_huart1 = uart_handles_ptr->huart1;
+
+  // We use DWT (Data Watchpoint and Trace unit) to get a high resolution free-running timer
+  // for our data packet timestamps. This allows us to use the clock cycle count instead of a
+  // standard timestamp in milliseconds or similar, while not having any performance penalty.
+  // Enables the trace and debug block in the core so that DWT registers become
+  // accessible. This is required before enabling the DWT cycle counter.
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+
+  // Clear the DWT clock cycle counter to start counting from zero.
+  DWT->CYCCNT = 0;
+
+  // Enable the DWT cycle counter itself. Once active, it increments each CPU  
+  // clock cycle so we can use clock cycles as data packet timestamps.
+  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+
+  // Set the chip select pins to high, this means that they're not selected.
+  // Note: We can't have these in the bmp581/imu/flash chip init functions, because those somehow
+  // mess up with the initialization.
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // bmp581 cs pin
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // icm45686 cs pin
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET); // flash chip cs pin
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET); // mmc5983ma CS pin
+
+  // Indicate that initialization is in progress:
+  led_set_status(FIRM_UNINITIALIZED);
+
+  HAL_Delay(500); // purely for debug purposes, allows time to connect to USB serial terminal
+
+  // disable the ISR so that the interrupts cannot be triggered before the scheduler initializes.
+  // The ISR notifies the sensor tasks to collect data, but calling this before the scheduler is
+  // initialized will suspend the program.
+  HAL_NVIC_DisableIRQ(EXTI2_IRQn);
+  HAL_NVIC_DisableIRQ(EXTI3_IRQn);
+  HAL_NVIC_DisableIRQ(EXTI9_5_IRQn);
+
+  if (icm45686_init(spi_handles_ptr->hspi2, GPIOB, GPIO_PIN_9)) {
+    led_set_status(IMU_FAIL);
+    return 1;
+  }
+
+  if (bmp581_init(spi_handles_ptr->hspi2, GPIOC, GPIO_PIN_2)) {
+    led_set_status(BMP581_FAIL);
+    return 1;
+  }
+  
+  if (mmc5983ma_init(i2c_handles_ptr->hi2c1, 0x30)) {
+    led_set_status(MMC5983MA_FAIL);
+    return 1;
+  }
+
+  // set up settings module with flash chip
+  if (settings_init(spi_handles_ptr->hspi1, GPIOC, GPIO_PIN_4)) {
+    led_set_status(FLASH_CHIP_FAIL);
+    return 1;
+  }
+  serializer_init_packet(&serialized_packet); // initializes the packet length and header bytes
+  
+
+  // // Wait for interrupts to fire
+  // HAL_Delay(10);
+
+  // // Check if interrupts fired
+  // uint8_t interrupt_leds = 0b000;
+  // // Blink LEDs to indicate any failed interrupts
+  // for (int i = 0; i < 5; i++) {
+  //     if (bmp581_has_new_data && icm45686_has_new_data && mmc5983ma_has_new_data) {
+  //         break; // all interrupts fired successfully
+  //     }
+  //     if (!icm45686_has_new_data) {
+  //         serialPrintStr("IMU didn't interrupt");
+  //         interrupt_leds |= FAILED_INTERRUPT_IMU;
+  //     }
+  //     if (!bmp581_has_new_data) {
+  //         serialPrintStr("BMP581 didn't interrupt");
+  //         interrupt_leds |= FAILED_INTERRUPT_BMP;
+  //     }
+  //     if (!mmc5983ma_has_new_data) {
+  //         serialPrintStr("MMC5983MA didn't interrupt");
+  //         interrupt_leds |= FAILED_INTERRUPT_MAG;
+  //     }
+  //     led_set_status(interrupt_leds);
+  //     HAL_Delay(500);
+  //     led_set_status(FIRM_INITIALIZED);
+  //     interrupt_leds = 0b000;
+  //     HAL_Delay(500);
+  // }
+  return 0;
+};
+
 
 void collect_bmp581_data_task(void *argument) {
   const TickType_t max_wait = MAX_WAIT_TIME(BMP581_POLL_RATE_HZ);
@@ -83,7 +181,7 @@ void collect_mmc5983ma_data_task(void *argument) {
     if (notif_count > 0) {
       osMutexAcquire(sensorDataMutexHandle, osWaitForever);
       MMC5983MAPacket_t *mmc5983ma_packet = logger_malloc_packet(sizeof(MMC5983MAPacket_t));
-      if (!mmc5983ma_read_data(mmc5983ma_packet, 0)) {
+      if (!mmc5983ma_read_data(mmc5983ma_packet)) {
         logger_write_entry('M', sizeof(MMC5983MAPacket_t));
         // mmc5983ma_convert_packet(mmc5983ma_packet, &calibrated_packet);
       }

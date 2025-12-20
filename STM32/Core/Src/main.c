@@ -21,6 +21,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+#include "fatfs.h"
 #include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -149,72 +150,30 @@ int main(void)
   MX_SPI3_Init();
   MX_SPI1_Init();
   MX_USART1_UART_Init();
+  MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
 
   SPIHandles spi_handles = {
-    .hspi1 = &hspi1,
-    .hspi2 = &hspi2,
-    .hspi3 = &hspi3,
+      .hspi1 = &hspi1,
+      .hspi2 = &hspi2,
+      .hspi3 = &hspi3,
   };
   I2CHandles i2c_handles = {
-    .hi2c1 = &hi2c1,
-    .hi2c2 = &hi2c2,
+      .hi2c1 = &hi2c1,
+      .hi2c2 = &hi2c2,
   };
   DMAHandles dma_handles = {
-    .hdma_sdio_rx = &hdma_sdio_rx,
-    .hdma_sdio_tx = &hdma_sdio_tx,
+      .hdma_sdio_rx = &hdma_sdio_rx,
+      .hdma_sdio_tx = &hdma_sdio_tx,
   };
   UARTHandles uart_handles = {
-    .huart1 = &huart1,
-  };  
-  // We use DWT (Data Watchpoint and Trace unit) to get a high resolution free-running timer
-    // for our data packet timestamps. This allows us to use the clock cycle count instead of a
-    // standard timestamp in milliseconds or similar, while not having any performance penalty.
-    // Enables the trace and debug block in the core so that DWT registers become
-    // accessible. This is required before enabling the DWT cycle counter.
-    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+      .huart1 = &huart1,
+  };
+  
+  if (initialize_firm(&spi_handles, &i2c_handles, &dma_handles, &uart_handles)) {
+    Error_Handler();
+  };
 
-    // Clear the DWT clock cycle counter to start counting from zero.
-    DWT->CYCCNT = 0;
-
-    // Enable the DWT cycle counter itself. Once active, it increments each CPU  
-    // clock cycle so we can use clock cycles as data packet timestamps.
-    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
-
-
-    // Set the chip select pins to high, this means that they're not selected.
-    // Note: We can't have these in the bmp581/imu/flash chip init functions, because those somehow
-    // mess up with the initialization.
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // bmp581 cs pin
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // icm45686 cs pin
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET); // flash chip cs pin
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET); // mmc5983ma CS pin
-    HAL_Delay(500); // purely for debug purposes, allows time to connect to USB serial terminal
-
-  // disable the ISR so that the interrupts cannot be triggered before the scheduler initializes.
-  // The ISR notifies the sensor tasks to collect data, but calling this before the scheduler is
-  // initialized will suspend the program.
-  HAL_NVIC_DisableIRQ(EXTI2_IRQn);
-  HAL_NVIC_DisableIRQ(EXTI3_IRQn);
-  HAL_NVIC_DisableIRQ(EXTI9_5_IRQn);
-
-    if (icm45686_init(&hspi2, GPIOB, GPIO_PIN_9)) {
-        Error_Handler();
-    }
-
-    if (bmp581_init(&hspi2, GPIOC, GPIO_PIN_2)) {
-        Error_Handler();
-    }
-    
-    if (mmc5983ma_init(&hi2c1, 0x30)) {
-        Error_Handler();
-    }
-
-    // set up settings module with flash chip
-    if (settings_init(&hspi1, GPIOC, GPIO_PIN_4)) {
-        Error_Handler();
-    }
-    
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -267,8 +226,7 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   Error_Handler();
-  while (1)
-  {
+  while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -411,14 +369,6 @@ static void MX_SDIO_SD_Init(void)
   hsd.Init.BusWide = SDIO_BUS_WIDE_1B;
   hsd.Init.HardwareFlowControl = SDIO_HARDWARE_FLOW_CONTROL_DISABLE;
   hsd.Init.ClockDiv = 0;
-  if (HAL_SD_Init(&hsd) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_SD_ConfigWideBusOperation(&hsd, SDIO_BUS_WIDE_4B) != HAL_OK)
-  {
-    Error_Handler();
-  }
   /* USER CODE BEGIN SDIO_Init 2 */
 
   /* USER CODE END SDIO_Init 2 */
@@ -618,7 +568,7 @@ static void MX_GPIO_Init(void)
                           |DEBUG2_Pin|MMC5983MA_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, DEBUG0_Pin|DEBUG1_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, DEBUG0_Pin|DEBUG1_Pin|ICM45686_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : PC0 Feather_LED_Pin BMP581_CS_Pin FLASH_CS_Pin
                            DEBUG2_Pin MMC5983MA_CS_Pin */
@@ -641,8 +591,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(CONF_CHECK_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : DEBUG0_Pin DEBUG1_Pin */
-  GPIO_InitStruct.Pin = DEBUG0_Pin|DEBUG1_Pin;
+  /*Configure GPIO pins : DEBUG0_Pin DEBUG1_Pin ICM45686_CS_Pin */
+  GPIO_InitStruct.Pin = DEBUG0_Pin|DEBUG1_Pin|ICM45686_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -676,9 +626,7 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void blink() {
-  HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0);
-}
+void blink() { HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0); }
 
 /**
  * @brief ISR for interrupt pins
@@ -704,10 +652,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 
 /* USER CODE BEGIN Header_StartDefaultTask */
 /**
-  * @brief  Function implementing the defaultTask thread.
-  * @param  argument: Not used
-  * @retval None
-  */
+ * @brief  Function implementing the defaultTask thread.
+ * @param  argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void *argument)
 {
@@ -715,8 +663,7 @@ void StartDefaultTask(void *argument)
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
-  for(;;)
-  {
+  for (;;) {
     osDelay(1);
   }
   /* USER CODE END 5 */
@@ -724,10 +671,10 @@ void StartDefaultTask(void *argument)
 
 /* USER CODE BEGIN Header_StartupTask */
 /**
-* @brief Function implementing the startupTask thread.
-* @param argument: Not used
-* @retval None
-*/
+ * @brief Function implementing the startupTask thread.
+ * @param argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_StartupTask */
 void StartupTask(void *argument)
 {
@@ -741,11 +688,11 @@ void StartupTask(void *argument)
 
   // get scale factor values for each sensor to put in header
   HeaderFields header_fields = {
-    bmp581_get_temp_scale_factor(),
-    bmp581_get_pressure_scale_factor(),
-    icm45686_get_accel_scale_factor(),
-    icm45686_get_gyro_scale_factor(),
-    mmc5983ma_get_magnetic_field_scale_factor(),
+      bmp581_get_temp_scale_factor(),
+      bmp581_get_pressure_scale_factor(),
+      icm45686_get_accel_scale_factor(),
+      icm45686_get_gyro_scale_factor(),
+      mmc5983ma_get_magnetic_field_scale_factor(),
   };
 
   logger_write_header(&header_fields);
@@ -771,17 +718,16 @@ void StartupTask(void *argument)
 
 /* USER CODE BEGIN Header_BlinkTask */
 /**
-* @brief constant blinking for debug purposes
-* @param argument: Not used
-* @retval None
-*/
+ * @brief constant blinking for debug purposes
+ * @param argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_BlinkTask */
 void BlinkTask(void *argument)
 {
   /* USER CODE BEGIN BlinkTask */
   /* Infinite loop */
-  for(;;)
-  {
+  for (;;) {
     HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_1);
     osDelay(500);
   }
@@ -817,10 +763,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-    /* User can add his own implementation to report the HAL error return state */
-    __disable_irq();
-    while (1) {
-    }
+  /* User can add his own implementation to report the HAL error return state */
+  __disable_irq();
+  while (1) {
+  }
   /* USER CODE END Error_Handler_Debug */
 }
 #ifdef USE_FULL_ASSERT
@@ -834,8 +780,8 @@ void Error_Handler(void)
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
-    /* User can add his own implementation to report the file name and line number,
-       ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+  /* User can add his own implementation to report the file name and line number,
+     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
