@@ -8,6 +8,7 @@
 #include "logger.h"
 #include "fatfs.h"
 #include "ff.h"
+#include "settings.h"
 #include "usb_print_debug.h"
 #include <stdint.h>
 #include <stdio.h>
@@ -21,7 +22,7 @@
  * @param capacity the number of bytes to ensure capacity of
  * @retval File Status error code, 0 on success.
  */
-static FRESULT logger_ensure_capacity(int capacity);
+static FRESULT logger_ensure_capacity(size_t capacity);
 
 /**
  * @brief Logs the type and clock cycle timestamp. This will be writen as 1 byte for the type
@@ -122,7 +123,7 @@ FRESULT logger_init(DMA_HandleTypeDef* dma_sdio_tx_handle) {
         }
 
         // 2e8 bytes = (1 hour * ((8192 bytes * 4.4hz) * 1.5))
-        fr = f_expand(&log_file, 2e8, 1);
+        fr = f_expand(&log_file, (FSIZE_t)2e8, 1);
         if (fr != FR_OK) {
             return fr;
         }
@@ -133,23 +134,30 @@ FRESULT logger_init(DMA_HandleTypeDef* dma_sdio_tx_handle) {
 }
 
 FRESULT logger_write_header(HeaderFields* sensor_scale_factors) {
-    const char* firm_log_header = "FIRM LOG v1.0\n";
+    const char* firm_log_header = "FIRM LOG v1.1\n";
     size_t header_len = strlen(firm_log_header);
     size_t scale_factor_len = sizeof(HeaderFields);
-    size_t len = header_len + scale_factor_len;
+    size_t firm_settings_len = sizeof(firmSettings);
+    size_t calibration_settings_len = sizeof(calibrationSettings);
 
-    FRESULT error_status = logger_ensure_capacity(len);
+    FRESULT error_status = logger_ensure_capacity(header_len + scale_factor_len + firm_settings_len + calibration_settings_len);
     if (error_status) {
         return error_status;
     }
 
     // copy "FIRM LOG" text
+    // NOLINTNEXTLINE(bugprone-not-null-terminated-result)
     memcpy(current_buffer + current_offset, firm_log_header, header_len);
-
+    current_offset += header_len;
+    // copy in firm settings
+    memcpy(current_buffer + current_offset, &firmSettings, firm_settings_len);
+    current_offset += firm_settings_len;
+    // copy calibration settings
+    memcpy(current_buffer + current_offset, &calibrationSettings, calibration_settings_len);
+    current_offset += calibration_settings_len;
     // copy sensor scale factor struct
-    memcpy(current_buffer + current_offset + header_len, sensor_scale_factors, scale_factor_len);
-
-    current_offset += len;
+    memcpy(current_buffer + current_offset, sensor_scale_factors, scale_factor_len);
+    current_offset += scale_factor_len;
 
     return error_status;
 }
@@ -168,7 +176,7 @@ void logger_write_entry(char type, size_t packet_size) {
 }
 
 
-static FRESULT logger_ensure_capacity(int capacity) {
+static FRESULT logger_ensure_capacity(size_t capacity) {
     if (current_offset + capacity > SD_SECTOR_SIZE) {
         logger_write();
 
@@ -182,9 +190,9 @@ static FRESULT logger_ensure_capacity(int capacity) {
 static void logger_log_type_timestamp(char type) {
     current_buffer[current_offset++] = type;
     uint32_t current_time = DWT->CYCCNT;
-    current_buffer[current_offset++] = (current_time >> 16) & 0xFF;
-    current_buffer[current_offset++] = (current_time >> 8) & 0xFF;
-    current_buffer[current_offset++] = current_time & 0xFF;
+    current_buffer[current_offset++] = (char)((current_time >> 16) & 0xFF);
+    current_buffer[current_offset++] = (char)((current_time >> 8) & 0xFF);
+    current_buffer[current_offset++] = (char)(current_time & 0xFF);
 }
 
 
@@ -195,7 +203,7 @@ static FRESULT logger_write() {
     }
 
     // Pad the buffer
-    for (int i = current_offset; i < SD_SECTOR_SIZE; i++) {
+    for (size_t i = current_offset; i < SD_SECTOR_SIZE; i++) {
         current_buffer[i] = 0;
     }
 
@@ -213,9 +221,9 @@ static FRESULT logger_write() {
     if (fr != FR_OK) {
         serialPrintStr("ERR logger_write");
         return fr;
-    } else {
-        //serialPrintStr(file_name);
     }
+    
+    //serialPrintStr(file_name);
 
     return fr;
 }

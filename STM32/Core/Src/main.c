@@ -16,19 +16,11 @@
  ******************************************************************************
  */
 
-#include <bmp581.h>
-#include <icm45686.h>
-#include "logger.h"
-#include <mmc5983ma.h>
-#include "data_processing/preprocessor.h"
-#include "stm32f4xx_hal_gpio.h"
-#include "usb_serializer.h"
-#include "settings.h"
+#include "firm.h"
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
-#include "fatfs.h"
 #include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -68,6 +60,9 @@ SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi2;
 SPI_HandleTypeDef hspi3;
 
+UART_HandleTypeDef huart1;
+DMA_HandleTypeDef hdma_usart1_tx;
+
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
@@ -103,6 +98,7 @@ static void MX_SDIO_SD_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_SPI3_Init(void);
 static void MX_SPI1_Init(void);
+static void MX_USART1_UART_Init(void);
 void StartDefaultTask(void *argument);
 void StartupTask(void *argument);
 void BlinkTask(void *argument);
@@ -149,34 +145,51 @@ int main(void)
   MX_I2C1_Init();
   MX_I2C2_Init();
   MX_SDIO_SD_Init();
-  MX_FATFS_Init();
   MX_SPI2_Init();
   MX_SPI3_Init();
   MX_SPI1_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
+  SPIHandles spi_handles = {
+    .hspi1 = &hspi1,
+    .hspi2 = &hspi2,
+    .hspi3 = &hspi3,
+  };
+  I2CHandles i2c_handles = {
+    .hi2c1 = &hi2c1,
+    .hi2c2 = &hi2c2,
+  };
+  DMAHandles dma_handles = {
+    .hdma_sdio_rx = &hdma_sdio_rx,
+    .hdma_sdio_tx = &hdma_sdio_tx,
+  };
+  UARTHandles uart_handles = {
+    .huart1 = &huart1,
+  };  
   // We use DWT (Data Watchpoint and Trace unit) to get a high resolution free-running timer
-  // for our data packet timestamps. This allows us to use the clock cycle count instead of a
-  // standard timestamp in milliseconds or similar, while not having any performance penalty.
-  // Enables the trace and debug block in the core so that DWT registers become
-  // accessible. This is required before enabling the DWT cycle counter.
-  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+    // for our data packet timestamps. This allows us to use the clock cycle count instead of a
+    // standard timestamp in milliseconds or similar, while not having any performance penalty.
+    // Enables the trace and debug block in the core so that DWT registers become
+    // accessible. This is required before enabling the DWT cycle counter.
+    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
 
-  // Clear the DWT clock cycle counter to start counting from zero.
-  DWT->CYCCNT = 0;
+    // Clear the DWT clock cycle counter to start counting from zero.
+    DWT->CYCCNT = 0;
 
-  // Enable the DWT cycle counter itself. Once active, it increments each CPU
-  // clock cycle so we can use clock cycles as data packet timestamps.
-  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+    // Enable the DWT cycle counter itself. Once active, it increments each CPU  
+    // clock cycle so we can use clock cycles as data packet timestamps.
+    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 
-  // Set the chip select pins to high, this means that they're not selected.
-  // Note: We can't have these in the bmp581/imu/flash chip init functions, because those somehow
-  // mess up with the initialization.
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // bmp581 cs pin
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // icm45686 cs pin
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET); // flash chip cs pin
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET); // mmc5983ma CS pin
-  // HAL_Delay(500); // purely for debug purposes, allows time to connect to USB serial terminal
+
+    // Set the chip select pins to high, this means that they're not selected.
+    // Note: We can't have these in the bmp581/imu/flash chip init functions, because those somehow
+    // mess up with the initialization.
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // bmp581 cs pin
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // icm45686 cs pin
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET); // flash chip cs pin
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET); // mmc5983ma CS pin
+    HAL_Delay(500); // purely for debug purposes, allows time to connect to USB serial terminal
 
   // disable the ISR so that the interrupts cannot be triggered before the scheduler initializes.
   // The ISR notifies the sensor tasks to collect data, but calling this before the scheduler is
@@ -185,23 +198,23 @@ int main(void)
   HAL_NVIC_DisableIRQ(EXTI3_IRQn);
   HAL_NVIC_DisableIRQ(EXTI9_5_IRQn);
 
-  if (icm45686_init(&hspi2, GPIOB, GPIO_PIN_9)) {
-    Error_Handler();
-  }
+    if (icm45686_init(&hspi2, GPIOB, GPIO_PIN_9)) {
+        Error_Handler();
+    }
 
-  if (bmp581_init(&hspi2, GPIOC, GPIO_PIN_2)) {
-    Error_Handler();
-  }
+    if (bmp581_init(&hspi2, GPIOC, GPIO_PIN_2)) {
+        Error_Handler();
+    }
+    
+    if (mmc5983ma_init(&hi2c1, 0x30)) {
+        Error_Handler();
+    }
 
-  if (mmc5983ma_init(&hi2c1, 0x30)) {
-    Error_Handler();
-  }
-
-  // set up settings module with flash chip
-  if (settings_init(&hspi1, GPIOC, GPIO_PIN_4)) {
-    Error_Handler();
-  }
-  
+    // set up settings module with flash chip
+    if (settings_init(&hspi1, GPIOC, GPIO_PIN_4)) {
+        Error_Handler();
+    }
+    
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -398,6 +411,14 @@ static void MX_SDIO_SD_Init(void)
   hsd.Init.BusWide = SDIO_BUS_WIDE_1B;
   hsd.Init.HardwareFlowControl = SDIO_HARDWARE_FLOW_CONTROL_DISABLE;
   hsd.Init.ClockDiv = 0;
+  if (HAL_SD_Init(&hsd) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_SD_ConfigWideBusOperation(&hsd, SDIO_BUS_WIDE_4B) != HAL_OK)
+  {
+    Error_Handler();
+  }
   /* USER CODE BEGIN SDIO_Init 2 */
 
   /* USER CODE END SDIO_Init 2 */
@@ -519,6 +540,39 @@ static void MX_SPI3_Init(void)
 }
 
 /**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 2000000;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
+
+}
+
+/**
   * Enable DMA controller clock
   */
 static void MX_DMA_Init(void)
@@ -534,6 +588,9 @@ static void MX_DMA_Init(void)
   /* DMA2_Stream6_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
+  /* DMA2_Stream7_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream7_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream7_IRQn);
 
 }
 
@@ -561,7 +618,7 @@ static void MX_GPIO_Init(void)
                           |DEBUG2_Pin|MMC5983MA_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, DEBUG0_Pin|DEBUG1_Pin|ICM45686_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, DEBUG0_Pin|DEBUG1_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : PC0 Feather_LED_Pin BMP581_CS_Pin FLASH_CS_Pin
                            DEBUG2_Pin MMC5983MA_CS_Pin */
@@ -584,8 +641,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(CONF_CHECK_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : DEBUG0_Pin DEBUG1_Pin ICM45686_CS_Pin */
-  GPIO_InitStruct.Pin = DEBUG0_Pin|DEBUG1_Pin|ICM45686_CS_Pin;
+  /*Configure GPIO pins : DEBUG0_Pin DEBUG1_Pin */
+  GPIO_InitStruct.Pin = DEBUG0_Pin|DEBUG1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;

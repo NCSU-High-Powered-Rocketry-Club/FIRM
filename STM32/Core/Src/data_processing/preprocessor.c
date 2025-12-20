@@ -1,8 +1,12 @@
 #include "preprocessor.h"
+#include "settings.h"
 
-static const float pi = 3.14159265358979323846;
-static uint32_t dwt_overflow_count = 0;
-static uint32_t last_cyccnt = 0;
+static const float pi = 3.14159265358979323846F;
+// number of times the DWT timestamp has overflowed. This happens every ~25 seconds
+static volatile uint32_t dwt_overflow_count = 0;
+// last recorded DWT cycle count 
+static volatile uint32_t last_cyccnt = 0;
+
 
 /**
  * @brief Updates dwt overflow counter and returns current timestamp
@@ -13,7 +17,7 @@ static uint32_t last_cyccnt = 0;
  */
 static double update_dwt_timestamp(void);
 
-void bmp581_convert_packet(BMP581Packet_t *packet, CalibratedDataPacket_t *result_packet){
+void bmp581_convert_packet(BMP581Packet_t *packet, CalibratedDataPacket_t *result_packet) {
     // get the current timestamp of the packet in seconds using the DWT counter
     result_packet->timestamp_sec = update_dwt_timestamp();
     int32_t temp_binary, pressure_binary;
@@ -35,7 +39,7 @@ void bmp581_convert_packet(BMP581Packet_t *packet, CalibratedDataPacket_t *resul
     result_packet -> pressure = pressure_float;
 }
 
-void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, CalibratedDataPacket_t *result_packet){
+void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, CalibratedDataPacket_t *result_packet) {
     // get the current timestamp of the packet in seconds using the DWT counter
     result_packet->timestamp_sec = update_dwt_timestamp();
     int32_t mag_binary_x, mag_binary_y, mag_binary_z;
@@ -58,14 +62,18 @@ void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, CalibratedDataPacket_t 
     float mag_float_y = ((float) mag_binary_y) / (131072.0F / 800.0F);
     float mag_float_z = ((float) mag_binary_z) / (131072.0F / 800.0F);
 
-    // TODO: Apply calibration
+    // subtract values by magnetometer calibration offsets
+    mag_float_x -= calibrationSettings.mmc5983ma_mag.offset_ut[0];
+    mag_float_y -= calibrationSettings.mmc5983ma_mag.offset_ut[1];
+    mag_float_z -= calibrationSettings.mmc5983ma_mag.offset_ut[2];
 
-    result_packet -> magnetic_field_x = mag_float_x;
-    result_packet -> magnetic_field_y = mag_float_y;
-    result_packet -> magnetic_field_z = mag_float_z;
+    // apply 3x3 scaling matrix to each value
+    result_packet -> magnetic_field_x = mag_float_x * calibrationSettings.mmc5983ma_mag.scale_multiplier[0] + mag_float_y * calibrationSettings.mmc5983ma_mag.scale_multiplier[3] + mag_float_z * calibrationSettings.mmc5983ma_mag.scale_multiplier[6];
+    result_packet -> magnetic_field_y = mag_float_x * calibrationSettings.mmc5983ma_mag.scale_multiplier[1] + mag_float_y * calibrationSettings.mmc5983ma_mag.scale_multiplier[4] + mag_float_z * calibrationSettings.mmc5983ma_mag.scale_multiplier[7];
+    result_packet -> magnetic_field_z = mag_float_x * calibrationSettings.mmc5983ma_mag.scale_multiplier[2] + mag_float_y * calibrationSettings.mmc5983ma_mag.scale_multiplier[5] + mag_float_z * calibrationSettings.mmc5983ma_mag.scale_multiplier[8];
 }
 
-void icm45686_convert_packet(ICM45686Packet_t *packet, CalibratedDataPacket_t *result_packet){
+void icm45686_convert_packet(ICM45686Packet_t *packet, CalibratedDataPacket_t *result_packet) {
     // get the current timestamp of the packet in seconds using the DWT counter
     result_packet->timestamp_sec = update_dwt_timestamp();
     int32_t acc_binary_x, acc_binary_y, acc_binary_z, gyro_binary_x,gyro_binary_y,gyro_binary_z;
@@ -103,19 +111,26 @@ void icm45686_convert_packet(ICM45686Packet_t *packet, CalibratedDataPacket_t *r
     float gyro_float_y = ((float) gyro_binary_y) / 131.072F;
     float gyro_float_z = ((float) gyro_binary_z) / 131.072F;
 
-    // TODO: Apply calibration
+    // subtract values by accelerometer/gyroscope calibration offsets (offsets in g's and deg/s)
+    acc_float_x -= calibrationSettings.icm45686_accel.offset_gs[0];
+    acc_float_y -= calibrationSettings.icm45686_accel.offset_gs[1];
+    acc_float_z -= calibrationSettings.icm45686_accel.offset_gs[2];
+    gyro_float_x -= calibrationSettings.icm45686_gyro.offset_dps[0];
+    gyro_float_y -= calibrationSettings.icm45686_gyro.offset_dps[1];
+    gyro_float_z -= calibrationSettings.icm45686_gyro.offset_dps[2];
     
     // convert gyroscope to radians per second for further processing
     gyro_float_x = gyro_float_x * (pi / 180.0F);
     gyro_float_y = gyro_float_y * (pi / 180.0F);
     gyro_float_z = gyro_float_z * (pi / 180.0F);
-
-    result_packet -> accel_x = acc_float_x;
-    result_packet -> accel_y = acc_float_y;
-    result_packet -> accel_z = acc_float_z;
-    result_packet -> angular_rate_x = gyro_float_x;
-    result_packet -> angular_rate_y = gyro_float_y;
-    result_packet -> angular_rate_z = gyro_float_z;
+    
+    // apply 3x3 scaling matrix to each value
+    result_packet -> accel_x = acc_float_x * calibrationSettings.icm45686_accel.scale_multiplier[0] + acc_float_y * calibrationSettings.icm45686_accel.scale_multiplier[3] + acc_float_z * calibrationSettings.icm45686_accel.scale_multiplier[6];
+    result_packet -> accel_y = acc_float_x * calibrationSettings.icm45686_accel.scale_multiplier[1] + acc_float_y * calibrationSettings.icm45686_accel.scale_multiplier[4] + acc_float_z * calibrationSettings.icm45686_accel.scale_multiplier[7];
+    result_packet -> accel_z = acc_float_x * calibrationSettings.icm45686_accel.scale_multiplier[2] + acc_float_y * calibrationSettings.icm45686_accel.scale_multiplier[5] + acc_float_z * calibrationSettings.icm45686_accel.scale_multiplier[8];
+    result_packet -> angular_rate_x = gyro_float_x * calibrationSettings.icm45686_gyro.scale_multiplier[0] + gyro_float_y * calibrationSettings.icm45686_gyro.scale_multiplier[3] + gyro_float_z * calibrationSettings.icm45686_gyro.scale_multiplier[6];
+    result_packet -> angular_rate_y = gyro_float_x * calibrationSettings.icm45686_gyro.scale_multiplier[1] + gyro_float_y * calibrationSettings.icm45686_gyro.scale_multiplier[4] + gyro_float_z * calibrationSettings.icm45686_gyro.scale_multiplier[7];
+    result_packet -> angular_rate_z = gyro_float_x * calibrationSettings.icm45686_gyro.scale_multiplier[2] + gyro_float_y * calibrationSettings.icm45686_gyro.scale_multiplier[5] + gyro_float_z * calibrationSettings.icm45686_gyro.scale_multiplier[8];
 } 
 
 static double update_dwt_timestamp(void) {

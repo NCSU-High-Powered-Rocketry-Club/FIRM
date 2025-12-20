@@ -82,8 +82,6 @@ void Error_Handler(void);
 #define ICM45686_Interrupt_EXTI_IRQn EXTI9_5_IRQn
 #define MMC5983MA_CS_Pin GPIO_PIN_7
 #define MMC5983MA_CS_GPIO_Port GPIOC
-#define ICM45686_CS_Pin GPIO_PIN_9
-#define ICM45686_CS_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 void blink();

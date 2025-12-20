@@ -1,4 +1,5 @@
 ---
 BasedOnStyle: LLVM
+InsertNewlineAtEOF: true
 ColumnLimit: 100
 ...

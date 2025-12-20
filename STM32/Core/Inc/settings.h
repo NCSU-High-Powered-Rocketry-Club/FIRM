@@ -8,7 +8,7 @@
  */
 typedef struct {
     float offset_gs[3];
-    float scale_multiplier[3];
+    float scale_multiplier[9];
 } AccelCalibration_t;
 
 /**
@@ -16,7 +16,7 @@ typedef struct {
  */
 typedef struct {
     float offset_dps[3];
-    float scale_multiplier[3];
+    float scale_multiplier[9];
 } GyroCalibration_t;
 
 /**
@@ -24,7 +24,7 @@ typedef struct {
  */
 typedef struct {
     float offset_ut[3];
-    float scale_multiplier[3];
+    float scale_multiplier[9];
 } MagCalibration_t;
 
 /**
@@ -40,9 +40,10 @@ typedef struct {
  * User-defined settings for FIRM, saved in flash memory and reloaded on boot.
  */
 typedef struct {
-    // TODO: finish python bindings and make real settings
-    uint32_t checksum;
-    bool serial_transfer_enabled;
+    uint64_t device_uid; // flash chip UID
+    char device_name[33]; // 32 character limit, plus null-terminator
+    bool usb_transfer_enabled;
+    bool uart_transfer_enabled;
 } FIRMSettings_t;
 
 // global declaration of FIRM Settings and calibration settings to be used elsewhere in project

@@ -6,17 +6,18 @@ import threading
 
 import serial
 
-from .constants import (
+from ._constants import (
     CRC16_TABLE,
     CRC_SIZE,
     FULL_PACKET_SIZE,
+    GRAVITY_METERS_PER_SECONDS_SQUARED,
     HEADER_SIZE,
     LENGTH_FIELD_SIZE,
     PADDING_SIZE,
     PAYLOAD_LENGTH,
     START_BYTE,
 )
-from .packets import FIRMPacket
+from ._packets import FIRMPacket
 
 
 class FIRM:
@@ -26,11 +27,12 @@ class FIRM:
     Args:
         port (str): Serial port to connect to (e.g., "/dev/ttyACM0" or "COM3").
         baudrate (int): Baud rate for the serial connection
-
     """
 
     __slots__ = (
         "_bytes_stored",
+        "_current_pressure_alt",
+        "_current_pressure_altitude_offset",
         "_packet_queue",
         "_serial_port",
         "_serial_reader_thread",
@@ -45,6 +47,8 @@ class FIRM:
         self._serial_reader_thread = None
         self._stop_event = threading.Event()
         self._packet_queue: queue.Queue[FIRMPacket] = queue.Queue(maxsize=8192)
+        self._current_pressure_altitude_offset: float = 0.0
+        self._current_pressure_alt: float = 0.0
 
     def __enter__(self):
         """Context manager entry: initialize the parser."""
@@ -56,7 +60,11 @@ class FIRM:
         self.close()
 
     def initialize(self):
-        """Open serial and prepare for parsing packets by spawning a new thread."""
+        """Open serial and prepare for parsing packets by spawning a new thread.
+
+        Raises:
+            TimeoutError: If no packets are received within 1 second of initialization.
+        """
         if not self._serial_port.is_open:
             self._serial_port.open()
         self._bytes_stored.clear()
@@ -66,6 +74,9 @@ class FIRM:
                 target=self._serial_reader, name="Packet-Reader-Thread", daemon=True
             )
             self._serial_reader_thread.start()
+
+        # Check if the serial port is returning packets. This will raise TimeoutError if not.
+        self.get_data_packets(timeout=1.0)
 
     def close(self):
         """Close the serial port, and stop the packet reader thread."""
@@ -94,28 +105,42 @@ class FIRM:
     def get_data_packets(
         self,
         block: bool = True,
+        timeout: float | None = None,
     ) -> list[FIRMPacket]:
         """
         Retrieve FIRMPacket objects parsed by the background thread.
 
         Args:
             block: If True, wait for at least one packet.
+            timeout: Maximum time to wait in seconds for a packet if `block` is ``True``.
 
         Returns:
             List of FIRMPacket objects.
+
+        Raises:
+            TimeoutError: If no packets are available within the specified timeout.
         """
         firm_packets: list[FIRMPacket] = []
 
         if block:
             # Keep waiting until we successfully get a packet
             while not firm_packets:
-                packet = self._packet_queue.get()
+                try:
+                    packet = self._packet_queue.get(timeout=timeout)
+                except queue.Empty as e:
+                    raise TimeoutError from e
                 firm_packets.append(packet)
 
         while self._packet_queue.qsize() > 0:
             firm_packets.append(self._packet_queue.get_nowait())
 
         return firm_packets
+
+    def zero_out_pressure_altitude(self):
+        """
+        Zeroes out the current pressure altitude reading, setting it as the new reference (0 meters)
+        """
+        self._current_pressure_altitude_offset = self._current_pressure_alt
 
     def _serial_reader(self):
         """Continuously read from serial port, parse packets, and enqueue them."""
@@ -198,9 +223,10 @@ class FIRM:
 
         return FIRMPacket(
             timestamp_seconds=timestamp_seconds,
-            accel_x_meters_per_s2=accel_x_meters_per_s2,
-            accel_y_meters_per_s2=accel_y_meters_per_s2,
-            accel_z_meters_per_s2=accel_z_meters_per_s2,
+            # Convert acceleration from g to m/s²
+            accel_x_meters_per_s2=accel_x_meters_per_s2 * GRAVITY_METERS_PER_SECONDS_SQUARED,
+            accel_y_meters_per_s2=accel_y_meters_per_s2 * GRAVITY_METERS_PER_SECONDS_SQUARED,
+            accel_z_meters_per_s2=accel_z_meters_per_s2 * GRAVITY_METERS_PER_SECONDS_SQUARED,
             gyro_x_radians_per_s=gyro_x_radians_per_s,
             gyro_y_radians_per_s=gyro_y_radians_per_s,
             gyro_z_radians_per_s=gyro_z_radians_per_s,
@@ -209,7 +235,26 @@ class FIRM:
             mag_x_microteslas=mag_x_microteslas,
             mag_y_microteslas=mag_y_microteslas,
             mag_z_microteslas=mag_z_microteslas,
+            pressure_altitude_meters=self._calculate_pressure_altitude(pressure_pascals),
         )
+
+    def _calculate_pressure_altitude(
+        self, pressure_pascals: float, sea_level_pressure_pascals: float = 101325.0
+    ) -> float:
+        """
+        Calculate altitude in meters from pressure using the barometric formula.
+
+        Args:
+            pressure_pascals: Measured pressure in pascals.
+            sea_level_pressure_pascals: Sea level standard atmospheric pressure in pascals.
+
+        Returns:
+            Altitude in meters.
+        """
+        self._current_pressure_alt = 44330.0 * (
+            1.0 - (pressure_pascals / sea_level_pressure_pascals) ** (1 / 5.255)
+        )
+        return self._current_pressure_alt - self._current_pressure_altitude_offset
 
     def _verify_crc(self, data: memoryview, header_pos: int, crc_start: int) -> bool:
         """Verify CRC checksum for packet."""

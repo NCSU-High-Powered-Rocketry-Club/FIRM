@@ -26,7 +26,7 @@ void serializer_init_packet(SerializedPacket_t *serialized_packet);
  * @return number of bytes written to out_buf (always 8 + 9*sizeof(float) on success),
  *         or 0 on error (e.g., null pointers).
  */
-void usb_serialize_calibrated_packet(const CalibratedDataPacket_t* packet, SerializedPacket_t *serialized_packet);
+void serialize_calibrated_packet(const CalibratedDataPacket_t* packet, SerializedPacket_t *serialized_packet);
 
 /**
  * @brief Transmit a serialized data packet over USB CDC.

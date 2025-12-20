@@ -62,23 +62,6 @@ dkms.conf
 # Python version file
 .python-version
 
-# KiCad backups
-/KiCad/FIRM-backups
-/KiCad/FIRM_Interestlaunch/FIRM_Interestlaunch-backups
-*.bak
-
-# KiCad cache
-/KiCad/fp-info-cache
-/KiCad/FIRM_Interestlaunch/fp-info-cache
-
-# KiCad local stuff
-/KiCad/#auto_saved_files#
-/KiCad/_autosave-FIRM.kicad_sch
-*.kicad_prl
-*.lck
-how-to-import.htm
-
-
 # FIRM code
 /STM32/build
 mx.scratch
@@ -89,11 +72,9 @@ mx.scratch
 cmake_install.cmake
 /STM32/compile_commands.json
 
-# log files in python-scripts folder
+# log files in python/scripts folder
 python/scripts/*.TXT
 python/scripts/*.csv
-KiCad/production
-KiCad/fabrication-toolkit-options.json
 
 # Python files:
 __pycache__/

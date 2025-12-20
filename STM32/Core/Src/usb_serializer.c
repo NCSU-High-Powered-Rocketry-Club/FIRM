@@ -8,7 +8,7 @@ void serializer_init_packet(SerializedPacket_t *serialized_packet) {
     serialized_packet->length = sizeof(CalibratedDataPacket_t);
 }
 
-void usb_serialize_calibrated_packet(const CalibratedDataPacket_t *packet, SerializedPacket_t *serialized_packet) {
+void serialize_calibrated_packet(const CalibratedDataPacket_t *packet, SerializedPacket_t *serialized_packet) {
     if (!packet || !serialized_packet) return;
     // header bytes and/or length bytes not properly initialized
     if (!serialized_packet->header || !serialized_packet->length) return;
