@@ -1,9 +1,7 @@
 #ifndef FIRM_TASKS_H
 #define FIRM_TASKS_H
 
-#include <FreeRTOS.h>
-#include <task.h>
-#include <queue.h>
+#include "cmsis_os.h"
 
 #define FIRM_TASK_DEFAULT_PRIORITY 100
 
@@ -13,15 +11,18 @@
 
 #define MAX_WAIT_TIME(hz) (TickType_t)(pdMS_TO_TICKS(1000/(hz))+1)
 
-static QueueHandle_t dataQueue;
+extern osThreadId_t bmp581_task_handle;
+extern const osThreadAttr_t bmp581Task_attributes;
+extern osThreadId_t icm45686_task_handle;
+extern const osThreadAttr_t icm45686Task_attributes;
+extern osThreadId_t mmc5983ma_task_handle;
+extern const osThreadAttr_t mmc5983maTask_attributes;
+extern osMutexId_t sensorDataMutexHandle;
+extern const osMutexAttr_t sensorDataMutex_attributes;
 
-static TaskHandle_t hBMP581DataTask;
-static TaskHandle_t hICM45686DataTask;
-static TaskHandle_t hMMC5983MADataTask;
-
-void TaskCollectBMP581Data(void *argument);
-void TaskCollectICM45686Data(void *argument);
-void TaskCollectMMC5983MAData(void *argument);
+void collect_bmp581_data_task(void *argument);
+void collect_icm45686_data_task(void *argument);
+void collect_mmc5983ma_data_task(void *argument);
 
 void TaskWriteSerialData(void *argument);
 

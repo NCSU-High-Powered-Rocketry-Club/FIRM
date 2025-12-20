@@ -72,14 +72,21 @@ SPI_HandleTypeDef hspi3;
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
-  .stack_size = 4096 * 2,
-  .priority = (osPriority_t) osPriorityAboveNormal,
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
 };
-
+/* Definitions for startupTask */
+osThreadId_t startupTaskHandle;
+const osThreadAttr_t startupTask_attributes = {
+  .name = "startupTask",
+  .stack_size = 1024 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for blinkTask */
 osThreadId_t blinkTaskHandle;
 const osThreadAttr_t blinkTask_attributes = {
   .name = "blinkTask",
-  .stack_size = 256,
+  .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
 /* USER CODE BEGIN PV */
@@ -96,8 +103,9 @@ static void MX_SDIO_SD_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_SPI3_Init(void);
 static void MX_SPI1_Init(void);
+void StartDefaultTask(void *argument);
 void StartupTask(void *argument);
-void blink_task(void *argument);
+void BlinkTask(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -106,159 +114,153 @@ void blink_task(void *argument);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-// These flags can be changed at any time from the interrupts. When they are set
-// to true, it means that the corresponding sensor has new data ready to be read.
-volatile bool bmp581_has_new_data = false;
-volatile bool icm45686_has_new_data = false;
-volatile bool mmc5983ma_has_new_data = false;
-// number of times the DWT timestamp has overflowed. This happens every ~25 seconds
-volatile uint32_t dwt_overflow_count = 0;
-
 /* USER CODE END 0 */
 
 /**
   * @brief  The application entry point.
   * @retval int
   */
-int main(void) {
-    /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-    HAL_Init();
+int main(void)
+{
 
-    /* Configure the system clock */
-    SystemClock_Config();
+  /* USER CODE BEGIN 1 */
 
-    /* Initialize all configured peripherals */
-    MX_GPIO_Init();
-    MX_DMA_Init();
-    MX_I2C1_Init();
-    MX_I2C2_Init();
-    MX_SDIO_SD_Init();
-    MX_FATFS_Init();
-    MX_SPI2_Init();
-    MX_SPI3_Init();
-    MX_SPI1_Init();
-    /* USER CODE BEGIN 2 */
+  /* USER CODE END 1 */
 
-    // We use DWT (Data Watchpoint and Trace unit) to get a high resolution free-running timer
-    // for our data packet timestamps. This allows us to use the clock cycle count instead of a
-    // standard timestamp in milliseconds or similar, while not having any performance penalty.
-    // Enables the trace and debug block in the core so that DWT registers become
-    // accessible. This is required before enabling the DWT cycle counter.
-    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+  /* MCU Configuration--------------------------------------------------------*/
 
-    // Clear the DWT clock cycle counter to start counting from zero.
-    DWT->CYCCNT = 0;
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  HAL_Init();
 
-    // Enable the DWT cycle counter itself. Once active, it increments each CPU
-    // clock cycle so we can use clock cycles as data packet timestamps.
-    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+  /* USER CODE BEGIN Init */
 
-    // Set the chip select pins to high, this means that they're not selected.
-    // Note: We can't have these in the bmp581/imu/flash chip init functions, because those somehow
-    // mess up with the initialization.
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // bmp581 cs pin
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // icm45686 cs pin
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET); // flash chip cs pin
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET); // mmc5983ma CS pin
-    // HAL_Delay(500); // purely for debug purposes, allows time to connect to USB serial terminal
+  /* USER CODE END Init */
 
-    // disable the ISR so that the interrupts cannot be triggered before the scheduler initializes.
-    // The ISR notifies the sensor tasks to collect data, but calling this before the scheduler is
-    // initialized will suspend the program.
-    HAL_NVIC_DisableIRQ(EXTI2_IRQn);
-    HAL_NVIC_DisableIRQ(EXTI3_IRQn);
-    HAL_NVIC_DisableIRQ(EXTI9_5_IRQn);
+  /* Configure the system clock */
+  SystemClock_Config();
 
-    if (icm45686_init(&hspi2, GPIOB, GPIO_PIN_9)) {
-        Error_Handler();
-    }
+  /* USER CODE BEGIN SysInit */
 
-    if (bmp581_init(&hspi2, GPIOC, GPIO_PIN_2)) {
-        Error_Handler();
-    }
+  /* USER CODE END SysInit */
 
-    if (mmc5983ma_init(&hi2c1, 0x30)) {
-        Error_Handler();
-    }
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_DMA_Init();
+  MX_I2C1_Init();
+  MX_I2C2_Init();
+  MX_SDIO_SD_Init();
+  MX_FATFS_Init();
+  MX_SPI2_Init();
+  MX_SPI3_Init();
+  MX_SPI1_Init();
+  /* USER CODE BEGIN 2 */
 
-    // set up settings module with flash chip
-    if (settings_init(&hspi1, GPIOC, GPIO_PIN_4)) {
-        Error_Handler();
-    }
+  // We use DWT (Data Watchpoint and Trace unit) to get a high resolution free-running timer
+  // for our data packet timestamps. This allows us to use the clock cycle count instead of a
+  // standard timestamp in milliseconds or similar, while not having any performance penalty.
+  // Enables the trace and debug block in the core so that DWT registers become
+  // accessible. This is required before enabling the DWT cycle counter.
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
 
-    /*
-    // get scale factor values for each sensor to put in header
-    HeaderFields header_fields = {
-        bmp581_get_temp_scale_factor(),
-        bmp581_get_pressure_scale_factor(),
-        icm45686_get_accel_scale_factor(),
-        icm45686_get_gyro_scale_factor(),
-        mmc5983ma_get_magnetic_field_scale_factor(),
-    };
+  // Clear the DWT clock cycle counter to start counting from zero.
+  DWT->CYCCNT = 0;
 
+  // Enable the DWT cycle counter itself. Once active, it increments each CPU
+  // clock cycle so we can use clock cycles as data packet timestamps.
+  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 
-    logger_write_header(&header_fields);
+  // Set the chip select pins to high, this means that they're not selected.
+  // Note: We can't have these in the bmp581/imu/flash chip init functions, because those somehow
+  // mess up with the initialization.
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // bmp581 cs pin
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // icm45686 cs pin
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET); // flash chip cs pin
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET); // mmc5983ma CS pin
+  // HAL_Delay(500); // purely for debug purposes, allows time to connect to USB serial terminal
 
-    // incrementing value for magnetometer calibration
-    uint8_t magnetometer_flip = 0;
+  // disable the ISR so that the interrupts cannot be triggered before the scheduler initializes.
+  // The ISR notifies the sensor tasks to collect data, but calling this before the scheduler is
+  // initialized will suspend the program.
+  HAL_NVIC_DisableIRQ(EXTI2_IRQn);
+  HAL_NVIC_DisableIRQ(EXTI3_IRQn);
+  HAL_NVIC_DisableIRQ(EXTI9_5_IRQn);
 
-    // instance of the calibrated data packet from the preprocessor to be reused
-    CalibratedDataPacket_t calibrated_packet = {0};
-    // instance of the serialized packet, will be reused
-    SerializedPacket_t serialized_packet = {0};
-    serializer_init_packet(&serialized_packet); // initializes the packet length and header bytes
-
-    // check to verify if any new data has been collected, from any of the sensors
-    bool any_new_data_collected = false;
-
-    // the IMU runs into issues when the fifo is full at the very beginning, causing the interrupt
-    // to be pulled back low too fast, and the ISR doesn't catch it for whatever reason. Doing
-    // this initial read will prevent that.
-    ICM45686Packet_t imu_packet;
-    icm45686_read_data(&imu_packet);
-    MMC5983MAPacket_t mag_packet;
-    mmc5983ma_read_data(&mag_packet, &magnetometer_flip);
-*/
-    /* Init scheduler */
-    osKernelInitialize();
-
-    // setup queues
-    dataQueue = xQueueCreate(256, sizeof(ICM45686Packet_t));
-
-    // create default task
-    defaultTaskHandle = osThreadNew(StartupTask, NULL, &defaultTask_attributes);
-    blinkTaskHandle = osThreadNew(blink_task, NULL, &blinkTask_attributes);
-
-    // setup other tasks
-    BaseType_t status = xTaskCreate(TaskCollectBMP581Data, "Collect BMP581 Data", 512,
-                                    NULL, FIRM_TASK_DEFAULT_PRIORITY, &hBMP581DataTask);
-    if (pdPASS != status) Error_Handler();
-
-    status = xTaskCreate(TaskCollectICM45686Data, "Collect ICM45686 Data", 512,
-        NULL, FIRM_TASK_DEFAULT_PRIORITY, &hICM45686DataTask);
-    if (pdPASS != status) Error_Handler();
-
-    status = xTaskCreate(TaskCollectMMC5983MAData, "Collect MMC5983MA Data", 512,
-        NULL, FIRM_TASK_DEFAULT_PRIORITY, &hMMC5983MADataTask);
-    if (pdPASS != status) Error_Handler();
-
-
-    /* Start scheduler */
-    osKernelStart();
-
-    // Go to error handler if freertos kernel fails to start
+  if (icm45686_init(&hspi2, GPIOB, GPIO_PIN_9)) {
     Error_Handler();
-}
+  }
 
-void blink() {
-    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0);
-}
+  if (bmp581_init(&hspi2, GPIOC, GPIO_PIN_2)) {
+    Error_Handler();
+  }
 
-void blink_task(void *argument) {
-    for (;;) {
-        HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_1);
-        osDelay(500);
-    }
+  if (mmc5983ma_init(&hi2c1, 0x30)) {
+    Error_Handler();
+  }
+
+  // set up settings module with flash chip
+  if (settings_init(&hspi1, GPIOC, GPIO_PIN_4)) {
+    Error_Handler();
+  }
+  
+  /* USER CODE END 2 */
+
+  /* Init scheduler */
+  osKernelInitialize();
+
+  /* USER CODE BEGIN RTOS_MUTEX */
+  sensorDataMutexHandle = osMutexNew(&sensorDataMutex_attributes);
+  /* USER CODE END RTOS_MUTEX */
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+  /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  /* creation of defaultTask */
+  defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+
+  /* creation of startupTask */
+  startupTaskHandle = osThreadNew(StartupTask, NULL, &startupTask_attributes);
+
+  /* creation of blinkTask */
+  blinkTaskHandle = osThreadNew(BlinkTask, NULL, &blinkTask_attributes);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  bmp581_task_handle = osThreadNew(collect_bmp581_data_task, NULL, &bmp581Task_attributes);
+  icm45686_task_handle = osThreadNew(collect_icm45686_data_task, NULL, &icm45686Task_attributes);
+  mmc5983ma_task_handle = osThreadNew(collect_mmc5983ma_data_task, NULL, &mmc5983maTask_attributes);
+  if (mmc5983ma_task_handle == NULL || icm45686_task_handle == NULL || bmp581_task_handle == NULL) {
+    Error_Handler();
+  }
+  /* USER CODE END RTOS_THREADS */
+
+  /* USER CODE BEGIN RTOS_EVENTS */
+  /* add events, ... */
+  /* USER CODE END RTOS_EVENTS */
+
+  /* Start scheduler */
+  osKernelStart();
+
+  /* We should never get here as control is now taken by the scheduler */
+
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
+  Error_Handler();
+  while (1)
+  {
+    /* USER CODE END WHILE */
+
+    /* USER CODE BEGIN 3 */
+  }
+  /* USER CODE END 3 */
 }
 
 /**
@@ -527,10 +529,10 @@ static void MX_DMA_Init(void)
 
   /* DMA interrupt init */
   /* DMA2_Stream3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 6, 0);
+  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
   /* DMA2_Stream6_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 6, 0);
+  HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
 
 }
@@ -602,13 +604,13 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI2_IRQn, 6, 0);
+  HAL_NVIC_SetPriority(EXTI2_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI2_IRQn);
 
-  HAL_NVIC_SetPriority(EXTI3_IRQn, 6, 0);
+  HAL_NVIC_SetPriority(EXTI3_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI3_IRQn);
 
-  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 6, 0);
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
@@ -617,6 +619,9 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void blink() {
+  HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0);
+}
 
 /**
  * @brief ISR for interrupt pins
@@ -625,18 +630,18 @@ static void MX_GPIO_Init(void)
  * @retval None
  */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-    if (GPIO_Pin == BMP581_Interrupt_Pin) {
-        vTaskNotifyGiveFromISR(hBMP581DataTask, &xHigherPriorityTaskWoken);
-    }
-    if (GPIO_Pin == ICM45686_Interrupt_Pin) {
-        vTaskNotifyGiveFromISR(hICM45686DataTask, &xHigherPriorityTaskWoken);
-    }
-    if (GPIO_Pin == MMC5983MA_Interrupt_Pin) {
-        vTaskNotifyGiveFromISR(hMMC5983MADataTask, &xHigherPriorityTaskWoken);
-    }
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+  if (GPIO_Pin == BMP581_Interrupt_Pin) {
+    vTaskNotifyGiveFromISR(bmp581_task_handle, &xHigherPriorityTaskWoken);
+  }
+  if (GPIO_Pin == ICM45686_Interrupt_Pin) {
+    vTaskNotifyGiveFromISR(icm45686_task_handle, &xHigherPriorityTaskWoken);
+  }
+  if (GPIO_Pin == MMC5983MA_Interrupt_Pin) {
+    vTaskNotifyGiveFromISR(mmc5983ma_task_handle, &xHigherPriorityTaskWoken);
+  }
+  portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 /* USER CODE END 4 */
 
@@ -646,46 +651,85 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   * @param  argument: Not used
   * @retval None
   */
-void StartupTask(void* argument) {
-
-    // Setup the SD card
-    FRESULT res = logger_init(&hdma_sdio_tx);
-    if (res) {
-        serialPrintStr("Failed to initialized the logger (SD card)");
-        Error_Handler();
-    }
-
-    // get scale factor values for each sensor to put in header
-    HeaderFields header_fields = {
-        bmp581_get_temp_scale_factor(),
-        bmp581_get_pressure_scale_factor(),
-        icm45686_get_accel_scale_factor(),
-        icm45686_get_gyro_scale_factor(),
-        mmc5983ma_get_magnetic_field_scale_factor(),
-    };
-
-    logger_write_header(&header_fields);
-
-    // the IMU runs into issues when the fifo is full at the very beginning, causing the interrupt
-    // to be pulled back low too fast, and the ISR doesn't catch it for whatever reason. Doing
-    // this initial read will prevent that.
-    // ICM45686Packet_t imu_packet;
-    // icm45686_read_data(&imu_packet);
-    // MMC5983MAPacket_t mag_packet;
-    // mmc5983ma_read_data(&mag_packet, &magnetometer_flip);
-
-    // init usb device
-    MX_USB_DEVICE_Init();
-
-    // re-enable ISR's so that interrupts can trigger the sensor tasks to run
-    HAL_NVIC_EnableIRQ(EXTI2_IRQn);
-    HAL_NVIC_EnableIRQ(EXTI3_IRQn);
-    HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
-    vTaskDelete(NULL);
-    
-}
 /* USER CODE END Header_StartDefaultTask */
+void StartDefaultTask(void *argument)
+{
+  /* init code for USB_DEVICE */
+  MX_USB_DEVICE_Init();
+  /* USER CODE BEGIN 5 */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END 5 */
+}
 
+/* USER CODE BEGIN Header_StartupTask */
+/**
+* @brief Function implementing the startupTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartupTask */
+void StartupTask(void *argument)
+{
+  /* USER CODE BEGIN StartupTask */
+  // Setup the SD card
+  FRESULT res = logger_init(&hdma_sdio_tx);
+  if (res) {
+    serialPrintStr("Failed to initialized the logger (SD card)");
+    Error_Handler();
+  }
+
+  // get scale factor values for each sensor to put in header
+  HeaderFields header_fields = {
+    bmp581_get_temp_scale_factor(),
+    bmp581_get_pressure_scale_factor(),
+    icm45686_get_accel_scale_factor(),
+    icm45686_get_gyro_scale_factor(),
+    mmc5983ma_get_magnetic_field_scale_factor(),
+  };
+
+  logger_write_header(&header_fields);
+
+  // the IMU runs into issues when the fifo is full at the very beginning, causing the interrupt
+  // to be pulled back low too fast, and the ISR doesn't catch it for whatever reason. Doing
+  // this initial read will prevent that.
+  // ICM45686Packet_t imu_packet;
+  // icm45686_read_data(&imu_packet);
+  // MMC5983MAPacket_t mag_packet;
+  // mmc5983ma_read_data(&mag_packet, &magnetometer_flip);
+
+  // init usb device
+  MX_USB_DEVICE_Init();
+
+  // re-enable ISR's so that interrupts can trigger the sensor tasks to run
+  HAL_NVIC_EnableIRQ(EXTI2_IRQn);
+  HAL_NVIC_EnableIRQ(EXTI3_IRQn);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+  vTaskDelete(NULL);
+  /* USER CODE END StartupTask */
+}
+
+/* USER CODE BEGIN Header_BlinkTask */
+/**
+* @brief constant blinking for debug purposes
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_BlinkTask */
+void BlinkTask(void *argument)
+{
+  /* USER CODE BEGIN BlinkTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_1);
+    osDelay(500);
+  }
+  /* USER CODE END BlinkTask */
+}
 
 /**
   * @brief  Period elapsed callback in non blocking mode
