@@ -25,15 +25,24 @@ extern osThreadId_t mmc5983ma_task_handle;
 extern osThreadId_t icm45686_task_handle;
 extern osThreadId_t usb_transmit_task_handle;
 extern osThreadId_t uart_transmit_task_handle;
+extern osThreadId_t usb_read_task_handle;
 
 extern const osThreadAttr_t bmp581Task_attributes;
 extern const osThreadAttr_t mmc5983maTask_attributes;
 extern const osThreadAttr_t icm45686Task_attributes;
 extern const osThreadAttr_t usbTask_attributes;
 extern const osThreadAttr_t uartTask_attributes;
+extern const osThreadAttr_t usbReadTask_attributes;
 
 extern osMutexId_t sensorDataMutexHandle;
 extern const osMutexAttr_t sensorDataMutex_attributes;
+
+/**
+ * @brief Callback function to handle received USB data
+ * @param buf Pointer to the received data buffer
+ * @param len Length of the received data
+ */
+void usb_receive_callback(uint8_t *buf, uint32_t len);
 
 /**
  * Struct to contain all SPI handles for the firm initialization function
@@ -84,5 +93,6 @@ void collect_icm45686_data_task(void *argument);
 void collect_mmc5983ma_data_task(void *argument);
 void usb_transmit_data(void *argument);
 void uart_transmit_data(void *argument);
+void usb_read_data(void *argument);
 
 #endif // FIRM_TASKS_H

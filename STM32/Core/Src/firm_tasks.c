@@ -1,4 +1,5 @@
 #include "firm_tasks.h"
+#include "usb_print_debug.h"
 
 // task handles
 osThreadId_t bmp581_task_handle;
@@ -6,6 +7,7 @@ osThreadId_t icm45686_task_handle;
 osThreadId_t mmc5983ma_task_handle;
 osThreadId_t usb_transmit_task_handle;
 osThreadId_t uart_transmit_task_handle;
+osThreadId_t usb_read_task_handle;
 
 // task attributes
 const osThreadAttr_t bmp581Task_attributes = {
@@ -48,6 +50,18 @@ SerializedPacket_t serialized_packet = {0};
 
 static UART_HandleTypeDef* firm_huart1;
 static volatile bool uart_tx_done = true;
+
+#define USB_RX_BUFFER_SIZE 256
+static uint8_t usb_rx_buffer[USB_RX_BUFFER_SIZE];
+static volatile uint32_t usb_rx_head = 0;
+static volatile uint32_t usb_rx_tail = 0;
+
+void usb_receive_callback(uint8_t *buf, uint32_t len) {
+    for (uint32_t i = 0; i < len; i++) {
+        usb_rx_buffer[usb_rx_head] = buf[i];
+        usb_rx_head = (usb_rx_head + 1) % USB_RX_BUFFER_SIZE;
+    }
+}
 
 int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DMAHandles* dma_handles_ptr, UARTHandles* uart_handles_ptr) {
   firm_huart1 = uart_handles_ptr->huart1;
@@ -231,6 +245,28 @@ void uart_transmit_data(void *argument) {
         uart_tx_done = false;
         HAL_UART_Transmit_DMA(firm_huart1, (uint8_t*)&serialized_packet, (uint16_t)sizeof(SerializedPacket_t));
       }
+    }
+    vTaskDelayUntil(&lastWakeTime, transmit_freq);
+  }
+}
+
+void usb_read_data(void *argument) {
+  // TODO: eventually make it based on when theres data rather than a timeout
+  const TickType_t transmit_freq = MAX_WAIT_TIME(TRANSMIT_FREQUENCY_HZ);
+  TickType_t lastWakeTime = xTaskGetTickCount();
+
+  for (;;) {
+    if (firmSettings.usb_transfer_enabled) {
+        if (usb_rx_head != usb_rx_tail) {
+            serialPrintStr("Received bytes: ");
+            while (usb_rx_head != usb_rx_tail) {
+                uint8_t byte = usb_rx_buffer[usb_rx_tail];
+                usb_rx_tail = (usb_rx_tail + 1) % USB_RX_BUFFER_SIZE;
+                serialPrintInt(byte);
+                serialPrintStr(" ");
+            }
+            serialPrintStr("\n");
+        }
     }
     vTaskDelayUntil(&lastWakeTime, transmit_freq);
   }
