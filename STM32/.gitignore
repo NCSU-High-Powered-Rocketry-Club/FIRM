@@ -1,3 +1,4 @@
 build
 mx.scratch
 .settings
+CMakeFiles/

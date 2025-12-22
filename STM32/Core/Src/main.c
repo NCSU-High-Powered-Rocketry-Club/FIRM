@@ -638,8 +638,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
  */
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void *argument) {
-  /* init code for USB_DEVICE */
-  MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
   for (;;) {

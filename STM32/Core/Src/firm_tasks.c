@@ -56,11 +56,11 @@ static uint8_t usb_rx_buffer[USB_RX_BUFFER_SIZE];
 static volatile uint32_t usb_rx_head = 0;
 static volatile uint32_t usb_rx_tail = 0;
 
-void usb_receive_callback(uint8_t *buf, uint32_t len) {
-    for (uint32_t i = 0; i < len; i++) {
-        usb_rx_buffer[usb_rx_head] = buf[i];
-        usb_rx_head = (usb_rx_head + 1) % USB_RX_BUFFER_SIZE;
-    }
+void usb_receive_callback(uint8_t *buffer, uint32_t len) {
+  for (uint32_t i = 0; i < len; i++) {
+    usb_rx_buffer[usb_rx_head] = buffer[i];
+    usb_rx_head = (usb_rx_head + 1) % USB_RX_BUFFER_SIZE;
+  }
 }
 
 int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DMAHandles* dma_handles_ptr, UARTHandles* uart_handles_ptr) {
@@ -251,7 +251,7 @@ void uart_transmit_data(void *argument) {
 }
 
 void usb_read_data(void *argument) {
-  // TODO: eventually make it based on when theres data rather than a timeout
+  // TODO: eventually make it based on an RTOS notification when data is received
   const TickType_t transmit_freq = MAX_WAIT_TIME(TRANSMIT_FREQUENCY_HZ);
   TickType_t lastWakeTime = xTaskGetTickCount();
 
