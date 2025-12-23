@@ -1,5 +1,6 @@
 #include "firm_tasks.h"
 #include "usb_print_debug.h"
+#include <string.h>
 
 // task handles
 osThreadId_t bmp581_task_handle;
@@ -8,6 +9,10 @@ osThreadId_t mmc5983ma_task_handle;
 osThreadId_t usb_transmit_task_handle;
 osThreadId_t uart_transmit_task_handle;
 osThreadId_t usb_read_task_handle;
+osThreadId_t command_handler_task_handle;
+
+StreamBufferHandle_t usb_rx_stream;
+QueueHandle_t command_queue;
 
 // task attributes
 const osThreadAttr_t bmp581Task_attributes = {
@@ -51,20 +56,25 @@ SerializedPacket_t serialized_packet = {0};
 static UART_HandleTypeDef* firm_huart1;
 static volatile bool uart_tx_done = true;
 
-#define USB_RX_BUFFER_SIZE 256
-static uint8_t usb_rx_buffer[USB_RX_BUFFER_SIZE];
-static volatile uint32_t usb_rx_head = 0;
-static volatile uint32_t usb_rx_tail = 0;
-
-void usb_receive_callback(uint8_t *buffer, uint32_t len) {
-  for (uint32_t i = 0; i < len; i++) {
-    usb_rx_buffer[usb_rx_head] = buffer[i];
-    usb_rx_head = (usb_rx_head + 1) % USB_RX_BUFFER_SIZE;
+void usb_receive_callback(uint8_t *buffer, uint32_t data_length) {
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+  // Check if the stream buffer is initialized
+  if (usb_rx_stream != NULL) {
+    // Adds the received data to the stream buffer from an ISR context
+    xStreamBufferSendFromISR(usb_rx_stream, buffer, data_length, &xHigherPriorityTaskWoken);
   }
+  // If the usb_read_data task has a higher priority than the currently running task, request a context switch
+  portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
 int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DMAHandles* dma_handles_ptr, UARTHandles* uart_handles_ptr) {
   firm_huart1 = uart_handles_ptr->huart1;
+
+  // Initialize FreeRTOS objects
+  // 512 bytes buffer, trigger level 1 (wake up on every byte if needed, or optimize later)
+  usb_rx_stream = xStreamBufferCreate(512, 1);
+  // Queue for parsed commands
+  command_queue = xQueueCreate(5, sizeof(Command_t));
 
   // We use DWT (Data Watchpoint and Trace unit) to get a high resolution free-running timer
   // for our data packet timestamps. This allows us to use the clock cycle count instead of a
@@ -249,26 +259,36 @@ void uart_transmit_data(void *argument) {
     vTaskDelayUntil(&lastWakeTime, transmit_freq);
   }
 }
-
 void usb_read_data(void *argument) {
-  // TODO: eventually make it based on an RTOS notification when data is received
-  const TickType_t transmit_freq = MAX_WAIT_TIME(TRANSMIT_FREQUENCY_HZ);
-  TickType_t lastWakeTime = xTaskGetTickCount();
+  const size_t PACKET_SIZE = 64;
+  uint8_t packet_buffer[64];
+  size_t bytes_received = 0;
 
   for (;;) {
-    if (firmSettings.usb_transfer_enabled) {
-        if (usb_rx_head != usb_rx_tail) {
-            serialPrintStr("Received bytes: ");
-            while (usb_rx_head != usb_rx_tail) {
-                uint8_t byte = usb_rx_buffer[usb_rx_tail];
-                usb_rx_tail = (usb_rx_tail + 1) % USB_RX_BUFFER_SIZE;
-                serialPrintInt(byte);
-                serialPrintStr(" ");
-            }
-            serialPrintStr("\n");
+    // Read until we have a full packet
+    // We request the remaining bytes needed to fill the 64-byte buffer
+    size_t received = xStreamBufferReceive(usb_rx_stream, 
+                                           &packet_buffer[bytes_received], 
+                                           PACKET_SIZE - bytes_received, 
+                                           portMAX_DELAY);
+    bytes_received += received;
+
+    if (bytes_received >= PACKET_SIZE) {
+      Command_t cmd;
+      if (parse_command(packet_buffer, PACKET_SIZE, &cmd)) {
+        // Check for Cancel Command
+        if (cmd.id == CMD_CANCEL_ID) {
+          if (command_handler_task_handle != NULL) {
+            xTaskNotify(command_handler_task_handle, 0x01, eSetBits);
+          }
+        } else {
+          xQueueSend(command_queue, &cmd, 0);
         }
+      }
+
+      // Reset for next packet
+      bytes_received = 0;
     }
-    vTaskDelayUntil(&lastWakeTime, transmit_freq);
   }
 }
 

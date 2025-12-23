@@ -55,6 +55,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/data_processing/preprocessor.c
     Core/Src/settings.c
     Core/Src/usb_serializer.c
+    Core/Src/commands.c
     Core/Src/firm_tasks.c
     Core/Src/led.c
 )

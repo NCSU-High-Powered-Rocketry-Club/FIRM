@@ -11,6 +11,11 @@
 #include "settings.h"
 
 #include "cmsis_os.h"
+#include "FreeRTOS.h"
+#include "stream_buffer.h"
+#include "queue.h"
+#include "task.h"
+#include "commands.h"
 
 #define FIRM_TASK_DEFAULT_PRIORITY 100
 #define BMP581_POLL_RATE_HZ 500
@@ -26,6 +31,10 @@ extern osThreadId_t icm45686_task_handle;
 extern osThreadId_t usb_transmit_task_handle;
 extern osThreadId_t uart_transmit_task_handle;
 extern osThreadId_t usb_read_task_handle;
+extern osThreadId_t command_handler_task_handle;
+
+extern StreamBufferHandle_t usb_rx_stream;
+extern QueueHandle_t command_queue;
 
 extern const osThreadAttr_t bmp581Task_attributes;
 extern const osThreadAttr_t mmc5983maTask_attributes;
@@ -36,13 +45,6 @@ extern const osThreadAttr_t usbReadTask_attributes;
 
 extern osMutexId_t sensorDataMutexHandle;
 extern const osMutexAttr_t sensorDataMutex_attributes;
-
-/**
- * @brief Callback function to handle received USB data
- * @param buf Pointer to the received data buffer
- * @param len Length of the received data
- */
-void usb_receive_callback(uint8_t *buf, uint32_t len);
 
 /**
  * Struct to contain all SPI handles for the firm initialization function
@@ -87,6 +89,13 @@ typedef struct {
  */
 int initialize_firm(SPIHandles *spi_handles, I2CHandles *i2c_handles, DMAHandles *dma_handles,
                     UARTHandles *uart_handles);
+
+/**
+ * Callback function to handle received USB data
+ * @param buffer Pointer to the received data buffer
+ * @param data_length Length of the received data
+ */
+void usb_receive_callback(uint8_t *buffer, uint32_t data_length);
 
 void collect_bmp581_data_task(void *argument);
 void collect_icm45686_data_task(void *argument);
