@@ -70,12 +70,6 @@ void usb_receive_callback(uint8_t *buffer, uint32_t data_length) {
 int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DMAHandles* dma_handles_ptr, UARTHandles* uart_handles_ptr) {
   firm_huart1 = uart_handles_ptr->huart1;
 
-  // Initialize FreeRTOS objects
-  // 512 bytes buffer, trigger level 1 (wake up on every byte if needed, or optimize later)
-  usb_rx_stream = xStreamBufferCreate(512, 1);
-  // Queue for parsed commands
-  command_queue = xQueueCreate(5, sizeof(Command_t));
-
   // We use DWT (Data Watchpoint and Trace unit) to get a high resolution free-running timer
   // for our data packet timestamps. This allows us to use the clock cycle count instead of a
   // standard timestamp in milliseconds or similar, while not having any performance penalty.
@@ -163,6 +157,14 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
   // }
   return 0;
 };
+
+void firm_rtos_init(void) {
+  // Initialize FreeRTOS objects
+  // 512 bytes buffer, trigger level 1 (wake up on every byte if needed, or optimize later)
+  usb_rx_stream = xStreamBufferCreate(512, 1);
+  // Queue for parsed commands
+  command_queue = xQueueCreate(5, sizeof(Command_t));
+}
 
 
 void collect_bmp581_data_task(void *argument) {

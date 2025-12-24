@@ -655,6 +655,8 @@ void StartDefaultTask(void *argument) {
 /* USER CODE END Header_StartupTask */
 void StartupTask(void *argument) {
   /* USER CODE BEGIN StartupTask */
+  firm_rtos_init();
+
   // Setup the SD card
   FRESULT res = logger_init(&hdma_sdio_tx);
   if (res) {

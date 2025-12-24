@@ -91,6 +91,11 @@ int initialize_firm(SPIHandles *spi_handles, I2CHandles *i2c_handles, DMAHandles
                     UARTHandles *uart_handles);
 
 /**
+ * @brief Initializes FreeRTOS objects (queues, streams)
+ */
+void firm_rtos_init(void);
+
+/**
  * Callback function to handle received USB data
  * @param buffer Pointer to the received data buffer
  * @param data_length Length of the received data
