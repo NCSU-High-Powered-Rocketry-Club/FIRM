@@ -13,6 +13,7 @@ osThreadId_t command_handler_task_handle;
 
 StreamBufferHandle_t usb_rx_stream;
 QueueHandle_t command_queue;
+QueueHandle_t response_queue;
 
 // task attributes
 const osThreadAttr_t bmp581Task_attributes = {
@@ -39,6 +40,11 @@ const osThreadAttr_t uartTask_attributes = {
     .name = "uartTask",
     .stack_size = 512 * 4,
     .priority = (osPriority_t)osPriorityBelowNormal,
+};
+const osThreadAttr_t commandHandlerTask_attributes = {
+    .name = "commandHandlerTask",
+    .stack_size = 512 * 4,
+    .priority = (osPriority_t)osPriorityNormal,
 };
 
 // mutexes
@@ -164,6 +170,8 @@ void firm_rtos_init(void) {
   usb_rx_stream = xStreamBufferCreate(512, 1);
   // Queue for parsed commands
   command_queue = xQueueCreate(5, sizeof(Command_t));
+  // Queue for response packets (66 bytes each): [A5 5A][len][pad][payload][crc]
+  response_queue = xQueueCreate(5, 66);
 }
 
 
@@ -228,17 +236,56 @@ void collect_mmc5983ma_data_task(void *argument) {
   }
 }
 
+// TODO: rename this
+void command_handler_task(void *argument) {
+  Command_t cmd;
+  uint8_t payload_buffer[56];
+  uint8_t payload_len;
+  uint8_t response_packet[66];
+
+  for (;;) {
+    if (xQueueReceive(command_queue, &cmd, portMAX_DELAY) == pdTRUE) {
+      // Process the command
+      // For now, we just create a default response based on the command ID
+      // In the future, we might need to access settings or other data
+      
+      // TODO: Pass actual data pointers instead of NULL where appropriate
+      create_response_payload(cmd.id, NULL, payload_buffer, &payload_len);
+      
+      // Serialize the response
+      serialize_command_packet(payload_buffer, payload_len, response_packet);
+      
+      // Send to response queue
+      xQueueSend(response_queue, response_packet, 0);
+    }
+  }
+}
+
 void usb_transmit_data(void *argument) {
   
   const TickType_t transmit_freq = MAX_WAIT_TIME(TRANSMIT_FREQUENCY_HZ);
   TickType_t lastWakeTime = xTaskGetTickCount();
+  uint8_t response_packet[66];
   
   for (;;) {
+    // Check for response packets first
+    if (xQueueReceive(response_queue, response_packet, 0) == pdTRUE) {
+      // Try to transmit until successful
+      while (CDC_Transmit_FS(response_packet, 66) == USBD_BUSY) {
+        vTaskDelay(1); // Wait 1 tick before retrying
+      }
+      // Give a small delay to allow USB to process, or just continue if we want high throughput
+      // For now, let's just continue to check for more responses or send sensor data
+    }
+
     if (firmSettings.usb_transfer_enabled) {
       osMutexAcquire(sensorDataMutexHandle, osWaitForever);
       serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
       osMutexRelease(sensorDataMutexHandle);
-      usb_transmit_serialized_packet(&serialized_packet);
+      
+      // We don't retry for sensor data to avoid blocking the loop if USB is stuck,
+      // dropping a frame of sensor data is acceptable.
+      // usb_transmit_serialized_packet(&serialized_packet);
     }
     vTaskDelayUntil(&lastWakeTime, transmit_freq);
   }
@@ -278,7 +325,7 @@ void usb_read_data(void *argument) {
     if (bytes_received >= PACKET_SIZE) {
       Command_t cmd;
       if (parse_command(packet_buffer, PACKET_SIZE, &cmd)) {
-        // Check for Cancel Command
+        // TODO: actually implement cancel command
         if (cmd.id == CMD_CANCEL_ID) {
           if (command_handler_task_handle != NULL) {
             xTaskNotify(command_handler_task_handle, 0x01, eSetBits);

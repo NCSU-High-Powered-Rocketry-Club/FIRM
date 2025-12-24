@@ -35,6 +35,7 @@ extern osThreadId_t command_handler_task_handle;
 
 extern StreamBufferHandle_t usb_rx_stream;
 extern QueueHandle_t command_queue;
+extern QueueHandle_t response_queue;
 
 extern const osThreadAttr_t bmp581Task_attributes;
 extern const osThreadAttr_t mmc5983maTask_attributes;
@@ -42,6 +43,7 @@ extern const osThreadAttr_t icm45686Task_attributes;
 extern const osThreadAttr_t usbTask_attributes;
 extern const osThreadAttr_t uartTask_attributes;
 extern const osThreadAttr_t usbReadTask_attributes;
+extern const osThreadAttr_t commandHandlerTask_attributes;
 
 extern osMutexId_t sensorDataMutexHandle;
 extern const osMutexAttr_t sensorDataMutex_attributes;
@@ -108,5 +110,6 @@ void collect_mmc5983ma_data_task(void *argument);
 void usb_transmit_data(void *argument);
 void uart_transmit_data(void *argument);
 void usb_read_data(void *argument);
+void command_handler_task(void *argument);
 
 #endif // FIRM_TASKS_H

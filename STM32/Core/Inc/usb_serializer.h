@@ -41,3 +41,14 @@ void usb_transmit_serialized_packet(const SerializedPacket_t *serialized_packet)
  * @return 16-bit CRC (transmit LSB first).
  */
 uint16_t crc16_ccitt(const uint8_t *data, size_t len);
+
+/**
+ * @brief Serializes a command response payload into a full response packet matching the
+ * Rust-side SerialParser format:
+ * [0xA5 0x5A][LEN(2)=56][PADDING(4)][PAYLOAD(56)][CRC(2)]
+ * 
+ * @param payload Pointer to the payload data.
+ * @param payload_len Length of the payload data.
+ * @param out_packet Buffer to store the final serialized packet (must be at least 66 bytes).
+ */
+void serialize_command_packet(const uint8_t* payload, uint8_t payload_len, uint8_t* out_packet);

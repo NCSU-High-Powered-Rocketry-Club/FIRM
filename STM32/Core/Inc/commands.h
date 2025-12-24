@@ -36,6 +36,17 @@ typedef struct {
 } DeviceConfig_t;
 
 typedef struct {
+    uint64_t id;
+    char firmware_version[FIRMWARE_VERSION_LENGTH + 1];
+    char port[PORT_LENGTH + 1];
+} DeviceInfo_t;
+
+typedef struct {
+    bool calibration_complete;
+    uint8_t progress_percentage;
+} CalibrationStatus_t;
+
+typedef struct {
     uint8_t id;
     union {
         DeviceConfig_t set_config;
@@ -48,7 +59,18 @@ typedef struct {
  * 
  * @param buffer Pointer to the raw data buffer (must be at least 64 bytes).
  * @param len Length of the buffer (should be 64 for fixed packet size).
- * @param cmd Pointer to the Command_t structure to populate.
- * @return true if a valid command was parsed (CRC match, valid length), false otherwise.
+ * @param command Pointer to the Command_t structure to populate.
+ * @return true if parsing was successful, false otherwise.
  */
-bool parse_command(const uint8_t* buffer, uint32_t len, Command_t* cmd);
+bool parse_command(const uint8_t* buffer, uint32_t len, Command_t* command);
+
+/**
+ * @brief Creates the payload for a response packet based on the command ID.
+ * 
+ * @param cmd_id The ID of the command to respond to.
+ * @param data Pointer to the data structure required for the response (e.g., DeviceInfo_t*).
+ * @param payload_buffer Buffer to write the payload to.
+ * @param payload_len Pointer to store the length of the generated payload.
+ */
+void create_response_payload(uint8_t cmd_id, const void* data, uint8_t* payload_buffer, uint8_t* payload_len);
+
