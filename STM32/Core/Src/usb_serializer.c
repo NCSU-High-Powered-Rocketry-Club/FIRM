@@ -3,21 +3,21 @@
 #include "commands.h"
 #include <string.h>
 
-void serializer_init_packet(SerializedPacket_t *serialized_packet) {
+void serializer_init_data_packet(SerializedPacket_t *serialized_packet) {
     // random header I chose, no significance behind this. It is used as a start value
     // so that the decoder knows where the packet starts
     serialized_packet->header = 0xA55A;
-    serialized_packet->length = sizeof(CalibratedDataPacket_t);
+    serialized_packet->length = sizeof(DataPacket_t);
 }
 
-void serialize_calibrated_packet(const CalibratedDataPacket_t *packet, SerializedPacket_t *serialized_packet) {
+void serialize_data_packet(const DataPacket_t *packet, SerializedPacket_t *serialized_packet) {
     if (!packet || !serialized_packet) return;
     // header bytes and/or length bytes not properly initialized
     if (!serialized_packet->header || !serialized_packet->length) return;
 
     serialized_packet->payload = *packet;
     // size of the data minus the crc, theres 4 bytes of padding in the struct between the
-    // length field and the calibrated packet field due to the calibrated packet having a double
+    // length field and the data packet field due to the data packet having a double
     uint16_t data_len = offsetof(SerializedPacket_t, crc);
     const uint8_t *data = (const uint8_t *)serialized_packet;
     // calculate and set the crc bytes based on CRC-ccitt-KERMIT format
@@ -36,41 +36,30 @@ void usb_transmit_serialized_packet(const SerializedPacket_t *serialized_packet)
 void serialize_command_packet(const uint8_t* payload, uint8_t payload_len, uint8_t* out_packet) {
     if (!payload || !out_packet) return;
 
-    // This function emits a 66-byte response frame matching the Rust SerialParser expectations:
+    // This function emits a 66-byte response frame:
     // [0xA5 0x5A][LEN(2)=56][PADDING(4)][PAYLOAD(56)][CRC(2)]
     // CRC is CRC-16-CCITT (KERMIT) over the first 64 bytes.
-    enum {
-        RESPONSE_HEADER_SIZE = 2,
-        RESPONSE_LENGTH_FIELD_SIZE = 2,
-        RESPONSE_PADDING_SIZE = 4,
-        RESPONSE_PAYLOAD_SIZE = 56,
-        RESPONSE_CRC_SIZE = 2,
-        RESPONSE_FRAME_SIZE = RESPONSE_HEADER_SIZE + RESPONSE_LENGTH_FIELD_SIZE + RESPONSE_PADDING_SIZE + RESPONSE_PAYLOAD_SIZE + RESPONSE_CRC_SIZE
-    };
+    CommandResponsePacket_t response_packet;
+    memset(&response_packet, 0x00, sizeof(response_packet));
 
-    // 1) Header bytes (little-endian 0x5AA5 -> A5 5A)
-    out_packet[0] = 0xA5;
-    out_packet[1] = 0x5A;
+    // Initialize response wrapper (same pattern as serializer_init_data_packet).
+    // Header bytes for responses: A5 5A
+    // Stored little-endian as 0x5AA5
+    response_packet.header = 0x5AA5;
+    response_packet.length = sizeof(response_packet.payload);
+    memset(response_packet.padding, 0x00, sizeof(response_packet.padding));
 
-    // 2) Length field (little-endian 56)
-    out_packet[2] = (uint8_t)(RESPONSE_PAYLOAD_SIZE & 0xFF);
-    out_packet[3] = (uint8_t)((RESPONSE_PAYLOAD_SIZE >> 8) & 0xFF);
-
-    // 3) 4 bytes padding
-    memset(&out_packet[4], 0x00, RESPONSE_PADDING_SIZE);
-
-    // 4) Payload (pad to 56 bytes)
     uint8_t actual_len = payload_len;
-    if (actual_len > RESPONSE_PAYLOAD_SIZE) actual_len = RESPONSE_PAYLOAD_SIZE;
-    memcpy(&out_packet[8], payload, actual_len);
-    if (actual_len < RESPONSE_PAYLOAD_SIZE) {
-        memset(&out_packet[8 + actual_len], 0x00, RESPONSE_PAYLOAD_SIZE - actual_len);
+    if (actual_len > sizeof(response_packet.payload)) {
+        actual_len = sizeof(response_packet.payload);
     }
+    memcpy(response_packet.payload, payload, actual_len);
 
-    // 5) CRC over first 64 bytes, append little-endian
-    uint16_t crc = crc16_ccitt(out_packet, RESPONSE_FRAME_SIZE - RESPONSE_CRC_SIZE);
-    out_packet[RESPONSE_FRAME_SIZE - 2] = (uint8_t)(crc & 0xFF);
-    out_packet[RESPONSE_FRAME_SIZE - 1] = (uint8_t)((crc >> 8) & 0xFF);
+    const uint16_t data_len = (uint16_t)offsetof(CommandResponsePacket_t, crc);
+    const uint8_t* data = (const uint8_t*)&response_packet;
+    response_packet.crc = crc16_ccitt(data, data_len);
+
+    memcpy(out_packet, &response_packet, sizeof(response_packet));
 }
 
 static const uint16_t crc16_table[256] = {

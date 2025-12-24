@@ -53,14 +53,28 @@ const osMutexAttr_t sensorDataMutex_attributes = {
   .name = "sensorDataMutex"
 };
 
-// instance of the calibrated data packet from the preprocessor to be reused
-CalibratedDataPacket_t calibrated_packet = {0};
+// instance of the data packet from the preprocessor to be reused
+DataPacket_t data_packet = {0};
 
 // instance of the serialized packet, will be reused
 SerializedPacket_t serialized_packet = {0};
 
 static UART_HandleTypeDef* firm_huart1;
 static volatile bool uart_tx_done = true;
+
+// Monotonically increasing cancellation token.
+// A running long command should snapshot this value and periodically check for changes.
+static volatile uint32_t command_cancel_seq = 0;
+
+typedef struct {
+  volatile uint32_t* cancel_seq;
+  uint32_t snapshot;
+} CommandCancelCtx_t;
+
+static bool command_is_cancelled(void* user) {
+  const CommandCancelCtx_t* c = (const CommandCancelCtx_t*)user;
+  return (c != NULL) && (c->cancel_seq != NULL) && (*(c->cancel_seq) != c->snapshot);
+}
 
 void usb_receive_callback(uint8_t *buffer, uint32_t data_length) {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
@@ -130,7 +144,7 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
     led_set_status(FLASH_CHIP_FAIL);
     return 1;
   }
-  serializer_init_packet(&serialized_packet); // initializes the packet length and header bytes
+  serializer_init_data_packet(&serialized_packet); // initializes the packet length and header bytes
   
 
   // // Wait for interrupts to fire
@@ -187,7 +201,7 @@ void collect_bmp581_data_task(void *argument) {
       BMP581Packet_t *bmp581_packet = logger_malloc_packet(sizeof(BMP581Packet_t));
       if (!bmp581_read_data(bmp581_packet)) {
         logger_write_entry('B', sizeof(BMP581Packet_t));
-        bmp581_convert_packet(bmp581_packet, &calibrated_packet);
+        bmp581_convert_packet(bmp581_packet, &data_packet);
       }
       osMutexRelease(sensorDataMutexHandle);
     } else {
@@ -207,7 +221,7 @@ void collect_icm45686_data_task(void *argument) {
       ICM45686Packet_t *icm45686_packet = logger_malloc_packet(sizeof(ICM45686Packet_t));
       if (!icm45686_read_data(icm45686_packet)) {
         logger_write_entry('I', sizeof(ICM45686Packet_t));
-        icm45686_convert_packet(icm45686_packet, &calibrated_packet);
+        icm45686_convert_packet(icm45686_packet, &data_packet);
       }
       osMutexRelease(sensorDataMutexHandle);
     } else {
@@ -227,7 +241,7 @@ void collect_mmc5983ma_data_task(void *argument) {
       MMC5983MAPacket_t *mmc5983ma_packet = logger_malloc_packet(sizeof(MMC5983MAPacket_t));
       if (!mmc5983ma_read_data(mmc5983ma_packet)) {
         logger_write_entry('M', sizeof(MMC5983MAPacket_t));
-        mmc5983ma_convert_packet(mmc5983ma_packet, &calibrated_packet);
+        mmc5983ma_convert_packet(mmc5983ma_packet, &data_packet);
       }
       osMutexRelease(sensorDataMutexHandle);
     } else {
@@ -243,14 +257,23 @@ void command_handler_task(void *argument) {
   uint8_t payload_len;
   uint8_t response_packet[66];
 
+  CommandCancelCtx_t cancel_ctx = {
+      .cancel_seq = &command_cancel_seq,
+      .snapshot = 0,
+  };
+  CommandContext_t cmd_ctx = {
+      .is_cancelled = command_is_cancelled,
+      .user = &cancel_ctx,
+  };
+
   for (;;) {
     if (xQueueReceive(command_queue, &cmd, portMAX_DELAY) == pdTRUE) {
-      // Process the command
-      // For now, we just create a default response based on the command ID
-      // In the future, we might need to access settings or other data
-      
-      // TODO: Pass actual data pointers instead of NULL where appropriate
-      create_response_payload(cmd.id, NULL, payload_buffer, &payload_len);
+      // One command at a time: run the command to completion before taking the next.
+      // Long-running commands should be written to periodically check for cancellation.
+      cancel_ctx.snapshot = command_cancel_seq;
+
+      // Dispatch: command meanings live in commands.c; this task handles queuing/serialization.
+      handle_command(&cmd, &cmd_ctx, payload_buffer, &payload_len);
       
       // Serialize the response
       serialize_command_packet(payload_buffer, payload_len, response_packet);
@@ -280,7 +303,7 @@ void usb_transmit_data(void *argument) {
 
     if (firmSettings.usb_transfer_enabled) {
       osMutexAcquire(sensorDataMutexHandle, osWaitForever);
-      serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
+      serialize_data_packet(&data_packet, &serialized_packet);
       osMutexRelease(sensorDataMutexHandle);
       
       // We don't retry for sensor data to avoid blocking the loop if USB is stuck,
@@ -298,7 +321,7 @@ void uart_transmit_data(void *argument) {
   for (;;) {
     if (firmSettings.uart_transfer_enabled) {
       osMutexAcquire(sensorDataMutexHandle, osWaitForever);
-      serialize_calibrated_packet(&calibrated_packet, &serialized_packet);
+      serialize_data_packet(&data_packet, &serialized_packet);
       osMutexRelease(sensorDataMutexHandle);
       if (uart_tx_done) {
         uart_tx_done = false;
@@ -325,14 +348,12 @@ void usb_read_data(void *argument) {
     if (bytes_received >= PACKET_SIZE) {
       Command_t cmd;
       if (parse_command(packet_buffer, PACKET_SIZE, &cmd)) {
-        // TODO: actually implement cancel command
+        // Always queue commands (including cancel). Cancel also signals the running command.
         if (cmd.id == CMD_CANCEL_ID) {
-          if (command_handler_task_handle != NULL) {
-            xTaskNotify(command_handler_task_handle, 0x01, eSetBits);
-          }
-        } else {
-          xQueueSend(command_queue, &cmd, 0);
+          command_cancel_seq++;
         }
+
+        xQueueSend(command_queue, &cmd, 0);
       }
 
       // Reset for next packet

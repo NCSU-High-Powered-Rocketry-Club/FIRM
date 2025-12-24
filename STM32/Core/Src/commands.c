@@ -66,6 +66,16 @@ void create_response_payload(uint8_t cmd_id, const void* data, uint8_t* payload_
     *payload_len = 0;
 
     switch (cmd_id) {
+        case CMD_CANCEL_ID: {
+            // [CANCEL_MARKER][ACK (1 byte)]
+            payload_buffer[0] = CMD_CANCEL_ID;
+            *payload_len = 1;
+
+            bool ack = (data != NULL) ? *(const bool*)data : true;
+            payload_buffer[1] = ack ? 1 : 0;
+            *payload_len += 1;
+            break;
+        }
         case CMD_GET_DEVICE_INFO: {
             // [DEVICE_INFO_MARKER][ID (8 bytes)][FIRMWARE_VERSION (8 bytes)][PORT (16 bytes)]
             payload_buffer[0] = CMD_GET_DEVICE_INFO;
@@ -141,7 +151,82 @@ void create_response_payload(uint8_t cmd_id, const void* data, uint8_t* payload_
             *payload_len += 2;
             break;
         }
+        case CMD_REBOOT: {
+            // [REBOOT_MARKER][ACK (1 byte)]
+            payload_buffer[0] = CMD_REBOOT;
+            *payload_len = 1;
+
+            bool ack = (data != NULL) ? *(const bool*)data : true;
+            payload_buffer[1] = ack ? 1 : 0;
+            *payload_len += 1;
+            break;
+        }
         default:
             break;
+    }
+}
+
+void handle_command(const Command_t* cmd, const CommandContext_t* ctx, uint8_t* payload_buffer, uint8_t* payload_len) {
+    if (cmd == NULL || payload_buffer == NULL || payload_len == NULL) {
+        return;
+    }
+
+    // Default: use existing create_response_payload() helpers.
+    // The command handler task remains responsible for serializing the payload.
+    switch (cmd->id) {
+        case CMD_GET_DEVICE_INFO: {
+            // TODO: fill a DeviceInfo_t from real settings/HAL UID/etc and pass it here.
+            create_response_payload(CMD_GET_DEVICE_INFO, NULL, payload_buffer, payload_len);
+            break;
+        }
+        case CMD_GET_DEVICE_CONFIG: {
+            // TODO: fill a DeviceConfig_t from firmSettings (and whatever other config you add).
+            create_response_payload(CMD_GET_DEVICE_CONFIG, NULL, payload_buffer, payload_len);
+            break;
+        }
+        case CMD_SET_DEVICE_CONFIG: {
+            // TODO: apply cmd->payload.set_config into settings.c and persist if desired.
+            // Keep this function short; the actual settings write should be done in settings.c.
+            bool success = true;
+            create_response_payload(CMD_SET_DEVICE_CONFIG, &success, payload_buffer, payload_len);
+            break;
+        }
+        case CMD_RUN_IMU_CALIBRATION:
+        case CMD_RUN_MAG_CALIBRATION: {
+            // TODO: implement calibration routine.
+            // If this becomes long-running, structure it as small steps and periodically check:
+            //   if (ctx && ctx->is_cancelled && ctx->is_cancelled(ctx->user)) { abort; }
+            // The algorithm itself should live in a calibration module; this is just dispatch.
+            CalibrationStatus_t status = {
+                .calibration_complete = false,
+                .progress_percentage = 0,
+            };
+
+            if (ctx && ctx->is_cancelled && ctx->is_cancelled(ctx->user)) {
+                // TODO: define a "cancelled" response semantics for calibration.
+                // For now we just report 0% and not complete.
+            }
+
+            create_response_payload(cmd->id, &status, payload_buffer, payload_len);
+            break;
+        }
+        case CMD_REBOOT: {
+            // TODO: perform reboot (e.g. NVIC_SystemReset()) after responding.
+            bool ack = true;
+            create_response_payload(CMD_REBOOT, &ack, payload_buffer, payload_len);
+            break;
+        }
+        case CMD_CANCEL_ID: {
+            // ACK the cancel command itself. The cancellation signal is handled by the task layer.
+            bool ack = true;
+            create_response_payload(CMD_CANCEL_ID, &ack, payload_buffer, payload_len);
+            break;
+        }
+        default: {
+            // Unknown/unimplemented command.
+            // TODO: define an error payload and emit it here.
+            *payload_len = 0;
+            break;
+        }
     }
 }

@@ -54,6 +54,11 @@ typedef struct {
     } payload;
 } Command_t;
 
+typedef struct {
+    bool (*is_cancelled)(void* user);
+    void* user;
+} CommandContext_t;
+
 /**
  * @brief Parses a raw buffer into a Command_t structure.
  * 
@@ -73,4 +78,13 @@ bool parse_command(const uint8_t* buffer, uint32_t len, Command_t* command);
  * @param payload_len Pointer to store the length of the generated payload.
  */
 void create_response_payload(uint8_t cmd_id, const void* data, uint8_t* payload_buffer, uint8_t* payload_len);
+
+/**
+ * @brief High-level command dispatcher used by the command handler task.
+ *
+ * This function should remain "thin": it decides what a command means and
+ * calls into the owning modules (settings, calibration, etc). Long-running
+ * commands should be written to periodically check ctx->is_cancelled().
+ */
+void handle_command(const Command_t* cmd, const CommandContext_t* ctx, uint8_t* payload_buffer, uint8_t* payload_len);
 
