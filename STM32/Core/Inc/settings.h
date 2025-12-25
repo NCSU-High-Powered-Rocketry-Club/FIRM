@@ -7,6 +7,9 @@
 #define FIRM_SETTINGS_FREQUENCY_MIN_HZ 1u
 #define FIRM_SETTINGS_FREQUENCY_MAX_HZ 1000u
 
+// Flash storage layout for settings (sector 0, first 1024 bytes)
+#define SETTINGS_FLASH_BLOCK_SIZE_BYTES 1024u
+
 /**
  * Accelerometer calibration coefficients
  */
@@ -69,4 +72,18 @@ extern CalibrationSettings_t calibrationSettings;
  * @retval 0 upon success
  */
 int settings_init(SPI_HandleTypeDef* flash_hspi, GPIO_TypeDef* flash_cs_channel, uint16_t flash_cs_pin);
+
+/**
+ * @brief Writes calibration settings to flash (preserves existing firm settings).
+ *
+ * @param calibration_settings pointer to calibration settings to write
+ */
+void settings_write_calibration_settings(CalibrationSettings_t* calibration_settings);
+
+/**
+ * @brief Writes firm settings to flash (preserves existing calibration settings).
+ *
+ * @param firm_settings pointer to firm settings to write
+ */
+void settings_write_firm_settings(FIRMSettings_t* firm_settings);
 
