@@ -1,7 +1,11 @@
 #pragma once
 #include <w25q128jv.h>
 #include "usb_print_debug.h"
+#include <stdint.h>
 #include <stdbool.h>
+
+#define FIRM_SETTINGS_FREQUENCY_MIN_HZ 1u
+#define FIRM_SETTINGS_FREQUENCY_MAX_HZ 1000u
 
 /**
  * Accelerometer calibration coefficients
@@ -44,6 +48,10 @@ typedef struct {
     char device_name[33]; // 32 character limit, plus null-terminator
     bool usb_transfer_enabled;
     bool uart_transfer_enabled;
+    bool i2c_transfer_enabled;
+    bool spi_transfer_enabled;
+    char firmware_version[9]; // 8 character limit, plus null-terminator
+    uint16_t frequency_hz;
 } FIRMSettings_t;
 
 // global declaration of FIRM Settings and calibration settings to be used elsewhere in project

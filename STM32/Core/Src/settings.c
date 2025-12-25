@@ -59,7 +59,11 @@ static void settings_write_defaults(void) {
     w25q128jv_read_UID((uint8_t*)&firmSettings.device_uid, 8);
     firmSettings.usb_transfer_enabled = true;
     firmSettings.uart_transfer_enabled = true;
+    firmSettings.i2c_transfer_enabled = true;
+    firmSettings.spi_transfer_enabled = true;
     strcpy(firmSettings.device_name, "FIRM Device");
+    strcpy(firmSettings.firmware_version, "v1.0.0");
+    firmSettings.frequency_hz = 100;
 
     // Erase sector 0 first (4 KB, covers our 1024 bytes)
     w25q128jv_erase_sector(0);

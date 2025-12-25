@@ -1,6 +1,24 @@
 #include "commands.h"
+#include "settings.h"
+#include "utils.h"
 #include "usb_serializer.h"
 #include <string.h>
+
+static DeviceProtocol_t select_protocol_from_settings(void) {
+    // FIRM always outputs over USB. The protocol byte represents the "extra" protocol
+    // to use when enabled; therefore, prefer any enabled non-USB protocol.
+    // If multiple are enabled, pick a deterministic priority order.
+    if (firmSettings.uart_transfer_enabled) {
+        return UART;
+    }
+    if (firmSettings.i2c_transfer_enabled) {
+        return I2C;
+    }
+    if (firmSettings.spi_transfer_enabled) {
+        return SPI;
+    }
+    return USB;
+}
 
 bool parse_command(const uint8_t* buffer, uint32_t len, Command_t* command) {
     if (buffer == NULL || command == NULL || len != CMD_PACKET_SIZE) {
@@ -171,7 +189,6 @@ void handle_command(const Command_t* cmd, const CommandContext_t* ctx, uint8_t* 
         return;
     }
 
-    // Default: use existing create_response_payload() helpers.
     // The command handler task remains responsible for serializing the payload.
     switch (cmd->id) {
         case CMD_GET_DEVICE_INFO: {
@@ -180,8 +197,22 @@ void handle_command(const Command_t* cmd, const CommandContext_t* ctx, uint8_t* 
             break;
         }
         case CMD_GET_DEVICE_CONFIG: {
-            // TODO: fill a DeviceConfig_t from firmSettings (and whatever other config you add).
-            create_response_payload(CMD_GET_DEVICE_CONFIG, NULL, payload_buffer, payload_len);
+            DeviceConfig_t config;
+            memset(&config, 0, sizeof(config));
+
+            // Name is stored in settings with a 32-char limit + null terminator.
+            // Ensure we always return a null-terminated local string.
+            strncpy(config.name, firmSettings.device_name, DEVICE_NAME_LENGTH);
+            config.name[DEVICE_NAME_LENGTH] = '\0';
+
+            config.frequency = clamp_u16(
+                firmSettings.frequency_hz,
+                (uint16_t)FIRM_SETTINGS_FREQUENCY_MIN_HZ,
+                (uint16_t)FIRM_SETTINGS_FREQUENCY_MAX_HZ
+            );
+            config.protocol = select_protocol_from_settings();
+
+            create_response_payload(CMD_GET_DEVICE_CONFIG, &config, payload_buffer, payload_len);
             break;
         }
         case CMD_SET_DEVICE_CONFIG: {
