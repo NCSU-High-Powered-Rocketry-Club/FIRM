@@ -6,7 +6,7 @@ FIRMSettings_t firmSettings;
 CalibrationSettings_t calibrationSettings;
 
 static void settings_write_defaults(void);
-static void settings_write_flash_block(uint8_t* block_to_write);
+static bool settings_write_flash_block(uint8_t* block_to_write);
 
 int settings_init(SPI_HandleTypeDef* flash_hspi, GPIO_TypeDef* flash_cs_channel, uint16_t flash_cs_pin) {
     // set up flash chip porting layer
@@ -39,17 +39,27 @@ int settings_init(SPI_HandleTypeDef* flash_hspi, GPIO_TypeDef* flash_cs_channel,
     return 0;
 }
 
-void settings_write_calibration_settings(CalibrationSettings_t* calibration_settings) {
+bool settings_write_calibration_settings(CalibrationSettings_t* calibration_settings) {
+    if (calibration_settings == NULL) {
+        return false;
+    }
+
     uint8_t buf[SETTINGS_FLASH_BLOCK_SIZE_BYTES];
     w25q128jv_read_sector(buf, 0, 0, SETTINGS_FLASH_BLOCK_SIZE_BYTES);
 
     memcpy(buf, calibration_settings, sizeof(CalibrationSettings_t));
-    settings_write_flash_block(buf);
-
-    memcpy(&calibrationSettings, calibration_settings, sizeof(CalibrationSettings_t));
+    bool ok = settings_write_flash_block(buf);
+    if (ok) {
+        memcpy(&calibrationSettings, calibration_settings, sizeof(CalibrationSettings_t));
+    }
+    return ok;
 }
 
-void settings_write_firm_settings(FIRMSettings_t* firm_settings) {
+bool settings_write_firm_settings(FIRMSettings_t* firm_settings) {
+    if (firm_settings == NULL) {
+        return false;
+    }
+
     uint8_t buf[SETTINGS_FLASH_BLOCK_SIZE_BYTES];
     w25q128jv_read_sector(buf, 0, 0, SETTINGS_FLASH_BLOCK_SIZE_BYTES);
 
@@ -58,9 +68,11 @@ void settings_write_firm_settings(FIRMSettings_t* firm_settings) {
     sanitized.firmware_version[sizeof(sanitized.firmware_version) - 1] = '\0';
 
     memcpy(buf + sizeof(CalibrationSettings_t), &sanitized, sizeof(FIRMSettings_t));
-    settings_write_flash_block(buf);
-
-    firmSettings = sanitized;
+    bool ok = settings_write_flash_block(buf);
+    if (ok) {
+        firmSettings = sanitized;
+    }
+    return ok;
 }
 
 static void settings_write_defaults(void) {
@@ -91,12 +103,31 @@ static void settings_write_defaults(void) {
     strcpy(firmSettings.firmware_version, "v1.0.0");
     firmSettings.frequency_hz = 100;
 
-    settings_write_calibration_settings(&calibrationSettings);
-    settings_write_firm_settings(&firmSettings);
+    (void)settings_write_calibration_settings(&calibrationSettings);
+    (void)settings_write_firm_settings(&firmSettings);
 }
 
-static void settings_write_flash_block(uint8_t* block_to_write) {
+static bool settings_write_flash_block(uint8_t* block_to_write) {
+    if (block_to_write == NULL) {
+        return false;
+    }
+
     // Erase sector 0 first (4 KB, covers our 1024 bytes)
     w25q128jv_erase_sector(0);
     w25q128jv_write_sector(block_to_write, 0, 0, SETTINGS_FLASH_BLOCK_SIZE_BYTES);
+
+    // verify
+    // Read back in small chunks to avoid large stack allocations.
+    // (commandHandlerTask has a 2KB stack; a 1KB verify buffer can overflow it.)
+    uint8_t verify[64];
+    for (uint32_t offset = 0; offset < SETTINGS_FLASH_BLOCK_SIZE_BYTES; offset += (uint32_t)sizeof(verify)) {
+        uint32_t remaining = SETTINGS_FLASH_BLOCK_SIZE_BYTES - offset;
+        uint32_t to_read = remaining < (uint32_t)sizeof(verify) ? remaining : (uint32_t)sizeof(verify);
+
+        w25q128jv_read_sector(verify, 0, offset, to_read);
+        if (memcmp(verify, block_to_write + offset, to_read) != 0) {
+            return false;
+        }
+    }
+    return true;
 }

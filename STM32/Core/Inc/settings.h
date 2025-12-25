@@ -78,12 +78,12 @@ int settings_init(SPI_HandleTypeDef* flash_hspi, GPIO_TypeDef* flash_cs_channel,
  *
  * @param calibration_settings pointer to calibration settings to write
  */
-void settings_write_calibration_settings(CalibrationSettings_t* calibration_settings);
+bool settings_write_calibration_settings(CalibrationSettings_t* calibration_settings);
 
 /**
  * @brief Writes firm settings to flash (preserves existing calibration settings).
  *
  * @param firm_settings pointer to firm settings to write
  */
-void settings_write_firm_settings(FIRMSettings_t* firm_settings);
+bool settings_write_firm_settings(FIRMSettings_t* firm_settings);
 

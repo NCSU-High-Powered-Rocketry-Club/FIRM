@@ -38,7 +38,6 @@ typedef struct {
 typedef struct {
     uint64_t id;
     char firmware_version[FIRMWARE_VERSION_LENGTH + 1];
-    char port[PORT_LENGTH + 1];
 } DeviceInfo_t;
 
 typedef struct {

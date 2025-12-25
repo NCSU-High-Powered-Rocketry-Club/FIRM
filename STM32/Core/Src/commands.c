@@ -4,6 +4,8 @@
 #include "usb_serializer.h"
 #include <string.h>
 
+// TODO: rename these with commands_ prefix
+
 static DeviceProtocol_t select_protocol_from_settings(void) {
     // FIRM always outputs over USB. The protocol byte represents the "extra" protocol
     // to use when enabled; therefore, prefer any enabled non-USB protocol.
@@ -95,16 +97,13 @@ void create_response_payload(uint8_t cmd_id, const void* data, uint8_t* payload_
             break;
         }
         case CMD_GET_DEVICE_INFO: {
-            // [DEVICE_INFO_MARKER][ID (8 bytes)][FIRMWARE_VERSION (8 bytes)][PORT (16 bytes)]
+            // [DEVICE_INFO_MARKER][ID (8 bytes)][FIRMWARE_VERSION (8 bytes)][PADDING (16 bytes)]
             payload_buffer[0] = CMD_GET_DEVICE_INFO;
             *payload_len = 1;
 
-            DeviceInfo_t default_info = {
-                .id = 0x1234567890ABCDEF,
-                .firmware_version = "v1.0.0",
-                .port = "COM3"
-            };
-            const DeviceInfo_t* info = (data != NULL) ? (const DeviceInfo_t*)data : &default_info;
+            DeviceInfo_t empty_info;
+            memset(&empty_info, 0, sizeof(empty_info));
+            const DeviceInfo_t* info = (data != NULL) ? (const DeviceInfo_t*)data : &empty_info;
 
             memcpy(&payload_buffer[1], &info->id, sizeof(uint64_t));
             *payload_len += sizeof(uint64_t);
@@ -114,8 +113,8 @@ void create_response_payload(uint8_t cmd_id, const void* data, uint8_t* payload_
             strncpy((char*)&payload_buffer[1 + sizeof(uint64_t)], info->firmware_version, FIRMWARE_VERSION_LENGTH);
             *payload_len += FIRMWARE_VERSION_LENGTH;
 
+            // Host expects 16 bytes of padding here (no port string).
             memset(&payload_buffer[1 + sizeof(uint64_t) + FIRMWARE_VERSION_LENGTH], 0, PORT_LENGTH);
-            strncpy((char*)&payload_buffer[1 + sizeof(uint64_t) + FIRMWARE_VERSION_LENGTH], info->port, PORT_LENGTH);
             *payload_len += PORT_LENGTH;
             break;
         }
@@ -124,12 +123,9 @@ void create_response_payload(uint8_t cmd_id, const void* data, uint8_t* payload_
             payload_buffer[0] = CMD_GET_DEVICE_CONFIG;
             *payload_len = 1;
 
-            DeviceConfig_t default_config = {
-                .name = "FIRM Device",
-                .frequency = 100,
-                .protocol = USB
-            };
-            const DeviceConfig_t* config = (data != NULL) ? (const DeviceConfig_t*)data : &default_config;
+            DeviceConfig_t empty_config;
+            memset(&empty_config, 0, sizeof(empty_config));
+            const DeviceConfig_t* config = (data != NULL) ? (const DeviceConfig_t*)data : &empty_config;
 
             memset(&payload_buffer[1], 0, DEVICE_NAME_LENGTH);
             strncpy((char*)&payload_buffer[1], config->name, DEVICE_NAME_LENGTH);
@@ -192,8 +188,17 @@ void handle_command(const Command_t* cmd, const CommandContext_t* ctx, uint8_t* 
     // The command handler task remains responsible for serializing the payload.
     switch (cmd->id) {
         case CMD_GET_DEVICE_INFO: {
-            // TODO: fill a DeviceInfo_t from real settings/HAL UID/etc and pass it here.
-            create_response_payload(CMD_GET_DEVICE_INFO, NULL, payload_buffer, payload_len);
+            DeviceInfo_t info;
+            memset(&info, 0, sizeof(info));
+
+            // Host expects: [MARKER][ID (8 LE bytes)][FIRMWARE_VERSION (8 bytes)][PADDING (16 bytes)]
+            info.id = firmSettings.device_uid;
+
+            // Fixed-length fields: create_response_payload() will pad with 0s and copy fixed widths.
+            strncpy(info.firmware_version, firmSettings.firmware_version, FIRMWARE_VERSION_LENGTH);
+            info.firmware_version[FIRMWARE_VERSION_LENGTH] = '\0';
+
+            create_response_payload(CMD_GET_DEVICE_INFO, &info, payload_buffer, payload_len);
             break;
         }
         case CMD_GET_DEVICE_CONFIG: {
@@ -216,9 +221,21 @@ void handle_command(const Command_t* cmd, const CommandContext_t* ctx, uint8_t* 
             break;
         }
         case CMD_SET_DEVICE_CONFIG: {
-            // TODO: apply cmd->payload.set_config into settings.c and persist if desired.
-            // Keep this function short; the actual settings write should be done in settings.c.
-            bool success = true;
+            const DeviceConfig_t* new_config = &cmd->payload.set_config;
+            // Update settings structure
+            FIRMSettings_t updated_settings = firmSettings;
+            strcpy(updated_settings.device_name, new_config->name);
+            updated_settings.frequency_hz = clamp_u16(
+                new_config->frequency,
+                (uint16_t)FIRM_SETTINGS_FREQUENCY_MIN_HZ,
+                (uint16_t)FIRM_SETTINGS_FREQUENCY_MAX_HZ
+            );
+            // Enable/disable protocols based on selected protocol
+            updated_settings.usb_transfer_enabled = true; // always enabled
+            updated_settings.uart_transfer_enabled = (new_config->protocol == UART);
+            updated_settings.i2c_transfer_enabled = (new_config->protocol == I2C);
+            updated_settings.spi_transfer_enabled = (new_config->protocol == SPI);
+            bool success = settings_write_firm_settings(&updated_settings);
             create_response_payload(CMD_SET_DEVICE_CONFIG, &success, payload_buffer, payload_len);
             break;
         }
