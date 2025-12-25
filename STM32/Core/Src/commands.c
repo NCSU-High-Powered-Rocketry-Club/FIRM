@@ -1,7 +1,9 @@
 #include "commands.h"
+#include "calibration.h"
 #include "settings.h"
 #include "utils.h"
 #include "usb_serializer.h"
+#include "stm32f4xx_hal_cortex.h"
 #include <string.h>
 
 // TODO: rename these with commands_ prefix
@@ -138,41 +140,20 @@ void create_response_payload(uint8_t cmd_id, const void* data, uint8_t* payload_
             *payload_len += 1;
             break;
         }
-        case CMD_SET_DEVICE_CONFIG: {
-            // [SET_DEVICE_CONFIG_MARKER][SUCCESS (1 byte)]
-            payload_buffer[0] = CMD_SET_DEVICE_CONFIG;
+        case CMD_SET_DEVICE_CONFIG:
+        case CMD_RUN_IMU_CALIBRATION:
+        case CMD_RUN_MAG_CALIBRATION: {
+            // [MARKER][SUCCESS (1 byte)]
+            payload_buffer[0] = cmd_id;
             *payload_len = 1;
             
-            bool success = (data != NULL) ? *(const bool*)data : true;
+            bool success = *(bool*)data;
             payload_buffer[1] = success ? 1 : 0;
             *payload_len += 1;
             break;
         }
-        case CMD_RUN_IMU_CALIBRATION:
-        case CMD_RUN_MAG_CALIBRATION: {
-            // [MARKER][CALIBRATION_COMPLETE (1 byte)][PROGRESS_PERCENTAGE (1 byte)]
-            payload_buffer[0] = cmd_id;
-            *payload_len = 1;
-
-            CalibrationStatus_t default_status = {
-                .calibration_complete = false,
-                .progress_percentage = 0
-            };
-            const CalibrationStatus_t* status = (data != NULL) ? (const CalibrationStatus_t*)data : &default_status;
-
-            payload_buffer[1] = status->calibration_complete ? 1 : 0;
-            payload_buffer[2] = status->progress_percentage;
-            *payload_len += 2;
-            break;
-        }
         case CMD_REBOOT: {
-            // [REBOOT_MARKER][ACK (1 byte)]
-            payload_buffer[0] = CMD_REBOOT;
-            *payload_len = 1;
-
-            bool ack = (data != NULL) ? *(const bool*)data : true;
-            payload_buffer[1] = ack ? 1 : 0;
-            *payload_len += 1;
+            // We don't send a reboot response, we just reboot.
             break;
         }
         default:
@@ -239,30 +220,22 @@ void handle_command(const Command_t* cmd, const CommandContext_t* ctx, uint8_t* 
             create_response_payload(CMD_SET_DEVICE_CONFIG, &success, payload_buffer, payload_len);
             break;
         }
-        case CMD_RUN_IMU_CALIBRATION:
+        case CMD_RUN_IMU_CALIBRATION: {
+            bool success = calibration_run_imu(ctx);
+            create_response_payload(CMD_RUN_IMU_CALIBRATION, &success, payload_buffer, payload_len);
+            break;
+        }
         case CMD_RUN_MAG_CALIBRATION: {
-            // TODO: implement calibration routine.
-            // If this becomes long-running, structure it as small steps and periodically check:
-            //   if (ctx && ctx->is_cancelled && ctx->is_cancelled(ctx->user)) { abort; }
-            // The algorithm itself should live in a calibration module; this is just dispatch.
-            CalibrationStatus_t status = {
-                .calibration_complete = false,
-                .progress_percentage = 0,
-            };
-
-            if (ctx && ctx->is_cancelled && ctx->is_cancelled(ctx->user)) {
-                // TODO: define a "cancelled" response semantics for calibration.
-                // For now we just report 0% and not complete.
-            }
-
-            create_response_payload(cmd->id, &status, payload_buffer, payload_len);
+            bool success = calibration_run_mag(ctx);
+            create_response_payload(CMD_RUN_MAG_CALIBRATION, &success, payload_buffer, payload_len);
             break;
         }
         case CMD_REBOOT: {
-            // TODO: perform reboot (e.g. NVIC_SystemReset()) after responding.
-            bool ack = true;
-            create_response_payload(CMD_REBOOT, &ack, payload_buffer, payload_len);
-            break;
+            // Reboot immediately. No response is generated.
+            *payload_len = 0;
+            HAL_NVIC_SystemReset();
+            for (;;) {
+            }
         }
         case CMD_CANCEL_ID: {
             // ACK the cancel command itself. The cancellation signal is handled by the task layer.

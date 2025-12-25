@@ -269,7 +269,6 @@ void command_handler_task(void *argument) {
   for (;;) {
     if (xQueueReceive(command_queue, &cmd, portMAX_DELAY) == pdTRUE) {
       // One command at a time: run the command to completion before taking the next.
-      // Long-running commands should be written to periodically check for cancellation.
       cancel_ctx.snapshot = command_cancel_seq;
 
       // Dispatch: command meanings live in commands.c; this task handles queuing/serialization.

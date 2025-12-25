@@ -14,7 +14,7 @@
 #define CMD_RUN_IMU_CALIBRATION 0x04
 #define CMD_RUN_MAG_CALIBRATION 0x05
 #define CMD_REBOOT 0x06
-#define CMD_CANCEL_ID 0xFF // Special ID for cancel command
+#define CMD_CANCEL_ID 0x07
 
 #define DEVICE_NAME_LENGTH 32
 #define DEVICE_ID_LENGTH 8
@@ -39,11 +39,6 @@ typedef struct {
     uint64_t id;
     char firmware_version[FIRMWARE_VERSION_LENGTH + 1];
 } DeviceInfo_t;
-
-typedef struct {
-    bool calibration_complete;
-    uint8_t progress_percentage;
-} CalibrationStatus_t;
 
 typedef struct {
     uint8_t id;
