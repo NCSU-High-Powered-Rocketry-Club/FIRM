@@ -1,5 +1,4 @@
-#ifndef FIRM_TASKS_H
-#define FIRM_TASKS_H
+#pragma once
 
 #include <bmp581.h>
 #include <icm45686.h>
@@ -24,6 +23,17 @@
 #define TRANSMIT_FREQUENCY_HZ 10
 
 #define MAX_WAIT_TIME(hz) (TickType_t)(pdMS_TO_TICKS(1000 / (hz)) + 1)
+
+#define USB_RX_STREAM_BUFFER_SIZE_BYTES 512
+#define USB_RX_STREAM_TRIGGER_LEVEL_BYTES 1
+
+#define COMMAND_QUEUE_LENGTH 5
+#define RESPONSE_QUEUE_LENGTH 5
+
+#define COMMAND_RX_READ_CHUNK_SIZE_BYTES 64
+
+#define COMMAND_PAYLOAD_MAX_LEN_BYTES 56
+#define COMMAND_RESPONSE_PACKET_SIZE_BYTES 66
 
 extern osThreadId_t bmp581_task_handle;
 extern osThreadId_t mmc5983ma_task_handle;
@@ -98,7 +108,8 @@ int initialize_firm(SPIHandles *spi_handles, I2CHandles *i2c_handles, DMAHandles
 void firm_rtos_init(void);
 
 /**
- * Callback function to handle received USB data
+ * Callback function to handle received USB data. It is called from the USB ISR.
+ * 
  * @param buffer Pointer to the received data buffer
  * @param data_length Length of the received data
  */
@@ -111,5 +122,3 @@ void usb_transmit_data(void *argument);
 void uart_transmit_data(void *argument);
 void usb_read_data(void *argument);
 void command_handler_task(void *argument);
-
-#endif // FIRM_TASKS_H

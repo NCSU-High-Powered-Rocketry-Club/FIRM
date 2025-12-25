@@ -7,7 +7,9 @@
 #define FIRM_SETTINGS_FREQUENCY_MIN_HZ 1u
 #define FIRM_SETTINGS_FREQUENCY_MAX_HZ 1000u
 
-// Flash storage layout for settings (sector 0, first 1024 bytes)
+/**
+ * We store our settings in sector 0, on the first 1024-byte block.
+ */
 #define SETTINGS_FLASH_BLOCK_SIZE_BYTES 1024u
 
 /**
@@ -57,7 +59,6 @@ typedef struct {
     uint16_t frequency_hz;
 } FIRMSettings_t;
 
-// global declaration of FIRM Settings and calibration settings to be used elsewhere in project
 extern FIRMSettings_t firmSettings;
 extern CalibrationSettings_t calibrationSettings;
 
@@ -74,14 +75,14 @@ extern CalibrationSettings_t calibrationSettings;
 int settings_init(SPI_HandleTypeDef* flash_hspi, GPIO_TypeDef* flash_cs_channel, uint16_t flash_cs_pin);
 
 /**
- * @brief Writes calibration settings to flash (preserves existing firm settings).
+ * Writes the calibration settings to the flash chip.
  *
  * @param calibration_settings pointer to calibration settings to write
  */
 bool settings_write_calibration_settings(CalibrationSettings_t* calibration_settings);
 
 /**
- * @brief Writes firm settings to flash (preserves existing calibration settings).
+ * Writes the firm settings to the flash chip.
  *
  * @param firm_settings pointer to firm settings to write
  */

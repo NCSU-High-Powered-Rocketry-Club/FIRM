@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #define CMD_START_MARKER_1 0x55
 #define CMD_START_MARKER_2 0xAA
@@ -19,7 +20,6 @@
 #define DEVICE_NAME_LENGTH 32
 #define DEVICE_ID_LENGTH 8
 #define FIRMWARE_VERSION_LENGTH 8
-#define PORT_LENGTH 16
 #define FREQUENCY_LENGTH 2
 
 typedef enum {
@@ -35,50 +35,89 @@ typedef struct {
     DeviceProtocol_t protocol;
 } DeviceConfig_t;
 
+/**
+ * Structure representing device information.
+ */
 typedef struct {
     uint64_t id;
     char firmware_version[FIRMWARE_VERSION_LENGTH + 1];
 } DeviceInfo_t;
 
+/**
+ * Structure representing a command received from the host.
+ */
 typedef struct {
     uint8_t id;
     union {
         DeviceConfig_t set_config;
-        // Add other command payloads here as needed
+        // We can add other command payloads if we need to in the future
     } payload;
 } Command_t;
 
+/**
+ * Cancellation context for long-running commands.
+ *
+ * The command runner snapshots a monotonically increasing cancellation sequence.
+ * A command is considered cancelled if the global sequence differs from the snapshot.
+ */
 typedef struct {
-    bool (*is_cancelled)(void* user);
-    void* user;
+    volatile uint32_t* cancel_seq;
+    uint32_t snapshot;
+} CommandCancelCtx_t;
+
+/**
+ * Structure representing context for command execution, including cancellation support.
+ */
+typedef struct {
+    bool (*is_cancelled)(const CommandCancelCtx_t* cancel_context);
+    const CommandCancelCtx_t* cancel_context;
 } CommandContext_t;
 
-/**
- * @brief Parses a raw buffer into a Command_t structure.
- * 
- * @param buffer Pointer to the raw data buffer (must be at least 64 bytes).
- * @param len Length of the buffer (should be 64 for fixed packet size).
- * @param command Pointer to the Command_t structure to populate.
- * @return true if parsing was successful, false otherwise.
- */
-bool parse_command(const uint8_t* buffer, uint32_t len, Command_t* command);
+typedef struct {
+    uint8_t buf[128];
+    size_t len;
+} CommandsStreamParser_t;
+
+typedef void (*CommandsStreamParserOnCommand)(const Command_t* cmd);
 
 /**
- * @brief Creates the payload for a response packet based on the command ID.
+ * Initializes the command stream parser.
  * 
- * @param cmd_id The ID of the command to respond to.
+ * @param parser Pointer to the CommandsStreamParser_t instance.
+ */
+void commands_stream_parser_init(CommandsStreamParser_t* parser);
+
+/**
+ * Feeds data into the stream parser, emitting parsed commands via callback.
+ * 
+ * @param parser Pointer to the CommandsStreamParser_t instance.
+ * @param data Pointer to the incoming data chunk.
+ * @param data_len Length of the incoming data chunk.
+ * @param on_command Callback function to be called for each parsed command.
+ * @return Number of commands emitted.
+ */
+size_t commands_stream_parser_feed(CommandsStreamParser_t* parser,
+                                  const uint8_t* data,
+                                  size_t data_len,
+                                  CommandsStreamParserOnCommand on_command);
+
+/**
+ * Creates the payload for a response packet based on the command ID.
+ * 
+ * @param command_id The ID of the command to respond to.
  * @param data Pointer to the data structure required for the response (e.g., DeviceInfo_t*).
  * @param payload_buffer Buffer to write the payload to.
  * @param payload_len Pointer to store the length of the generated payload.
  */
-void create_response_payload(uint8_t cmd_id, const void* data, uint8_t* payload_buffer, uint8_t* payload_len);
+void commands_create_response_payload(uint8_t command_id, const void* data, uint8_t* payload_buffer, uint8_t* payload_len);
 
 /**
- * @brief High-level command dispatcher used by the command handler task.
- *
- * This function should remain "thin": it decides what a command means and
- * calls into the owning modules (settings, calibration, etc). Long-running
- * commands should be written to periodically check ctx->is_cancelled().
+ * Handles an incoming command, makes the response payload, and writes it to the provided buffer.
+ * 
+ * @param command Pointer to the Command_t structure representing the received command.
+ * @param command_context Pointer to the CommandContext_t for cancellation support.
+ * @param payload_buffer Buffer to write the response payload to.
+ * @param payload_len Pointer to store the length of the generated payload.
  */
-void handle_command(const Command_t* cmd, const CommandContext_t* ctx, uint8_t* payload_buffer, uint8_t* payload_len);
+void commands_handle_command(const Command_t* command, const CommandContext_t* command_context, uint8_t* payload_buffer, uint8_t* payload_len);
 

@@ -8,7 +8,6 @@
  * @brief Data packet with timestamp
  */
 typedef struct {
-
     float temperature;
     float pressure;
     float accel_x;

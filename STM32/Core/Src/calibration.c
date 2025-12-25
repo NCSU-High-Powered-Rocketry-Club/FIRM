@@ -3,16 +3,16 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-static bool calibration_is_cancelled(const CommandContext_t* ctx) {
-    if (ctx == NULL || ctx->is_cancelled == NULL) {
+static bool calibration_is_cancelled(const CommandContext_t* command_context) {
+    if (command_context == NULL || command_context->is_cancelled == NULL) {
         return true;
     }
-    return ctx->is_cancelled(ctx->user);
+    return command_context->is_cancelled(command_context->cancel_context);
 }
 
-bool calibration_run_imu(const CommandContext_t* ctx) {
+bool calibration_run_imu(const CommandContext_t* command_context) {
     int count = 0;
-    while (!calibration_is_cancelled(ctx)) {
+    while (!calibration_is_cancelled(command_context)) {
         vTaskDelay(pdMS_TO_TICKS(10));
         count++;
         if (count >= 1000) {
@@ -22,9 +22,9 @@ bool calibration_run_imu(const CommandContext_t* ctx) {
     return false;
 }
 
-bool calibration_run_mag(const CommandContext_t* ctx) {
+bool calibration_run_mag(const CommandContext_t* command_context) {
     int count = 0;
-    while (!calibration_is_cancelled(ctx)) {
+    while (!calibration_is_cancelled(command_context)) {
         vTaskDelay(pdMS_TO_TICKS(10));
         count++;
         if (count >= 1000) {

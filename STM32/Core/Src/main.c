@@ -192,7 +192,7 @@ int main(void) {
   /* USER CODE END RTOS_TIMERS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
-  // TODO: maybe move this here instead of in startup task firm_rtos_init();
+  firm_rtos_init();
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -657,8 +657,6 @@ void StartDefaultTask(void *argument) {
 /* USER CODE END Header_StartupTask */
 void StartupTask(void *argument) {
   /* USER CODE BEGIN StartupTask */
-  firm_rtos_init();
-
   // Setup the SD card
   FRESULT res = logger_init(&hdma_sdio_tx);
   if (res) {

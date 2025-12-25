@@ -8,13 +8,21 @@ typedef struct {
     uint16_t length;
     DataPacket_t payload;
     uint16_t crc;
-} SerializedPacket_t;
+} SerializedDataPacket_t;
+
+typedef struct {
+    uint16_t header;
+    uint16_t length;
+    uint8_t  padding[4];
+    uint8_t  payload[56];
+    uint16_t crc;
+} SerializedResponsePacket_t;
 
 /**
  * @brief initializes a serialized data packet with header and length fields
- * @param serialized_packet pointer to a SerializedPacket_t, the packet to initialize
+ * @param serialized_packet pointer to a SerializedDataPacket_t, the packet to initialize
  */
-void serializer_init_data_packet(SerializedPacket_t *serialized_packet);
+void serializer_init_data_packet(SerializedDataPacket_t *serialized_packet);
 
 /**
  * @brief Serialize a data packet into a provided buffer. The serialization
@@ -26,21 +34,13 @@ void serializer_init_data_packet(SerializedPacket_t *serialized_packet);
  * @return number of bytes written to out_buf (always 8 + 9*sizeof(float) on success),
  *         or 0 on error (e.g., null pointers).
  */
-void serialize_data_packet(const DataPacket_t* packet, SerializedPacket_t *serialized_packet);
+void serialize_data_packet(const DataPacket_t* packet, SerializedDataPacket_t *serialized_packet);
 
 /**
  * @brief Transmit a serialized data packet over USB CDC.
  * @param serialized_packet pointer to serialized data packet
  */
-void usb_transmit_serialized_packet(const SerializedPacket_t *serialized_packet);
-
-/**
- * Compute CRC-16-CCITT (KERMIT) over the data buffer.
- * @param data Pointer to input data (excluding CRC).
- * @param len Length in bytes.
- * @return 16-bit CRC (transmit LSB first).
- */
-uint16_t crc16_ccitt(const uint8_t *data, size_t len);
+void usb_transmit_serialized_packet(const SerializedDataPacket_t *serialized_packet);
 
 /**
  * @brief Serializes a command response payload into a full response packet matching the
@@ -52,12 +52,3 @@ uint16_t crc16_ccitt(const uint8_t *data, size_t len);
  * @param out_packet Buffer to store the final serialized packet (must be at least 66 bytes).
  */
 void serialize_command_packet(const uint8_t* payload, uint8_t payload_len, uint8_t* out_packet);
-
-typedef struct {
-    uint16_t header;      // 0x5AA5 -> bytes A5 5A on little-endian STM32
-    uint16_t length;      // 56
-    uint8_t  padding[4];
-    uint8_t  payload[56];
-    uint16_t crc;
-} CommandResponsePacket_t;
-

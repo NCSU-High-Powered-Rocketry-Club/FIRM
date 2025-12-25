@@ -4,5 +4,18 @@
 
 #include "commands.h"
 
-bool calibration_run_imu(const CommandContext_t* ctx);
-bool calibration_run_mag(const CommandContext_t* ctx);
+/**
+ * Runs the IMU calibration process.
+ * 
+ * @param command_context Pointer to the command context for cancellation support.
+ * @return true if calibration was successful, false if cancelled or failed.
+ */
+bool calibration_run_imu(const CommandContext_t* command_context);
+
+/**
+ * Runs the magnetometer calibration process.
+ * 
+ * @param command_context Pointer to the command context for cancellation support.
+ * @return true if calibration was successful, false if cancelled or failed.
+ */
+bool calibration_run_mag(const CommandContext_t* command_context);

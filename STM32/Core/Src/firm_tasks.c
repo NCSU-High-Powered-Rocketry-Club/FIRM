@@ -57,23 +57,31 @@ const osMutexAttr_t sensorDataMutex_attributes = {
 DataPacket_t data_packet = {0};
 
 // instance of the serialized packet, will be reused
-SerializedPacket_t serialized_packet = {0};
+SerializedDataPacket_t serialized_packet = {0};
 
 static UART_HandleTypeDef* firm_huart1;
 static volatile bool uart_tx_done = true;
 
-// Monotonically increasing cancellation token.
-// A running long command should snapshot this value and periodically check for changes.
-static volatile uint32_t command_cancel_seq = 0;
+// A cancellation token that increments each time a cancel command is received
+static volatile uint32_t command_cancel_token = 0;
 
-typedef struct {
-  volatile uint32_t* cancel_seq;
-  uint32_t snapshot;
-} CommandCancelCtx_t;
-
-static bool command_is_cancelled(void* user) {
-  const CommandCancelCtx_t* c = (const CommandCancelCtx_t*)user;
+// This just checks whether the command has been cancelled by comparing the
+// snapshot of the token with the current cancellation token.
+static bool is_command_cancelled(const CommandCancelCtx_t* cancel_context) {
+  const CommandCancelCtx_t* c = cancel_context;
   return (c != NULL) && (c->cancel_seq != NULL) && (*(c->cancel_seq) != c->snapshot);
+}
+
+static void usb_on_parsed_command(const Command_t* command) {
+  if (command == NULL) {
+    return;
+  }
+
+  if (command->id == CMD_CANCEL_ID) {
+    command_cancel_token++;
+  }
+
+  xQueueSend(command_queue, command, 0);
 }
 
 void usb_receive_callback(uint8_t *buffer, uint32_t data_length) {
@@ -181,13 +189,12 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
 void firm_rtos_init(void) {
   // Initialize FreeRTOS objects
   // 512 bytes buffer, trigger level 1 (wake up on every byte if needed, or optimize later)
-  usb_rx_stream = xStreamBufferCreate(512, 1);
+  usb_rx_stream = xStreamBufferCreate(USB_RX_STREAM_BUFFER_SIZE_BYTES, USB_RX_STREAM_TRIGGER_LEVEL_BYTES);
   // Queue for parsed commands
-  command_queue = xQueueCreate(5, sizeof(Command_t));
+  command_queue = xQueueCreate(COMMAND_QUEUE_LENGTH, sizeof(Command_t));
   // Queue for response packets (66 bytes each): [A5 5A][len][pad][payload][crc]
-  response_queue = xQueueCreate(5, 66);
+  response_queue = xQueueCreate(RESPONSE_QUEUE_LENGTH, COMMAND_RESPONSE_PACKET_SIZE_BYTES);
 }
-
 
 void collect_bmp581_data_task(void *argument) {
   const TickType_t max_wait = MAX_WAIT_TIME(BMP581_POLL_RATE_HZ);
@@ -250,32 +257,31 @@ void collect_mmc5983ma_data_task(void *argument) {
   }
 }
 
-// TODO: rename this
 void command_handler_task(void *argument) {
-  Command_t cmd;
-  uint8_t payload_buffer[56];
-  uint8_t payload_len;
-  uint8_t response_packet[66];
+  Command_t command;
+  uint8_t payload_buffer[COMMAND_PAYLOAD_MAX_LEN_BYTES];
+  uint8_t payload_length;
+  uint8_t response_packet[COMMAND_RESPONSE_PACKET_SIZE_BYTES];
 
-  CommandCancelCtx_t cancel_ctx = {
-      .cancel_seq = &command_cancel_seq,
+  CommandCancelCtx_t cancel_context = {
+      .cancel_seq = &command_cancel_token,
       .snapshot = 0,
   };
-  CommandContext_t cmd_ctx = {
-      .is_cancelled = command_is_cancelled,
-      .user = &cancel_ctx,
+  CommandContext_t command_context = {
+      .is_cancelled = is_command_cancelled,
+      .cancel_context = &cancel_context,
   };
 
   for (;;) {
-    if (xQueueReceive(command_queue, &cmd, portMAX_DELAY) == pdTRUE) {
+    if (xQueueReceive(command_queue, &command, portMAX_DELAY) == pdTRUE) {
       // One command at a time: run the command to completion before taking the next.
-      cancel_ctx.snapshot = command_cancel_seq;
+      cancel_context.snapshot = command_cancel_token;
 
       // Dispatch: command meanings live in commands.c; this task handles queuing/serialization.
-      handle_command(&cmd, &cmd_ctx, payload_buffer, &payload_len);
+      commands_handle_command(&command, &command_context, payload_buffer, &payload_length);
       
       // Serialize the response
-      serialize_command_packet(payload_buffer, payload_len, response_packet);
+      serialize_command_packet(payload_buffer, payload_length, response_packet);
       
       // Send to response queue
       xQueueSend(response_queue, response_packet, 0);
@@ -287,17 +293,15 @@ void usb_transmit_data(void *argument) {
   
   const TickType_t transmit_freq = MAX_WAIT_TIME(TRANSMIT_FREQUENCY_HZ);
   TickType_t lastWakeTime = xTaskGetTickCount();
-  uint8_t response_packet[66];
+  uint8_t response_packet[COMMAND_RESPONSE_PACKET_SIZE_BYTES];
   
   for (;;) {
     // Check for response packets first
     if (xQueueReceive(response_queue, response_packet, 0) == pdTRUE) {
       // Try to transmit until successful
-      while (CDC_Transmit_FS(response_packet, 66) == USBD_BUSY) {
+      while (CDC_Transmit_FS(response_packet, COMMAND_RESPONSE_PACKET_SIZE_BYTES) == USBD_BUSY) {
         vTaskDelay(1); // Wait 1 tick before retrying
       }
-      // Give a small delay to allow USB to process, or just continue if we want high throughput
-      // For now, let's just continue to check for more responses or send sensor data
     }
 
     if (firmSettings.usb_transfer_enabled) {
@@ -305,9 +309,7 @@ void usb_transmit_data(void *argument) {
       serialize_data_packet(&data_packet, &serialized_packet);
       osMutexRelease(sensorDataMutexHandle);
       
-      // We don't retry for sensor data to avoid blocking the loop if USB is stuck,
-      // dropping a frame of sensor data is acceptable.
-      // usb_transmit_serialized_packet(&serialized_packet);
+      usb_transmit_serialized_packet(&serialized_packet);
     }
     vTaskDelayUntil(&lastWakeTime, transmit_freq);
   }
@@ -324,40 +326,25 @@ void uart_transmit_data(void *argument) {
       osMutexRelease(sensorDataMutexHandle);
       if (uart_tx_done) {
         uart_tx_done = false;
-        HAL_UART_Transmit_DMA(firm_huart1, (uint8_t*)&serialized_packet, (uint16_t)sizeof(SerializedPacket_t));
+        HAL_UART_Transmit_DMA(firm_huart1, (uint8_t*)&serialized_packet, (uint16_t)sizeof(SerializedDataPacket_t));
       }
     }
     vTaskDelayUntil(&lastWakeTime, transmit_freq);
   }
 }
+
 void usb_read_data(void *argument) {
-  const size_t PACKET_SIZE = 64;
-  uint8_t packet_buffer[64];
-  size_t bytes_received = 0;
+  uint8_t rx_chunk[COMMAND_RX_READ_CHUNK_SIZE_BYTES];
+  CommandsStreamParser_t command_parser;
+  commands_stream_parser_init(&command_parser);
 
   for (;;) {
-    // Read until we have a full packet
-    // We request the remaining bytes needed to fill the 64-byte buffer
-    size_t received = xStreamBufferReceive(usb_rx_stream, 
-                                           &packet_buffer[bytes_received], 
-                                           PACKET_SIZE - bytes_received, 
-                                           portMAX_DELAY);
-    bytes_received += received;
-
-    if (bytes_received >= PACKET_SIZE) {
-      Command_t cmd;
-      if (parse_command(packet_buffer, PACKET_SIZE, &cmd)) {
-        // Always queue commands (including cancel). Cancel also signals the running command.
-        if (cmd.id == CMD_CANCEL_ID) {
-          command_cancel_seq++;
-        }
-
-        xQueueSend(command_queue, &cmd, 0);
-      }
-
-      // Reset for next packet
-      bytes_received = 0;
+    size_t bytes_received = xStreamBufferReceive(usb_rx_stream, rx_chunk, sizeof(rx_chunk), portMAX_DELAY);
+    if (bytes_received == 0) {
+      continue;
     }
+
+    commands_stream_parser_feed(&command_parser, rx_chunk, bytes_received, usb_on_parsed_command);
   }
 }
 
