@@ -1,6 +1,6 @@
 import React, { Fragment, useEffect, useState } from "react";
 import { Listbox, Transition } from "@headlessui/react";
-import { Check, ChevronsUpDown, Download, Upload, Save, RotateCcw, Loader2 } from "lucide-react";
+import { Check, ChevronsUpDown, Download, Upload, Save, Loader2 } from "lucide-react";
 import { useFirm } from "~/contexts/FirmContext";
 
 // Mapping UI strings to Firmware Integer values
@@ -15,7 +15,7 @@ const PROTOCOL_MAP: Record<string, number> = {
 // Inverse map for loading settings
 const PROTOCOL_MAP_INVERSE: Record<number, string> = Object.entries(PROTOCOL_MAP).reduce(
   (acc, [key, val]) => ({ ...acc, [val]: key }),
-  {}
+  {},
 );
 
 const PROTOCOL_OPTIONS = ["USB", "UART", "I2C", "SPI"];
@@ -47,7 +47,7 @@ export function SettingsPanel() {
       // Assuming deviceConfig.protocol returns the number (1, 2, etc)
       // We map it back to the string "USB"
       if (deviceConfig.protocol) {
-        // @ts-ignore
+        // @ts-expect-error - protocol type mismatch in library
         const protoStr = PROTOCOL_MAP_INVERSE[deviceConfig.protocol];
         if (protoStr) setProtocol(protoStr);
       }
@@ -170,14 +170,22 @@ export function SettingsPanel() {
     reader.readAsText(file);
   };
 
-   return (
+  return (
     <section className="mt-4 rounded-xl border border-slate-300 bg-white px-6 pt-3.5 pb-5 shadow-sm text-slate-900">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-lg font-semibold leading-tight">FIRM Settings</h2>
         {/* Status Indicator */}
         <div className="text-sm">
-          {isSaving && <span className="text-theme flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin"/> Saving...</span>}
-          {successMsg && <span className="text-emerald-600 font-medium flex items-center gap-1"><Check className="h-3 w-3"/> {successMsg}</span>}
+          {isSaving && (
+            <span className="text-theme flex items-center gap-1">
+              <Loader2 className="h-3 w-3 animate-spin" /> Saving...
+            </span>
+          )}
+          {successMsg && (
+            <span className="text-emerald-600 font-medium flex items-center gap-1">
+              <Check className="h-3 w-3" /> {successMsg}
+            </span>
+          )}
           {configError && <span className="text-red-600 font-medium">{configError}</span>}
         </div>
       </div>
@@ -241,8 +249,8 @@ export function SettingsPanel() {
               <Listbox.Button className="relative w-full cursor-default rounded-md border border-slate-300 bg-white py-2 pl-3 pr-8 text-left text-sm text-slate-800 shadow-sm disabled:bg-slate-100 disabled:text-slate-400 hover:bg-slate-50 focus:border-theme focus:outline-none focus:ring-1 focus:ring-theme">
                 <span className="block truncate">{protocol}</span>
                 <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                    <ChevronsUpDown className="h-4 w-4 text-slate-400" />
-                  </span>
+                  <ChevronsUpDown className="h-4 w-4 text-slate-400" />
+                </span>
               </Listbox.Button>
               <Transition
                 as={Fragment}
@@ -271,8 +279,8 @@ export function SettingsPanel() {
                               selected ? "font-semibold" : "font-medium",
                             )}
                           >
-                              {option}
-                            </span>
+                            {option}
+                          </span>
                         </div>
                       )}
                     </Listbox.Option>
@@ -285,7 +293,6 @@ export function SettingsPanel() {
             Interface FIRM uses to communicate with host.
           </p>
         </div>
-
 
         {/* Actions */}
         <div className="pt-2 border-t border-slate-100 mt-4">

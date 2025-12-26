@@ -31,6 +31,29 @@ interface GraphDataPoint {
   alt: number;
 }
 
+// Reusable legend component for consistent styling
+const LegendHeader = () => (
+  <div className="flex items-center gap-3 text-xs font-normal text-slate-500">
+    <span className="flex items-center gap-1">
+      <span
+        className="block h-2 w-2 rounded-full bg-[var(--color-theme)]"
+        style={{ filter: "brightness(1.2)" }}
+      ></span>{" "}
+      X
+    </span>
+    <span className="flex items-center gap-1">
+      <span className="block h-2 w-2 rounded-full bg-[var(--color-theme)]"></span> Y
+    </span>
+    <span className="flex items-center gap-1">
+      <span
+        className="block h-2 w-2 rounded-full bg-[var(--color-theme)]"
+        style={{ filter: "brightness(0.8)" }}
+      ></span>{" "}
+      Z
+    </span>
+  </div>
+);
+
 export function GraphsPanel() {
   const { firm } = useFirm();
 
@@ -40,6 +63,26 @@ export function GraphsPanel() {
 
   const historyBuffer = useRef<GraphDataPoint[]>([]);
   const [graphData, setGraphData] = useState<GraphDataPoint[]>([]);
+
+  const processPacket = (pkt: FIRMPacket) => {
+    const tLabel = pkt.timestamp_seconds.toFixed(2);
+
+    // Push to History
+    historyBuffer.current.push({
+      t: tLabel,
+      ax: pkt.accel_x_meters_per_s2,
+      ay: pkt.accel_y_meters_per_s2,
+      az: pkt.accel_z_meters_per_s2,
+      mx: pkt.mag_x_microteslas,
+      my: pkt.mag_y_microteslas,
+      mz: pkt.mag_z_microteslas,
+      alt: pkt.pressure_altitude_meters,
+    });
+
+    if (historyBuffer.current.length > MAX_HISTORY_POINTS) {
+      historyBuffer.current.shift();
+    }
+  };
 
   useEffect(() => {
     let animationFrameId: number;
@@ -64,49 +107,6 @@ export function GraphsPanel() {
     animationFrameId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animationFrameId);
   }, [firm]);
-
-  const processPacket = (pkt: FIRMPacket) => {
-    const tLabel = pkt.timestamp_seconds.toFixed(2);
-
-    // Push to History
-    historyBuffer.current.push({
-      t: tLabel,
-      ax: pkt.accel_x_meters_per_s2,
-      ay: pkt.accel_y_meters_per_s2,
-      az: pkt.accel_z_meters_per_s2,
-      mx: pkt.mag_x_microteslas,
-      my: pkt.mag_y_microteslas,
-      mz: pkt.mag_z_microteslas,
-      alt: pkt.pressure_altitude_meters,
-    });
-
-    if (historyBuffer.current.length > MAX_HISTORY_POINTS) {
-      historyBuffer.current.shift();
-    }
-  };
-
-  // Reusable legend component for consistent styling
-  const LegendHeader = () => (
-    <div className="flex items-center gap-3 text-xs font-normal text-slate-500">
-      <span className="flex items-center gap-1">
-        <span
-          className="block h-2 w-2 rounded-full bg-[var(--color-theme)]"
-          style={{ filter: "brightness(1.2)" }}
-        ></span>{" "}
-        X
-      </span>
-      <span className="flex items-center gap-1">
-        <span className="block h-2 w-2 rounded-full bg-[var(--color-theme)]"></span> Y
-      </span>
-      <span className="flex items-center gap-1">
-        <span
-          className="block h-2 w-2 rounded-full bg-[var(--color-theme)]"
-          style={{ filter: "brightness(0.8)" }}
-        ></span>{" "}
-        Z
-      </span>
-    </div>
-  );
 
   return (
     <section className="mt-4 rounded-xl border border-slate-300 bg-white px-6 pt-3.5 pb-4 shadow-sm text-slate-900">

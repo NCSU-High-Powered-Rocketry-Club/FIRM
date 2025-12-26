@@ -1,4 +1,11 @@
-import React, { createContext, useCallback, useContext, useState, useEffect, type ReactNode } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useState,
+  useEffect,
+  type ReactNode,
+} from "react";
 import { FIRM as FirmClient } from "firm-client";
 import type { DeviceInfo, DeviceConfig } from "firm-client";
 
@@ -57,7 +64,8 @@ export function FirmProvider({ children }: { children: ReactNode }) {
       disconnect();
     };
 
-    const serial = (navigator as any).serial;
+    // For some reason I can't get TS to recognize the serial API, so we cast it here.
+    const serial = (navigator as unknown as { serial: EventTarget }).serial;
     if (!serial) return;
 
     serial.addEventListener("disconnect", handleNativeDisconnect);
@@ -67,16 +75,12 @@ export function FirmProvider({ children }: { children: ReactNode }) {
     };
   }, [disconnect]);
 
-
   const refreshDeviceMeta = useCallback(async () => {
     if (!firm) return;
 
     setIsLoadingDeviceMeta(true);
     try {
-      const [info, cfg] = await Promise.all([
-        firm.getDeviceInfo(),
-        firm.getDeviceConfig(),
-      ]);
+      const [info, cfg] = await Promise.all([firm.getDeviceInfo(), firm.getDeviceConfig()]);
 
       setDeviceInfo(info);
       setDeviceConfig(cfg);

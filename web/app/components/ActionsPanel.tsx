@@ -1,6 +1,6 @@
 import React, { Fragment, useState, useRef, useEffect } from "react";
 import { Listbox, Transition } from "@headlessui/react";
-import { ChevronsUpDown, Check, Download, RefreshCcw, XCircle, Play } from "lucide-react";
+import { ChevronsUpDown, Check, Download, RefreshCcw, XCircle } from "lucide-react";
 import { useFirm } from "~/contexts/FirmContext";
 
 // The length each calibration takes
@@ -14,10 +14,18 @@ type LogOption = {
 };
 
 const LOG_OPTIONS: LogOption[] = [
-  { id: "latest", label: "Most Recent Session", description: "The last active run from this device" },
+  {
+    id: "latest",
+    label: "Most Recent Session",
+    description: "The last active run from this device",
+  },
   { id: "flight-001", label: "Flight 001", description: "Test launch profile – 2025-03-12" },
   { id: "flight-002", label: "Flight 002", description: "Full stack integration test" },
-  { id: "ground-cal", label: "Ground Calibration", description: "Static sensor characterization log" },
+  {
+    id: "ground-cal",
+    label: "Ground Calibration",
+    description: "Static sensor characterization log",
+  },
 ];
 
 function classNames(...classes: Array<string | false | null | undefined>) {
@@ -29,7 +37,7 @@ export function ActionsPanel() {
   const [selectedLog, setSelectedLog] = useState<LogOption>(LOG_OPTIONS[0]);
 
   // Calibration State
-  const [activeCal, setActiveCal] = useState<'IMU' | 'MAG' | null>(null);
+  const [activeCal, setActiveCal] = useState<"IMU" | "MAG" | null>(null);
   const [countdown, setCountdown] = useState<number>(0);
 
   // Ref for the timer interval so we can clear it easily
@@ -63,7 +71,7 @@ export function ActionsPanel() {
 
   const handleCalibrateIMU = async () => {
     if (!firm) return;
-    setActiveCal('IMU');
+    setActiveCal("IMU");
     startTimer(TIME_CAL_IMU_SECONDS);
 
     try {
@@ -81,7 +89,7 @@ export function ActionsPanel() {
 
   const handleCalibrateMag = async () => {
     if (!firm) return;
-    setActiveCal('MAG');
+    setActiveCal("MAG");
     startTimer(TIME_CAL_MAG_SECONDS);
 
     try {
@@ -113,7 +121,7 @@ export function ActionsPanel() {
   const handleDownloadLog = () => console.log("Download log:", selectedLog);
 
   // Helper to render the button state
-  const renderCalibrateButton = (type: 'IMU' | 'MAG', label: string, onClick: () => void) => {
+  const renderCalibrateButton = (type: "IMU" | "MAG", label: string, onClick: () => void) => {
     const isRunning = activeCal === type;
     const isOtherRunning = activeCal !== null && !isRunning;
 
@@ -141,7 +149,7 @@ export function ActionsPanel() {
           "inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-semibold text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-white transition-all",
           !firm || isOtherRunning
             ? "bg-slate-300 cursor-not-allowed"
-            : "bg-[var(--color-theme)] hover:brightness-110 focus:ring-[var(--color-theme)]"
+            : "bg-[var(--color-theme)] hover:brightness-110 focus:ring-[var(--color-theme)]",
         )}
       >
         <RefreshCcw className={classNames("h-4 w-4", isRunning && "animate-spin")} />
@@ -152,12 +160,9 @@ export function ActionsPanel() {
 
   return (
     <section className="mt-4 rounded-xl border border-slate-300 bg-white px-6 pt-3 pb-4 shadow-sm text-slate-900">
-      <h2 className="mb-3 text-lg font-semibold leading-tight flex items-center gap-2">
-        Actions
-      </h2>
+      <h2 className="mb-3 text-lg font-semibold leading-tight flex items-center gap-2">Actions</h2>
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-4 text-sm">
-
         {/* --- Calibrate IMU --- */}
         <div className="col-span-1 flex flex-col justify-between rounded-lg border border-transparent bg-white">
           <div>
@@ -169,7 +174,7 @@ export function ActionsPanel() {
             </p>
           </div>
           <div className="mt-3 flex items-center gap-3">
-            {renderCalibrateButton('IMU', 'Calibrate IMU', handleCalibrateIMU)}
+            {renderCalibrateButton("IMU", "Calibrate IMU", handleCalibrateIMU)}
           </div>
         </div>
 
@@ -184,7 +189,7 @@ export function ActionsPanel() {
             </p>
           </div>
           <div className="mt-3 flex items-center gap-3">
-            {renderCalibrateButton('MAG', 'Calibrate Mag', handleCalibrateMag)}
+            {renderCalibrateButton("MAG", "Calibrate Mag", handleCalibrateMag)}
           </div>
         </div>
 
@@ -227,9 +232,16 @@ export function ActionsPanel() {
                       >
                         {({ selected }) => (
                           <div className="flex items-start gap-2">
-                            {selected && <Check className="mt-[2px] h-4 w-4 text-[var(--color-theme)]" />}
+                            {selected && (
+                              <Check className="mt-[2px] h-4 w-4 text-[var(--color-theme)]" />
+                            )}
                             <div>
-                              <p className={classNames("truncate", selected ? "font-semibold" : "font-medium")}>
+                              <p
+                                className={classNames(
+                                  "truncate",
+                                  selected ? "font-semibold" : "font-medium",
+                                )}
+                              >
                                 {log.label}
                               </p>
                               <p className="truncate text-[11px] text-slate-500">

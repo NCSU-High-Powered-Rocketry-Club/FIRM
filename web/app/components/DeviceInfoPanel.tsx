@@ -10,7 +10,8 @@ function safeStr(v: unknown): string {
 }
 
 export function DeviceInfoPanel() {
-  const { isConnected, isLoadingDeviceMeta, refreshDeviceMeta, deviceInfo, deviceConfig } = useFirm();
+  const { isConnected, isLoadingDeviceMeta, refreshDeviceMeta, deviceInfo, deviceConfig } =
+    useFirm();
 
   const items = [
     {
@@ -26,7 +27,7 @@ export function DeviceInfoPanel() {
     {
       label: "Frequency",
       icon: <GaugeCircle className="h-4 w-4 text-theme" />,
-      value: safeStr(deviceConfig?.frequency ?? -1) + "Hz",
+      value: deviceConfig?.frequency != null ? safeStr(deviceConfig?.frequency) + "Hz" : "Unknown",
     },
     {
       label: "Protocol",
@@ -64,7 +65,7 @@ export function DeviceInfoPanel() {
 
       {!deviceInfo && isConnected && !isLoadingDeviceMeta && (
         <p className="mt-3 text-sm text-slate-500">
-          No device info yet (timeout or not supported). Try "Refresh".
+          No device info yet (timeout or not supported). Try &quot;Refresh&quot;.
         </p>
       )}
     </section>
