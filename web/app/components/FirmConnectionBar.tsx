@@ -4,7 +4,6 @@ import { useFirm } from "~/contexts/FirmContext";
 
 export function FirmConnectionBar() {
   const { isConnected, isConnecting, connect } = useFirm();
-
   return (
     <div className="mx-auto max-w-5xl w-full px-6 pt-6 flex items-center gap-3 text-sm text-gray-600">
       <span

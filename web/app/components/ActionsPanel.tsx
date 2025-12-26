@@ -154,7 +154,6 @@ export function ActionsPanel() {
     <section className="mt-4 rounded-xl border border-slate-300 bg-white px-6 pt-3 pb-4 shadow-sm text-slate-900">
       <h2 className="mb-3 text-lg font-semibold leading-tight flex items-center gap-2">
         Actions
-        {!firm && <span className="text-xs font-normal text-red-500 bg-red-50 px-2 py-0.5 rounded-full border border-red-100">Device disconnected</span>}
       </h2>
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-4 text-sm">

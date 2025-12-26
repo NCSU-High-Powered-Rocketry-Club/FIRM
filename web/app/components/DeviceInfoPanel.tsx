@@ -16,7 +16,7 @@ export function DeviceInfoPanel() {
     {
       label: "Device",
       icon: <Cpu className="h-4 w-4 text-theme" />,
-      value: safeStr(deviceInfo?.name ?? "Unknown"),
+      value: safeStr(deviceConfig?.name ?? "Unknown"),
     },
     {
       label: "Firmware",
