@@ -9,7 +9,7 @@ import {
 
 import type { Route } from "./+types/root";
 import "./app.css";
-import React from "react";
+import React, { useEffect } from "react";
 import { KonamiPanel } from "./components/KonamiPanel";
 
 export const links: Route.LinksFunction = () => [
@@ -34,8 +34,42 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <title>FIRM Dashboard</title>
         <Meta />
         <Links />
+        {/* Fass CSS for the Instant Loader */}
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+          #initial-loader {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #ffffff;
+            z-index: 9999;
+            font-family: system-ui, -apple-system, sans-serif;
+            transition: opacity 0.5s ease;
+          }
+          .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e2e8f0;
+            border-top-color: #f85e39; /* Theme Orange */
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 16px;
+          }
+          @keyframes spin { to { transform: rotate(360deg); } }
+        `,
+          }}
+        />
       </head>
       <body>
+        <div id="initial-loader">
+          <div className="spinner"></div>
+          <div style={{ color: "#64748b", fontSize: "14px", fontWeight: 500 }}>Loading...</div>
+        </div>
+
         {children}
         <KonamiPanel />
         <ScrollRestoration />
@@ -46,6 +80,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  // Remove the loading screen once React wakes up
+  useEffect(() => {
+    const loader = document.getElementById("initial-loader");
+    if (loader) {
+      // Fade out
+      loader.style.opacity = "0";
+      // Remove from DOM after transition
+      const timer = setTimeout(() => {
+        loader.remove();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   return <Outlet />;
 }
 
