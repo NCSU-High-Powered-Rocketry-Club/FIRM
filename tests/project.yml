@@ -100,11 +100,9 @@
     - +:test/**
     - -:test/support
   :source:
-    - src/**
     - ../STM32/Core/Src/**
   :include:
     - test/support
-    - src/** # In simple projects, this entry often duplicates :source
     - ../STM32/Core/Inc/**
   :support:
     - test/support
