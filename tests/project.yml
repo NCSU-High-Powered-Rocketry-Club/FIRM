@@ -100,10 +100,15 @@
     - +:test/**
     - -:test/support
   :source:
-    - ../STM32/Core/Src/**
+    - ../STM32/Core/Src/data_processing/preprocessor.c
   :include:
     - test/support
-    - ../STM32/Core/Inc/**
+    - ../STM32/Core/Inc
+    - ../STM32/Core/Inc/data_processing
+    - ../STM32/Libraries/BMP581
+    - ../STM32/Libraries/MMC5983MA
+    - ../STM32/Libraries/ICM45686
+    - ../STM32/Libraries/W25Q128JV
   :support:
     - test/support
   :libraries: []
@@ -145,7 +150,6 @@
 :cmock:
   # Core conffiguration
   :plugins:                        # What plugins should be used by CMock?
-    - :ignore
     - :callback
   :verbosity:  2                   # the options being 0 errors only, 1 warnings and errors, 2 normal info, 3 verbose
   :when_no_prototypes:  :warn      # the options being :ignore, :warn, or :erro
