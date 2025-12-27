@@ -65,7 +65,7 @@ dkms.conf
 # FIRM code
 /STM32/build
 mx.scratch
-.vscode
+# .vscode  <-- we actually want to keep this so intellisense works for tests
 /STM32/CMakeFiles
 /STM32/CMakeCache.txt
 /STM32/build.ninja

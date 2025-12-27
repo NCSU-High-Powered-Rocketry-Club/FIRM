@@ -1,4 +1,7 @@
 #include "firm_tasks.h"
+#include "bmp581_packet.h"
+#include "icm45686_packet.h"
+#include "mmc5983ma_packet.h"
 #include "usb_print_debug.h"
 #include <string.h>
 

@@ -1,5 +1,9 @@
 #include "unity.h"
+#include "settings.h"
 #include "preprocessor.h"
+#include "bmp581_packet.h"
+#include "mmc5983ma_packet.h"
+#include "icm45686_packet.h"
 
 CalibrationSettings_t calibrationSettings;
 
