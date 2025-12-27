@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include "mock_settings.h"
 #include "mock_bmp581.h"
 #include "mock_mmc5983ma.h"
 #include "mock_icm45686.h"

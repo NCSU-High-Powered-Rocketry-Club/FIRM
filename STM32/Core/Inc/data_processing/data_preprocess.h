@@ -1,4 +1,5 @@
 #pragma once
+#include "settings.h"
 #include <bmp581.h>
 #include <mmc5983ma.h>
 #include <icm45686.h>
