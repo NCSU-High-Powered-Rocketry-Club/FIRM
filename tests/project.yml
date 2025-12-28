@@ -120,7 +120,8 @@
 # Ceedling do the work for you!
 :files:
   :test: []
-  :source: []
+  :source:
+    - ../STM32/Core/Src/settings_globals.c
 
 # Compilation symbols to be injected into builds
 # See documentation for advanced options:
