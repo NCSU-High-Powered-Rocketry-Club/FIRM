@@ -5,7 +5,7 @@
 
 #ifdef TEST
     #include "stm32_hal_stubs.h" // from tests/test/support
-    #include "w25q128jv.h" // mocked header in tests/test/support
+    #include "w25q128jv_stubs.h" // stubs in tests/test/support
     #include "serial_print.h" // mocked serialPrintStr
     #include "hal_gpio.h" // mocked HAL_GPIO_ReadPin 
 #else

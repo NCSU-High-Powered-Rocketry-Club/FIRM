@@ -5,7 +5,9 @@
 #include "mmc5983ma_packet.h"
 #include "icm45686_packet.h"
 
-CalibrationSettings_t calibrationSettings;
+// We need to have the mocks because settings.h includes w25q128jv.h
+#include "mock_w25q128jv_stubs.h"
+#include "mock_hal_gpio.h"
 
 void setUp(void) {
     for (int i = 0; i < 3; i++) {

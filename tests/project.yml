@@ -103,6 +103,7 @@
     - -:test/support
   :source:
     - ../STM32/Core/Src/data_processing
+    - ../STM32/Core/Src
   :include:
     - test/support
     - ../STM32/Core/Inc
@@ -120,8 +121,7 @@
 # Ceedling do the work for you!
 :files:
   :test: []
-  :source:
-    - ../STM32/Core/Src/settings_globals.c
+  :source: []
 
 # Compilation symbols to be injected into builds
 # See documentation for advanced options:
@@ -131,6 +131,7 @@
 :defines:
   :test:
     - TEST # Simple list option to add symbol 'TEST' to compilation of all files in all test executables
+    - UNITY_INCLUDE_64
   :release: []
 
   # Enable to inject name of a test as a unique compilation symbol into its respective executable build. 
@@ -209,6 +210,7 @@
 :unity:
   :defines:
     - UNITY_INCLUDE_FLOAT
+    - UNITY_INCLUDE_64
 
 # You can optionally have ceedling create environment variables for you before
 # performing the rest of its tasks.

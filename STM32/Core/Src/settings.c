@@ -1,6 +1,9 @@
 #include "settings.h"
 #include <string.h>
 
+FIRMSettings_t firmSettings;
+CalibrationSettings_t calibrationSettings;
+
 static void settings_write_defaults(void);
 static bool settings_write_flash_block(uint8_t* block_to_write);
 
