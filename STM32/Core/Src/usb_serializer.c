@@ -32,31 +32,25 @@ void usb_transmit_serialized_packet(const SerializedDataPacket_t *serialized_pac
     CDC_Transmit_FS((uint8_t*)serialized_packet, (uint16_t)sizeof(SerializedDataPacket_t));
 }
 
-void serialize_command_packet(const uint8_t* payload, uint8_t payload_len, uint8_t* out_packet) {
-    if (!payload || !out_packet) return;
+void serialize_command_packet(const uint8_t* payload, uint8_t payload_len, uint8_t* serialized_packet) {
+    if (!payload || !serialized_packet) return;
 
     // This function emits a 66-byte response frame:
     // [0xA5 0x5A][LEN(2)=56][PADDING(4)][PAYLOAD(56)][CRC(2)]
     // CRC is CRC-16-CCITT (KERMIT) over the first 64 bytes.
-    SerializedResponsePacket_t response_packet;
-    memset(&response_packet, 0x00, sizeof(response_packet));
+    SerializedResponsePacket_t* response_packet = (SerializedResponsePacket_t*)serialized_packet;
+    
+    // Clear out the response packet
+    memset(response_packet, 0x00, sizeof(SerializedResponsePacket_t));
 
-    // Initialize response wrapper (same pattern as serializer_init_data_packet).
-    // Header bytes for responses: A5 5A
-    // Stored little-endian as 0x5AA5
-    response_packet.header = 0x5AA5;
-    response_packet.length = sizeof(response_packet.payload);
-    memset(response_packet.padding, 0x00, sizeof(response_packet.padding));
+    // Fill in header, length, and payload
+    response_packet->header = 0x5AA5;
+    response_packet->length = sizeof(DataPacket_t); // Length is the same as data packet length to make parsing easier
 
-    uint8_t actual_len = payload_len;
-    if (actual_len > sizeof(response_packet.payload)) {
-        actual_len = sizeof(response_packet.payload);
-    }
-    memcpy(response_packet.payload, payload, actual_len);
+    // Copy payload after the 4 bytes of padding
+    memcpy(&response_packet->payload[4], payload, payload_len);
 
-    const uint16_t data_len = (uint16_t)offsetof(SerializedResponsePacket_t, crc);
-    const uint8_t* data = (const uint8_t*)&response_packet;
-    response_packet.crc = crc16_ccitt(data, data_len);
-
-    memcpy(out_packet, &response_packet, sizeof(response_packet));
+    // Calculate CRC over the entire packet except the CRC itself
+    const uint16_t calc_len = (uint16_t)offsetof(SerializedResponsePacket_t, crc);
+    response_packet->crc = crc16_ccitt(serialized_packet, calc_len);
 }

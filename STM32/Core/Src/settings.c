@@ -44,11 +44,13 @@ bool settings_write_calibration_settings(CalibrationSettings_t* calibration_sett
         return false;
     }
 
-    uint8_t buf[SETTINGS_FLASH_BLOCK_SIZE_BYTES];
-    w25q128jv_read_sector(buf, 0, 0, SETTINGS_FLASH_BLOCK_SIZE_BYTES);
+    uint8_t buffer_to_write[SETTINGS_FLASH_BLOCK_SIZE_BYTES];
+    // Reads the current settings (FIRM and Calibration) into buffer_to_write
+    w25q128jv_read_sector(buffer_to_write, 0, 0, SETTINGS_FLASH_BLOCK_SIZE_BYTES);
 
-    memcpy(buf, calibration_settings, sizeof(CalibrationSettings_t));
-    bool ok = settings_write_flash_block(buf);
+    // Writes over just the calibration settings portion
+    memcpy(buffer_to_write, calibration_settings, sizeof(CalibrationSettings_t));
+    bool ok = settings_write_flash_block(buffer_to_write);
     if (ok) {
         memcpy(&calibrationSettings, calibration_settings, sizeof(CalibrationSettings_t));
     }
@@ -60,15 +62,18 @@ bool settings_write_firm_settings(FIRMSettings_t* firm_settings) {
         return false;
     }
 
-    uint8_t buf[SETTINGS_FLASH_BLOCK_SIZE_BYTES];
-    w25q128jv_read_sector(buf, 0, 0, SETTINGS_FLASH_BLOCK_SIZE_BYTES);
+    uint8_t buffer_to_write[SETTINGS_FLASH_BLOCK_SIZE_BYTES];
+    // Reads the current settings (FIRM and Calibration) into buffer_to_write
+    w25q128jv_read_sector(buffer_to_write, 0, 0, SETTINGS_FLASH_BLOCK_SIZE_BYTES);
 
+    // Adds null-terminators
     FIRMSettings_t sanitized = *firm_settings;
     sanitized.device_name[sizeof(sanitized.device_name) - 1] = '\0';
     sanitized.firmware_version[sizeof(sanitized.firmware_version) - 1] = '\0';
 
-    memcpy(buf + sizeof(CalibrationSettings_t), &sanitized, sizeof(FIRMSettings_t));
-    bool ok = settings_write_flash_block(buf);
+    // Writes over just the FIRM settings portion (after the calibration settings)
+    memcpy(buffer_to_write + sizeof(CalibrationSettings_t), &sanitized, sizeof(FIRMSettings_t));
+    bool ok = settings_write_flash_block(buffer_to_write);
     if (ok) {
         firmSettings = sanitized;
     }

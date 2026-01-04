@@ -12,10 +12,8 @@
 #define CMD_GET_DEVICE_INFO 0x01
 #define CMD_GET_DEVICE_CONFIG 0x02
 #define CMD_SET_DEVICE_CONFIG 0x03
-#define CMD_RUN_IMU_CALIBRATION 0x04
-#define CMD_RUN_MAG_CALIBRATION 0x05
-#define CMD_REBOOT 0x06
-#define CMD_CANCEL_ID 0x07
+#define CMD_REBOOT 0x04
+#define CMD_CANCEL_ID 0xFF
 
 #define DEVICE_NAME_LENGTH 32
 #define DEVICE_ID_LENGTH 8
@@ -73,6 +71,9 @@ typedef struct {
     const CommandCancelCtx_t* cancel_context;
 } CommandContext_t;
 
+/**
+ * Byte stream parser for incoming command data.
+ */
 typedef struct {
     uint8_t buf[128];
     size_t len;
@@ -81,22 +82,14 @@ typedef struct {
 typedef void (*CommandsStreamParserOnCommand)(const Command_t* cmd);
 
 /**
- * Initializes the command stream parser.
- * 
- * @param parser Pointer to the CommandsStreamParser_t instance.
- */
-void commands_stream_parser_init(CommandsStreamParser_t* parser);
-
-/**
  * Feeds data into the stream parser, emitting parsed commands via callback.
  * 
  * @param parser Pointer to the CommandsStreamParser_t instance.
  * @param data Pointer to the incoming data chunk.
  * @param data_len Length of the incoming data chunk.
  * @param on_command Callback function to be called for each parsed command.
- * @return Number of commands emitted.
  */
-size_t commands_stream_parser_feed(CommandsStreamParser_t* parser,
+void commands_update_parser(CommandsStreamParser_t* parser,
                                   const uint8_t* data,
                                   size_t data_len,
                                   CommandsStreamParserOnCommand on_command);
