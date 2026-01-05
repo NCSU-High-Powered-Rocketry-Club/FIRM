@@ -43,12 +43,12 @@ void serialize_command_packet(const uint8_t* payload, uint8_t payload_len, uint8
     // Clear out the response packet
     memset(response_packet, 0x00, sizeof(SerializedResponsePacket_t));
 
-    // Fill in header, length, and payload
-    response_packet->header = 0x5AA5;
-    response_packet->length = sizeof(DataPacket_t); // Length is the same as data packet length to make parsing easier
+    // Fill in header and fixed length
+    response_packet->header = 0x5AA5; // little-endian -> A5 5A
+    response_packet->length = 56;
 
-    // Copy payload after the 4 bytes of padding
-    memcpy(&response_packet->payload[4], payload, payload_len);
+    // padding is already zeroed by memset, this copies the payload to the packet
+    memcpy(response_packet->payload, payload, payload_len);
 
     // Calculate CRC over the entire packet except the CRC itself
     const uint16_t calc_len = (uint16_t)offsetof(SerializedResponsePacket_t, crc);

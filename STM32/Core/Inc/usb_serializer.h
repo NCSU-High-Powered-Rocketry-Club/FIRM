@@ -6,7 +6,7 @@
 /**
  * Serialized data packet struct for sending sensor and KF data over USB.
  */
-typedef struct {
+typedef struct __attribute__((packed)) {
     uint16_t header;
     uint16_t length;
     DataPacket_t payload;
@@ -15,12 +15,14 @@ typedef struct {
 
 /**
  * Serialized command response packet struct for sending command responses over USB. To make
- * parsing easier, this is the same size as SerializedDataPacket_t.
+ * parsing easier, this is a fixed 66-byte frame:
+ * [0xA5 0x5A][LEN(2)=56][PADDING(4)][PAYLOAD(56)][CRC(2)]
  */
-typedef struct {
+typedef struct __attribute__((packed)) {
     uint16_t header;
     uint16_t length;
-    uint8_t payload[sizeof(SerializedDataPacket_t) - 6]; // 6 bytes for header, length, and crc
+    uint8_t padding[4]; // SerializedDataPacket_t has 4 bytes of padding here, so to make parsing easier we add it here too
+    uint8_t payload[sizeof(DataPacket_t)]; // max payload size is size of data packet
     uint16_t crc;
 } SerializedResponsePacket_t;
 
