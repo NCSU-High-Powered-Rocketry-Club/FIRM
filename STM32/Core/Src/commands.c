@@ -1,5 +1,4 @@
 #include "commands.h"
-#include "calibration.h"
 #include "settings.h"
 #include "utils.h"
 #include "usb_serializer.h"
@@ -30,12 +29,8 @@ static DeviceProtocol_t select_protocol_from_settings(void) {
  * @return true if parsing was successful, false otherwise.
  */
 static bool commands_parse_command(const uint8_t* buffer, uint32_t len, Command_t* command) {
-    if (buffer == NULL || command == NULL || len != CMD_PACKET_SIZE) {
-        return false;
-    }
-
-    // Check Start Markers
-    if (buffer[0] != CMD_START_MARKER_1 || buffer[1] != CMD_START_MARKER_2) {
+    // Check length and start markers
+    if (len != CMD_PACKET_SIZE || buffer[0] != CMD_START_MARKER_1 || buffer[1] != CMD_START_MARKER_2) {
         return false;
     }
 
@@ -69,8 +64,6 @@ static bool commands_parse_command(const uint8_t* buffer, uint32_t len, Command_
             
         case CMD_GET_DEVICE_INFO:
         case CMD_GET_DEVICE_CONFIG:
-        case CMD_RUN_IMU_CALIBRATION:
-        case CMD_RUN_MAG_CALIBRATION:
         case CMD_REBOOT:
         case CMD_CANCEL_ID:
             // These commands have no payload to parse
@@ -83,88 +76,53 @@ static bool commands_parse_command(const uint8_t* buffer, uint32_t len, Command_
     return true;
 }
 
-/**
- * Appends data to the parser's buffer, dropping oldest data if overflow occurs.
- * 
- * @param parser Pointer to the CommandsStreamParser_t instance.
- * @param data Pointer to the incoming data chunk.
- * @param data_len Length of the incoming data chunk.
- */
-static void commands_stream_parser_append_with_drop(CommandsStreamParser_t* parser, const uint8_t* data, size_t data_len) {
-    if (data_len == 0) {
-        return;
-    }
-
-    // If the incoming chunk is larger than our whole buffer, keep only the last bytes.
-    if (data_len >= sizeof(parser->buf)) {
-        memcpy(parser->buf, data + (data_len - sizeof(parser->buf)), sizeof(parser->buf));
-        parser->len = sizeof(parser->buf);
-        return;
-    }
-
-    // Drop oldest bytes on overflow.
-    if (parser->len + data_len > sizeof(parser->buf)) {
-        size_t drop = (parser->len + data_len) - sizeof(parser->buf);
-        if (drop >= parser->len) {
-            parser->len = 0;
-        } else {
-            memmove(parser->buf, parser->buf + drop, parser->len - drop);
-            parser->len -= drop;
-        }
-    }
-
-    memcpy(parser->buf + parser->len, data, data_len);
-    parser->len += data_len;
-}
-
-void commands_stream_parser_init(CommandsStreamParser_t* parser) {
-    if (parser == NULL) {
-        return;
-    }
-    parser->len = 0;
-}
-
-size_t commands_stream_parser_feed(CommandsStreamParser_t* parser,
+void commands_update_parser(CommandsStreamParser_t* parser,
                                   const uint8_t* data,
                                   size_t data_len,
                                   CommandsStreamParserOnCommand on_command) {
-    if (parser == NULL || data == NULL || data_len == 0 || on_command == NULL) {
-        return 0;
+    // Adds bytes to the parser buffer, dropping old bytes if necessary
+    if (data_len >= sizeof(parser->buf)) {
+        memcpy(parser->buf, data + (data_len - sizeof(parser->buf)), sizeof(parser->buf));
+        parser->len = sizeof(parser->buf);
+    } else {
+        if (parser->len + data_len > sizeof(parser->buf)) {
+            size_t drop_size = (parser->len + data_len) - sizeof(parser->buf);
+            memmove(parser->buf, parser->buf + drop_size, parser->len - drop_size);
+            parser->len -= drop_size;
+        }
+
+        memcpy(parser->buf + parser->len, data, data_len);
+        parser->len += data_len;
     }
 
-    commands_stream_parser_append_with_drop(parser, data, data_len);
 
-    size_t emitted = 0;
-    size_t pos = 0;
-
-    while (pos + 1 < parser->len) {
-        if (parser->buf[pos] != CMD_START_MARKER_1 || parser->buf[pos + 1] != CMD_START_MARKER_2) {
-            pos++;
+    // Tries parsing commands from the buffer, looking for start markers
+    size_t current_byte = 0;
+    while (current_byte + 1 < parser->len) {
+        if (parser->buf[current_byte] != CMD_START_MARKER_1 || parser->buf[current_byte + 1] != CMD_START_MARKER_2) {
+            current_byte++;
             continue;
         }
 
-        if (pos + CMD_PACKET_SIZE > parser->len) {
+        if (current_byte + CMD_PACKET_SIZE > parser->len) {
             break; // Now we need more bytes
         }
 
         Command_t command;
-        if (commands_parse_command(&parser->buf[pos], CMD_PACKET_SIZE, &command)) {
+        if (commands_parse_command(&parser->buf[current_byte], CMD_PACKET_SIZE, &command)) {
             on_command(&command);
-            emitted++;
-            pos += CMD_PACKET_SIZE;
+            current_byte += CMD_PACKET_SIZE;
         } else {
             // Bad packet, drop one byte and keep scanning.
-            pos++;
+            current_byte++;
         }
     }
 
     // Keeps only the tail
-    if (pos > 0) {
-        memmove(parser->buf, parser->buf + pos, parser->len - pos);
-        parser->len -= pos;
+    if (current_byte > 0) {
+        memmove(parser->buf, parser->buf + current_byte, parser->len - current_byte);
+        parser->len -= current_byte;
     }
-
-    return emitted;
 }
 
 void commands_create_response_payload(uint8_t command_id, const void* data, uint8_t* payload_buffer, uint8_t* payload_len) {
@@ -213,11 +171,8 @@ void commands_create_response_payload(uint8_t command_id, const void* data, uint
             *payload_len += 1;
             break;
         }
-        case CMD_SET_DEVICE_CONFIG:
-        case CMD_RUN_IMU_CALIBRATION:
-        case CMD_RUN_MAG_CALIBRATION: {
+        case CMD_SET_DEVICE_CONFIG: {
             // [MARKER][SUCCESS (1 byte)]
-        
             bool success = *(bool*)data;
             payload_buffer[1] = success ? 1 : 0;
             *payload_len += 1;
@@ -288,16 +243,6 @@ void commands_handle_command(const Command_t* command, const CommandContext_t* c
             updated_settings.spi_transfer_enabled = (new_config->protocol == SPI);
             bool success = settings_write_firm_settings(&updated_settings);
             commands_create_response_payload(CMD_SET_DEVICE_CONFIG, &success, payload_buffer, payload_len);
-            break;
-        }
-        case CMD_RUN_IMU_CALIBRATION: {
-            bool success = calibration_run_imu(command_context);
-            commands_create_response_payload(CMD_RUN_IMU_CALIBRATION, &success, payload_buffer, payload_len);
-            break;
-        }
-        case CMD_RUN_MAG_CALIBRATION: {
-            bool success = calibration_run_mag(command_context);
-            commands_create_response_payload(CMD_RUN_MAG_CALIBRATION, &success, payload_buffer, payload_len);
             break;
         }
         case CMD_REBOOT: {

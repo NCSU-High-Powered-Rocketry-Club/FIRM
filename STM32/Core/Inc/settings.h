@@ -68,7 +68,13 @@ typedef struct {
     uint16_t frequency_hz;
 } FIRMSettings_t;
 
+/**
+ * Global instances of the FIRM settings.
+ */
 extern FIRMSettings_t firmSettings;
+/**
+ * Global instance of the calibration settings.
+ */
 extern CalibrationSettings_t calibrationSettings;
 
 /**

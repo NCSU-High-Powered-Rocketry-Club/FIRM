@@ -307,6 +307,7 @@ void usb_transmit_data(void *argument) {
       }
     }
 
+    // TODO: maybe consider having a queue for data packets too? Or not if it is too much slower.
     if (firmSettings.usb_transfer_enabled) {
       osMutexAcquire(sensorDataMutexHandle, osWaitForever);
       serialize_data_packet(&data_packet, &serialized_packet);
@@ -338,8 +339,7 @@ void uart_transmit_data(void *argument) {
 
 void usb_read_data(void *argument) {
   uint8_t rx_chunk[COMMAND_RX_READ_CHUNK_SIZE_BYTES];
-  CommandsStreamParser_t command_parser;
-  commands_stream_parser_init(&command_parser);
+  CommandsStreamParser_t command_parser = { .len = 0 };
 
   for (;;) {
     size_t bytes_received = xStreamBufferReceive(usb_rx_stream, rx_chunk, sizeof(rx_chunk), portMAX_DELAY);
@@ -347,7 +347,8 @@ void usb_read_data(void *argument) {
       continue;
     }
 
-    commands_stream_parser_feed(&command_parser, rx_chunk, bytes_received, usb_on_parsed_command);
+    // Adds the new bytes to the command parser and adds any parsed commands to the command queue
+    commands_update_parser(&command_parser, rx_chunk, bytes_received, usb_on_parsed_command);
   }
 }
 
