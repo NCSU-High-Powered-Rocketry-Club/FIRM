@@ -125,7 +125,6 @@ int ukf_predict(UKF *ukfh, const float delta_time) {
 }
 
 int ukf_update(UKF* ukfh, float* measurement) {
-    uint32_t time = DWT->CYCCNT;
     // pass sigmas through the measurement function to determine how the predicted state would
     // be reflected in sensor measurements
     
@@ -183,7 +182,6 @@ int ukf_update(UKF* ukfh, float* measurement) {
     // update state machine
     memcpy(ukfh->measurement_vector, measurement, UKF_MEASUREMENT_DIMENSION);
     state_update(ukfh);
-    t1 += (DWT->CYCCNT - time);
     return 0;
 }
 
