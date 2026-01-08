@@ -5,10 +5,9 @@
 
 
 /**
- * @brief Calibrated data with timestamp
+ * @brief Data packet with timestamp
  */
 typedef struct {
-
     float temperature;
     float pressure;
     float accel_x;
@@ -21,7 +20,7 @@ typedef struct {
     float magnetic_field_y;
     float magnetic_field_z;
     double timestamp_sec;
-} CalibratedDataPacket_t;
+} DataPacket_t;
 
 
 /**
@@ -29,20 +28,20 @@ typedef struct {
  * @note Temperature converted to Celcius, pressure converted to Pascals
  * 
  * @param packet Pointer to a BMP581Packet_t structure containing raw sensor data
- * @param result_packet Pointer to a CalibratedDataPacket where the result of the preprocessor
+ * @param result_packet Pointer to a DataPacket where the result of the preprocessor
  *                      will be stored
  */
-void bmp581_convert_packet(BMP581Packet_t *packet, CalibratedDataPacket_t *result_packet);
+void bmp581_convert_packet(BMP581Packet_t *packet, DataPacket_t *result_packet);
 
 /**
  * @brief Converts raw MMC5983MA magnetometer data to SI units
  * @note Magnetic field data converted to microtesla
  * 
  * @param packet Pointer to an MMC5983MAPacket_t structure containing raw sensor data
- * @param result_packet Pointer to a CalibratedDataPacket where the result of the preprocessor
+ * @param result_packet Pointer to a DataPacket where the result of the preprocessor
  *                      will be stored
  */
-void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, CalibratedDataPacket_t *result_packet);
+void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, DataPacket_t *result_packet);
 
 /**
  * @brief Converts raw ICM45686 data to SI units
@@ -50,8 +49,8 @@ void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, CalibratedDataPacket_t 
  * @note Acceleration converted to g's, angular rate converted to radians per second
  * 
  * @param packet Pointer to an ICM45686Packet_t structure containing raw sensor data
- * @param result_packet Pointer to a CalibratedDataPacket where the result of the preprocessor
+ * @param result_packet Pointer to a DataPacket where the result of the preprocessor
  *                      will be stored
  */
-void icm45686_convert_packet(ICM45686Packet_t *packet, CalibratedDataPacket_t *result_packet);
+void icm45686_convert_packet(ICM45686Packet_t *packet, DataPacket_t *result_packet);
 

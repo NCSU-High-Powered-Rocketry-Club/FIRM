@@ -192,7 +192,7 @@ int main(void) {
   /* USER CODE END RTOS_TIMERS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
+  firm_rtos_init();
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -211,8 +211,11 @@ int main(void) {
   mmc5983ma_task_handle = osThreadNew(collect_mmc5983ma_data_task, NULL, &mmc5983maTask_attributes);
   usb_transmit_task_handle = osThreadNew(usb_transmit_data, NULL, &usbTask_attributes);
   uart_transmit_task_handle = osThreadNew(uart_transmit_data, NULL, &uartTask_attributes);
+  usb_read_task_handle = osThreadNew(usb_read_data, NULL, &usbTask_attributes);
+  command_handler_task_handle = osThreadNew(command_handler_task, NULL, &commandHandlerTask_attributes);
   if (mmc5983ma_task_handle == NULL || icm45686_task_handle == NULL || bmp581_task_handle == NULL ||
-      usb_transmit_task_handle == NULL || uart_transmit_task_handle == NULL) {
+      usb_transmit_task_handle == NULL || uart_transmit_task_handle == NULL || usb_read_task_handle == NULL ||
+      command_handler_task_handle == NULL) {
     Error_Handler();
   }
   /* USER CODE END RTOS_THREADS */
@@ -637,8 +640,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
  */
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void *argument) {
-  /* init code for USB_DEVICE */
-  MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
   for (;;) {

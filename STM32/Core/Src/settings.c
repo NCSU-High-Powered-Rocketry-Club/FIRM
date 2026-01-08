@@ -1,9 +1,12 @@
 #include "settings.h"
 
+#include <string.h>
+
 FIRMSettings_t firmSettings;
 CalibrationSettings_t calibrationSettings;
 
 static void settings_write_defaults(void);
+static bool settings_write_flash_block(uint8_t* block_to_write);
 
 int settings_init(SPI_HandleTypeDef* flash_hspi, GPIO_TypeDef* flash_cs_channel, uint16_t flash_cs_pin) {
     // set up flash chip porting layer
@@ -20,9 +23,9 @@ int settings_init(SPI_HandleTypeDef* flash_hspi, GPIO_TypeDef* flash_cs_channel,
         settings_write_defaults();
     }
 
-    // read 1024 bytes containing settings
-    uint8_t buf[1024];
-    w25q128jv_read_sector(buf, 0, 0, 1024);
+    // read settings block
+    uint8_t buf[SETTINGS_FLASH_BLOCK_SIZE_BYTES];
+    w25q128jv_read_sector(buf, 0, 0, SETTINGS_FLASH_BLOCK_SIZE_BYTES);
     memcpy(&calibrationSettings, buf, sizeof(CalibrationSettings_t));
     memcpy(&firmSettings, buf + sizeof(CalibrationSettings_t), sizeof(FIRMSettings_t));
 
@@ -36,8 +39,48 @@ int settings_init(SPI_HandleTypeDef* flash_hspi, GPIO_TypeDef* flash_cs_channel,
     return 0;
 }
 
-static void settings_write_defaults(void) {
+bool settings_write_calibration_settings(CalibrationSettings_t* calibration_settings) {
+    if (calibration_settings == NULL) {
+        return false;
+    }
 
+    uint8_t buffer_to_write[SETTINGS_FLASH_BLOCK_SIZE_BYTES];
+    // Reads the current settings (FIRM and Calibration) into buffer_to_write
+    w25q128jv_read_sector(buffer_to_write, 0, 0, SETTINGS_FLASH_BLOCK_SIZE_BYTES);
+
+    // Writes over just the calibration settings portion
+    memcpy(buffer_to_write, calibration_settings, sizeof(CalibrationSettings_t));
+    bool ok = settings_write_flash_block(buffer_to_write);
+    if (ok) {
+        memcpy(&calibrationSettings, calibration_settings, sizeof(CalibrationSettings_t));
+    }
+    return ok;
+}
+
+bool settings_write_firm_settings(FIRMSettings_t* firm_settings) {
+    if (firm_settings == NULL) {
+        return false;
+    }
+
+    uint8_t buffer_to_write[SETTINGS_FLASH_BLOCK_SIZE_BYTES];
+    // Reads the current settings (FIRM and Calibration) into buffer_to_write
+    w25q128jv_read_sector(buffer_to_write, 0, 0, SETTINGS_FLASH_BLOCK_SIZE_BYTES);
+
+    // Adds null-terminators
+    FIRMSettings_t sanitized = *firm_settings;
+    sanitized.device_name[sizeof(sanitized.device_name) - 1] = '\0';
+    sanitized.firmware_version[sizeof(sanitized.firmware_version) - 1] = '\0';
+
+    // Writes over just the FIRM settings portion (after the calibration settings)
+    memcpy(buffer_to_write + sizeof(CalibrationSettings_t), &sanitized, sizeof(FIRMSettings_t));
+    bool ok = settings_write_flash_block(buffer_to_write);
+    if (ok) {
+        firmSettings = sanitized;
+    }
+    return ok;
+}
+
+static void settings_write_defaults(void) {
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
             if (i != j) {
@@ -58,15 +101,38 @@ static void settings_write_defaults(void) {
     // TODO: determine settings to use
     w25q128jv_read_UID((uint8_t*)&firmSettings.device_uid, 8);
     firmSettings.usb_transfer_enabled = true;
-    firmSettings.uart_transfer_enabled = true;
+    firmSettings.uart_transfer_enabled = false;
+    firmSettings.i2c_transfer_enabled = false;
+    firmSettings.spi_transfer_enabled = false;
     strcpy(firmSettings.device_name, "FIRM Device");
+    strcpy(firmSettings.firmware_version, "v1.0.0");
+    firmSettings.frequency_hz = 100;
+
+    (void)settings_write_calibration_settings(&calibrationSettings);
+    (void)settings_write_firm_settings(&firmSettings);
+}
+
+static bool settings_write_flash_block(uint8_t* block_to_write) {
+    if (block_to_write == NULL) {
+        return false;
+    }
 
     // Erase sector 0 first (4 KB, covers our 1024 bytes)
     w25q128jv_erase_sector(0);
+    w25q128jv_write_sector(block_to_write, 0, 0, SETTINGS_FLASH_BLOCK_SIZE_BYTES);
 
-    // Write the 1024-byte block
-    uint8_t buf[1024];
-    memcpy(buf, &calibrationSettings, sizeof(CalibrationSettings_t));
-    memcpy(buf + sizeof(CalibrationSettings_t), &firmSettings, sizeof(FIRMSettings_t));
-    w25q128jv_write_sector(buf, 0, 0, 1024);
+    // verify
+    // Read back in small chunks to avoid large stack allocations.
+    // (commandHandlerTask has a 2KB stack; a 1KB verify buffer can overflow it.)
+    uint8_t verify[64];
+    for (uint32_t offset = 0; offset < SETTINGS_FLASH_BLOCK_SIZE_BYTES; offset += (uint32_t)sizeof(verify)) {
+        uint32_t remaining = SETTINGS_FLASH_BLOCK_SIZE_BYTES - offset;
+        uint32_t to_read = remaining < (uint32_t)sizeof(verify) ? remaining : (uint32_t)sizeof(verify);
+
+        w25q128jv_read_sector(verify, 0, offset, to_read);
+        if (memcmp(verify, block_to_write + offset, to_read) != 0) {
+            return false;
+        }
+    }
+    return true;
 }

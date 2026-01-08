@@ -92,3 +92,6 @@ build/
 
 # tests
 /tests/build
+
+CMakeFiles/
+CMakeCache.txt
