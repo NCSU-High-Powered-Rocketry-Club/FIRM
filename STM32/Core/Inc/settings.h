@@ -3,14 +3,14 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#ifdef TEST
+#ifndef TEST
+    #include <w25q128jv.h>
+    #include "usb_print_debug.h"
+#else
     #include "stm32_hal_stubs.h" // from tests/test/support
     #include "w25q128jv_stubs.h" // stubs in tests/test/support
     #include "serial_print.h" // mocked serialPrintStr
     #include "hal_gpio.h" // mocked HAL_GPIO_ReadPin 
-#else
-    #include <w25q128jv.h>
-    #include "usb_print_debug.h"
 #endif
 
 #define FIRM_SETTINGS_FREQUENCY_MIN_HZ 1u

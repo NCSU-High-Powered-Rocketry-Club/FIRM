@@ -132,14 +132,7 @@ void icm45686_convert_packet(ICM45686Packet_t *packet, DataPacket_t *result_pack
     result_packet -> angular_rate_z = gyro_float_x * calibrationSettings.icm45686_gyro.scale_multiplier[2] + gyro_float_y * calibrationSettings.icm45686_gyro.scale_multiplier[5] + gyro_float_z * calibrationSettings.icm45686_gyro.scale_multiplier[8];
 } 
 
-#ifdef TEST
-
-// Host unit tests: no DWT cycle counter available.
-static double update_dwt_timestamp(void) {
-    return 0.0;
-}
-
-#else
+#ifndef TEST
 
 static double update_dwt_timestamp(void) {
     uint32_t current_cyccnt = DWT->CYCCNT;
@@ -152,6 +145,13 @@ static double update_dwt_timestamp(void) {
     uint64_t cycle_count = ((uint64_t)dwt_overflow_count << 32) | current_cyccnt;
     // MCU clock speed is 168MHz
     return ((double)cycle_count) / 168000000.0F;
+}
+
+#else
+
+// No DWT cycle counter so we gotta mock it
+static double update_dwt_timestamp(void) {
+    return 0.0;
 }
 
 #endif

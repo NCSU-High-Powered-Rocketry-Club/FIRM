@@ -5,7 +5,6 @@
 #include <icm45686_packet.h>
 
 
-
 /**
  * @brief Data packet with timestamp
  */
