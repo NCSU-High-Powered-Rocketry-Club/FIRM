@@ -1,7 +1,16 @@
 #pragma once
 #include <w25q128jv.h>
 #include "usb_print_debug.h"
+#include <stdint.h>
 #include <stdbool.h>
+
+#define FIRM_SETTINGS_FREQUENCY_MIN_HZ 1u
+#define FIRM_SETTINGS_FREQUENCY_MAX_HZ 1000u
+
+/**
+ * We store our settings in sector 0, on the first 1024-byte block.
+ */
+#define SETTINGS_FLASH_BLOCK_SIZE_BYTES 1024u
 
 /**
  * Accelerometer calibration coefficients
@@ -44,10 +53,19 @@ typedef struct {
     char device_name[33]; // 32 character limit, plus null-terminator
     bool usb_transfer_enabled;
     bool uart_transfer_enabled;
+    bool i2c_transfer_enabled;
+    bool spi_transfer_enabled;
+    char firmware_version[9]; // 8 character limit, plus null-terminator
+    uint16_t frequency_hz;
 } FIRMSettings_t;
 
-// global declaration of FIRM Settings and calibration settings to be used elsewhere in project
+/**
+ * Global instances of the FIRM settings.
+ */
 extern FIRMSettings_t firmSettings;
+/**
+ * Global instance of the calibration settings.
+ */
 extern CalibrationSettings_t calibrationSettings;
 
 /**
@@ -61,4 +79,18 @@ extern CalibrationSettings_t calibrationSettings;
  * @retval 0 upon success
  */
 int settings_init(SPI_HandleTypeDef* flash_hspi, GPIO_TypeDef* flash_cs_channel, uint16_t flash_cs_pin);
+
+/**
+ * Writes the calibration settings to the flash chip.
+ *
+ * @param calibration_settings pointer to calibration settings to write
+ */
+bool settings_write_calibration_settings(CalibrationSettings_t* calibration_settings);
+
+/**
+ * Writes the firm settings to the flash chip.
+ *
+ * @param firm_settings pointer to firm settings to write
+ */
+bool settings_write_firm_settings(FIRMSettings_t* firm_settings);
 

@@ -16,7 +16,7 @@ static volatile uint32_t last_cyccnt = 0;
  */
 static double update_dwt_timestamp(void);
 
-void bmp581_convert_packet(BMP581Packet_t *packet, CalibratedDataPacket_t *result_packet) {
+void bmp581_convert_packet(BMP581Packet_t *packet, DataPacket_t *result_packet) {
     // get the current timestamp of the packet in seconds using the DWT counter
     result_packet->timestamp_sec = update_dwt_timestamp();
     int32_t temp_binary, pressure_binary;
@@ -38,7 +38,7 @@ void bmp581_convert_packet(BMP581Packet_t *packet, CalibratedDataPacket_t *resul
     result_packet -> pressure = pressure_float;
 }
 
-void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, CalibratedDataPacket_t *result_packet) {
+void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, DataPacket_t *result_packet) {
     // get the current timestamp of the packet in seconds using the DWT counter
     result_packet->timestamp_sec = update_dwt_timestamp();
     int32_t mag_binary_x, mag_binary_y, mag_binary_z;
@@ -72,7 +72,7 @@ void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, CalibratedDataPacket_t 
     result_packet -> magnetic_field_z = mag_float_x * calibrationSettings.mmc5983ma_mag.scale_multiplier[2] + mag_float_y * calibrationSettings.mmc5983ma_mag.scale_multiplier[5] + mag_float_z * calibrationSettings.mmc5983ma_mag.scale_multiplier[8];
 }
 
-void icm45686_convert_packet(ICM45686Packet_t *packet, CalibratedDataPacket_t *result_packet) {
+void icm45686_convert_packet(ICM45686Packet_t *packet, DataPacket_t *result_packet) {
     // get the current timestamp of the packet in seconds using the DWT counter
     result_packet->timestamp_sec = update_dwt_timestamp();
     int32_t acc_binary_x, acc_binary_y, acc_binary_z, gyro_binary_x,gyro_binary_y,gyro_binary_z;

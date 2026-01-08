@@ -34,7 +34,8 @@ message("Build type: " ${CMAKE_BUILD_TYPE})
 enable_language(C ASM)
 
 # Create an executable object type
-add_executable(${CMAKE_PROJECT_NAME})
+add_executable(${CMAKE_PROJECT_NAME}
+        Core/Src/firm_tasks.c)
 
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
@@ -73,8 +74,10 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/usb_print_debug.c
     Core/Src/data_processing/data_preprocess.c
     Core/Src/settings.c
+    Core/Src/utils.c
     Core/Src/usb_serializer.c
-    Core/Src/firm.c
+    Core/Src/commands.c
+    Core/Src/firm_tasks.c
     Core/Src/led.c
     Core/Src/matrixhelper.c
     Core/Src/data_processing/unscented_kalman_filter.c
