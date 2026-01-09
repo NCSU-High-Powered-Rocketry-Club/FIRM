@@ -125,8 +125,7 @@
 # Ceedling do the work for you!
 :files:
   :test: []
-  :source:
-    - -:../STM32/Core/Src/settings.c
+  :source: []
 
 :defines:
   :test:

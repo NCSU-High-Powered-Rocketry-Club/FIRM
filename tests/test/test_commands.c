@@ -2,10 +2,7 @@
 #include "commands.h"
 #include "utils.h"
 #include "stm32_hal_stubs.h"
-#include "mock_settings.h"
 
-FIRMSettings_t firmSettings;
-CalibrationSettings_t calibrationSettings;
 
 void setUp(void) {
     FIRMSettings_t dummy;

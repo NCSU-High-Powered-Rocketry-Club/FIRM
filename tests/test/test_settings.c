@@ -69,5 +69,4 @@ void test_settings_init(void) {
     TEST_ASSERT_FLOAT_WITHIN(1e-6f, 1.0f, calibrationSettings.icm45686_accel.scale_multiplier[0]); // (0,0)
     TEST_ASSERT_FLOAT_WITHIN(1e-6f, 0.0f, calibrationSettings.icm45686_accel.scale_multiplier[1]); // (0,1)
     TEST_ASSERT_FLOAT_WITHIN(1e-6f, 0.0f, calibrationSettings.icm45686_accel.offset_gs[0]);
-    
 }

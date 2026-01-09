@@ -1,4 +1,6 @@
 #include "settings.h"
+#include "utils.h"
+#include <stdint.h>
 #include <string.h>
 
 FIRMSettings_t firmSettings;
