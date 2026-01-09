@@ -59,7 +59,7 @@
     #- gcov                           # test coverage using gcov. Requires gcc, gcov, and a coverage analyzer like gcovr
     #- bullseye                       # test coverage using bullseye. Requires bullseye for your platform
     #- command_hooks                  # write custom actions to be called at different points during the build process
-    #- compile_commands_json_db       # generate a compile_commands.json file
+    - compile_commands_json_db       # generate a compile_commands.json file
     #- dependencies                   # automatically fetch 3rd party libraries, etc.
     #- subprojects                    # managing builds and test for static libraries
     #- fake_function_framework        # use FFF instead of CMock
@@ -95,14 +95,23 @@
 
 # This is where Ceedling should look for your source and test files.
 # see documentation for the many options for specifying this.
+
+# Make sure you only do dirs here, files don't work
 :paths:
   :test:
     - +:test/**
     - -:test/support
   :source:
-    - src/**
-    - ../STM32/Core/Src/**
+    - ../STM32/Core/Src/data_processing
+    - ../STM32/Core/Src
   :include:
+    - test/support
+    - ../STM32/Core/Inc
+    - ../STM32/Core/Inc/data_processing
+    - ../STM32/Libraries/BMP581
+    - ../STM32/Libraries/MMC5983MA
+    - ../STM32/Libraries/ICM45686
+    - ../STM32/Libraries/W25Q128JV
     - ../STM32/Core/Inc/**
     - ../STM32/Drivers/CMSIS/Include/**
     - ../STM32/Drivers/CMSIS-DSP/Include/**
@@ -116,12 +125,13 @@
 # Ceedling do the work for you!
 :files:
   :test: []
-  :source:
-
+  :source: []
 
 :defines:
   :test:
     - TEST # Simple list option to add symbol 'TEST' to compilation of all files in all test executables
+    - UNITY_INCLUDE_64
+    - UNITY_SUPPORT_64
   :release: []
 
   # Enable to inject name of a test as a unique compilation symbol into its respective executable build. 
@@ -149,7 +159,6 @@
 :cmock:
   # Core conffiguration
   :plugins:                        # What plugins should be used by CMock?
-    - :ignore
     - :callback
   :verbosity:  2                   # the options being 0 errors only, 1 warnings and errors, 2 normal info, 3 verbose
   :when_no_prototypes:  :warn      # the options being :ignore, :warn, or :erro
@@ -207,6 +216,7 @@
   :defines:
     - UNITY_INCLUDE_FLOAT
     - UNITY_INCLUDE_DOUBLE
+    - UNITY_INCLUDE_64
 
 # You can optionally have ceedling create environment variables for you before
 # performing the rest of its tasks.

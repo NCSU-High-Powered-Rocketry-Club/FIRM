@@ -2,8 +2,13 @@
 #include "settings.h"
 #include "utils.h"
 #include "usb_serializer.h"
-#include "stm32f4xx_hal_cortex.h"
 #include <string.h>
+
+#ifdef TEST
+  #include "stm32_hal_stubs.h" // for HAL_NVIC_SystemReset
+#else
+  #include "stm32f4xx_hal_cortex.h"
+#endif
 
 static DeviceProtocol_t select_protocol_from_settings(void) {
     // FIRM always outputs over USB. The protocol byte represents the "extra" protocol

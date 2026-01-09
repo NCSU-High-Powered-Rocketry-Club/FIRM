@@ -1,8 +1,8 @@
 #pragma once
 #include "settings.h"
-#include <bmp581.h>
-#include <mmc5983ma.h>
-#include <icm45686.h>
+#include <bmp581_packet.h>
+#include <mmc5983ma_packet.h>
+#include <icm45686_packet.h>
 
 
 /**

@@ -1,4 +1,5 @@
 #include "data_preprocess.h"
+#include "settings.h"
 
 static const float pi = 3.14159265358979323846F;
 // number of times the DWT timestamp has overflowed. This happens every ~25 seconds
@@ -132,6 +133,8 @@ void icm45686_convert_packet(ICM45686Packet_t *packet, DataPacket_t *result_pack
     result_packet -> angular_rate_z = gyro_float_x * calibrationSettings.icm45686_gyro.scale_multiplier[2] + gyro_float_y * calibrationSettings.icm45686_gyro.scale_multiplier[5] + gyro_float_z * calibrationSettings.icm45686_gyro.scale_multiplier[8];
 } 
 
+#ifndef TEST
+
 static double update_dwt_timestamp(void) {
     uint32_t current_cyccnt = DWT->CYCCNT;
     // Check for overflow by comparing with last value
@@ -144,3 +147,12 @@ static double update_dwt_timestamp(void) {
     // MCU clock speed is 168MHz
     return ((double)cycle_count) / 168000000.0F;
 }
+
+#else
+
+// No DWT cycle counter so we gotta mock it
+static double update_dwt_timestamp(void) {
+    return 0.0;
+}
+
+#endif

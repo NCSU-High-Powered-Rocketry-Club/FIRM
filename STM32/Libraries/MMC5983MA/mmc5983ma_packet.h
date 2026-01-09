@@ -1,6 +1,8 @@
 #pragma once
-#include <stdint.h>
 
+/**
+ * @brief magnetometer data packet structur for the MMC5983MA.
+ */
 typedef struct {
     uint8_t mag_x_msb;
     uint8_t mag_x_mid;

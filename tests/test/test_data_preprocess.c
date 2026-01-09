@@ -1,12 +1,37 @@
 #include "unity.h"
+#include "settings.h"
 #include "data_preprocess.h"
+#include "bmp581_packet.h"
+#include "mmc5983ma_packet.h"
+#include "icm45686_packet.h"
 
-void setUp(void) {}
+// We need to have the mocks because settings.h includes w25q128jv.h
+#include "mock_w25q128jv_stubs.h"
+#include "mock_hal_gpio.h"
+
+void setUp(void) {
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            if (i != j) {
+                calibrationSettings.icm45686_accel.scale_multiplier[3 * i + j] = 0.0F;
+                calibrationSettings.icm45686_gyro.scale_multiplier[3 * i + j] = 0.0F;
+                calibrationSettings.mmc5983ma_mag.scale_multiplier[3 * i + j] = 0.0F;
+                continue;
+            }
+            calibrationSettings.icm45686_accel.scale_multiplier[3 * i + j] = 1.0F;
+            calibrationSettings.icm45686_gyro.scale_multiplier[3 * i + j] = 1.0F;
+            calibrationSettings.mmc5983ma_mag.scale_multiplier[3 * i + j] = 1.0F;
+        }
+        calibrationSettings.icm45686_accel.offset_gs[i] = 0.0F;
+        calibrationSettings.icm45686_gyro.offset_dps[i] = 0.0F;
+        calibrationSettings.mmc5983ma_mag.offset_ut[i] = 0.0F;
+    }
+}
 void tearDown(void) {}
 
 void test_bmp581_convert_packet_missing_data(void) {
     BMP581Packet_t packet = {0, 0, 0, 0, 0, 0};
-    CalibratedDataPacket_t ret_packet;
+    DataPacket_t ret_packet;
     bmp581_convert_packet(&packet, &ret_packet);
     TEST_ASSERT_FLOAT_WITHIN(1e-6, 0.0F, ret_packet.pressure);
     TEST_ASSERT_FLOAT_WITHIN(1e-6, 0.0F, ret_packet.temperature);
@@ -15,7 +40,7 @@ void test_bmp581_convert_packet_missing_data(void) {
 void test_bmp581_convert_packet_normal_values(void) {
     // ~22.147C, ~100,000.016Pa
     BMP581Packet_t packet = {0b10100011, 0b00100101 ,0b00010110 , 0b00000001, 0b10101000, 0b01100001};
-    CalibratedDataPacket_t ret_packet;
+    DataPacket_t ret_packet;
     bmp581_convert_packet(&packet, &ret_packet);
     TEST_ASSERT_FLOAT_WITHIN(1e-6, 6400001.0F / 64.0F, ret_packet.pressure);
     TEST_ASSERT_FLOAT_WITHIN(1e-6, 1451427.0F / 65536.0F, ret_packet.temperature);
@@ -24,7 +49,7 @@ void test_bmp581_convert_packet_normal_values(void) {
 void test_bmp581_convert_packet_negative_values(void) {
     // ~-1.526C, -625Pa
     BMP581Packet_t packet = {0b01100000, 0b01111001, 0b11111110, 0b11000000, 0b01100011, 0b11111111};
-    CalibratedDataPacket_t ret_packet;
+    DataPacket_t ret_packet;
     bmp581_convert_packet(&packet, &ret_packet);
     TEST_ASSERT_FLOAT_WITHIN(1e-6, -100000.0F / 65536.0F, ret_packet.temperature);
     TEST_ASSERT_FLOAT_WITHIN(1e-6, -40000.0F / 64.0F, ret_packet.pressure);
@@ -32,7 +57,7 @@ void test_bmp581_convert_packet_negative_values(void) {
 
 void test_mmc5983ma_convert_packet_missing_data(void) {
     MMC5983MAPacket_t packet = {0, 0, 0, 0, 0, 0, 0};
-    CalibratedDataPacket_t ret_packet;
+    DataPacket_t ret_packet;
     mmc5983ma_convert_packet(&packet, &ret_packet);
     // because magnetometer uses shifted representation instead of twos complement, result of
     // empty packet is negative half of full scale resolution.
@@ -56,7 +81,7 @@ void test_mmc5983ma_convert_packet_normal_values(void) {
     // 2 bits for each axis (0bxxyyzz00)
     packet.mag_xyz_lsb = 0b00000100;  
 
-    CalibratedDataPacket_t ret_packet;
+    DataPacket_t ret_packet;
     mmc5983ma_convert_packet(&packet, &ret_packet);
 
     TEST_ASSERT_FLOAT_WITHIN(1e-6, -311.71875F, ret_packet.magnetic_field_x);
@@ -66,7 +91,7 @@ void test_mmc5983ma_convert_packet_normal_values(void) {
 
 void test_icm45686_convert_packet_missing_data(void) {
     ICM45686Packet_t packet = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    CalibratedDataPacket_t ret_packet;
+    DataPacket_t ret_packet;
     icm45686_convert_packet(&packet, &ret_packet);
     TEST_ASSERT_FLOAT_WITHIN(1e-6, 0.0F, ret_packet.accel_x);
     TEST_ASSERT_FLOAT_WITHIN(1e-6, 0.0F, ret_packet.accel_y);
@@ -102,7 +127,7 @@ void test_icm45686_convert_packet_normal_values(void) {
     packet.y_vals_lsb = 0x03;
     packet.z_vals_lsb = 0x00;
 
-    CalibratedDataPacket_t ret_packet;
+    DataPacket_t ret_packet;
     icm45686_convert_packet(&packet, &ret_packet);
 
     TEST_ASSERT_FLOAT_WITHIN(1e-6, 30015.0F / acc_scale_factor, ret_packet.accel_x);
