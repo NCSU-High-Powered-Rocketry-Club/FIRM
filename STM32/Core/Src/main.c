@@ -213,9 +213,10 @@ int main(void) {
   uart_transmit_task_handle = osThreadNew(uart_transmit_data, NULL, &uartTask_attributes);
   usb_read_task_handle = osThreadNew(usb_read_data, NULL, &usbTask_attributes);
   command_handler_task_handle = osThreadNew(command_handler_task, NULL, &commandHandlerTask_attributes);
+  filter_data_task_handle = osThreadNew(filter_data_task, NULL, &filterDataTask_attributes);
   if (mmc5983ma_task_handle == NULL || icm45686_task_handle == NULL || bmp581_task_handle == NULL ||
       usb_transmit_task_handle == NULL || uart_transmit_task_handle == NULL || usb_read_task_handle == NULL ||
-      command_handler_task_handle == NULL) {
+      command_handler_task_handle == NULL || filter_data_task_handle == NULL) {
     Error_Handler();
   }
   /* USER CODE END RTOS_THREADS */

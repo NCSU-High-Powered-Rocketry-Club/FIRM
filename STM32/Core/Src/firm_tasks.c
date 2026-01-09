@@ -13,6 +13,7 @@ osThreadId_t usb_transmit_task_handle;
 osThreadId_t uart_transmit_task_handle;
 osThreadId_t usb_read_task_handle;
 osThreadId_t command_handler_task_handle;
+osThreadId_t filter_data_task_handle;
 
 StreamBufferHandle_t usb_rx_stream;
 QueueHandle_t command_queue;
@@ -49,12 +50,20 @@ const osThreadAttr_t commandHandlerTask_attributes = {
     .stack_size = 512 * 4,
     .priority = (osPriority_t)osPriorityNormal,
 };
+const osThreadAttr_t filterDataTask_attributes = {
+    .name = "filterDataTask",
+    .stack_size = 4096 * 4,
+    .priority = (osPriority_t)osPriorityLow,
+};
 
 // mutexes
 osMutexId_t sensorDataMutexHandle;
 const osMutexAttr_t sensorDataMutex_attributes = {
   .name = "sensorDataMutex"
 };
+
+// instance of the unscented kalman filter
+UKF ukf;
 
 // instance of the data packet from the preprocessor to be reused
 DataPacket_t data_packet = {0};
@@ -257,6 +266,39 @@ void collect_mmc5983ma_data_task(void *argument) {
     } else {
       // TODO: error handling
     }
+  }
+}
+
+void filter_data_task(void *argument) {
+  // time that FIRM should be running for (collecting sensor data) before starting the
+  // kalman filter
+  vTaskDelay(pdMS_TO_TICKS(KALMAN_FILTER_STARTUP_DELAY_TIME_MS));
+
+  ukf_init(&ukf, data_packet.pressure, &data_packet.accel_x, &data_packet.magnetic_field_x);
+  
+  // set the last time to calculate the delta timestamp, minus some initial offset so that the
+  // first iteration of the filter doesn't have an extremely small dt.
+  float last_time = (float)data_packet.timestamp_sec - 0.005F;
+
+  for (;;) {
+    
+    float dt = (float)data_packet.timestamp_sec - last_time;
+    ukf_predict(&ukf, dt);
+    float measurement[10] = {
+      data_packet.pressure,
+      data_packet.accel_x,
+      data_packet.accel_y,
+      data_packet.accel_z,
+      data_packet.angular_rate_x,
+      data_packet.angular_rate_y,
+      data_packet.angular_rate_z,
+      data_packet.magnetic_field_x,
+      data_packet.magnetic_field_y,
+      data_packet.magnetic_field_z,
+    };
+    ukf_update(&ukf, measurement);
+    memcpy(&data_packet.est_position_x, ukf.X, UKF_STATE_DIMENSION * 4);
+    last_time += dt;
   }
 }
 

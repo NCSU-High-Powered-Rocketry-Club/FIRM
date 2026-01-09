@@ -3,11 +3,12 @@
 #include <bmp581.h>
 #include <icm45686.h>
 #include <mmc5983ma.h>
-#include "data_processing/preprocessor.h"
+#include "data_preprocess.h"
 #include "logger.h"
 #include "usb_serializer.h"
 #include "led.h"
 #include "settings.h"
+#include "unscented_kalman_filter.h"
 
 #include "cmsis_os.h"
 #include "FreeRTOS.h"
@@ -21,6 +22,7 @@
 #define ICM45686_POLL_RATE_HZ 800
 #define MMC5983MA_POLL_RATE_HZ 200
 #define TRANSMIT_FREQUENCY_HZ 10
+#define KALMAN_FILTER_STARTUP_DELAY_TIME_MS 1000
 
 #define MAX_WAIT_TIME(hz) (TickType_t)(pdMS_TO_TICKS(1000 / (hz)) + 1)
 
@@ -40,6 +42,7 @@ extern osThreadId_t usb_transmit_task_handle;
 extern osThreadId_t uart_transmit_task_handle;
 extern osThreadId_t usb_read_task_handle;
 extern osThreadId_t command_handler_task_handle;
+extern osThreadId_t filter_data_task_handle;
 
 extern StreamBufferHandle_t usb_rx_stream;
 extern QueueHandle_t command_queue;
@@ -52,6 +55,7 @@ extern const osThreadAttr_t usbTask_attributes;
 extern const osThreadAttr_t uartTask_attributes;
 extern const osThreadAttr_t usbReadTask_attributes;
 extern const osThreadAttr_t commandHandlerTask_attributes;
+extern const osThreadAttr_t filterDataTask_attributes;
 
 extern osMutexId_t sensorDataMutexHandle;
 extern const osMutexAttr_t sensorDataMutex_attributes;
@@ -116,6 +120,7 @@ void usb_receive_callback(uint8_t *buffer, uint32_t data_length);
 void collect_bmp581_data_task(void *argument);
 void collect_icm45686_data_task(void *argument);
 void collect_mmc5983ma_data_task(void *argument);
+void filter_data_task(void *argument);
 void usb_transmit_data(void *argument);
 void uart_transmit_data(void *argument);
 void usb_read_data(void *argument);

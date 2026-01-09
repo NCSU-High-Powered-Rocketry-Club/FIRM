@@ -21,6 +21,8 @@ endif()
 # Set the project name
 set(CMAKE_PROJECT_NAME FIRM)
 
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+
 # Enable compile command to ease indexing with e.g. clangd
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
@@ -38,6 +40,24 @@ add_executable(${CMAKE_PROJECT_NAME}
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
 
+target_compile_options(${PROJECT_NAME} PRIVATE
+    -Wa,-adhlns=${PROJECT_NAME}.lst
+    -mcpu=cortex-m4
+    -mfpu=fpv4-sp-d16
+    -mfloat-abi=hard
+    -Ofast
+)
+
+target_link_options(${PROJECT_NAME} PRIVATE
+    -u _printf_float
+    -mcpu=cortex-m4
+    -mfpu=fpv4-sp-d16
+    -mfloat-abi=hard
+    -Ofast
+)
+
+
+
 # Link directories setup
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined library search paths
@@ -52,7 +72,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Libraries/SPIUtils/spi_utils.c
     Core/Src/logger.c
     Core/Src/usb_print_debug.c
-    Core/Src/data_processing/preprocessor.c
+    Core/Src/data_processing/data_preprocess.c
     Core/Src/settings.c
     Core/Src/settings_globals.c
     Core/Src/utils.c
@@ -60,11 +80,17 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/commands.c
     Core/Src/firm_tasks.c
     Core/Src/led.c
+    Core/Src/data_processing/matrixhelper.c
+    Core/Src/data_processing/unscented_kalman_filter.c
+    Core/Src/data_processing/ukf_functions.c
+    Core/Src/data_processing/state_machine.c
+    Core/Src/data_processing/kalman_filter_config.c
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
    Core/Inc
+   Drivers/CMSIS-DSP/Include
    Core/Inc/data_processing
    Libraries/ICM45686
    Libraries/BMP581
@@ -75,7 +101,10 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Add project symbols (macros)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined symbols
+    USE_HAL_DRIVER
+    ARM_MATH_LOOPUNROLL
+    STM32F405xx
+    ARM_MATH_CM4
 )
 
 # Remove wrong libob.a library dependency when using cpp files
@@ -84,6 +113,19 @@ list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
 # Add linked libraries
 target_link_libraries(${CMAKE_PROJECT_NAME}
     stm32cubemx
+    m
 
     # Add user defined libraries
+)
+
+set(CMSISDSP Drivers/CMSIS-DSP)
+set(CMSISCORE "${CMAKE_CURRENT_SOURCE_DIR}/Drivers/CMSIS")
+add_subdirectory(${CMSISDSP}/Source bin_dsp)
+target_link_libraries(${CMAKE_PROJECT_NAME} CMSISDSP)
+
+target_compile_options(CMSISDSP PRIVATE
+    -mcpu=cortex-m4
+    -mfpu=fpv4-sp-d16
+    -mfloat-abi=hard
+    -Ofast
 )
