@@ -9,6 +9,7 @@
  * @brief Data packet with timestamp
  */
 typedef struct {
+    double timestamp_sec;
     float temperature;
     float pressure;
     float accel_x;
@@ -20,7 +21,22 @@ typedef struct {
     float magnetic_field_x;
     float magnetic_field_y;
     float magnetic_field_z;
-    double timestamp_sec;
+    float est_position_x;
+    float est_position_y;
+    float est_position_z;
+    float est_velocity_x;
+    float est_velocity_y;
+    float est_velocity_z;
+    float est_accel_x;
+    float est_accel_y;
+    float est_accel_z;
+    float est_angular_rate_x;
+    float est_angular_rate_y;
+    float est_angular_rate_z;
+    float est_quaternion_w;
+    float est_quaternion_x;
+    float est_quaternion_y;
+    float est_quaternion_z;
 } DataPacket_t;
 
 
