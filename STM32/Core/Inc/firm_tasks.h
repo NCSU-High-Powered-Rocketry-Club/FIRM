@@ -35,7 +35,7 @@
 #define USB_RESPONSE_QUEUE_LENGTH 5
 
 #define COMMAND_PAYLOAD_MAX_LEN_BYTES 56
-#define COMMAND_RESPONSE_PACKET_SIZE_BYTES 66
+#define COMMAND_RESPONSE_PACKET_SIZE_BYTES 130
 
 extern osThreadId_t system_manager_task_handle;
 extern osThreadId_t bmp581_task_handle;
