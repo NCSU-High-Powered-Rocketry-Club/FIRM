@@ -21,6 +21,7 @@
 #include "cmsis_os.h"
 #include "fatfs.h"
 #include "main.h"
+#include "stm32f4xx_hal_gpio.h"
 #include "usb_device.h"
 
 
@@ -216,7 +217,7 @@ int main(void) {
   filter_data_task_handle = osThreadNew(filter_data_task, NULL, &filterDataTask_attributes);
   if (mmc5983ma_task_handle == NULL || icm45686_task_handle == NULL || bmp581_task_handle == NULL ||
       usb_transmit_task_handle == NULL || uart_transmit_task_handle == NULL || usb_read_task_handle == NULL ||
-      command_handler_task_handle == NULL || filter_data_task_handle == NULL) {
+      command_handler_task_handle == NULL) {
     Error_Handler();
   }
   /* USER CODE END RTOS_THREADS */
@@ -609,7 +610,7 @@ static void MX_GPIO_Init(void) {
 }
 
 /* USER CODE BEGIN 4 */
-void blink() { HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0); }
+void blink() { HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET); }
 
 /**
  * @brief ISR for interrupt pins

@@ -52,7 +52,7 @@ const osThreadAttr_t commandHandlerTask_attributes = {
 };
 const osThreadAttr_t filterDataTask_attributes = {
     .name = "filterDataTask",
-    .stack_size = 4096 * 4,
+    .stack_size = 8192 * 4,
     .priority = (osPriority_t)osPriorityLow,
 };
 

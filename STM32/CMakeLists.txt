@@ -74,7 +74,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/usb_print_debug.c
     Core/Src/data_processing/data_preprocess.c
     Core/Src/settings.c
-    Core/Src/settings_globals.c
     Core/Src/utils.c
     Core/Src/usb_serializer.c
     Core/Src/commands.c
