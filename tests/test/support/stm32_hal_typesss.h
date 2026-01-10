@@ -1,4 +1,0 @@
-#pragma once
-typedef struct SPI_HandleTypeDef SPI_HandleTypeDef;
-typedef struct I2C_HandleTypeDef I2C_HandleTypeDef;
-typedef struct GPIO_TypeDef GPIO_TypeDef;

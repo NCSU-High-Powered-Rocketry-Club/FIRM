@@ -5,7 +5,11 @@
  *      Author: Wlsan
  */
 #pragma once
+
+#ifndef TEST
 #include "usbd_cdc_if.h"
+#endif
+
 #include <string.h>
 
 void serialPrintStr(const char* s);

@@ -4,6 +4,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#define COMMAND_READ_CHUNK_SIZE_BYTES 64
+
+// TODO clean these up
 #define CMD_START_MARKER_1 0x55
 #define CMD_START_MARKER_2 0xAA
 #define CMD_PACKET_SIZE 64

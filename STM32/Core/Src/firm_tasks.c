@@ -1,4 +1,7 @@
 #include "firm_tasks.h"
+#include "bmp581_packet.h"
+#include "icm45686_packet.h"
+#include "mmc5983ma_packet.h"
 #include "usb_print_debug.h"
 #include <string.h>
 
@@ -377,17 +380,17 @@ void uart_transmit_data(void *argument) {
 }
 
 void usb_read_data(void *argument) {
-  uint8_t rx_chunk[COMMAND_RX_READ_CHUNK_SIZE_BYTES];
+  uint8_t received_bytes[COMMAND_READ_CHUNK_SIZE_BYTES];
   CommandsStreamParser_t command_parser = { .len = 0 };
 
   for (;;) {
-    size_t bytes_received = xStreamBufferReceive(usb_rx_stream, rx_chunk, sizeof(rx_chunk), portMAX_DELAY);
-    if (bytes_received == 0) {
+    size_t number_of_bytes_received = xStreamBufferReceive(usb_rx_stream, received_bytes, sizeof(received_bytes), portMAX_DELAY);
+    if (number_of_bytes_received == 0) {
       continue;
     }
 
     // Adds the new bytes to the command parser and adds any parsed commands to the command queue
-    commands_update_parser(&command_parser, rx_chunk, bytes_received, usb_on_parsed_command);
+    commands_update_parser(&command_parser, received_bytes, number_of_bytes_received, usb_on_parsed_command);
   }
 }
 
