@@ -4,9 +4,9 @@
 #include <stddef.h>
 
 /**
- * Serialized data packet struct for sending sensor and KF data over USB.
+ * Serialized data packet struct for sending sensor and KF data over USB. It is a 136 bytes.
  */
-typedef struct __attribute__((packed)) {
+typedef struct {
     uint16_t header;
     uint16_t length;
     DataPacket_t payload;
@@ -15,10 +15,10 @@ typedef struct __attribute__((packed)) {
 
 /**
  * Serialized command response packet struct for sending command responses over USB. To make
- * parsing easier, this is a fixed 66-byte frame:
- * [0xA5 0x5A][LEN(2)=56][PADDING(4)][PAYLOAD(56)][CRC(2)]
+ * parsing easier, its the same size as SerializedDataPacket_t:
+ * [0xA5 0x5A][LEN(2)][PADDING(4)][PAYLOAD(120)][CRC(2)]
  */
-typedef struct __attribute__((packed)) {
+typedef struct {
     uint16_t header;
     uint16_t length;
     uint8_t padding[4]; // SerializedDataPacket_t has 4 bytes of padding here, so to make parsing easier we add it here too
@@ -53,7 +53,7 @@ void usb_transmit_serialized_packet(const SerializedDataPacket_t *serialized_pac
 /**
  * @brief Serializes a command response payload into a full response packet matching the
  * Rust-side SerialParser format:
- * [0xA5 0x5A][LEN(2)=56][PADDING(4)][PAYLOAD(56)][CRC(2)]
+ * [0xA5 0x5A][LEN(2)][PADDING(4)][PAYLOAD(120)][CRC(2)]
  * 
  * @param payload Pointer to the payload data.
  * @param payload_len Length of the payload data.

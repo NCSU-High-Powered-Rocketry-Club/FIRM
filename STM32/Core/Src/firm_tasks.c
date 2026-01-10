@@ -271,30 +271,30 @@ void filter_data_task(void *argument) {
   // kalman filter
   vTaskDelay(pdMS_TO_TICKS(KALMAN_FILTER_STARTUP_DELAY_TIME_MS));
 
-  ukf_init(&ukf, data_packet.pressure, &data_packet.accel_x, &data_packet.magnetic_field_x);
+  ukf_init(&ukf, data_packet.pressure_pascals, &data_packet.raw_acceleration_x_gs, &data_packet.magnetic_field_x_microteslas);
   
   // set the last time to calculate the delta timestamp, minus some initial offset so that the
   // first iteration of the filter doesn't have an extremely small dt.
-  float last_time = (float)data_packet.timestamp_sec - 0.005F;
+  float last_time = (float)data_packet.timestamp_seconds - 0.005F;
 
   for (;;) {
     
-    float dt = (float)data_packet.timestamp_sec - last_time;
+    float dt = (float)data_packet.timestamp_seconds - last_time;
     ukf_predict(&ukf, dt);
     float measurement[10] = {
-      data_packet.pressure,
-      data_packet.accel_x,
-      data_packet.accel_y,
-      data_packet.accel_z,
-      data_packet.angular_rate_x,
-      data_packet.angular_rate_y,
-      data_packet.angular_rate_z,
-      data_packet.magnetic_field_x,
-      data_packet.magnetic_field_y,
-      data_packet.magnetic_field_z,
+      data_packet.pressure_pascals,
+      data_packet.raw_acceleration_x_gs,
+      data_packet.raw_acceleration_y_gs,
+      data_packet.raw_acceleration_z_gs,
+      data_packet.raw_angular_rate_x_deg_per_s,
+      data_packet.raw_angular_rate_y_deg_per_s,
+      data_packet.raw_angular_rate_z_deg_per_s,
+      data_packet.magnetic_field_x_microteslas,
+      data_packet.magnetic_field_y_microteslas,
+      data_packet.magnetic_field_z_microteslas,
     };
     ukf_update(&ukf, measurement);
-    memcpy(&data_packet.est_position_x, ukf.X, UKF_STATE_DIMENSION * 4);
+    memcpy(&data_packet.est_position_x_meters, ukf.X, UKF_STATE_DIMENSION * 4);
     last_time += dt;
   }
 }
