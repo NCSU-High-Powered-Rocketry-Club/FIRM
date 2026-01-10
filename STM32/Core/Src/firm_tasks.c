@@ -6,6 +6,7 @@
 #include <string.h>
 
 // task handles
+osThreadId_t system_manager_task_handle;
 osThreadId_t bmp581_task_handle;
 osThreadId_t icm45686_task_handle;
 osThreadId_t mmc5983ma_task_handle;
@@ -16,10 +17,22 @@ osThreadId_t command_handler_task_handle;
 osThreadId_t filter_data_task_handle;
 
 StreamBufferHandle_t usb_rx_stream;
-QueueHandle_t command_queue;
-QueueHandle_t response_queue;
+QueueHandle_t usb_command_queue;
+QueueHandle_t usb_response_queue;
+QueueHandle_t system_request_queue;
+QueueHandle_t bmp581_command_queue;
+QueueHandle_t icm45686_command_queue;
+QueueHandle_t mmc5983ma_command_queue;
+QueueHandle_t data_filter_command_queue;
+QueueHandle_t usb_transmit_command_queue;
+QueueHandle_t uart_transmit_command_queue;
 
 // task attributes
+const osThreadAttr_t systemManagerTask_attributes = {
+    .name = "systemManagerTask",
+    .stack_size = 256 * 4,
+    .priority = (osPriority_t)osPriorityNormal,
+};
 const osThreadAttr_t bmp581Task_attributes = {
     .name = "bmp581Task",
     .stack_size = 256 * 4,
@@ -93,7 +106,7 @@ static void usb_on_parsed_command(const Command_t* command) {
     command_cancel_token++;
   }
 
-  xQueueSend(command_queue, command, 0);
+  xQueueSend(usb_command_queue, command, 0);
 }
 
 void usb_receive_callback(uint8_t *buffer, uint32_t data_length) {
@@ -200,12 +213,61 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
 
 void firm_rtos_init(void) {
   // Initialize FreeRTOS objects
+  // queue for system commands
+  system_request_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(SystemRequest));
   // 512 bytes buffer, trigger level 1 (wake up on every byte if needed, or optimize later)
   usb_rx_stream = xStreamBufferCreate(USB_RX_STREAM_BUFFER_SIZE_BYTES, USB_RX_STREAM_TRIGGER_LEVEL_BYTES);
   // Queue for parsed commands
-  command_queue = xQueueCreate(COMMAND_QUEUE_LENGTH, sizeof(Command_t));
+  usb_command_queue = xQueueCreate(USB_COMMAND_QUEUE_LENGTH, sizeof(Command_t));
   // Queue for response packets (66 bytes each): [A5 5A][len][pad][payload][crc]
-  response_queue = xQueueCreate(RESPONSE_QUEUE_LENGTH, COMMAND_RESPONSE_PACKET_SIZE_BYTES);
+  usb_response_queue = xQueueCreate(USB_RESPONSE_QUEUE_LENGTH, COMMAND_RESPONSE_PACKET_SIZE_BYTES);
+}
+
+void system_manager_task(void *argument) {
+  SystemRequest sysreq;
+  TaskCommand task_command_queue[MAX_TASK_COMMANDS];
+
+  for (;;) {
+    // wait to recieve a system request
+    if (xQueueReceive(system_request_queue, &sysreq, portMAX_DELAY) == pdTRUE) {
+      // pass system request to FSM, confirm that it's valid
+      if (!fsm_process_request(sysreq, task_command_queue)) {
+        // send command to the appropriate task
+        for (int i = 0; i < MAX_TASK_COMMANDS; i++) {
+          TaskCommand cmd = task_command_queue[i];
+          if (cmd.target_task == TASK_NULL) {
+            break;
+          }
+
+          switch (cmd.target_task) {
+            case TASK_BMP581:
+              xQueueSend(bmp581_command_queue, &cmd.command, 0);
+              break;
+            case TASK_ICM45686:
+              xQueueSend(icm45686_command_queue, &cmd.command, 0);
+              break;
+            case TASK_MMC5983MA:
+              xQueueSend(mmc5983ma_command_queue, &cmd.command, 0);
+              break;
+            case TASK_DATA_FILTER:
+              xQueueSend(data_filter_command_queue, &cmd.command, 0);
+              break;
+            case TASK_USB_TRANSMIT:
+              xQueueSend(usb_transmit_command_queue, &cmd.command, 0);
+              break;
+            case TASK_UART_TRANSMIT: 
+              xQueueSend(uart_transmit_command_queue, &cmd.command, 0);
+              break;
+            case TASK_NULL: {
+              break;
+            }
+            default:
+              break;
+          }
+        }
+      }
+    }
+  }
 }
 
 void collect_bmp581_data_task(void *argument) {
@@ -318,7 +380,7 @@ void command_handler_task(void *argument) {
   };
 
   for (;;) {
-    if (xQueueReceive(command_queue, &command, portMAX_DELAY) == pdTRUE) {
+    if (xQueueReceive(usb_command_queue, &command, portMAX_DELAY) == pdTRUE) {
       // One command at a time: run the command to completion before taking the next.
       cancel_context.snapshot = command_cancel_token;
 
@@ -329,7 +391,7 @@ void command_handler_task(void *argument) {
       serialize_command_packet(payload_buffer, payload_length, response_packet);
       
       // Send to response queue
-      xQueueSend(response_queue, response_packet, 0);
+      xQueueSend(usb_response_queue, response_packet, 0);
     }
   }
 }
@@ -342,7 +404,7 @@ void usb_transmit_data(void *argument) {
   
   for (;;) {
     // Check for response packets first
-    if (xQueueReceive(response_queue, response_packet, 0) == pdTRUE) {
+    if (xQueueReceive(usb_response_queue, response_packet, 0) == pdTRUE) {
       // Try to transmit until successful
       while (CDC_Transmit_FS(response_packet, COMMAND_RESPONSE_PACKET_SIZE_BYTES) == USBD_BUSY) {
         vTaskDelay(1); // Wait 1 tick before retrying

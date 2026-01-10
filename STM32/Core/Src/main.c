@@ -206,6 +206,7 @@ int main(void) {
   blinkTaskHandle = osThreadNew(BlinkTask, NULL, &blinkTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
+  system_manager_task_handle = osThreadNew(system_manager_task, NULL, &systemManagerTask_attributes);
   bmp581_task_handle = osThreadNew(collect_bmp581_data_task, NULL, &bmp581Task_attributes);
   icm45686_task_handle = osThreadNew(collect_icm45686_data_task, NULL, &icm45686Task_attributes);
   mmc5983ma_task_handle = osThreadNew(collect_mmc5983ma_data_task, NULL, &mmc5983maTask_attributes);
