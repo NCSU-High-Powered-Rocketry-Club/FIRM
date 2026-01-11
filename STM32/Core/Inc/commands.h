@@ -78,7 +78,7 @@ typedef struct {
  * Byte stream parser for incoming command data.
  */
 typedef struct {
-    uint8_t buf[128];
+    uint8_t buf[CMD_PACKET_SIZE];
     size_t len;
 } CommandsStreamParser_t;
 

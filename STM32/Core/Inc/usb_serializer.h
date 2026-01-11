@@ -16,14 +16,15 @@ typedef struct {
 /**
  * Serialized command response packet struct for sending command responses over USB. To make
  * parsing easier, its the same size as SerializedDataPacket_t:
- * [0xA5 0x5A][LEN(2)][PADDING(4)][PAYLOAD(120)][CRC(2)]
+ * [0xA5 0x5A][LEN(2)][PADDING(4)][PAYLOAD(120)][CRC(2)][PADDING(6)]
  */
 typedef struct {
     uint16_t header;
     uint16_t length;
-    uint8_t padding[4]; // SerializedDataPacket_t has 4 bytes of padding here, so to make parsing easier we add it here too
+    uint8_t first_padding[4]; // SerializedDataPacket_t has 4 bytes of padding here, so to make parsing easier we add it here too
     uint8_t payload[sizeof(DataPacket_t)]; // max payload size is size of data packet
     uint16_t crc;
+    uint8_t second_padding[6]; // Padding to make total size 136 bytes
 } SerializedResponsePacket_t;
 
 /**
@@ -53,7 +54,7 @@ void usb_transmit_serialized_packet(const SerializedDataPacket_t *serialized_pac
 /**
  * @brief Serializes a command response payload into a full response packet matching the
  * Rust-side SerialParser format:
- * [0xA5 0x5A][LEN(2)][PADDING(4)][PAYLOAD(120)][CRC(2)]
+ * [0xA5 0x5A][LEN(2)][PADDING(4)][PAYLOAD(120)][CRC(2)][PADDING(6)]
  * 
  * @param payload Pointer to the payload data.
  * @param payload_len Length of the payload data.

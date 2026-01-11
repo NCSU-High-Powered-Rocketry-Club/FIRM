@@ -34,7 +34,9 @@
 #define RESPONSE_QUEUE_LENGTH 5
 
 #define COMMAND_PAYLOAD_MAX_LEN_BYTES 56
-#define COMMAND_RESPONSE_PACKET_SIZE_BYTES 130
+// Serialized command responses are framed as a fixed-size binary packet.
+// Keep this in sync with SerializedResponsePacket_t to avoid buffer overruns.
+#define COMMAND_RESPONSE_PACKET_SIZE_BYTES ((size_t)sizeof(SerializedResponsePacket_t))
 
 extern osThreadId_t bmp581_task_handle;
 extern osThreadId_t mmc5983ma_task_handle;

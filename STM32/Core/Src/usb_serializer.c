@@ -35,9 +35,9 @@ void usb_transmit_serialized_packet(const SerializedDataPacket_t *serialized_pac
 void serialize_command_packet(const uint8_t* payload, uint8_t payload_len, uint8_t* serialized_packet) {
     if (!payload || !serialized_packet) return;
 
-    // This function emits a 66-byte response frame:
-    // [0xA5 0x5A][LEN(2)=56][PADDING(4)][PAYLOAD(56)][CRC(2)]
-    // CRC is CRC-16-CCITT (KERMIT) over the first 64 bytes.
+    // This function emits a fixed-size (136-byte) response frame:
+    // [0xA5 0x5A][LEN(2)][PADDING(4)][PAYLOAD(120)][CRC(2)][PADDING(6)]
+    // CRC is CRC-16-CCITT (KERMIT) over the entire frame excluding the CRC field.
     SerializedResponsePacket_t* response_packet = (SerializedResponsePacket_t*)serialized_packet;
     
     // Clear out the response packet
@@ -45,7 +45,10 @@ void serialize_command_packet(const uint8_t* payload, uint8_t payload_len, uint8
 
     // Fill in header and fixed length
     response_packet->header = 0x5AA5; // little-endian -> A5 5A
-    response_packet->length = 56;
+    if (payload_len > sizeof(response_packet->payload)) {
+        payload_len = (uint8_t)sizeof(response_packet->payload);
+    }
+    response_packet->length = sizeof(DataPacket_t);
 
     // padding is already zeroed by memset, this copies the payload to the packet
     memcpy(response_packet->payload, payload, payload_len);
