@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdbool.h>
 
 // LED status definitions
 // 3-bit status codes for the 3 LEDs Blue, Yellow, and Red - in order.
@@ -22,9 +23,23 @@ typedef enum {
     FAILED_INTERRUPT_MAG  = 0b001,
 } LED_Interrupt_Status;
 
+typedef enum {
+    FIRM_MODE_DEFAULT = 0b000,
+    FIRM_MODE_BOOT = 0b001,
+    FIRM_MODE_LIVE = 0b010,
+    FIRM_MODE_MOCK = 0b001,
+} LED_Mode_Indicator_Status;
+
 /**
  * @brief Sets all 3 LEDs based on the given status byte.
  *
  * @param status 3-bit status code representing the state of the LEDs to show.
  */
 void led_set_status(uint8_t status);
+
+/**
+ * @brief Toggles all 3 LEDs based on the given status byte.
+ *
+ * @param status 3-bit status code representing the state of the LEDs to toggle.
+ */
+void led_toggle_status(uint8_t status);

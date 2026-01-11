@@ -4,11 +4,13 @@
 
 typedef enum {
   FIRM_BOOT,
+  FIRM_SETUP,
   FIRM_LIVE,
   FIRM_MOCK,
 } FIRMState;
 
 typedef enum {
+  SYSREQ_SETUP,
   SYSREQ_START_LIVE,
   SYSREQ_START_MOCK,
   SYSREQ_CANCEL,
@@ -16,8 +18,9 @@ typedef enum {
 
 typedef enum {
   TASKCMD_RESET,
-  TASKCMD_USE_MOCK,
-  TASKCMD_USE_REAL,
+  TASKCMD_MOCK,
+  TASKCMD_LIVE,
+  TASKCMD_SETUP,
 } TaskCommandOption;
 
 typedef enum {
@@ -27,6 +30,7 @@ typedef enum {
   TASK_DATA_FILTER,
   TASK_USB_TRANSMIT,
   TASK_UART_TRANSMIT,
+  TASK_MODE_INDICATOR,
   TASK_NULL,
 } FIRMTask;
 

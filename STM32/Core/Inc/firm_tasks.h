@@ -38,6 +38,7 @@
 #define COMMAND_RESPONSE_PACKET_SIZE_BYTES 130
 
 extern osThreadId_t system_manager_task_handle;
+extern osThreadId_t firm_mode_indicator_task_handle;
 extern osThreadId_t bmp581_task_handle;
 extern osThreadId_t mmc5983ma_task_handle;
 extern osThreadId_t icm45686_task_handle;
@@ -50,8 +51,10 @@ extern osThreadId_t filter_data_task_handle;
 extern StreamBufferHandle_t usb_rx_stream;
 extern QueueHandle_t usb_command_queue;
 extern QueueHandle_t usb_response_queue;
+extern QueueHandle_t system_request_queue;
 
 extern const osThreadAttr_t systemManagerTask_attributes;
+extern const osThreadAttr_t modeIndicatorTask_attributes;
 extern const osThreadAttr_t bmp581Task_attributes;
 extern const osThreadAttr_t mmc5983maTask_attributes;
 extern const osThreadAttr_t icm45686Task_attributes;
@@ -122,6 +125,7 @@ void firm_rtos_init(void);
 void usb_receive_callback(uint8_t *buffer, uint32_t data_length);
 
 void system_manager_task(void *argument);
+void firm_mode_indicator_task(void *argument);
 void collect_bmp581_data_task(void *argument);
 void collect_icm45686_data_task(void *argument);
 void collect_mmc5983ma_data_task(void *argument);

@@ -1,12 +1,17 @@
 #include "firm_tasks.h"
 #include "bmp581_packet.h"
+#include "firm_fsm.h"
 #include "icm45686_packet.h"
+#include "led.h"
 #include "mmc5983ma_packet.h"
+#include "portmacro.h"
+#include "stm32f4xx_hal_gpio.h"
 #include "usb_print_debug.h"
 #include <string.h>
 
 // task handles
 osThreadId_t system_manager_task_handle;
+osThreadId_t firm_mode_indicator_task_handle;
 osThreadId_t bmp581_task_handle;
 osThreadId_t icm45686_task_handle;
 osThreadId_t mmc5983ma_task_handle;
@@ -20,6 +25,7 @@ StreamBufferHandle_t usb_rx_stream;
 QueueHandle_t usb_command_queue;
 QueueHandle_t usb_response_queue;
 QueueHandle_t system_request_queue;
+QueueHandle_t mode_indicator_command_queue;
 QueueHandle_t bmp581_command_queue;
 QueueHandle_t icm45686_command_queue;
 QueueHandle_t mmc5983ma_command_queue;
@@ -32,6 +38,11 @@ const osThreadAttr_t systemManagerTask_attributes = {
     .name = "systemManagerTask",
     .stack_size = 256 * 4,
     .priority = (osPriority_t)osPriorityNormal,
+};
+const osThreadAttr_t modeIndicatorTask_attributes = {
+    .name = "modeIndicatorTask",
+    .stack_size = 256 * 4,
+    .priority = (osPriority_t)osPriorityAboveNormal
 };
 const osThreadAttr_t bmp581Task_attributes = {
     .name = "bmp581Task",
@@ -50,22 +61,22 @@ const osThreadAttr_t mmc5983maTask_attributes = {
 };
 const osThreadAttr_t usbTask_attributes = {
     .name = "usbTask",
-    .stack_size = 512 * 4,
-    .priority = (osPriority_t)osPriorityBelowNormal,
+    .stack_size = 256 * 4,
+    .priority = (osPriority_t)osPriorityBelowNormal1,
 };
 const osThreadAttr_t uartTask_attributes = {
     .name = "uartTask",
-    .stack_size = 512 * 4,
-    .priority = (osPriority_t)osPriorityBelowNormal,
+    .stack_size = 256 * 4,
+    .priority = (osPriority_t)osPriorityBelowNormal1,
 };
 const osThreadAttr_t commandHandlerTask_attributes = {
     .name = "commandHandlerTask",
-    .stack_size = 512 * 4,
+    .stack_size = 256 * 4,
     .priority = (osPriority_t)osPriorityNormal,
 };
 const osThreadAttr_t filterDataTask_attributes = {
     .name = "filterDataTask",
-    .stack_size = 8192 * 4,
+    .stack_size = 256 * 4,
     .priority = (osPriority_t)osPriorityLow,
 };
 
@@ -221,12 +232,20 @@ void firm_rtos_init(void) {
   usb_command_queue = xQueueCreate(USB_COMMAND_QUEUE_LENGTH, sizeof(Command_t));
   // Queue for response packets (66 bytes each): [A5 5A][len][pad][payload][crc]
   usb_response_queue = xQueueCreate(USB_RESPONSE_QUEUE_LENGTH, COMMAND_RESPONSE_PACKET_SIZE_BYTES);
+
+  // queue for each task's commands
+  bmp581_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
+  icm45686_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
+  mmc5983ma_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
+  data_filter_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
+  usb_transmit_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
+  uart_transmit_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
+  mode_indicator_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
 }
 
 void system_manager_task(void *argument) {
   SystemRequest sysreq;
   TaskCommand task_command_queue[MAX_TASK_COMMANDS];
-
   for (;;) {
     // wait to recieve a system request
     if (xQueueReceive(system_request_queue, &sysreq, portMAX_DELAY) == pdTRUE) {
@@ -258,6 +277,8 @@ void system_manager_task(void *argument) {
             case TASK_UART_TRANSMIT: 
               xQueueSend(uart_transmit_command_queue, &cmd.command, 0);
               break;
+            case TASK_MODE_INDICATOR:
+              xQueueSend(mode_indicator_command_queue, &cmd.command, 0);
             case TASK_NULL: {
               break;
             }
@@ -267,6 +288,34 @@ void system_manager_task(void *argument) {
         }
       }
     }
+  }
+}
+
+void firm_mode_indicator_task(void *argument) {
+  TaskCommandOption cmd_status;
+  LED_Mode_Indicator_Status led_setting = FIRM_MODE_DEFAULT;
+  led_set_status(led_setting);
+  for (;;) {
+    if (xQueueReceive(mode_indicator_command_queue, &cmd_status, pdMS_TO_TICKS(100)) == pdTRUE) {
+      switch (cmd_status) {
+        case TASKCMD_SETUP:
+          led_setting = FIRM_MODE_BOOT;
+          break;
+        case TASKCMD_LIVE:
+          led_setting = FIRM_MODE_LIVE;
+          break;
+        case TASKCMD_MOCK:
+          led_setting = FIRM_MODE_MOCK;
+          break;
+        case TASKCMD_RESET: {
+          led_setting = FIRM_MODE_DEFAULT;
+          break;
+        }
+        default:
+          led_setting = FIRM_MODE_DEFAULT;
+      }
+    }
+    led_toggle_status(led_setting);
   }
 }
 
@@ -343,24 +392,24 @@ void filter_data_task(void *argument) {
   float last_time = (float)data_packet.timestamp_sec - 0.005F;
 
   for (;;) {
-    
+    vTaskDelay(1000);
     float dt = (float)data_packet.timestamp_sec - last_time;
     ukf_predict(&ukf, dt);
-    float measurement[10] = {
-      data_packet.pressure,
-      data_packet.accel_x,
-      data_packet.accel_y,
-      data_packet.accel_z,
-      data_packet.angular_rate_x,
-      data_packet.angular_rate_y,
-      data_packet.angular_rate_z,
-      data_packet.magnetic_field_x,
-      data_packet.magnetic_field_y,
-      data_packet.magnetic_field_z,
-    };
-    ukf_update(&ukf, measurement);
-    memcpy(&data_packet.est_position_x, ukf.X, UKF_STATE_DIMENSION * 4);
-    last_time += dt;
+    // float measurement[10] = {
+    //   data_packet.pressure,
+    //   data_packet.accel_x,
+    //   data_packet.accel_y,
+    //   data_packet.accel_z,
+    //   data_packet.angular_rate_x,
+    //   data_packet.angular_rate_y,
+    //   data_packet.angular_rate_z,
+    //   data_packet.magnetic_field_x,
+    //   data_packet.magnetic_field_y,
+    //   data_packet.magnetic_field_z,
+    // };
+    // ukf_update(&ukf, measurement);
+    // memcpy(&data_packet.est_position_x, ukf.X, UKF_STATE_DIMENSION * 4);
+    // last_time += dt;
   }
 }
 
