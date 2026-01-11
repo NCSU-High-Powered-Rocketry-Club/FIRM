@@ -10,6 +10,7 @@
 #include "led.h"
 #include "settings.h"
 #include "unscented_kalman_filter.h"
+#include "ukf_functions.h"
 
 #include "cmsis_os.h"
 #include "FreeRTOS.h"
