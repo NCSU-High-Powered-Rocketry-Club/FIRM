@@ -2,6 +2,7 @@
 #include "bmp581_packet.h"
 #include "icm45686_packet.h"
 #include "mmc5983ma_packet.h"
+#include "ukf_functions.h"
 #include "usb_print_debug.h"
 #include <string.h>
 
@@ -52,7 +53,7 @@ const osThreadAttr_t commandHandlerTask_attributes = {
 };
 const osThreadAttr_t filterDataTask_attributes = {
     .name = "filterDataTask",
-    .stack_size = 8192 * 4,
+    .stack_size = 4096 * 4,
     .priority = (osPriority_t)osPriorityLow,
 };
 
@@ -62,8 +63,7 @@ const osMutexAttr_t sensorDataMutex_attributes = {
   .name = "sensorDataMutex"
 };
 
-// instance of the unscented kalman filter
-UKF ukf;
+
 
 // instance of the data packet from the preprocessor to be reused
 DataPacket_t data_packet = {0};
@@ -272,6 +272,9 @@ void collect_mmc5983ma_data_task(void *argument) {
 void filter_data_task(void *argument) {
   // time that FIRM should be running for (collecting sensor data) before starting the
   // kalman filter
+  UKF ukf;
+  ukf.state_transition_function = ukf_state_transition_function;
+  ukf.measurement_function = ukf_measurement_function;
   vTaskDelay(pdMS_TO_TICKS(KALMAN_FILTER_STARTUP_DELAY_TIME_MS));
 
   ukf_init(&ukf, data_packet.pressure_pascals, &data_packet.raw_acceleration_x_gs, &data_packet.magnetic_field_x_microteslas);

@@ -2,7 +2,6 @@
 #include "kalman_filter_config.h"
 #include "matrixhelper.h"
 #include "state_machine.h"
-#include "firm_tasks.h"
 
 #define SQRT2_F 1.414213562373095F
 #define PI_F 3.141592653589793F
