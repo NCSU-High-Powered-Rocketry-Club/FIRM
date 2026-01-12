@@ -200,15 +200,13 @@ int main(void)
   bmp581_task_handle = osThreadNew(collect_bmp581_data_task, NULL, &bmp581Task_attributes);
   icm45686_task_handle = osThreadNew(collect_icm45686_data_task, NULL, &icm45686Task_attributes);
   mmc5983ma_task_handle = osThreadNew(collect_mmc5983ma_data_task, NULL, &mmc5983maTask_attributes);
-  usb_transmit_task_handle = osThreadNew(usb_transmit_data, NULL, &usbTask_attributes);
-  uart_transmit_task_handle = osThreadNew(uart_transmit_data, NULL, &uartTask_attributes);
-  usb_read_task_handle = osThreadNew(usb_read_data, NULL, &usbTask_attributes);
-  command_handler_task_handle = osThreadNew(command_handler_task, NULL, &commandHandlerTask_attributes);
+  packetizer_task_handle = osThreadNew(packetizer_task, NULL, &packetizerTask_attributes);
   filter_data_task_handle = osThreadNew(filter_data_task, NULL, &filterDataTask_attributes);
-  if (system_manager_task_handle == NULL || firm_mode_indicator_task_handle == NULL || mmc5983ma_task_handle == NULL || icm45686_task_handle == NULL || bmp581_task_handle == NULL ||
-      usb_transmit_task_handle == NULL || uart_transmit_task_handle == NULL || usb_read_task_handle == NULL ||
-      command_handler_task_handle == NULL || filter_data_task_handle == NULL
-      ) {
+  transmit_task_handle = osThreadNew(transmit_data, NULL, &transmitTask_attributes);
+  usb_read_task_handle = osThreadNew(usb_read_data, NULL, &usbReadTask_attributes);
+  
+  if (system_manager_task_handle == NULL || firm_mode_indicator_task_handle == NULL || mmc5983ma_task_handle == NULL || icm45686_task_handle == NULL || bmp581_task_handle == NULL || filter_data_task_handle == NULL ||
+      packetizer_task_handle == NULL || transmit_task_handle == NULL || usb_read_task_handle == NULL) {
     Error_Handler();
   }
   /* USER CODE END RTOS_THREADS */
@@ -625,7 +623,7 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void blink() { HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0); }
+void blink() { HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET); }
 
 /**
  * @brief ISR for interrupt pins

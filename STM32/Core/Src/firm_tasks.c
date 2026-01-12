@@ -4,9 +4,8 @@
 #include "icm45686_packet.h"
 #include "led.h"
 #include "mmc5983ma_packet.h"
-#include "portmacro.h"
-#include "stm32f4xx_hal_gpio.h"
 #include "usb_print_debug.h"
+#include "usbd_cdc_if.h"
 #include <string.h>
 
 // task handles
@@ -15,23 +14,22 @@ osThreadId_t firm_mode_indicator_task_handle;
 osThreadId_t bmp581_task_handle;
 osThreadId_t icm45686_task_handle;
 osThreadId_t mmc5983ma_task_handle;
-osThreadId_t usb_transmit_task_handle;
-osThreadId_t uart_transmit_task_handle;
-osThreadId_t usb_read_task_handle;
-osThreadId_t command_handler_task_handle;
 osThreadId_t filter_data_task_handle;
+osThreadId_t packetizer_task_handle;
+osThreadId_t transmit_task_handle;
+osThreadId_t usb_read_task_handle;
+
 
 StreamBufferHandle_t usb_rx_stream;
-QueueHandle_t usb_command_queue;
-QueueHandle_t usb_response_queue;
+QueueHandle_t transmit_queue;
+
 QueueHandle_t system_request_queue;
 QueueHandle_t mode_indicator_command_queue;
 QueueHandle_t bmp581_command_queue;
 QueueHandle_t icm45686_command_queue;
 QueueHandle_t mmc5983ma_command_queue;
 QueueHandle_t data_filter_command_queue;
-QueueHandle_t usb_transmit_command_queue;
-QueueHandle_t uart_transmit_command_queue;
+
 
 // task attributes
 const osThreadAttr_t systemManagerTask_attributes = {
@@ -59,26 +57,27 @@ const osThreadAttr_t mmc5983maTask_attributes = {
     .stack_size = 256 * 4,
     .priority = (osPriority_t)osPriorityHigh,
 };
-const osThreadAttr_t usbTask_attributes = {
-    .name = "usbTask",
-    .stack_size = 256 * 4,
-    .priority = (osPriority_t)osPriorityBelowNormal1,
-};
-const osThreadAttr_t uartTask_attributes = {
-    .name = "uartTask",
-    .stack_size = 256 * 4,
-    .priority = (osPriority_t)osPriorityBelowNormal1,
-};
-const osThreadAttr_t commandHandlerTask_attributes = {
-    .name = "commandHandlerTask",
-    .stack_size = 256 * 4,
-    .priority = (osPriority_t)osPriorityNormal,
-};
 const osThreadAttr_t filterDataTask_attributes = {
     .name = "filterDataTask",
     .stack_size = 4096 * 4,
     .priority = (osPriority_t)osPriorityLow,
 };
+const osThreadAttr_t packetizerTask_attributes = {
+    .name = "packetizerTask",
+    .stack_size = 256 * 4,
+    .priority = (osPriority_t)osPriorityHigh,
+};
+const osThreadAttr_t transmitTask_attributes = {
+    .name = "transmitTask",
+    .stack_size = 256 * 4,
+    .priority = (osPriority_t)osPriorityBelowNormal1,
+};
+const osThreadAttr_t usbReadTask_attributes = {
+    .name = "usbReadTask",
+    .stack_size = 256 * 4,
+    .priority = (osPriority_t)osPriorityNormal,
+};
+
 
 // mutexes
 osMutexId_t sensorDataMutexHandle;
@@ -86,36 +85,12 @@ const osMutexAttr_t sensorDataMutex_attributes = {
   .name = "sensorDataMutex"
 };
 
-// instance of the data packet from the preprocessor to be reused
-DataPacket_t data_packet = {0};
-
-// instance of the serialized packet, will be reused
-SerializedDataPacket_t serialized_packet = {0};
+// instance of the serialized verison of the data packet that will be reused and overriden as data
+// is collected and processed
+Packet data_packet;
 
 static UART_HandleTypeDef* firm_huart1;
 static volatile bool uart_tx_done = true;
-
-// A cancellation token that increments each time a cancel command is received
-static volatile uint32_t command_cancel_token = 0;
-
-// This just checks whether the command has been cancelled by comparing the
-// snapshot of the token with the current cancellation token.
-static bool is_command_cancelled(const CommandCancelCtx_t* cancel_context) {
-  const CommandCancelCtx_t* c = cancel_context;
-  return (c != NULL) && (c->cancel_seq != NULL) && (*(c->cancel_seq) != c->snapshot);
-}
-
-static void usb_on_parsed_command(const Command_t* command) {
-  if (command == NULL) {
-    return;
-  }
-
-  if (command->id == CMD_CANCEL_ID) {
-    command_cancel_token++;
-  }
-
-  xQueueSend(usb_command_queue, command, 0);
-}
 
 void usb_receive_callback(uint8_t *buffer, uint32_t data_length) {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
@@ -185,7 +160,6 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
     led_set_status(FLASH_CHIP_FAIL);
     return 1;
   }
-  serializer_init_data_packet(&serialized_packet); // initializes the packet length and header bytes
   
 
   // // Wait for interrupts to fire
@@ -226,18 +200,13 @@ void firm_rtos_init(void) {
   system_request_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(SystemRequest));
   // 512 bytes buffer, trigger level 1 (wake up on every byte if needed, or optimize later)
   usb_rx_stream = xStreamBufferCreate(USB_RX_STREAM_BUFFER_SIZE_BYTES, USB_RX_STREAM_TRIGGER_LEVEL_BYTES);
-  // Queue for parsed commands
-  usb_command_queue = xQueueCreate(USB_COMMAND_QUEUE_LENGTH, sizeof(Command_t));
-  // Queue for response packets (66 bytes each): [A5 5A][len][pad][payload][crc]
-  usb_response_queue = xQueueCreate(USB_RESPONSE_QUEUE_LENGTH, COMMAND_RESPONSE_PACKET_SIZE_BYTES);
+  transmit_queue = xQueueCreate(TRANSMIT_QUEUE_LENGTH, sizeof(Packet));
 
   // queue for each task's commands
   bmp581_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
   icm45686_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
   mmc5983ma_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
   data_filter_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
-  usb_transmit_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
-  uart_transmit_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
   mode_indicator_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
 }
 
@@ -268,12 +237,6 @@ void system_manager_task(void *argument) {
               break;
             case TASK_DATA_FILTER:
               xQueueSend(data_filter_command_queue, &cmd.command, 0);
-              break;
-            case TASK_USB_TRANSMIT:
-              xQueueSend(usb_transmit_command_queue, &cmd.command, 0);
-              break;
-            case TASK_UART_TRANSMIT: 
-              xQueueSend(uart_transmit_command_queue, &cmd.command, 0);
               break;
             case TASK_MODE_INDICATOR:
               xQueueSend(mode_indicator_command_queue, &cmd.command, 0);
@@ -329,7 +292,7 @@ void collect_bmp581_data_task(void *argument) {
       BMP581Packet_t *bmp581_packet = logger_malloc_packet(sizeof(BMP581Packet_t));
       if (!bmp581_read_data(bmp581_packet)) {
         logger_write_entry('B', sizeof(BMP581Packet_t));
-        bmp581_convert_packet(bmp581_packet, &data_packet);
+        bmp581_convert_packet(bmp581_packet, (DataPacket *)&data_packet.data);
       }
       osMutexRelease(sensorDataMutexHandle);
     } else {
@@ -349,7 +312,7 @@ void collect_icm45686_data_task(void *argument) {
       ICM45686Packet_t *icm45686_packet = logger_malloc_packet(sizeof(ICM45686Packet_t));
       if (!icm45686_read_data(icm45686_packet)) {
         logger_write_entry('I', sizeof(ICM45686Packet_t));
-        icm45686_convert_packet(icm45686_packet, &data_packet);
+        icm45686_convert_packet(icm45686_packet, (DataPacket *)&data_packet.data);
       }
       osMutexRelease(sensorDataMutexHandle);
     } else {
@@ -369,7 +332,7 @@ void collect_mmc5983ma_data_task(void *argument) {
       MMC5983MAPacket_t *mmc5983ma_packet = logger_malloc_packet(sizeof(MMC5983MAPacket_t));
       if (!mmc5983ma_read_data(mmc5983ma_packet)) {
         logger_write_entry('M', sizeof(MMC5983MAPacket_t));
-        mmc5983ma_convert_packet(mmc5983ma_packet, &data_packet);
+        mmc5983ma_convert_packet(mmc5983ma_packet, (DataPacket *)&data_packet.data);
       }
       osMutexRelease(sensorDataMutexHandle);
     } else {
@@ -385,132 +348,103 @@ void filter_data_task(void *argument) {
   ukf.measurement_function = ukf_measurement_function;
   ukf.state_transition_function = ukf_state_transition_function;
   vTaskDelay(pdMS_TO_TICKS(KALMAN_FILTER_STARTUP_DELAY_TIME_MS));
+  DataPacket *packet = (DataPacket *)&data_packet.data;
   
   // filter can initialize, and FIRM can go into live mode
-  ukf_init(&ukf, data_packet.pressure, &data_packet.accel_x, &data_packet.magnetic_field_x);
+  ukf_init(&ukf, packet->pressure_pascals, &packet->est_acceleration_x_gs, &packet->magnetic_field_x_microteslas);
   xQueueSend(system_request_queue, &(SystemRequest){SYSREQ_FINISH_SETUP}, 0);
   
   // set the last time to calculate the delta timestamp, minus some initial offset so that the
   // first iteration of the filter doesn't have an extremely small dt.
-  float last_time = (float)data_packet.timestamp_sec - 0.005F;
+  float last_time = (float)packet->timestamp_seconds - 0.005F;
 
   for (;;) {
     vTaskDelay(1000);
-    float dt = (float)data_packet.timestamp_sec - last_time;
-    int ret = ukf_predict(&ukf, dt);
-    // if (ret == 1) {
-    //   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_SET);
-    // }
-    // if (ret == 2) {
-    //   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
-    // }
+    float dt = (float)packet->timestamp_seconds - last_time;
+    ukf_predict(&ukf, dt);
     float measurement[10] = {
-      data_packet.pressure,
-      data_packet.accel_x,
-      data_packet.accel_y,
-      data_packet.accel_z,
-      data_packet.angular_rate_x,
-      data_packet.angular_rate_y,
-      data_packet.angular_rate_z,
-      data_packet.magnetic_field_x,
-      data_packet.magnetic_field_y,
-      data_packet.magnetic_field_z,
+      packet->pressure_pascals,
+      packet->raw_acceleration_x_gs,
+      packet->raw_acceleration_y_gs,
+      packet->raw_acceleration_z_gs,
+      packet->raw_angular_rate_x_deg_per_s,
+      packet->raw_angular_rate_y_deg_per_s,
+      packet->raw_angular_rate_z_deg_per_s,
+      packet->magnetic_field_x_microteslas,
+      packet->magnetic_field_y_microteslas,
+      packet->magnetic_field_z_microteslas,
     };
     ukf_update(&ukf, measurement);
-    memcpy(&data_packet.est_position_x, ukf.X, UKF_STATE_DIMENSION * 4);
+    memcpy(&packet->est_position_x_meters, ukf.X, UKF_STATE_DIMENSION * 4);
     last_time += dt;
   }
 }
 
-void command_handler_task(void *argument) {
-  Command_t command;
-  uint8_t payload_buffer[COMMAND_PAYLOAD_MAX_LEN_BYTES];
-  uint8_t payload_length;
-  uint8_t response_packet[COMMAND_RESPONSE_PACKET_SIZE_BYTES];
+void packetizer_task(void *argument) {
+  // initialize the persistent data packet with the length and identifier fields
+  data_packet.identifier = 0xA55AA55A;
+  data_packet.packet_len = sizeof(DataPacket);
 
-  CommandCancelCtx_t cancel_context = {
-      .cancel_seq = &command_cancel_token,
-      .snapshot = 0,
-  };
-  CommandContext_t command_context = {
-      .is_cancelled = is_command_cancelled,
-      .cancel_context = &cancel_context,
-  };
-
+  // set the timer based on the set packet transmission frequency
+  const TickType_t transmit_freq = MAX_WAIT_TIME(TRANSMIT_FREQUENCY_HZ);
+  TickType_t last_wake_time = xTaskGetTickCount();
   for (;;) {
-    if (xQueueReceive(usb_command_queue, &command, portMAX_DELAY) == pdTRUE) {
-      // One command at a time: run the command to completion before taking the next.
-      cancel_context.snapshot = command_cancel_token;
-
-      // Dispatch: command meanings live in commands.c; this task handles queuing/serialization.
-      commands_handle_command(&command, &command_context, payload_buffer, &payload_length);
-      
-      // Serialize the response
-      serialize_command_packet(payload_buffer, payload_length, response_packet);
-      
-      // Send to response queue
-      xQueueSend(usb_response_queue, response_packet, 0);
-    }
+    // send to queue at the specified frequency
+    xQueueSend(transmit_queue, &data_packet, 0);
+    vTaskDelayUntil(&last_wake_time, transmit_freq);
   }
 }
 
-void usb_transmit_data(void *argument) {
-  
-  const TickType_t transmit_freq = MAX_WAIT_TIME(TRANSMIT_FREQUENCY_HZ);
-  TickType_t lastWakeTime = xTaskGetTickCount();
-  uint8_t response_packet[COMMAND_RESPONSE_PACKET_SIZE_BYTES];
-  
+void transmit_data(void *argument) {
+  Packet packet;
   for (;;) {
-    // Check for response packets first
-    if (xQueueReceive(usb_response_queue, response_packet, 0) == pdTRUE) {
-      // Try to transmit until successful
-      while (CDC_Transmit_FS(response_packet, COMMAND_RESPONSE_PACKET_SIZE_BYTES) == USBD_BUSY) {
-        vTaskDelay(1); // Wait 1 tick before retrying
-      }
-    }
-
-    // TODO: maybe consider having a queue for data packets too? Or not if it is too much slower.
-    if (firmSettings.usb_transfer_enabled) {
-      osMutexAcquire(sensorDataMutexHandle, osWaitForever);
-      serialize_data_packet(&data_packet, &serialized_packet);
-      osMutexRelease(sensorDataMutexHandle);
-      
-      usb_transmit_serialized_packet(&serialized_packet);
-    }
-    vTaskDelayUntil(&lastWakeTime, transmit_freq);
-  }
-}
-
-void uart_transmit_data(void *argument) {
-  const TickType_t transmit_freq = MAX_WAIT_TIME(TRANSMIT_FREQUENCY_HZ);
-  TickType_t lastWakeTime = xTaskGetTickCount();
-  
-  for (;;) {
-    if (firmSettings.uart_transfer_enabled) {
-      osMutexAcquire(sensorDataMutexHandle, osWaitForever);
-      serialize_data_packet(&data_packet, &serialized_packet);
-      osMutexRelease(sensorDataMutexHandle);
-      if (uart_tx_done) {
+    if (xQueueReceive(transmit_queue, &packet, portMAX_DELAY) == pdTRUE) {
+      // calculate and attach the crc16 to the end of the packet
+      packet.crc = crc16_ccitt((uint8_t *)&(packet.data), packet.packet_len);
+      uint16_t serialized_packet_len = packet.packet_len + sizeof(packet.identifier) + sizeof(packet.packet_len) + sizeof(packet.crc);
+      // move the location of the crc bytes directly after the payload
+      memmove(&packet + serialized_packet_len - 2, &packet.crc, sizeof(packet.crc));
+      CDC_Transmit_FS((uint8_t*)&packet, serialized_packet_len);
+      // optionally transmit over uart if the setting is enabled
+      if (firmSettings.uart_transfer_enabled && uart_tx_done) {
         uart_tx_done = false;
-        HAL_UART_Transmit_DMA(firm_huart1, (uint8_t*)&serialized_packet, (uint16_t)sizeof(SerializedDataPacket_t));
+        HAL_UART_Transmit_DMA(firm_huart1, (uint8_t*)&packet, serialized_packet_len);
       }
     }
-    vTaskDelayUntil(&lastWakeTime, transmit_freq);
   }
 }
 
 void usb_read_data(void *argument) {
   uint8_t received_bytes[COMMAND_READ_CHUNK_SIZE_BYTES];
+  uint8_t command_buffer[CMD_PACKET_SIZE];
   CommandsStreamParser_t command_parser = { .len = 0 };
 
   for (;;) {
+    // Receive incoming USB data
     size_t number_of_bytes_received = xStreamBufferReceive(usb_rx_stream, received_bytes, sizeof(received_bytes), portMAX_DELAY);
     if (number_of_bytes_received == 0) {
       continue;
     }
 
-    // Adds the new bytes to the command parser and adds any parsed commands to the command queue
-    commands_update_parser(&command_parser, received_bytes, number_of_bytes_received, usb_on_parsed_command);
+    // Feed bytes into parser
+    commands_update_parser(&command_parser, received_bytes, number_of_bytes_received);
+
+    // Process all complete commands in the parser
+    while (commands_extract_next_packet(&command_parser, command_buffer)) {
+      // Create response packet with ResponsePacket payload
+      Packet response_packet;
+      response_packet.identifier = 0xA55AA55A;
+      
+      // Process command and fill response payload
+      if (commands_process_and_respond(command_buffer, (ResponsePacket*)&response_packet.data)) {
+        // Calculate packet length based on response_id to determine actual payload size
+        // For now, use sizeof(ResponsePacket) as placeholder - adjust based on actual response type if needed
+        response_packet.packet_len = sizeof(ResponsePacket);
+        
+        // Queue for transmission (transmit_data will calculate CRC)
+        xQueueSend(transmit_queue, &response_packet, 0);
+      }
+    }
   }
 }
 

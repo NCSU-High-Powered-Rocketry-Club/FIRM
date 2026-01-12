@@ -17,9 +17,9 @@ static volatile uint32_t last_cyccnt = 0;
  */
 static double update_dwt_timestamp(void);
 
-void bmp581_convert_packet(BMP581Packet_t *packet, DataPacket_t *result_packet) {
+void bmp581_convert_packet(BMP581Packet_t *packet, DataPacket *result_packet) {
     // get the current timestamp of the packet in seconds using the DWT counter
-    result_packet->timestamp_sec = update_dwt_timestamp();
+    result_packet->timestamp_seconds = update_dwt_timestamp();
     int32_t temp_binary, pressure_binary;
 
     // extract pressure and temp bytes as a 32 bit int, preserving sign
@@ -35,13 +35,13 @@ void bmp581_convert_packet(BMP581Packet_t *packet, DataPacket_t *result_packet) 
     float temp_float = (float) temp_binary / 65536.0F;
     float pressure_float = (float) pressure_binary / 64.0F;
 
-    result_packet -> temperature = temp_float;
-    result_packet -> pressure = pressure_float;
+    result_packet -> temperature_celsius = temp_float;
+    result_packet -> pressure_pascals = pressure_float;
 }
 
-void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, DataPacket_t *result_packet) {
+void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, DataPacket *result_packet) {
     // get the current timestamp of the packet in seconds using the DWT counter
-    result_packet->timestamp_sec = update_dwt_timestamp();
+    result_packet->timestamp_seconds = update_dwt_timestamp();
     int32_t mag_binary_x, mag_binary_y, mag_binary_z;
 
     // extract magnetic field bytes as 32 bit integer, preserving sign
@@ -68,14 +68,14 @@ void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, DataPacket_t *result_pa
     mag_float_z -= calibrationSettings.mmc5983ma_mag.offset_ut[2];
 
     // apply 3x3 scaling matrix to each value
-    result_packet -> magnetic_field_x = mag_float_x * calibrationSettings.mmc5983ma_mag.scale_multiplier[0] + mag_float_y * calibrationSettings.mmc5983ma_mag.scale_multiplier[3] + mag_float_z * calibrationSettings.mmc5983ma_mag.scale_multiplier[6];
-    result_packet -> magnetic_field_y = mag_float_x * calibrationSettings.mmc5983ma_mag.scale_multiplier[1] + mag_float_y * calibrationSettings.mmc5983ma_mag.scale_multiplier[4] + mag_float_z * calibrationSettings.mmc5983ma_mag.scale_multiplier[7];
-    result_packet -> magnetic_field_z = mag_float_x * calibrationSettings.mmc5983ma_mag.scale_multiplier[2] + mag_float_y * calibrationSettings.mmc5983ma_mag.scale_multiplier[5] + mag_float_z * calibrationSettings.mmc5983ma_mag.scale_multiplier[8];
+    result_packet -> magnetic_field_x_microteslas = mag_float_x * calibrationSettings.mmc5983ma_mag.scale_multiplier[0] + mag_float_y * calibrationSettings.mmc5983ma_mag.scale_multiplier[3] + mag_float_z * calibrationSettings.mmc5983ma_mag.scale_multiplier[6];
+    result_packet -> magnetic_field_y_microteslas = mag_float_x * calibrationSettings.mmc5983ma_mag.scale_multiplier[1] + mag_float_y * calibrationSettings.mmc5983ma_mag.scale_multiplier[4] + mag_float_z * calibrationSettings.mmc5983ma_mag.scale_multiplier[7];
+    result_packet -> magnetic_field_z_microteslas = mag_float_x * calibrationSettings.mmc5983ma_mag.scale_multiplier[2] + mag_float_y * calibrationSettings.mmc5983ma_mag.scale_multiplier[5] + mag_float_z * calibrationSettings.mmc5983ma_mag.scale_multiplier[8];
 }
 
-void icm45686_convert_packet(ICM45686Packet_t *packet, DataPacket_t *result_packet) {
+void icm45686_convert_packet(ICM45686Packet_t *packet, DataPacket *result_packet) {
     // get the current timestamp of the packet in seconds using the DWT counter
-    result_packet->timestamp_sec = update_dwt_timestamp();
+    result_packet->timestamp_seconds = update_dwt_timestamp();
     int32_t acc_binary_x, acc_binary_y, acc_binary_z, gyro_binary_x,gyro_binary_y,gyro_binary_z;
 
     // extract acceleration and gyroscope bytes into 32 bit integers, preserving sign
@@ -125,12 +125,12 @@ void icm45686_convert_packet(ICM45686Packet_t *packet, DataPacket_t *result_pack
     gyro_float_z = gyro_float_z * (pi / 180.0F);
     
     // apply 3x3 scaling matrix to each value
-    result_packet -> accel_x = acc_float_x * calibrationSettings.icm45686_accel.scale_multiplier[0] + acc_float_y * calibrationSettings.icm45686_accel.scale_multiplier[3] + acc_float_z * calibrationSettings.icm45686_accel.scale_multiplier[6];
-    result_packet -> accel_y = acc_float_x * calibrationSettings.icm45686_accel.scale_multiplier[1] + acc_float_y * calibrationSettings.icm45686_accel.scale_multiplier[4] + acc_float_z * calibrationSettings.icm45686_accel.scale_multiplier[7];
-    result_packet -> accel_z = acc_float_x * calibrationSettings.icm45686_accel.scale_multiplier[2] + acc_float_y * calibrationSettings.icm45686_accel.scale_multiplier[5] + acc_float_z * calibrationSettings.icm45686_accel.scale_multiplier[8];
-    result_packet -> angular_rate_x = gyro_float_x * calibrationSettings.icm45686_gyro.scale_multiplier[0] + gyro_float_y * calibrationSettings.icm45686_gyro.scale_multiplier[3] + gyro_float_z * calibrationSettings.icm45686_gyro.scale_multiplier[6];
-    result_packet -> angular_rate_y = gyro_float_x * calibrationSettings.icm45686_gyro.scale_multiplier[1] + gyro_float_y * calibrationSettings.icm45686_gyro.scale_multiplier[4] + gyro_float_z * calibrationSettings.icm45686_gyro.scale_multiplier[7];
-    result_packet -> angular_rate_z = gyro_float_x * calibrationSettings.icm45686_gyro.scale_multiplier[2] + gyro_float_y * calibrationSettings.icm45686_gyro.scale_multiplier[5] + gyro_float_z * calibrationSettings.icm45686_gyro.scale_multiplier[8];
+    result_packet->raw_acceleration_x_gs = acc_float_x * calibrationSettings.icm45686_accel.scale_multiplier[0] + acc_float_y * calibrationSettings.icm45686_accel.scale_multiplier[3] + acc_float_z * calibrationSettings.icm45686_accel.scale_multiplier[6];
+    result_packet->raw_acceleration_y_gs = acc_float_x * calibrationSettings.icm45686_accel.scale_multiplier[1] + acc_float_y * calibrationSettings.icm45686_accel.scale_multiplier[4] + acc_float_z * calibrationSettings.icm45686_accel.scale_multiplier[7];
+    result_packet->raw_acceleration_z_gs = acc_float_x * calibrationSettings.icm45686_accel.scale_multiplier[2] + acc_float_y * calibrationSettings.icm45686_accel.scale_multiplier[5] + acc_float_z * calibrationSettings.icm45686_accel.scale_multiplier[8];
+    result_packet->est_angular_rate_x_rad_per_s = gyro_float_x * calibrationSettings.icm45686_gyro.scale_multiplier[0] + gyro_float_y * calibrationSettings.icm45686_gyro.scale_multiplier[3] + gyro_float_z * calibrationSettings.icm45686_gyro.scale_multiplier[6];
+    result_packet->est_angular_rate_y_rad_per_s = gyro_float_x * calibrationSettings.icm45686_gyro.scale_multiplier[1] + gyro_float_y * calibrationSettings.icm45686_gyro.scale_multiplier[4] + gyro_float_z * calibrationSettings.icm45686_gyro.scale_multiplier[7];
+    result_packet->est_angular_rate_z_rad_per_s = gyro_float_x * calibrationSettings.icm45686_gyro.scale_multiplier[2] + gyro_float_y * calibrationSettings.icm45686_gyro.scale_multiplier[5] + gyro_float_z * calibrationSettings.icm45686_gyro.scale_multiplier[8];
 } 
 
 #ifndef TEST

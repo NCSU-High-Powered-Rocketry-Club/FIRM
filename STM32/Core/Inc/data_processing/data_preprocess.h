@@ -9,35 +9,35 @@
  * @brief Data packet with timestamp
  */
 typedef struct {
-    double timestamp_sec;
-    float temperature;
-    float pressure;
-    float accel_x;
-    float accel_y;
-    float accel_z;
-    float angular_rate_x;
-    float angular_rate_y;
-    float angular_rate_z;
-    float magnetic_field_x;
-    float magnetic_field_y;
-    float magnetic_field_z;
-    float est_position_x;
-    float est_position_y;
-    float est_position_z;
-    float est_velocity_x;
-    float est_velocity_y;
-    float est_velocity_z;
-    float est_accel_x;
-    float est_accel_y;
-    float est_accel_z;
-    float est_angular_rate_x;
-    float est_angular_rate_y;
-    float est_angular_rate_z;
+    double timestamp_seconds;
+    float temperature_celsius;
+    float pressure_pascals;
+    float raw_acceleration_x_gs;
+    float raw_acceleration_y_gs;
+    float raw_acceleration_z_gs;
+    float raw_angular_rate_x_deg_per_s;
+    float raw_angular_rate_y_deg_per_s;
+    float raw_angular_rate_z_deg_per_s;
+    float magnetic_field_x_microteslas;
+    float magnetic_field_y_microteslas;
+    float magnetic_field_z_microteslas;
+    float est_position_x_meters;
+    float est_position_y_meters;
+    float est_position_z_meters;
+    float est_velocity_x_meters_per_s;
+    float est_velocity_y_meters_per_s;
+    float est_velocity_z_meters_per_s;
+    float est_acceleration_x_gs;
+    float est_acceleration_y_gs;
+    float est_acceleration_z_gs;
+    float est_angular_rate_x_rad_per_s;
+    float est_angular_rate_y_rad_per_s;
+    float est_angular_rate_z_rad_per_s;
     float est_quaternion_w;
     float est_quaternion_x;
     float est_quaternion_y;
     float est_quaternion_z;
-} DataPacket_t;
+} DataPacket;
 
 
 /**
@@ -48,7 +48,7 @@ typedef struct {
  * @param result_packet Pointer to a DataPacket where the result of the preprocessor
  *                      will be stored
  */
-void bmp581_convert_packet(BMP581Packet_t *packet, DataPacket_t *result_packet);
+void bmp581_convert_packet(BMP581Packet_t *packet, DataPacket *result_packet);
 
 /**
  * @brief Converts raw MMC5983MA magnetometer data to SI units
@@ -58,7 +58,7 @@ void bmp581_convert_packet(BMP581Packet_t *packet, DataPacket_t *result_packet);
  * @param result_packet Pointer to a DataPacket where the result of the preprocessor
  *                      will be stored
  */
-void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, DataPacket_t *result_packet);
+void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, DataPacket *result_packet);
 
 /**
  * @brief Converts raw ICM45686 data to SI units
@@ -69,5 +69,5 @@ void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, DataPacket_t *result_pa
  * @param result_packet Pointer to a DataPacket where the result of the preprocessor
  *                      will be stored
  */
-void icm45686_convert_packet(ICM45686Packet_t *packet, DataPacket_t *result_packet);
+void icm45686_convert_packet(ICM45686Packet_t *packet, DataPacket *result_packet);
 

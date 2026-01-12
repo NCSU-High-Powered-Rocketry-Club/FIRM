@@ -3,34 +3,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-/**
- * Serialized data packet struct for sending sensor and KF data over USB.
- */
-typedef struct __attribute__((packed)) {
-    uint16_t header;
-    uint16_t length;
-    DataPacket_t payload;
-    uint16_t crc;
-} SerializedDataPacket_t;
 
-/**
- * Serialized command response packet struct for sending command responses over USB. To make
- * parsing easier, this is a fixed 66-byte frame:
- * [0xA5 0x5A][LEN(2)=56][PADDING(4)][PAYLOAD(56)][CRC(2)]
- */
-typedef struct __attribute__((packed)) {
-    uint16_t header;
-    uint16_t length;
-    uint8_t padding[4]; // SerializedDataPacket_t has 4 bytes of padding here, so to make parsing easier we add it here too
-    uint8_t payload[sizeof(DataPacket_t)]; // max payload size is size of data packet
-    uint16_t crc;
-} SerializedResponsePacket_t;
-
-/**
- * @brief initializes a serialized data packet with header and length fields
- * @param serialized_packet pointer to a SerializedDataPacket_t, the packet to initialize
- */
-void serializer_init_data_packet(SerializedDataPacket_t *serialized_packet);
 
 /**
  * @brief Serialize a data packet into a provided buffer. The serialization
@@ -42,21 +15,4 @@ void serializer_init_data_packet(SerializedDataPacket_t *serialized_packet);
  * @return number of bytes written to out_buf (always 8 + 9*sizeof(float) on success),
  *         or 0 on error (e.g., null pointers).
  */
-void serialize_data_packet(const DataPacket_t* packet, SerializedDataPacket_t *serialized_packet);
-
-/**
- * @brief Transmit a serialized data packet over USB CDC.
- * @param serialized_packet pointer to serialized data packet
- */
-void usb_transmit_serialized_packet(const SerializedDataPacket_t *serialized_packet);
-
-/**
- * @brief Serializes a command response payload into a full response packet matching the
- * Rust-side SerialParser format:
- * [0xA5 0x5A][LEN(2)=56][PADDING(4)][PAYLOAD(56)][CRC(2)]
- * 
- * @param payload Pointer to the payload data.
- * @param payload_len Length of the payload data.
- * @param serialized_packet pointer to the serialized packet that will be written to.
- */
-void serialize_command_packet(const uint8_t* payload, uint8_t payload_len, uint8_t* serialized_packet);
+void serialize_packet(uint8_t *payload, uint16_t packet_len);
