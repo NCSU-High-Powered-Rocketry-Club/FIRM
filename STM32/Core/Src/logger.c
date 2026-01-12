@@ -123,7 +123,7 @@ FRESULT logger_init(DMA_HandleTypeDef* dma_sdio_tx_handle) {
         }
 
         // 2e8 bytes = (1 hour * ((8192 bytes * 4.4hz) * 1.5))
-        fr = f_expand(&log_file, (FSIZE_t)2e8, 1);
+        fr = f_expand(&log_file, (FSIZE_t)5e6, 1);
         if (fr != FR_OK) {
             return fr;
         }

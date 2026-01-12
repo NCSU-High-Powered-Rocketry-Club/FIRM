@@ -385,9 +385,10 @@ void filter_data_task(void *argument) {
   ukf.measurement_function = ukf_measurement_function;
   ukf.state_transition_function = ukf_state_transition_function;
   vTaskDelay(pdMS_TO_TICKS(KALMAN_FILTER_STARTUP_DELAY_TIME_MS));
-
+  
+  // filter can initialize, and FIRM can go into live mode
   ukf_init(&ukf, data_packet.pressure, &data_packet.accel_x, &data_packet.magnetic_field_x);
-  vTaskDelay(pdMS_TO_TICKS(KALMAN_FILTER_STARTUP_DELAY_TIME_MS));
+  xQueueSend(system_request_queue, &(SystemRequest){SYSREQ_FINISH_SETUP}, 0);
   
   // set the last time to calculate the delta timestamp, minus some initial offset so that the
   // first iteration of the filter doesn't have an extremely small dt.
@@ -396,9 +397,13 @@ void filter_data_task(void *argument) {
   for (;;) {
     vTaskDelay(1000);
     float dt = (float)data_packet.timestamp_sec - last_time;
-    if (ukf_predict(&ukf, dt)) {
-      HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_SET);
-    }
+    int ret = ukf_predict(&ukf, dt);
+    // if (ret == 1) {
+    //   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_SET);
+    // }
+    // if (ret == 2) {
+    //   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
+    // }
     float measurement[10] = {
       data_packet.pressure,
       data_packet.accel_x,

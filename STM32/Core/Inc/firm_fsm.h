@@ -11,7 +11,7 @@ typedef enum {
 
 typedef enum {
   SYSREQ_SETUP,
-  SYSREQ_START_LIVE,
+  SYSREQ_FINISH_SETUP,
   SYSREQ_START_MOCK,
   SYSREQ_CANCEL,
 } SystemRequest;

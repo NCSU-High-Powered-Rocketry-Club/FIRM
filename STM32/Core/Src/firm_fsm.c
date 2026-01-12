@@ -10,25 +10,30 @@ FSMResponse fsm_process_request(SystemRequest sysreq, TaskCommand* task_command_
       task_command_queue[0].target_task = TASK_MODE_INDICATOR;
       task_command_queue[0].command = TASKCMD_SETUP;
       task_command_queue[1].target_task = TASK_NULL;
+      state = FIRM_SETUP;
       return FSMRES_VALID;
-    case SYSREQ_START_LIVE:
+
+    case SYSREQ_FINISH_SETUP:
       // switching to live mode can only be done from boot mode
       if (state != FIRM_SETUP)
         return FSMRES_INVALID;
       task_command_queue[0].target_task = TASK_MODE_INDICATOR;
       task_command_queue[0].command = TASKCMD_LIVE;
       task_command_queue[1].target_task = TASK_NULL;
+      state = FIRM_LIVE;
       return FSMRES_VALID;
+
     case SYSREQ_START_MOCK:
       // switching to mock mode can only be done from live mode
       if (state != FIRM_LIVE)
         return FSMRES_INVALID;
+      state = FIRM_MOCK;
 
     case SYSREQ_CANCEL:
       // cancelling the current command (a mock) can only be done from mock mode
       if (state != FIRM_MOCK)
         return FSMRES_INVALID;
-
+      state = FIRM_SETUP;
     default:
       return FSMRES_INVALID;
   }
