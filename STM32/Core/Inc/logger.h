@@ -7,10 +7,15 @@
 
 #pragma once
 
-#include "fatfs.h"
-#include "ff.h"
 #include <stdint.h>
 #include <string.h>
+
+#ifndef TEST
+  #include "fatfs.h"
+  #include "ff.h"
+#else
+  // TODO: add stubs or mock
+#endif
 
 /** The sector size of the SD card. This is the smallest we are able to use. */
 #define SD_SECTOR_SIZE 8192

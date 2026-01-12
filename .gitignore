@@ -65,7 +65,9 @@ dkms.conf
 # FIRM code
 /STM32/build
 mx.scratch
-.vscode
+.vscode/*
+!.vscode/settings.json
+!.vscode/c_cpp_properties.json
 /STM32/CMakeFiles
 /STM32/CMakeCache.txt
 /STM32/build.ninja
@@ -83,5 +85,15 @@ __pycache__/
 *.pyd
 .venv/
 
+# Jetbrains
+.idea/
+.idea/**/*
+cmake-build-debug
+cmake-build-release
+build/
+
 # tests
 /tests/build
+
+CMakeFiles/
+CMakeCache.txt
