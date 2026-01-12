@@ -176,7 +176,8 @@ void commands_create_response_payload(uint8_t command_id, const void* data, uint
             *payload_len += 1;
             break;
         }
-        case CMD_SET_DEVICE_CONFIG: {
+        case CMD_SET_DEVICE_CONFIG:
+        case CMD_MOCK: {
             // [MARKER][SUCCESS (1 byte)]
             bool success = *(bool*)data;
             payload_buffer[1] = success ? 1 : 0;
@@ -247,6 +248,11 @@ void commands_handle_command(const Command_t* command, const CommandContext_t* c
             updated_settings.i2c_transfer_enabled = (new_config->protocol == I2C);
             updated_settings.spi_transfer_enabled = (new_config->protocol == SPI);
             bool success = settings_write_firm_settings(&updated_settings);
+            commands_create_response_payload(CMD_SET_DEVICE_CONFIG, &success, payload_buffer, payload_len);
+            break;
+        }
+        case CMD_MOCK: {
+            bool success = true;
             commands_create_response_payload(CMD_SET_DEVICE_CONFIG, &success, payload_buffer, payload_len);
             break;
         }

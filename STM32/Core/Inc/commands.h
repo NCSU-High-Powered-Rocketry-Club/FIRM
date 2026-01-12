@@ -16,6 +16,7 @@
 #define CMD_GET_DEVICE_CONFIG 0x02
 #define CMD_SET_DEVICE_CONFIG 0x03
 #define CMD_REBOOT 0x04
+#define CMD_MOCK 0x05
 #define CMD_CANCEL_ID 0xFF
 
 #define DEVICE_NAME_LENGTH 32
@@ -78,7 +79,7 @@ typedef struct {
  * Byte stream parser for incoming command data.
  */
 typedef struct {
-    uint8_t buf[CMD_PACKET_SIZE];
+    uint8_t buf[128];
     size_t len;
 } CommandsStreamParser_t;
 
