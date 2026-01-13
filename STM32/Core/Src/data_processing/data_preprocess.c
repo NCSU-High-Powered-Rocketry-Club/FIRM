@@ -15,21 +15,21 @@ static volatile uint32_t last_cyccnt = 0;
  * 
  * @return Current timestamp as a double
  */
-static double update_dwt_timestamp(void);
+static double update_dwt_timestamp(const uint8_t clock_cycle_count[4]);
 
-void bmp581_convert_packet(BMP581Packet_t *packet, DataPacket *result_packet) {
+void bmp581_convert_packet(SensorPacket *packet, DataPacket *result_packet) {
     // get the current timestamp of the packet in seconds using the DWT counter
-    result_packet->timestamp_seconds = update_dwt_timestamp();
+    result_packet->timestamp_seconds = update_dwt_timestamp(packet->timestamp);
     int32_t temp_binary, pressure_binary;
 
     // extract pressure and temp bytes as a 32 bit int, preserving sign
-    temp_binary = ((int32_t)((int8_t)packet->temp_msb) << 16) | 
-                 ((int32_t)packet->temp_lsb << 8) | 
-                 ((int32_t)packet->temp_xlsb);
+    temp_binary = ((int32_t)((int8_t)packet->packet.bmp581_packet.temp_msb) << 16) | 
+                 ((int32_t)packet->packet.bmp581_packet.temp_lsb << 8) | 
+                 ((int32_t)packet->packet.bmp581_packet.temp_xlsb);
     
-    pressure_binary = ((int32_t)((int8_t)packet->pressure_msb) << 16) |
-                     ((int32_t)packet->pressure_lsb << 8) |
-                     ((int32_t)packet->pressure_xlsb);
+    pressure_binary = ((int32_t)((int8_t)packet->packet.bmp581_packet.pressure_msb) << 16) |
+                     ((int32_t)packet->packet.bmp581_packet.pressure_lsb << 8) |
+                     ((int32_t)packet->packet.bmp581_packet.pressure_xlsb);
 
     // convert to a float with temp in celcius and pressure in pascals
     float temp_float = (float) temp_binary / 65536.0F;
@@ -39,23 +39,23 @@ void bmp581_convert_packet(BMP581Packet_t *packet, DataPacket *result_packet) {
     result_packet -> pressure_pascals = pressure_float;
 }
 
-void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, DataPacket *result_packet) {
+void mmc5983ma_convert_packet(SensorPacket *packet, DataPacket *result_packet) {
     // get the current timestamp of the packet in seconds using the DWT counter
-    result_packet->timestamp_seconds = update_dwt_timestamp();
+    result_packet->timestamp_seconds = update_dwt_timestamp(packet->timestamp);
     int32_t mag_binary_x, mag_binary_y, mag_binary_z;
 
     // extract magnetic field bytes as 32 bit integer, preserving sign
-    mag_binary_x = (((int32_t)(packet->mag_x_msb) << 10) |
-                  ((int32_t)packet->mag_x_mid << 2) |
-                  ((int32_t)(packet->mag_xyz_lsb >> 6))) - 131072;
+    mag_binary_x = (((int32_t)(packet->packet.mmc5983ma_packet.mag_x_msb) << 10) |
+                  ((int32_t)packet->packet.mmc5983ma_packet.mag_x_mid << 2) |
+                  ((int32_t)(packet->packet.mmc5983ma_packet.mag_xyz_lsb >> 6))) - 131072;
                   
-    mag_binary_y = (((int32_t)(packet->mag_y_msb) << 10) |
-                  ((int32_t)packet->mag_y_mid << 2) |
-                  ((int32_t)((packet->mag_xyz_lsb & 0b00110000) >> 4))) - 131072;
+    mag_binary_y = (((int32_t)(packet->packet.mmc5983ma_packet.mag_y_msb) << 10) |
+                  ((int32_t)packet->packet.mmc5983ma_packet.mag_y_mid << 2) |
+                  ((int32_t)((packet->packet.mmc5983ma_packet.mag_xyz_lsb & 0b00110000) >> 4))) - 131072;
                   
-    mag_binary_z = (((int32_t)(packet->mag_z_msb) << 10) |
-                  ((int32_t)packet->mag_z_mid << 2) |
-                  ((int32_t)((packet->mag_xyz_lsb & 0b00001100) >> 2))) - 131072;
+    mag_binary_z = (((int32_t)(packet->packet.mmc5983ma_packet.mag_z_msb) << 10) |
+                  ((int32_t)packet->packet.mmc5983ma_packet.mag_z_mid << 2) |
+                  ((int32_t)((packet->packet.mmc5983ma_packet.mag_xyz_lsb & 0b00001100) >> 2))) - 131072;
     
     // convert to float in SI units (microtesla)
     float mag_float_x = ((float) mag_binary_x) / (131072.0F / 800.0F);
@@ -73,35 +73,35 @@ void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, DataPacket *result_pack
     result_packet -> magnetic_field_z_microteslas = mag_float_x * calibrationSettings.mmc5983ma_mag.scale_multiplier[2] + mag_float_y * calibrationSettings.mmc5983ma_mag.scale_multiplier[5] + mag_float_z * calibrationSettings.mmc5983ma_mag.scale_multiplier[8];
 }
 
-void icm45686_convert_packet(ICM45686Packet_t *packet, DataPacket *result_packet) {
+void icm45686_convert_packet(SensorPacket *packet, DataPacket *result_packet) {
     // get the current timestamp of the packet in seconds using the DWT counter
-    result_packet->timestamp_seconds = update_dwt_timestamp();
+    result_packet->timestamp_seconds = update_dwt_timestamp(packet->timestamp);
     int32_t acc_binary_x, acc_binary_y, acc_binary_z, gyro_binary_x,gyro_binary_y,gyro_binary_z;
 
     // extract acceleration and gyroscope bytes into 32 bit integers, preserving sign
-    acc_binary_x = ((int32_t)((int8_t)packet->accX_H) << 12) |
-                   ((int32_t)packet->accX_L << 4) |
-                   ((int32_t)(packet->x_vals_lsb >> 4));
+    acc_binary_x = ((int32_t)((int8_t)packet->packet.icm45686_packet.accX_H) << 12) |
+                   ((int32_t)packet->packet.icm45686_packet.accX_L << 4) |
+                   ((int32_t)(packet->packet.icm45686_packet.x_vals_lsb >> 4));
                    
-    acc_binary_y = ((int32_t)((int8_t)packet->accY_H) << 12) |
-                   ((int32_t)packet->accY_L << 4) |
-                   ((int32_t)(packet->y_vals_lsb >> 4));
+    acc_binary_y = ((int32_t)((int8_t)packet->packet.icm45686_packet.accY_H) << 12) |
+                   ((int32_t)packet->packet.icm45686_packet.accY_L << 4) |
+                   ((int32_t)(packet->packet.icm45686_packet.y_vals_lsb >> 4));
                    
-    acc_binary_z = ((int32_t)((int8_t)packet->accZ_H) << 12) |
-                   ((int32_t)packet->accZ_L << 4) |
-                   ((int32_t)(packet->z_vals_lsb >> 4));
+    acc_binary_z = ((int32_t)((int8_t)packet->packet.icm45686_packet.accZ_H) << 12) |
+                   ((int32_t)packet->packet.icm45686_packet.accZ_L << 4) |
+                   ((int32_t)(packet->packet.icm45686_packet.z_vals_lsb >> 4));
                    
-    gyro_binary_x = ((int32_t)((int8_t)packet->gyroX_H) << 12) |
-                    ((int32_t)packet->gyroX_L << 4) |
-                    ((int32_t)(packet->x_vals_lsb & 0x0F));
+    gyro_binary_x = ((int32_t)((int8_t)packet->packet.icm45686_packet.gyroX_H) << 12) |
+                    ((int32_t)packet->packet.icm45686_packet.gyroX_L << 4) |
+                    ((int32_t)(packet->packet.icm45686_packet.x_vals_lsb & 0x0F));
                     
-    gyro_binary_y = ((int32_t)((int8_t)packet->gyroY_H) << 12) |
-                    ((int32_t)packet->gyroY_L << 4) |
-                    ((int32_t)(packet->y_vals_lsb & 0x0F));
+    gyro_binary_y = ((int32_t)((int8_t)packet->packet.icm45686_packet.gyroY_H) << 12) |
+                    ((int32_t)packet->packet.icm45686_packet.gyroY_L << 4) |
+                    ((int32_t)(packet->packet.icm45686_packet.y_vals_lsb & 0x0F));
                     
-    gyro_binary_z = ((int32_t)((int8_t)packet->gyroZ_H) << 12) |
-                    ((int32_t)packet->gyroZ_L << 4) |
-                    ((int32_t)(packet->z_vals_lsb & 0x0F));
+    gyro_binary_z = ((int32_t)((int8_t)packet->packet.icm45686_packet.gyroZ_H) << 12) |
+                    ((int32_t)packet->packet.icm45686_packet.gyroZ_L << 4) |
+                    ((int32_t)(packet->packet.icm45686_packet.z_vals_lsb & 0x0F));
 
     // convert acceleration to g's, and gyroscope to degrees per second
     float acc_float_x = ((float) acc_binary_x ) / 16384.0F;
@@ -135,17 +135,19 @@ void icm45686_convert_packet(ICM45686Packet_t *packet, DataPacket *result_packet
 
 #ifndef TEST
 
-static double update_dwt_timestamp(void) {
-    uint32_t current_cyccnt = DWT->CYCCNT;
-    // Check for overflow by comparing with last value
-    // Overflow occurred if current value is less than last value
-    if (current_cyccnt < last_cyccnt) {
-        dwt_overflow_count++;
-    }
-    last_cyccnt = current_cyccnt;
-    uint64_t cycle_count = ((uint64_t)dwt_overflow_count << 32) | current_cyccnt;
-    // MCU clock speed is 168MHz
-    return ((double)cycle_count) / 168000000.0F;
+static double update_dwt_timestamp(const uint8_t clock_cycle_count[4]) {
+  // converting to uint32_t from big-endian
+  // TODO: Change to little endian in future
+  uint32_t current_cyccnt = ((uint32_t)clock_cycle_count[0] << 24) | ((uint32_t)clock_cycle_count[1] << 16) | ((uint32_t)clock_cycle_count[2] << 8) | ((uint32_t)clock_cycle_count[3]);
+  // Check for overflow by comparing with last value
+  // Overflow occurred if current value is less than last value
+  if (current_cyccnt < last_cyccnt) {
+    dwt_overflow_count++;
+  }
+  last_cyccnt = current_cyccnt;
+  uint64_t cycle_count = ((uint64_t)dwt_overflow_count << 32) | current_cyccnt;
+  // MCU clock speed is 168MHz
+  return ((double)cycle_count) / 168000000.0F;
 }
 
 #else

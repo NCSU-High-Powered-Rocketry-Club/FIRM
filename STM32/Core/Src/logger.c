@@ -25,17 +25,6 @@
 static FRESULT logger_ensure_capacity(size_t capacity);
 
 /**
- * @brief Logs the type and clock cycle timestamp. This will be writen as 1 byte for the type
- *        and three bytes (uint24) for the clock cycle count. The clock cycle count will overflow
- *        every ~0.1 seconds.
- * @note advances the current offset variable for the buffer
- * 
- * @param type the character that signifies the type of packet being logged
- * @retval None
- */
-static void logger_log_type_timestamp(char type);
-
-/**
  * @brief writes a filled buffer to the Micro SD Card via DMA
  * 
  * @retval File Status error code, 0 on success.
@@ -52,6 +41,7 @@ static void logger_swap_buffers();
  * with it.
  */
 static const int packet_metadata_size = 4;
+static const int packet_timestamp_size = 3;
 
 static char  buffer0[SD_SECTOR_SIZE];
 static char  buffer1[SD_SECTOR_SIZE];
@@ -163,16 +153,19 @@ FRESULT logger_write_header(HeaderFields* sensor_scale_factors) {
 }
 
 void* logger_malloc_packet(size_t capacity) {
-    if (logger_ensure_capacity(capacity + packet_metadata_size)) {
-        return NULL;
-    }
-    return &current_buffer[current_offset + packet_metadata_size];
+  if (logger_ensure_capacity(capacity + packet_metadata_size)) {
+    return NULL;
+  }
+  return &current_buffer[current_offset + packet_metadata_size];
 }
 
 void logger_write_entry(char type, size_t packet_size) {
-    logger_log_type_timestamp(type);
-    // advance current offset by packet size
-    current_offset += packet_size;
+  // the packet has a 4 byte timestamp, but we want to replace the most significant byte
+  // and replace with identification letter
+  current_buffer[current_offset++] = type;
+  // advance current offset by timestamp size (fixed) and packet size (variable)
+  current_offset += packet_timestamp_size;
+  current_offset += packet_size;
 }
 
 static FRESULT logger_ensure_capacity(size_t capacity) {
@@ -184,14 +177,6 @@ static FRESULT logger_ensure_capacity(size_t capacity) {
 
     // TODO error handling
     return FR_OK;
-}
-
-static void logger_log_type_timestamp(char type) {
-    current_buffer[current_offset++] = type;
-    uint32_t current_time = DWT->CYCCNT;
-    current_buffer[current_offset++] = (char)((current_time >> 16) & 0xFF);
-    current_buffer[current_offset++] = (char)((current_time >> 8) & 0xFF);
-    current_buffer[current_offset++] = (char)(current_time & 0xFF);
 }
 
 static FRESULT logger_write() {

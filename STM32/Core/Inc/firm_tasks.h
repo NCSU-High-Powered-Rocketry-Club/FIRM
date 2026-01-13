@@ -60,6 +60,9 @@ extern const osThreadAttr_t filterDataTask_attributes;
 extern osMutexId_t sensorDataMutexHandle;
 extern const osMutexAttr_t sensorDataMutex_attributes;
 
+
+
+
 typedef union {
   DataPacket data_packet;
   ResponsePacket response_packet;

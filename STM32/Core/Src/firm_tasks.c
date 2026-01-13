@@ -32,6 +32,8 @@ QueueHandle_t data_filter_command_queue;
 
 // mock queues
 QueueHandle_t mock_bmp581_queue;
+QueueHandle_t mock_icm45686_queue;
+QueueHandle_t mock_mmc5983ma_queue;
 
 
 // task attributes
@@ -81,17 +83,17 @@ const osThreadAttr_t usbReadTask_attributes = {
     .priority = (osPriority_t)osPriorityNormal,
 };
 
-
 // mutexes
 osMutexId_t sensorDataMutexHandle;
 const osMutexAttr_t sensorDataMutex_attributes = {
   .name = "sensorDataMutex"
 };
 
-static int mock_bmp581_fetch_queue(BMP581Packet_t *packet) {
-  xQueueReceive(mock_bmp581_queue, packet, portMAX_DELAY);
+static int mock_fetch_sensor_queue(SensorPacket *packet, QueueHandle_t queue) {
+  xQueueReceive(queue, packet, portMAX_DELAY);
   return 0;
 }
+
 
 // instance of the serialized verison of the data packet that will be reused and overriden as data
 // is collected and processed
@@ -99,17 +101,6 @@ Packet data_packet;
 
 static UART_HandleTypeDef* firm_huart1;
 static volatile bool uart_tx_done = true;
-
-void usb_receive_callback(uint8_t *buffer, uint32_t data_length) {
-  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-  // Check if the stream buffer is initialized
-  if (usb_rx_stream != NULL) {
-    // Adds the received data to the stream buffer from an ISR context
-    xStreamBufferSendFromISR(usb_rx_stream, buffer, data_length, &xHigherPriorityTaskWoken);
-  }
-  // If the usb_read_data task has a higher priority than the currently running task, request a context switch
-  portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-}
 
 int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DMAHandles* dma_handles_ptr, UARTHandles* uart_handles_ptr) {
   firm_huart1 = uart_handles_ptr->huart1;
@@ -168,37 +159,6 @@ int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DM
     led_set_status(FLASH_CHIP_FAIL);
     return 1;
   }
-  
-
-  // // Wait for interrupts to fire
-  // HAL_Delay(10);
-
-  // // Check if interrupts fired
-  // uint8_t interrupt_leds = 0b000;
-  // // Blink LEDs to indicate any failed interrupts
-  // for (int i = 0; i < 5; i++) {
-  //     if (bmp581_has_new_data && icm45686_has_new_data && mmc5983ma_has_new_data) {
-  //         break; // all interrupts fired successfully
-  //     }
-  //     if (!icm45686_has_new_data) {
-  //         serialPrintStr("IMU didn't interrupt");
-  //         interrupt_leds |= FAILED_INTERRUPT_IMU;
-  //     }
-  //     if (!bmp581_has_new_data) {
-  //         serialPrintStr("BMP581 didn't interrupt");
-  //         interrupt_leds |= FAILED_INTERRUPT_BMP;
-  //     }
-  //     if (!mmc5983ma_has_new_data) {
-  //         serialPrintStr("MMC5983MA didn't interrupt");
-  //         interrupt_leds |= FAILED_INTERRUPT_MAG;
-  //     }
-  //     led_set_status(interrupt_leds);
-  //     HAL_Delay(500);
-  //     led_set_status(FIRM_INITIALIZED);
-  //     interrupt_leds = 0b000;
-  //     HAL_Delay(500);
-  // }
-  
   return 0;
 };
 
@@ -206,7 +166,8 @@ void firm_rtos_init(void) {
   // Initialize FreeRTOS objects
   // queue for system commands
   system_request_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(SystemRequest));
-  // 512 bytes buffer, trigger level 1 (wake up on every byte if needed, or optimize later)
+  
+  // stream and queue for receiving usb bytes and sending packets
   usb_rx_stream = xStreamBufferCreate(USB_RX_STREAM_BUFFER_SIZE_BYTES, USB_RX_STREAM_TRIGGER_LEVEL_BYTES);
   transmit_queue = xQueueCreate(TRANSMIT_QUEUE_LENGTH, sizeof(Packet));
 
@@ -216,11 +177,17 @@ void firm_rtos_init(void) {
   mmc5983ma_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
   data_filter_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
   mode_indicator_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
+
+  // queue for mock packets
+  mock_bmp581_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(SensorPacket));
+  mock_icm45686_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(SensorPacket));
+  mock_mmc5983ma_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(SensorPacket));
 }
 
 void system_manager_task(void *argument) {
   SystemRequest sysreq;
   TaskCommand task_command_queue[MAX_TASK_COMMANDS];
+
   for (;;) {
     // wait to recieve a system request
     if (xQueueReceive(system_request_queue, &sysreq, portMAX_DELAY) == pdTRUE) {
@@ -291,31 +258,32 @@ void firm_mode_indicator_task(void *argument) {
 void collect_bmp581_data_task(void *argument) {
   const TickType_t max_wait = MAX_WAIT_TIME(BMP581_POLL_RATE_HZ);
   uint32_t notif_count = 0;
-
   TaskCommandOption cmd_status;
-  int (*fetch_data)(BMP581Packet_t*);
 
   for (;;) {
-    if (xQueueReceive(bmp581_command_queue, &cmd_status, 0) == pdTRUE) {
-      switch (cmd_status) {
-        case TASKCMD_MOCK:
-          fetch_data = mock_bmp581_fetch_queue;
-        default:
-          fetch_data = bmp581_read_data;
-      }
-    }
+    xQueueReceive(bmp581_command_queue, &cmd_status, 0);
 
     notif_count = ulTaskNotifyTake(pdFALSE, max_wait);
     if (notif_count > 0) {
       osMutexAcquire(sensorDataMutexHandle, osWaitForever);
-      BMP581Packet_t *bmp581_packet = logger_malloc_packet(sizeof(BMP581Packet_t));
-      if (!fetch_data(bmp581_packet)) {
+      SensorPacket *bmp581_packet = logger_malloc_packet(sizeof(BMP581Packet_t));
+      int err;
+      if (cmd_status == TASKCMD_MOCK) {
+        err = mock_fetch_sensor_queue(bmp581_packet, mock_bmp581_queue);
+      } else {
+        err = bmp581_read_data(&bmp581_packet->packet.bmp581_packet);
+        // TODO: change timestamp format to little endian
+        uint32_t clock_cycle_count = DWT->CYCCNT;
+        bmp581_packet->timestamp[0] = (clock_cycle_count >> 24) & 0xFF;
+        bmp581_packet->timestamp[1] = (clock_cycle_count >> 16) & 0xFF;
+        bmp581_packet->timestamp[2] = (clock_cycle_count >> 8)  & 0xFF;
+        bmp581_packet->timestamp[3] =  clock_cycle_count & 0xFF;
+      }
+      if (!err) {
         logger_write_entry('B', sizeof(BMP581Packet_t));
         bmp581_convert_packet(bmp581_packet, (DataPacket *)&data_packet.data);
       }
       osMutexRelease(sensorDataMutexHandle);
-    } else {
-      // TODO: error handling
     }
   }
 }
@@ -323,19 +291,33 @@ void collect_bmp581_data_task(void *argument) {
 void collect_icm45686_data_task(void *argument) {
   const TickType_t max_wait = MAX_WAIT_TIME(ICM45686_POLL_RATE_HZ);
   uint32_t notif_count = 0;
+  TaskCommandOption cmd_status;
+
   for (;;) {
+    xQueueReceive(icm45686_command_queue, &cmd_status, 0);
+
     notif_count = ulTaskNotifyTake(pdFALSE, max_wait);
 
     if (notif_count > 0) {
       osMutexAcquire(sensorDataMutexHandle, osWaitForever);
-      ICM45686Packet_t *icm45686_packet = logger_malloc_packet(sizeof(ICM45686Packet_t));
-      if (!icm45686_read_data(icm45686_packet)) {
-        logger_write_entry('I', sizeof(ICM45686Packet_t));
+      SensorPacket *icm45686_packet = logger_malloc_packet(sizeof(ICM45686Packet_t));
+      int err;
+      if (cmd_status == TASKCMD_MOCK) {
+        err = mock_fetch_sensor_queue(icm45686_packet, mock_icm45686_queue);
+      } else {
+        err = icm45686_read_data(&icm45686_packet->packet.icm45686_packet);
+        // TODO: change timestamp format to little endian
+        uint32_t clock_cycle_count = DWT->CYCCNT;
+        icm45686_packet->timestamp[0] = (clock_cycle_count >> 24) & 0xFF;
+        icm45686_packet->timestamp[1] = (clock_cycle_count >> 16) & 0xFF;
+        icm45686_packet->timestamp[2] = (clock_cycle_count >> 8)  & 0xFF;
+        icm45686_packet->timestamp[3] =  clock_cycle_count & 0xFF;
+      }
+      if (!err) {
+        logger_write_entry('B', sizeof(ICM45686Packet_t));
         icm45686_convert_packet(icm45686_packet, (DataPacket *)&data_packet.data);
       }
       osMutexRelease(sensorDataMutexHandle);
-    } else {
-      // TODO: error handling
     }
   }
 }
@@ -343,19 +325,33 @@ void collect_icm45686_data_task(void *argument) {
 void collect_mmc5983ma_data_task(void *argument) {
   const TickType_t max_wait = MAX_WAIT_TIME(ICM45686_POLL_RATE_HZ);
   uint32_t notif_count = 0;
+  TaskCommandOption cmd_status;
+
   for (;;) {
+    xQueueReceive(mmc5983ma_command_queue, &cmd_status, 0);
+
     notif_count = ulTaskNotifyTake(pdFALSE, max_wait);
 
     if (notif_count > 0) {
       osMutexAcquire(sensorDataMutexHandle, osWaitForever);
-      MMC5983MAPacket_t *mmc5983ma_packet = logger_malloc_packet(sizeof(MMC5983MAPacket_t));
-      if (!mmc5983ma_read_data(mmc5983ma_packet)) {
-        logger_write_entry('M', sizeof(MMC5983MAPacket_t));
+      SensorPacket *mmc5983ma_packet = logger_malloc_packet(sizeof(MMC5983MAPacket_t));
+      int err;
+      if (cmd_status == TASKCMD_MOCK) {
+        err = mock_fetch_sensor_queue(mmc5983ma_packet, mock_mmc5983ma_queue);
+      } else {
+        err = mmc5983ma_read_data(&mmc5983ma_packet->packet.mmc5983ma_packet);
+        // TODO: change timestamp format to little endian
+        uint32_t clock_cycle_count = DWT->CYCCNT;
+        mmc5983ma_packet->timestamp[0] = (clock_cycle_count >> 24) & 0xFF;
+        mmc5983ma_packet->timestamp[1] = (clock_cycle_count >> 16) & 0xFF;
+        mmc5983ma_packet->timestamp[2] = (clock_cycle_count >> 8)  & 0xFF;
+        mmc5983ma_packet->timestamp[3] =  clock_cycle_count & 0xFF;
+      }
+      if (!err) {
+        logger_write_entry('B', sizeof(MMC5983MAPacket_t));
         mmc5983ma_convert_packet(mmc5983ma_packet, (DataPacket *)&data_packet.data);
       }
       osMutexRelease(sensorDataMutexHandle);
-    } else {
-      // TODO: error handling
     }
   }
 }
@@ -381,18 +377,8 @@ void filter_data_task(void *argument) {
     vTaskDelay(1000);
     float dt = (float)packet->timestamp_seconds - last_time;
     ukf_predict(&ukf, dt);
-    float measurement[10] = {
-      packet->pressure_pascals,
-      packet->raw_acceleration_x_gs,
-      packet->raw_acceleration_y_gs,
-      packet->raw_acceleration_z_gs,
-      packet->raw_angular_rate_x_deg_per_s,
-      packet->raw_angular_rate_y_deg_per_s,
-      packet->raw_angular_rate_z_deg_per_s,
-      packet->magnetic_field_x_microteslas,
-      packet->magnetic_field_y_microteslas,
-      packet->magnetic_field_z_microteslas,
-    };
+    float measurement[10];
+    memcpy(measurement, &packet->pressure_pascals, sizeof(measurement));
     ukf_update(&ukf, measurement);
     memcpy(&packet->est_position_x_meters, ukf.X, UKF_STATE_DIMENSION * 4);
     last_time += dt;
@@ -403,10 +389,10 @@ void packetizer_task(void *argument) {
   // initialize the persistent data packet with the length and identifier fields
   data_packet.identifier = 0xA55AA55A;
   data_packet.packet_len = sizeof(DataPacket);
-
   // set the timer based on the set packet transmission frequency
   const TickType_t transmit_freq = MAX_WAIT_TIME(TRANSMIT_FREQUENCY_HZ);
   TickType_t last_wake_time = xTaskGetTickCount();
+
   for (;;) {
     // send to queue at the specified frequency
     xQueueSend(transmit_queue, &data_packet, 0);
@@ -419,7 +405,7 @@ void transmit_data(void *argument) {
   for (;;) {
     if (xQueueReceive(transmit_queue, &packet, portMAX_DELAY) == pdTRUE) {
       // calculate and attach the crc16 to the end of the packet
-      uint16_t serialized_packet_len = packet.packet_len + sizeof(packet.identifier) + sizeof(packet.packet_len) + sizeof(packet.crc);
+      size_t serialized_packet_len = packet.packet_len + sizeof(packet.identifier) + sizeof(packet.packet_len) + sizeof(packet.crc);
       packet.crc = crc16_ccitt((uint8_t *)&(packet), serialized_packet_len - 2);
       // move the location of the crc bytes directly after the payload
       memmove(&packet + serialized_packet_len - 2, &packet.crc, sizeof(packet.crc));
@@ -460,7 +446,7 @@ void usb_read_data(void *argument) {
 
     switch (msg_id) {
       case MSGID_MOCK_PACKET:
-
+        // packet has type, timestamp, and one of the three sensor packets.
       case MSGID_COMMAND_PACKET: {
         Packet response;
         response.identifier = message_get_response_id((uint32_t)header_bytes);
@@ -478,4 +464,15 @@ void usb_read_data(void *argument) {
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
   if (huart == firm_huart1)
     uart_tx_done = true;
+}
+
+void usb_receive_callback(uint8_t *buffer, uint32_t data_length) {
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+  // Check if the stream buffer is initialized
+  if (usb_rx_stream != NULL) {
+    // Adds the received data to the stream buffer from an ISR context
+    xStreamBufferSendFromISR(usb_rx_stream, buffer, data_length, &xHigherPriorityTaskWoken);
+  }
+  // If the usb_read_data task has a higher priority than the currently running task, request a context switch
+  portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }

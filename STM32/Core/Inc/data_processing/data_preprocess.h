@@ -4,6 +4,14 @@
 #include <mmc5983ma_packet.h>
 #include <icm45686_packet.h>
 
+typedef struct {
+  uint8_t timestamp[4];
+  union {
+    BMP581Packet_t bmp581_packet;
+    ICM45686Packet_t icm45686_packet;
+    MMC5983MAPacket_t mmc5983ma_packet;
+  } packet;
+} SensorPacket;
 
 /**
  * @brief Data packet with timestamp
@@ -44,30 +52,30 @@ typedef struct {
  * @brief Converts raw BMP581 pressure sensor data to SI units
  * @note Temperature converted to Celcius, pressure converted to Pascals
  * 
- * @param packet Pointer to a BMP581Packet_t structure containing raw sensor data
+ * @param packet Pointer to a SensorPacket structure containing raw bmp581 sensor data
  * @param result_packet Pointer to a DataPacket where the result of the preprocessor
  *                      will be stored
  */
-void bmp581_convert_packet(BMP581Packet_t *packet, DataPacket *result_packet);
+void bmp581_convert_packet(SensorPacket *packet, DataPacket *result_packet);
 
 /**
  * @brief Converts raw MMC5983MA magnetometer data to SI units
  * @note Magnetic field data converted to microtesla
  * 
- * @param packet Pointer to an MMC5983MAPacket_t structure containing raw sensor data
+ * @param packet Pointer to an SensorPacket structure containing raw mmc5983ma sensor data
  * @param result_packet Pointer to a DataPacket where the result of the preprocessor
  *                      will be stored
  */
-void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, DataPacket *result_packet);
+void mmc5983ma_convert_packet(SensorPacket *packet, DataPacket *result_packet);
 
 /**
  * @brief Converts raw ICM45686 data to SI units
  * 
  * @note Acceleration converted to g's, angular rate converted to radians per second
  * 
- * @param packet Pointer to an ICM45686Packet_t structure containing raw sensor data
+ * @param packet Pointer to an ICM45686Packet_t structure containing raw icm45686 sensor data
  * @param result_packet Pointer to a DataPacket where the result of the preprocessor
  *                      will be stored
  */
-void icm45686_convert_packet(ICM45686Packet_t *packet, DataPacket *result_packet);
+void icm45686_convert_packet(SensorPacket *packet, DataPacket *result_packet);
 
