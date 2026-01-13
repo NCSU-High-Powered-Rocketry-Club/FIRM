@@ -70,3 +70,17 @@ static void settings_write_defaults(void) {
     memcpy(buf + sizeof(CalibrationSettings_t), &firmSettings, sizeof(FIRMSettings_t));
     w25q128jv_write_sector(buf, 0, 0, 1024);
 }
+
+static void write_mock_settings(CalibrationSettings_t calSettings, FIRMSettings_t firmSettings) {
+    uint8_t buf[1024];
+    
+    w25q128jv_erase_sector(3);
+
+    memcpy(buf, &calSettings, sizeof(FIRMSettings_t));
+    memcpy(buf + sizeof(FIRMSettings_t), &firmSettings, sizeof(FIRMSettings_t) );
+
+    w25q128jv_write_sector(buf, 3, 0, 1024);
+
+    return;
+}
+
