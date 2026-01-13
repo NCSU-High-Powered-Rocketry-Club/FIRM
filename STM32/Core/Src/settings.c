@@ -71,7 +71,7 @@ static void settings_write_defaults(void) {
     w25q128jv_write_sector(buf, 0, 0, 1024);
 }
 
-static void write_mock_settings(CalibrationSettings_t calSettings, FIRMSettings_t firmSettings) {
+ write_mock_settings(CalibrationSettings_t calSettings, FIRMSettings_t firmSettings) {
     uint8_t buf[1024];
     
     w25q128jv_erase_sector(3);
