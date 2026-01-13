@@ -77,6 +77,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/utils.c
     Core/Src/usb_serializer.c
     Core/Src/commands.c
+    Core/Src/messages.c
     Core/Src/firm_tasks.c
     Core/Src/led.c
     Core/Src/firm_fsm.c

@@ -11,6 +11,7 @@
 #include "settings.h"
 #include "unscented_kalman_filter.h"
 #include "ukf_functions.h"
+#include "messages.h"
 
 
 #include "cmsis_os.h"

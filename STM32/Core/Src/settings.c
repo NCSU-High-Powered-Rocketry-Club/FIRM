@@ -60,7 +60,7 @@ bool settings_write_calibration_settings(CalibrationSettings_t* calibration_sett
 
 bool settings_write_firm_settings(FIRMSettings_t* firm_settings) {
     if (firm_settings == NULL) {
-        return false;
+      return false;
     }
 
     uint8_t buffer_to_write[SETTINGS_FLASH_BLOCK_SIZE_BYTES];
@@ -76,7 +76,7 @@ bool settings_write_firm_settings(FIRMSettings_t* firm_settings) {
     memcpy(buffer_to_write + sizeof(CalibrationSettings_t), &sanitized, sizeof(FIRMSettings_t));
     bool ok = settings_write_flash_block(buffer_to_write);
     if (ok) {
-        firmSettings = sanitized;
+      firmSettings = sanitized;
     }
     return ok;
 }

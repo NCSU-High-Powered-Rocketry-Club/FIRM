@@ -10,10 +10,10 @@ typedef enum {
 } FIRMState;
 
 typedef enum {
-  SYSREQ_SETUP,
-  SYSREQ_FINISH_SETUP,
-  SYSREQ_START_MOCK,
-  SYSREQ_CANCEL,
+  SYSREQ_SETUP = 0,
+  SYSREQ_FINISH_SETUP = 1,
+  SYSREQ_START_MOCK = 0x0005, // command sent by host
+  SYSREQ_CANCEL = 0xFFFF, // command sent by host
 } SystemRequest;
 
 typedef enum {

@@ -30,6 +30,9 @@ QueueHandle_t icm45686_command_queue;
 QueueHandle_t mmc5983ma_command_queue;
 QueueHandle_t data_filter_command_queue;
 
+// mock queues
+QueueHandle_t mock_bmp581_queue;
+
 
 // task attributes
 const osThreadAttr_t systemManagerTask_attributes = {
@@ -84,6 +87,11 @@ osMutexId_t sensorDataMutexHandle;
 const osMutexAttr_t sensorDataMutex_attributes = {
   .name = "sensorDataMutex"
 };
+
+static int mock_bmp581_fetch_queue(BMP581Packet_t *packet) {
+  xQueueReceive(mock_bmp581_queue, packet, portMAX_DELAY);
+  return 0;
+}
 
 // instance of the serialized verison of the data packet that will be reused and overriden as data
 // is collected and processed
@@ -284,13 +292,24 @@ void collect_bmp581_data_task(void *argument) {
   const TickType_t max_wait = MAX_WAIT_TIME(BMP581_POLL_RATE_HZ);
   uint32_t notif_count = 0;
 
-  for (;;) {
-    notif_count = ulTaskNotifyTake(pdFALSE, max_wait);
+  TaskCommandOption cmd_status;
+  int (*fetch_data)(BMP581Packet_t*);
 
+  for (;;) {
+    if (xQueueReceive(bmp581_command_queue, &cmd_status, 0) == pdTRUE) {
+      switch (cmd_status) {
+        case TASKCMD_MOCK:
+          fetch_data = mock_bmp581_fetch_queue;
+        default:
+          fetch_data = bmp581_read_data;
+      }
+    }
+
+    notif_count = ulTaskNotifyTake(pdFALSE, max_wait);
     if (notif_count > 0) {
       osMutexAcquire(sensorDataMutexHandle, osWaitForever);
       BMP581Packet_t *bmp581_packet = logger_malloc_packet(sizeof(BMP581Packet_t));
-      if (!bmp581_read_data(bmp581_packet)) {
+      if (!fetch_data(bmp581_packet)) {
         logger_write_entry('B', sizeof(BMP581Packet_t));
         bmp581_convert_packet(bmp581_packet, (DataPacket *)&data_packet.data);
       }
@@ -400,8 +419,8 @@ void transmit_data(void *argument) {
   for (;;) {
     if (xQueueReceive(transmit_queue, &packet, portMAX_DELAY) == pdTRUE) {
       // calculate and attach the crc16 to the end of the packet
-      packet.crc = crc16_ccitt((uint8_t *)&(packet.data), packet.packet_len);
       uint16_t serialized_packet_len = packet.packet_len + sizeof(packet.identifier) + sizeof(packet.packet_len) + sizeof(packet.crc);
+      packet.crc = crc16_ccitt((uint8_t *)&(packet), serialized_packet_len - 2);
       // move the location of the crc bytes directly after the payload
       memmove(&packet + serialized_packet_len - 2, &packet.crc, sizeof(packet.crc));
       CDC_Transmit_FS((uint8_t*)&packet, serialized_packet_len);
@@ -415,35 +434,43 @@ void transmit_data(void *argument) {
 }
 
 void usb_read_data(void *argument) {
+  uint8_t header_bytes[sizeof(data_packet.identifier)];
+  uint32_t payload_length;
   uint8_t received_bytes[COMMAND_READ_CHUNK_SIZE_BYTES];
-  uint8_t command_buffer[CMD_PACKET_SIZE];
-  CommandsStreamParser_t command_parser = { .len = 0 };
-
+  
   for (;;) {
-    // Receive incoming USB data
-    size_t number_of_bytes_received = xStreamBufferReceive(usb_rx_stream, received_bytes, sizeof(received_bytes), portMAX_DELAY);
-    if (number_of_bytes_received == 0) {
+    // Receive incoming USB data, attempt to parse header
+    memmove(&header_bytes[0], &header_bytes[1], sizeof(header_bytes) - 1);
+    xStreamBufferReceive(usb_rx_stream, &header_bytes[sizeof(header_bytes) - 1], 1, portMAX_DELAY);
+    // check if the 4 header bytes are valid, skip if invalid
+    MessageIdentifier msg_id = validate_message_header((uint32_t)header_bytes);
+    if (msg_id == MSGID_INVALID)
       continue;
-    }
 
-    // Feed bytes into parser
-    commands_update_parser(&command_parser, received_bytes, number_of_bytes_received);
+    // valid header, so parse length field and get payload + crc bytes
+    xStreamBufferReceive(usb_rx_stream, &payload_length, sizeof(payload_length), portMAX_DELAY);
+    if (payload_length > COMMAND_READ_CHUNK_SIZE_BYTES - 2)
+      continue;
 
-    // Process all complete commands in the parser
-    while (commands_extract_next_packet(&command_parser, command_buffer)) {
-      // Create response packet with ResponsePacket payload
-      Packet response_packet;
-      response_packet.identifier = 0xA55AA55A;
-      
-      // Process command and fill response payload
-      if (commands_process_and_respond(command_buffer, (ResponsePacket*)&response_packet.data)) {
-        // Calculate packet length based on response_id to determine actual payload size
-        // For now, use sizeof(ResponsePacket) as placeholder - adjust based on actual response type if needed
-        response_packet.packet_len = sizeof(ResponsePacket);
-        
-        // Queue for transmission (transmit_data will calculate CRC)
-        xQueueSend(transmit_queue, &response_packet, 0);
+    xStreamBufferReceive(usb_rx_stream, received_bytes, payload_length + 2, portMAX_DELAY);
+    
+    // verify the data in the packet is valid by checking the crc across header, length, and payload
+    if (!validate_message_crc(header_bytes, payload_length, received_bytes))
+      continue;
+
+    switch (msg_id) {
+      case MSGID_MOCK_PACKET:
+
+      case MSGID_COMMAND_PACKET: {
+        Packet response;
+        response.identifier = message_get_response_id((uint32_t)header_bytes);
+        response.packet_len = execute_command((CommandIdentifier)(header_bytes + 2), received_bytes, payload_length, (ResponsePacket *)&response.data);
+        xQueueSend(transmit_queue, &response, 0);
       }
+      case MSGID_SYSTEM_MANAGER_REDIRECT:
+        xQueueSend(system_request_queue, &msg_id, portMAX_DELAY);
+      default:
+        continue;
     }
   }
 }
