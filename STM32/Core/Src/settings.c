@@ -5,6 +5,8 @@ CalibrationSettings_t calibrationSettings;
 
 static void settings_write_defaults(void);
 
+
+
 int settings_init(SPI_HandleTypeDef* flash_hspi, GPIO_TypeDef* flash_cs_channel, uint16_t flash_cs_pin) {
     // set up flash chip porting layer
     w25q128jv_set_spi_settings(flash_hspi, flash_cs_channel, flash_cs_pin);
@@ -71,7 +73,7 @@ static void settings_write_defaults(void) {
     w25q128jv_write_sector(buf, 0, 0, 1024);
 }
 
- write_mock_settings(CalibrationSettings_t calSettings, FIRMSettings_t firmSettings) {
+ void write_mock_settings(CalibrationSettings_t calSettings, FIRMSettings_t firmSettings) {
     uint8_t buf[1024];
     
     w25q128jv_erase_sector(3);
