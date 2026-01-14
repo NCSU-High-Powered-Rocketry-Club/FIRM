@@ -23,7 +23,7 @@ typedef enum {
   CMDID_SET_DEVICE_CONFIG = 0x0003,
   CMDID_REBOOT = 0x0004,
   CMDID_MOCK_REQUEST = 0x0005,
-  CMDID_CANCEL_REQUEST = 0xFFFF,
+  CMDID_CANCEL_REQUEST = 0x00FF,
 } CommandIdentifier;
 
 typedef enum {

@@ -12,6 +12,7 @@
 #include "unscented_kalman_filter.h"
 #include "ukf_functions.h"
 #include "messages.h"
+#include "mock_handler.h"
 
 
 #include "cmsis_os.h"
@@ -34,6 +35,7 @@
 
 #define SYSTEM_REQUEST_QUEUE_LENGTH 5
 #define TRANSMIT_QUEUE_LENGTH 10
+#define MOCK_QUEUE_LENGTH 10
 
 extern osThreadId_t system_manager_task_handle;
 extern osThreadId_t firm_mode_indicator_task_handle;
@@ -60,9 +62,6 @@ extern const osThreadAttr_t filterDataTask_attributes;
 extern osMutexId_t sensorDataMutexHandle;
 extern const osMutexAttr_t sensorDataMutex_attributes;
 
-
-
-
 typedef union {
   DataPacket data_packet;
   ResponsePacket response_packet;
@@ -74,8 +73,6 @@ typedef struct {
   PacketPayload data;
   uint16_t crc;
 } Packet;
-
-
 
 /**
  * Struct to contain all SPI handles for the firm initialization function

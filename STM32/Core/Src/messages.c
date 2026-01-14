@@ -1,11 +1,13 @@
 #include "messages.h"
 
-MessageIdentifier validate_message_header(uint32_t header) {
+MessageIdentifier validate_message_header(const uint8_t *header) {
   // compare first 2 bytes of header
-  switch (header >> 2) {
+  uint16_t header_combined = (uint16_t)(header[0] << 8) | header[1];
+  uint16_t identifier_combined = (uint16_t)(header[2] << 8) | header[3];
+  switch (header_combined) {
     case MSGID_COMMAND_PACKET:
       // compare last 2 bytes of header to check if valid command type
-      switch (header & 0x0000FFFF) {
+      switch (identifier_combined) {
         case CMDID_GET_DEVICE_INFO:
         case CMDID_GET_DEVICE_CONFIG:
         case CMDID_SET_DEVICE_CONFIG:
@@ -22,7 +24,7 @@ MessageIdentifier validate_message_header(uint32_t header) {
           return MSGID_INVALID;
       }
     case MSGID_MOCK_PACKET:
-      switch (header & 0x0000FFFF) {
+      switch (identifier_combined) {
         // will be enum later once values decided on
         case 0x0000:
         case 0x0001:
@@ -39,15 +41,7 @@ MessageIdentifier validate_message_header(uint32_t header) {
   }
 }
 
-bool validate_message_crc16(uint8_t *message, uint32_t len) {
-  // extract the crc16 bytes
-  uint16_t *crc = (uint16_t *)(message + len);
-  if (*crc == crc16_ccitt(message, len))
-    return true;
-  return false;
-}
-
-bool validate_command_packet_crc(const uint8_t* header_bytes, uint32_t payload_length, const uint8_t* payload_and_crc) {
+bool validate_message_crc16(const uint8_t* header_bytes, uint32_t payload_length, const uint8_t* payload_and_crc) {
   // Extract CRC from the last 2 bytes of payload_and_crc
   uint16_t received_crc = payload_and_crc[payload_length] | ((uint16_t)payload_and_crc[payload_length + 1] << 8);
   

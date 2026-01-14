@@ -179,9 +179,9 @@ void firm_rtos_init(void) {
   mode_indicator_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
 
   // queue for mock packets
-  mock_bmp581_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(SensorPacket));
-  mock_icm45686_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(SensorPacket));
-  mock_mmc5983ma_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(SensorPacket));
+  mock_bmp581_queue = xQueueCreate(MOCK_QUEUE_LENGTH, sizeof(SensorPacket));
+  mock_icm45686_queue = xQueueCreate(MOCK_QUEUE_LENGTH, sizeof(SensorPacket));
+  mock_mmc5983ma_queue = xQueueCreate(MOCK_QUEUE_LENGTH, sizeof(SensorPacket));
 }
 
 void system_manager_task(void *argument) {
@@ -366,7 +366,7 @@ void filter_data_task(void *argument) {
   DataPacket *packet = (DataPacket *)&data_packet.data;
   
   // filter can initialize, and FIRM can go into live mode
-  ukf_init(&ukf, packet->pressure_pascals, &packet->est_acceleration_x_gs, &packet->magnetic_field_x_microteslas);
+  ukf_init(&ukf, packet->pressure_pascals, &packet->raw_acceleration_x_gs, &packet->magnetic_field_x_microteslas);
   xQueueSend(system_request_queue, &(SystemRequest){SYSREQ_FINISH_SETUP}, 0);
   
   // set the last time to calculate the delta timestamp, minus some initial offset so that the
@@ -376,18 +376,18 @@ void filter_data_task(void *argument) {
   for (;;) {
     vTaskDelay(1000);
     float dt = (float)packet->timestamp_seconds - last_time;
-    ukf_predict(&ukf, dt);
-    float measurement[10];
-    memcpy(measurement, &packet->pressure_pascals, sizeof(measurement));
-    ukf_update(&ukf, measurement);
-    memcpy(&packet->est_position_x_meters, ukf.X, UKF_STATE_DIMENSION * 4);
+    // ukf_predict(&ukf, dt);
+    // float measurement[10];
+    // memcpy(measurement, &packet->pressure_pascals, sizeof(measurement));
+    // ukf_update(&ukf, measurement);
+    // memcpy(&packet->est_position_x_meters, ukf.X, UKF_STATE_DIMENSION * 4);
     last_time += dt;
   }
 }
 
 void packetizer_task(void *argument) {
   // initialize the persistent data packet with the length and identifier fields
-  data_packet.identifier = 0xA55AA55A;
+  data_packet.identifier = 0xA55A0000;
   data_packet.packet_len = sizeof(DataPacket);
   // set the timer based on the set packet transmission frequency
   const TickType_t transmit_freq = MAX_WAIT_TIME(TRANSMIT_FREQUENCY_HZ);
@@ -395,7 +395,7 @@ void packetizer_task(void *argument) {
 
   for (;;) {
     // send to queue at the specified frequency
-    xQueueSend(transmit_queue, &data_packet, 0);
+    //xQueueSend(transmit_queue, &data_packet, 0);
     vTaskDelayUntil(&last_wake_time, transmit_freq);
   }
 }
@@ -423,13 +423,14 @@ void usb_read_data(void *argument) {
   uint8_t header_bytes[sizeof(data_packet.identifier)];
   uint32_t payload_length;
   uint8_t received_bytes[COMMAND_READ_CHUNK_SIZE_BYTES];
-  
+
   for (;;) {
     // Receive incoming USB data, attempt to parse header
     memmove(&header_bytes[0], &header_bytes[1], sizeof(header_bytes) - 1);
     xStreamBufferReceive(usb_rx_stream, &header_bytes[sizeof(header_bytes) - 1], 1, portMAX_DELAY);
     // check if the 4 header bytes are valid, skip if invalid
-    MessageIdentifier msg_id = validate_message_header((uint32_t)header_bytes);
+    MessageIdentifier msg_id = validate_message_header(header_bytes);
+    CDC_Transmit_FS(&header_bytes[0], 1);
     if (msg_id == MSGID_INVALID)
       continue;
 
@@ -441,20 +442,39 @@ void usb_read_data(void *argument) {
     xStreamBufferReceive(usb_rx_stream, received_bytes, payload_length + 2, portMAX_DELAY);
     
     // verify the data in the packet is valid by checking the crc across header, length, and payload
-    if (!validate_message_crc(header_bytes, payload_length, received_bytes))
+    if (!validate_message_crc16(header_bytes, payload_length, received_bytes))
       continue;
 
     switch (msg_id) {
-      case MSGID_MOCK_PACKET:
-        // packet has type, timestamp, and one of the three sensor packets.
+      case MSGID_MOCK_PACKET: {
+        // create and fill a mock packet with data, and send to queue
+        SensorPacket mock_packet;
+        MockPacketID mock_type = process_mock_packet(header_bytes, payload_length, received_bytes, (uint8_t*)&mock_packet);
+        switch (mock_type) {
+          case MOCKID_BMP581:
+            xQueueSend(mock_bmp581_queue, &mock_packet, portMAX_DELAY);
+            break;
+          case MOCKID_ICM45686:
+            xQueueSend(mock_icm45686_queue, &mock_packet, portMAX_DELAY);
+            break;
+          case MOCKID_MMC5983MA:
+            xQueueSend(mock_mmc5983ma_queue, &mock_packet, portMAX_DELAY);
+            break;
+          default:
+            // currently not handling first packet of mock, the header settings
+            break;
+        }
+      }
       case MSGID_COMMAND_PACKET: {
         Packet response;
         response.identifier = message_get_response_id((uint32_t)header_bytes);
         response.packet_len = execute_command((CommandIdentifier)(header_bytes + 2), received_bytes, payload_length, (ResponsePacket *)&response.data);
         xQueueSend(transmit_queue, &response, 0);
+        break;
       }
       case MSGID_SYSTEM_MANAGER_REDIRECT:
         xQueueSend(system_request_queue, &msg_id, portMAX_DELAY);
+        break;
       default:
         continue;
     }

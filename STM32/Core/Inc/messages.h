@@ -21,7 +21,7 @@ typedef enum {
  * @param header the 4 header bytes as an unsigned integer
  * @return the message identifier type of the header
  */
-MessageIdentifier validate_message_header(uint32_t header);
+MessageIdentifier validate_message_header(const uint8_t *header);
 
 
 uint32_t message_get_response_id(uint32_t header);
@@ -33,4 +33,4 @@ uint32_t message_get_response_id(uint32_t header);
  * @param payload_and_crc Pointer to payload + 2 CRC bytes
  * @return true if CRC is valid, false otherwise
  */
-bool validate_message_crc(const uint8_t* header_bytes, uint32_t payload_length, const uint8_t* payload_and_crc);
+bool validate_message_crc16(const uint8_t* header_bytes, uint32_t payload_length, const uint8_t* payload_and_crc);

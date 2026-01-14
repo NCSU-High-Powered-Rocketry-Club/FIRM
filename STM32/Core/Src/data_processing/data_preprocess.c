@@ -128,9 +128,9 @@ void icm45686_convert_packet(SensorPacket *packet, DataPacket *result_packet) {
     result_packet->raw_acceleration_x_gs = acc_float_x * calibrationSettings.icm45686_accel.scale_multiplier[0] + acc_float_y * calibrationSettings.icm45686_accel.scale_multiplier[3] + acc_float_z * calibrationSettings.icm45686_accel.scale_multiplier[6];
     result_packet->raw_acceleration_y_gs = acc_float_x * calibrationSettings.icm45686_accel.scale_multiplier[1] + acc_float_y * calibrationSettings.icm45686_accel.scale_multiplier[4] + acc_float_z * calibrationSettings.icm45686_accel.scale_multiplier[7];
     result_packet->raw_acceleration_z_gs = acc_float_x * calibrationSettings.icm45686_accel.scale_multiplier[2] + acc_float_y * calibrationSettings.icm45686_accel.scale_multiplier[5] + acc_float_z * calibrationSettings.icm45686_accel.scale_multiplier[8];
-    result_packet->est_angular_rate_x_rad_per_s = gyro_float_x * calibrationSettings.icm45686_gyro.scale_multiplier[0] + gyro_float_y * calibrationSettings.icm45686_gyro.scale_multiplier[3] + gyro_float_z * calibrationSettings.icm45686_gyro.scale_multiplier[6];
-    result_packet->est_angular_rate_y_rad_per_s = gyro_float_x * calibrationSettings.icm45686_gyro.scale_multiplier[1] + gyro_float_y * calibrationSettings.icm45686_gyro.scale_multiplier[4] + gyro_float_z * calibrationSettings.icm45686_gyro.scale_multiplier[7];
-    result_packet->est_angular_rate_z_rad_per_s = gyro_float_x * calibrationSettings.icm45686_gyro.scale_multiplier[2] + gyro_float_y * calibrationSettings.icm45686_gyro.scale_multiplier[5] + gyro_float_z * calibrationSettings.icm45686_gyro.scale_multiplier[8];
+    result_packet->raw_angular_rate_x_deg_per_s = gyro_float_x * calibrationSettings.icm45686_gyro.scale_multiplier[0] + gyro_float_y * calibrationSettings.icm45686_gyro.scale_multiplier[3] + gyro_float_z * calibrationSettings.icm45686_gyro.scale_multiplier[6];
+    result_packet->raw_angular_rate_y_deg_per_s = gyro_float_x * calibrationSettings.icm45686_gyro.scale_multiplier[1] + gyro_float_y * calibrationSettings.icm45686_gyro.scale_multiplier[4] + gyro_float_z * calibrationSettings.icm45686_gyro.scale_multiplier[7];
+    result_packet->raw_angular_rate_z_deg_per_s = gyro_float_x * calibrationSettings.icm45686_gyro.scale_multiplier[2] + gyro_float_y * calibrationSettings.icm45686_gyro.scale_multiplier[5] + gyro_float_z * calibrationSettings.icm45686_gyro.scale_multiplier[8];
 } 
 
 #ifndef TEST
