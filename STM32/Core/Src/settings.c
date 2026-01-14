@@ -5,22 +5,19 @@ CalibrationSettings_t calibrationSettings;
 
 static void settings_write_defaults(void);
 
-typedef enum {  //SettingsType used in write_settings function.
-    init =0,
-    mock =3
-}settingsType;
+
 
 //function takes the settings being saved and the type, currently two types
 //init writes to sector zero  of flash memory, mock runs to sector three
-void write_settings(CalibrationSettings_t calSettings, FIRMSettings_t firmSettings, settingsType type){
+void write_settings(CalibrationSettings_t calSettings, FIRMSettings_t firmSettings, SettingsType TYPE){
     uint8_t buf[1024];
     // Erase sector 0 first (4 KB, covers our 1024 bytes)
-    w25q128jv_erase_sector(type);
+    w25q128jv_erase_sector(TYPE);
     // Write the 1024-byte block
     memcpy(buf, &calSettings, sizeof(CalibrationSettings_t));
     memcpy(buf + sizeof(CalibrationSettings_t), &firmSettings, sizeof(FIRMSettings_t) );
 
-    w25q128jv_write_sector(buf, type, 0, 1024);
+    w25q128jv_write_sector(buf, TYPE, 0, 1024);
 }
 
 int settings_init(SPI_HandleTypeDef* flash_hspi, GPIO_TypeDef* flash_cs_channel, uint16_t flash_cs_pin) {

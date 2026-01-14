@@ -4,6 +4,14 @@
 #include <stdbool.h>
 
 /**
+ * Type Def used for SettingsType used in write_settings function.
+ */
+typedef enum {  //
+    init =0,
+    mock =1
+}SettingsType;
+
+/**
  * Accelerometer calibration coefficients
  */
 typedef struct {
