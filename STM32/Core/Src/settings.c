@@ -5,7 +5,21 @@ CalibrationSettings_t calibrationSettings;
 
 static void settings_write_defaults(void);
 
+typedef enum {  //SettingsType used in write_settings function.
+    init =0,
+    mock =3
+}settingsType;
 
+void write_settings(CalibrationSettings_t calSettings, FIRMSettings_t firmSettings, settingsType type){
+    uint8_t buf[1024];
+
+    w25q128jv_erase_sector(type);
+
+    memcpy(buf, &calSettings, sizeof(FIRMSettings_t));
+    memcpy(buf + sizeof(FIRMSettings_t), &firmSettings, sizeof(FIRMSettings_t) );
+
+    w25q128jv_write_sector(buf, type, 0, 1024);
+}
 
 int settings_init(SPI_HandleTypeDef* flash_hspi, GPIO_TypeDef* flash_cs_channel, uint16_t flash_cs_pin) {
     // set up flash chip porting layer
