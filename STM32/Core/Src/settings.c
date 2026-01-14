@@ -10,13 +10,15 @@ typedef enum {  //SettingsType used in write_settings function.
     mock =3
 }settingsType;
 
+//function takes the settings being saved and the type, currently two types
+//init writes to sector zero  of flash memory, mock runs to sector three
 void write_settings(CalibrationSettings_t calSettings, FIRMSettings_t firmSettings, settingsType type){
     uint8_t buf[1024];
-
+    // Erase sector 0 first (4 KB, covers our 1024 bytes)
     w25q128jv_erase_sector(type);
-
-    memcpy(buf, &calSettings, sizeof(FIRMSettings_t));
-    memcpy(buf + sizeof(FIRMSettings_t), &firmSettings, sizeof(FIRMSettings_t) );
+    // Write the 1024-byte block
+    memcpy(buf, &calSettings, sizeof(CalibrationSettings_t));
+    memcpy(buf + sizeof(CalibrationSettings_t), &firmSettings, sizeof(FIRMSettings_t) );
 
     w25q128jv_write_sector(buf, type, 0, 1024);
 }
@@ -77,26 +79,15 @@ static void settings_write_defaults(void) {
     firmSettings.uart_transfer_enabled = true;
     strcpy(firmSettings.device_name, "FIRM Device");
 
-    // Erase sector 0 first (4 KB, covers our 1024 bytes)
-    w25q128jv_erase_sector(0);
+    
+ 
 
-    // Write the 1024-byte block
-    uint8_t buf[1024];
-    memcpy(buf, &calibrationSettings, sizeof(CalibrationSettings_t));
-    memcpy(buf + sizeof(CalibrationSettings_t), &firmSettings, sizeof(FIRMSettings_t));
-    w25q128jv_write_sector(buf, 0, 0, 1024);
+
+    write_settings(calibrationSettings,firmSettings, init);
 }
 
- void write_mock_settings(CalibrationSettings_t calSettings, FIRMSettings_t firmSettings) {
-    uint8_t buf[1024];
-    
-    w25q128jv_erase_sector(3);
-
-    memcpy(buf, &calSettings, sizeof(FIRMSettings_t));
-    memcpy(buf + sizeof(FIRMSettings_t), &firmSettings, sizeof(FIRMSettings_t) );
-
-    w25q128jv_write_sector(buf, 3, 0, 1024);
-
+ void write_mock_settings() { //This function is now redundant, but I don't know if its still wanted
+    write_settings(calibrationSettings,firmSettings, mock);
     return;
 }
 
