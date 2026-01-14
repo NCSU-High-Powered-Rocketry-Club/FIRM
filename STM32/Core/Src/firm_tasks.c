@@ -387,7 +387,10 @@ void filter_data_task(void *argument) {
 
 void packetizer_task(void *argument) {
   // initialize the persistent data packet with the length and identifier fields
-  data_packet.identifier = 0xA55A0000;
+  data_packet.identifier[0] = 0xA5;
+  data_packet.identifier[1] = 0x5A;
+  data_packet.identifier[2] = 0x00;
+  data_packet.identifier[3] = 0x00;
   data_packet.packet_len = sizeof(DataPacket);
   // set the timer based on the set packet transmission frequency
   const TickType_t transmit_freq = MAX_WAIT_TIME(TRANSMIT_FREQUENCY_HZ);
@@ -473,8 +476,9 @@ void usb_read_data(void *argument) {
       }
       case MSGID_COMMAND_PACKET: {
         Packet response;
-        response.identifier = message_get_response_id((uint8_t *)header_bytes);
-        response.packet_len = execute_command((CommandIdentifier)(header_bytes + 2), received_bytes, payload_length, (ResponsePacket *)&response.data);
+        uint8_t response_header[4];
+        message_get_response_id((uint8_t *)header_bytes, response_header);
+        response.packet_len = execute_command(&header_bytes[2], received_bytes, payload_length, (ResponsePacket *)&response.data);
         xQueueSend(transmit_queue, &response, 0);
         break;
       }

@@ -50,4 +50,4 @@ typedef union {
   bool success;
 } ResponsePacket;
 
-uint32_t execute_command(uint32_t command_id, uint8_t *data, uint32_t data_len, ResponsePacket* response_packet);
+uint32_t execute_command(uint8_t *command, uint8_t *data, uint32_t data_len, ResponsePacket* response_packet);

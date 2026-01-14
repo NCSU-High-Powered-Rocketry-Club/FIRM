@@ -44,7 +44,8 @@ static bool set_device_config(DeviceConfig *new_config) {
 }
 
 
-uint32_t execute_command(uint32_t command_id, uint8_t *data, uint32_t data_len, ResponsePacket* response_packet) {
+uint32_t execute_command(uint8_t *command, uint8_t *data, uint32_t data_len, ResponsePacket* response_packet) {
+  CommandIdentifier command_id = ((uint16_t)(command[1] << 8) | command[0]);
   switch (command_id & 0x0000FFFF) {
     case CMDID_REBOOT: // system reboots, dont worry about sending response packet
       HAL_NVIC_SystemReset();

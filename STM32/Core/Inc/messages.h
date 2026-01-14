@@ -24,7 +24,7 @@ typedef enum {
 MessageIdentifier validate_message_header(const uint8_t *header);
 
 
-uint32_t message_get_response_id(const uint8_t* header);
+void message_get_response_id(const uint8_t* header, uint8_t* response_header);
 /**
  * Validates CRC16 across separate header, length, and payload buffers without copying.
  * 
