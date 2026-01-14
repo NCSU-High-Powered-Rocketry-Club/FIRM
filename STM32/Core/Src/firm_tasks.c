@@ -420,9 +420,16 @@ void transmit_data(void *argument) {
 }
 
 void usb_read_data(void *argument) {
-  uint8_t header_bytes[sizeof(data_packet.identifier)];
+  uint8_t header_bytes[sizeof(data_packet.identifier)] = {
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+  };
   uint32_t payload_length;
   uint8_t received_bytes[COMMAND_READ_CHUNK_SIZE_BYTES];
+
+  uint8_t test_bytes[3];
 
   for (;;) {
     // Receive incoming USB data, attempt to parse header
@@ -430,7 +437,6 @@ void usb_read_data(void *argument) {
     xStreamBufferReceive(usb_rx_stream, &header_bytes[sizeof(header_bytes) - 1], 1, portMAX_DELAY);
     // check if the 4 header bytes are valid, skip if invalid
     MessageIdentifier msg_id = validate_message_header(header_bytes);
-    CDC_Transmit_FS(&header_bytes[0], 1);
     if (msg_id == MSGID_INVALID)
       continue;
 
@@ -467,7 +473,7 @@ void usb_read_data(void *argument) {
       }
       case MSGID_COMMAND_PACKET: {
         Packet response;
-        response.identifier = message_get_response_id((uint32_t)header_bytes);
+        response.identifier = message_get_response_id((uint8_t *)header_bytes);
         response.packet_len = execute_command((CommandIdentifier)(header_bytes + 2), received_bytes, payload_length, (ResponsePacket *)&response.data);
         xQueueSend(transmit_queue, &response, 0);
         break;

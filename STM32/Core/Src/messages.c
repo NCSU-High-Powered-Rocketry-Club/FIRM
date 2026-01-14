@@ -59,11 +59,13 @@ bool validate_message_crc16(const uint8_t* header_bytes, uint32_t payload_length
   return (received_crc == calculated_crc);
 }
 
-uint32_t message_get_response_id(uint32_t header) {
+uint32_t message_get_response_id(const uint8_t* header) {
+  uint16_t header_combined = (uint16_t)(header[0] << 8) | header[1];
+  uint16_t identifier_combined = (uint16_t)(header[2] << 8) | header[3];
   // currently response packets will only be sent when FIRM is sent a command
-  if ((header >> 2) == MSGID_COMMAND_PACKET) {
+  if (header_combined == MSGID_COMMAND_PACKET) {
     // copies the last 2 bytes (command selection bytes) and sets first two to response packet id.
-    return ((uint32_t)MSGID_RESPONSE_PACKET << 2) || (header & 0x0000FFFF);
+    return ((uint32_t)MSGID_RESPONSE_PACKET << 16) || identifier_combined;
   }
   return MSGID_INVALID;
 }
