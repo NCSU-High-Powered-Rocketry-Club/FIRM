@@ -702,6 +702,10 @@ void StartupTask(void *argument)
   // MMC5983MAPacket_t mag_packet;
   // mmc5983ma_read_data(&mag_packet, &magnetometer_flip);
 
+  // even though we call this function in settings setup, it somehow breaks settings
+  // when you try to write to it during rtos. So we have to call this again.
+  w25q128jv_set_spi_settings(&hspi1, GPIOC, GPIO_PIN_4);
+  
   // re-enable ISR's so that interrupts can trigger the sensor tasks to run
   HAL_NVIC_EnableIRQ(EXTI2_IRQn);
   HAL_NVIC_EnableIRQ(EXTI3_IRQn);

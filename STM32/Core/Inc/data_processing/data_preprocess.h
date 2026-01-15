@@ -24,6 +24,7 @@ typedef struct {
     float raw_acceleration_y_gs;
     float raw_acceleration_z_gs;
     float raw_angular_rate_x_deg_per_s;
+    // degrees per second
     float raw_angular_rate_y_deg_per_s;
     float raw_angular_rate_z_deg_per_s;
     float magnetic_field_x_microteslas;

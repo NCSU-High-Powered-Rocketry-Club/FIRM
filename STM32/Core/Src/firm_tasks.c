@@ -444,7 +444,7 @@ void usb_read_data(void *argument) {
     // valid header, so get the identifier
     uint16_t identifier;
     xStreamBufferReceive(usb_rx_stream, (uint8_t *)&identifier, 2, portMAX_DELAY);
-    // TODO: validate identifier, sys manager redirect
+    
     
     // parse length field and get payload + crc bytes
     xStreamBufferReceive(usb_rx_stream, &payload_length, sizeof(payload_length), portMAX_DELAY);
@@ -484,9 +484,7 @@ void usb_read_data(void *argument) {
         message_get_response_id(header, identifier, response_header_and_id);
         response.header = response_header_and_id[0];
         response.identifier = response_header_and_id[1];
-        osMutexAcquire(sensorDataMutexHandle, osWaitForever);
         response.packet_len = execute_command(identifier, received_bytes, payload_length, (ResponsePacket *)&response.data);
-        osMutexRelease(sensorDataMutexHandle);
         xQueueSend(transmit_queue, &response, portMAX_DELAY);
         break;
       }
