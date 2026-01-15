@@ -1,38 +1,11 @@
 #include "messages.h"
 
-MessageIdentifier validate_message_header(const uint8_t *header) {
+MessageIdentifier validate_message_header(uint16_t header) {
   // compare first 2 bytes of header
-  uint16_t header_combined = (uint16_t)(header[0] << 8) | header[1];
-  uint16_t identifier_combined = (uint16_t)(header[2] << 8) | header[3];
-  switch (header_combined) {
+  switch (header) {
     case MSGID_COMMAND_PACKET:
-      // compare last 2 bytes of header to check if valid command type
-      switch (identifier_combined) {
-        case CMDID_GET_DEVICE_INFO:
-        case CMDID_GET_DEVICE_CONFIG:
-        case CMDID_SET_DEVICE_CONFIG:
-        case CMDID_REBOOT:
-          return MSGID_COMMAND_PACKET;
-
-        // these commands need to pass through system manager
-        case CMDID_MOCK_REQUEST:
-        case CMDID_CANCEL_REQUEST:
-          return MSGID_SYSTEM_MANAGER_REDIRECT;
-        
-        // invalid command 
-        default:
-          return MSGID_INVALID;
-      }
     case MSGID_MOCK_PACKET:
-      switch (identifier_combined) {
-        // will be enum later once values decided on
-        case 0x0000:
-        case 0x0001:
-          return MSGID_MOCK_PACKET;
-        default:
-          return MSGID_INVALID;
-      }
-    
+      return header;
     // firm should never be receiving a message with a data packet or response packet header
     case MSGID_DATA_PACKET:
     case MSGID_RESPONSE_PACKET:
@@ -41,7 +14,7 @@ MessageIdentifier validate_message_header(const uint8_t *header) {
   }
 }
 
-bool validate_message_crc16(const uint8_t* header_bytes, uint32_t payload_length, const uint8_t* payload_and_crc) {
+bool validate_message_crc16(uint16_t header, uint16_t identifier, uint32_t payload_length, const uint8_t* payload_and_crc) {
   // Extract CRC from the last 2 bytes of payload_and_crc
   uint16_t received_crc = payload_and_crc[payload_length] | ((uint16_t)payload_and_crc[payload_length + 1] << 8);
   
@@ -50,7 +23,8 @@ bool validate_message_crc16(const uint8_t* header_bytes, uint32_t payload_length
   
   // Stack buffer for CRC calculation: header (4) + length (4) + payload
   uint8_t temp_buffer[total_crc_length];
-  memcpy(&temp_buffer[0], header_bytes, sizeof(uint32_t));
+  memcpy(&temp_buffer[0], &header, sizeof(uint16_t));
+  memcpy(&temp_buffer[sizeof(uint16_t)], &identifier, sizeof(uint16_t));
   memcpy(&temp_buffer[sizeof(uint32_t)], &payload_length, sizeof(uint32_t));
   memcpy(&temp_buffer[sizeof(uint32_t) + sizeof(uint32_t)], payload_and_crc, payload_length);
   
@@ -59,15 +33,12 @@ bool validate_message_crc16(const uint8_t* header_bytes, uint32_t payload_length
   return (received_crc == calculated_crc);
 }
 
-void message_get_response_id(const uint8_t* header, uint8_t* response_header) {
-  uint16_t header_combined = (uint16_t)(header[0] << 8) | header[1];
+void message_get_response_id(uint16_t header, uint16_t identifier, uint16_t* response_header_and_id) {
   // currently response packets will only be sent when FIRM is sent a command
-  if (header_combined == MSGID_COMMAND_PACKET) {
+  if (header == MSGID_COMMAND_PACKET) {
     // copies the last 2 bytes (command selection bytes) and sets first two to response packet id.
-    response_header[0] = (uint8_t)((uint16_t)MSGID_RESPONSE_PACKET >> 8);
-    response_header[1] = (uint8_t)MSGID_RESPONSE_PACKET;
-    response_header[2] = header[2];
-    response_header[3] = header[3];
+    response_header_and_id[0] = MSGID_RESPONSE_PACKET;
+    response_header_and_id[1] = identifier;
   }
 }
 

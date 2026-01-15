@@ -9,4 +9,4 @@ typedef enum {
   MOCKID_SETTINGS,
 } MockPacketID;
 
-MockPacketID process_mock_packet(const uint8_t *header_bytes, uint32_t length, uint8_t *received_bytes, uint8_t *mock_packet);
+MockPacketID process_mock_packet(uint16_t identifier, uint32_t length, uint8_t *received_bytes, uint8_t *mock_packet);

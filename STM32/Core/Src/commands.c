@@ -1,7 +1,6 @@
 #include "commands.h"
 #include "settings.h"
 #include "utils.h"
-#include "usb_serializer.h"
 #include <string.h>
 
 #ifdef TEST
@@ -29,7 +28,7 @@ static DeviceProtocol select_protocol_from_settings(void) {
 
 static bool set_device_config(DeviceConfig *new_config) {
   FIRMSettings_t updated_settings = firmSettings;
-  strcpy(updated_settings.device_name, new_config->name);
+  strncpy(updated_settings.device_name, new_config->name, DEVICE_NAME_LENGTH);
   updated_settings.frequency_hz = clamp_u16(
       new_config->frequency,
       (uint16_t)FIRM_SETTINGS_FREQUENCY_MIN_HZ,
@@ -44,9 +43,8 @@ static bool set_device_config(DeviceConfig *new_config) {
 }
 
 
-uint32_t execute_command(uint8_t *command, uint8_t *data, uint32_t data_len, ResponsePacket* response_packet) {
-  CommandIdentifier command_id = ((uint16_t)(command[1] << 8) | command[0]);
-  switch (command_id & 0x0000FFFF) {
+uint32_t execute_command(CommandIdentifier identifier, uint8_t *data, uint32_t data_len, ResponsePacket* response_packet) {
+  switch (identifier) {
     case CMDID_REBOOT: // system reboots, dont worry about sending response packet
       HAL_NVIC_SystemReset();
       return 0;
@@ -57,9 +55,9 @@ uint32_t execute_command(uint8_t *command, uint8_t *data, uint32_t data_len, Res
       memcpy(device_conf.name, data, DEVICE_NAME_LENGTH);
 
       // Frequency is little-endian
-      device_conf.frequency = data[3 + DEVICE_NAME_LENGTH] | ((uint16_t)data[3 + DEVICE_NAME_LENGTH + 1] << 8);
+      device_conf.frequency = data[1 + DEVICE_NAME_LENGTH] | ((uint16_t)data[2 + DEVICE_NAME_LENGTH] << 8);
 
-      uint8_t protocol_byte = data[3 + DEVICE_NAME_LENGTH + 2];
+      uint8_t protocol_byte = data[2 + DEVICE_NAME_LENGTH];
       if (protocol_byte >= PROTOCOL_USB && protocol_byte <= PROTOCOL_SPI) {
         device_conf.protocol = (DeviceProtocol)protocol_byte;
       } else {
@@ -67,8 +65,8 @@ uint32_t execute_command(uint8_t *command, uint8_t *data, uint32_t data_len, Res
         device_conf.protocol = PROTOCOL_USB;
       }
       // set settings, and set response packet to sucess or failure
-      response_packet->success = set_device_config(&device_conf);
-      return sizeof(response_packet->success);
+      response_packet->success.b = set_device_config(&device_conf);
+      return 1;
     }
     case CMDID_GET_DEVICE_INFO:
       // Response payload format: [ID (8 LE bytes)][FIRMWARE_VERSION (8 bytes)]

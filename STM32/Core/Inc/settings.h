@@ -19,7 +19,7 @@
 /**
  * We store our settings in sector 0, on the first 1024-byte block.
  */
-#define SETTINGS_FLASH_BLOCK_SIZE_BYTES 1024u
+#define SETTINGS_FLASH_BLOCK_SIZE_BYTES 512
 
 /**
  * Accelerometer calibration coefficients
@@ -59,12 +59,12 @@ typedef struct {
  */
 typedef struct {
     uint64_t device_uid; // flash chip UID
-    char device_name[33]; // 32 character limit, plus null-terminator
+    char device_name[32]; // 32 character limit
     bool usb_transfer_enabled;
     bool uart_transfer_enabled;
     bool i2c_transfer_enabled;
     bool spi_transfer_enabled;
-    char firmware_version[9]; // 8 character limit, plus null-terminator
+    char firmware_version[8]; // 8 character limit
     uint16_t frequency_hz;
 } FIRMSettings_t;
 

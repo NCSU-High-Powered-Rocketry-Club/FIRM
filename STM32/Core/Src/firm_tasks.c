@@ -74,12 +74,12 @@ const osThreadAttr_t packetizerTask_attributes = {
 };
 const osThreadAttr_t transmitTask_attributes = {
     .name = "transmitTask",
-    .stack_size = 256 * 4,
+    .stack_size = 512 * 4,
     .priority = (osPriority_t)osPriorityBelowNormal1,
 };
 const osThreadAttr_t usbReadTask_attributes = {
     .name = "usbReadTask",
-    .stack_size = 256 * 4,
+    .stack_size = 4096 * 4,
     .priority = (osPriority_t)osPriorityNormal,
 };
 
@@ -233,6 +233,7 @@ void firm_mode_indicator_task(void *argument) {
   led_set_status(led_setting);
   for (;;) {
     if (xQueueReceive(mode_indicator_command_queue, &cmd_status, pdMS_TO_TICKS(100)) == pdTRUE) {
+      led_set_status(FIRM_MODE_DEFAULT);
       switch (cmd_status) {
         case TASKCMD_SETUP:
           led_setting = FIRM_MODE_BOOT;
@@ -387,10 +388,8 @@ void filter_data_task(void *argument) {
 
 void packetizer_task(void *argument) {
   // initialize the persistent data packet with the length and identifier fields
-  data_packet.identifier[0] = 0xA5;
-  data_packet.identifier[1] = 0x5A;
-  data_packet.identifier[2] = 0x00;
-  data_packet.identifier[3] = 0x00;
+  data_packet.header = MSGID_DATA_PACKET;
+  data_packet.identifier = 0x0000;
   data_packet.packet_len = sizeof(DataPacket);
   // set the timer based on the set packet transmission frequency
   const TickType_t transmit_freq = MAX_WAIT_TIME(TRANSMIT_FREQUENCY_HZ);
@@ -398,7 +397,7 @@ void packetizer_task(void *argument) {
 
   for (;;) {
     // send to queue at the specified frequency
-    //xQueueSend(transmit_queue, &data_packet, 0);
+    // xQueueSend(transmit_queue, &data_packet, 0);
     vTaskDelayUntil(&last_wake_time, transmit_freq);
   }
 }
@@ -408,10 +407,10 @@ void transmit_data(void *argument) {
   for (;;) {
     if (xQueueReceive(transmit_queue, &packet, portMAX_DELAY) == pdTRUE) {
       // calculate and attach the crc16 to the end of the packet
-      size_t serialized_packet_len = packet.packet_len + sizeof(packet.identifier) + sizeof(packet.packet_len) + sizeof(packet.crc);
+      size_t serialized_packet_len = packet.packet_len + sizeof(packet.header) + sizeof(packet.identifier) + sizeof(packet.packet_len) + sizeof(packet.crc);
       packet.crc = crc16_ccitt((uint8_t *)&(packet), serialized_packet_len - 2);
       // move the location of the crc bytes directly after the payload
-      memmove(&packet + serialized_packet_len - 2, &packet.crc, sizeof(packet.crc));
+      memmove((uint8_t*)&packet + serialized_packet_len - 2, &packet.crc, sizeof(packet.crc));
       CDC_Transmit_FS((uint8_t*)&packet, serialized_packet_len);
       // optionally transmit over uart if the setting is enabled
       if (firmSettings.uart_transfer_enabled && uart_tx_done) {
@@ -423,27 +422,31 @@ void transmit_data(void *argument) {
 }
 
 void usb_read_data(void *argument) {
-  uint8_t header_bytes[sizeof(data_packet.identifier)] = {
-    0x00,
-    0x00,
-    0x00,
-    0x00,
+  uint8_t header_bytes[sizeof(data_packet.header)] = {
+    0x11,
+    0x11,
   };
   uint32_t payload_length;
   uint8_t received_bytes[COMMAND_READ_CHUNK_SIZE_BYTES];
 
-  uint8_t test_bytes[3];
-
   for (;;) {
     // Receive incoming USB data, attempt to parse header
-    memmove(&header_bytes[0], &header_bytes[1], sizeof(header_bytes) - 1);
-    xStreamBufferReceive(usb_rx_stream, &header_bytes[sizeof(header_bytes) - 1], 1, portMAX_DELAY);
-    // check if the 4 header bytes are valid, skip if invalid
-    MessageIdentifier msg_id = validate_message_header(header_bytes);
-    if (msg_id == MSGID_INVALID)
+    header_bytes[0] = header_bytes[1];
+    xStreamBufferReceive(usb_rx_stream, &(header_bytes[1]), 1, portMAX_DELAY);
+    // check if the 2 header bytes are valid, skip if invalid
+    uint16_t header = header_bytes[0] | ((uint16_t)header_bytes[1] << 8);
+    uint16_t msg_id = validate_message_header(header);
+    if (msg_id == MSGID_INVALID) {
       continue;
-
-    // valid header, so parse length field and get payload + crc bytes
+    } 
+    // reset header bytes
+    header_bytes[1] = 0x11;
+    // valid header, so get the identifier
+    uint16_t identifier;
+    xStreamBufferReceive(usb_rx_stream, (uint8_t *)&identifier, 2, portMAX_DELAY);
+    // TODO: validate identifier, sys manager redirect
+    
+    // parse length field and get payload + crc bytes
     xStreamBufferReceive(usb_rx_stream, &payload_length, sizeof(payload_length), portMAX_DELAY);
     if (payload_length > COMMAND_READ_CHUNK_SIZE_BYTES - 2)
       continue;
@@ -451,14 +454,15 @@ void usb_read_data(void *argument) {
     xStreamBufferReceive(usb_rx_stream, received_bytes, payload_length + 2, portMAX_DELAY);
     
     // verify the data in the packet is valid by checking the crc across header, length, and payload
-    if (!validate_message_crc16(header_bytes, payload_length, received_bytes))
+    if (!validate_message_crc16(header, identifier, payload_length, received_bytes)) {
       continue;
+    }
 
     switch (msg_id) {
       case MSGID_MOCK_PACKET: {
         // create and fill a mock packet with data, and send to queue
         SensorPacket mock_packet;
-        MockPacketID mock_type = process_mock_packet(header_bytes, payload_length, received_bytes, (uint8_t*)&mock_packet);
+        MockPacketID mock_type = process_mock_packet(identifier, payload_length, received_bytes, (uint8_t*)&mock_packet);
         switch (mock_type) {
           case MOCKID_BMP581:
             xQueueSend(mock_bmp581_queue, &mock_packet, portMAX_DELAY);
@@ -476,10 +480,14 @@ void usb_read_data(void *argument) {
       }
       case MSGID_COMMAND_PACKET: {
         Packet response;
-        uint8_t response_header[4];
-        message_get_response_id((uint8_t *)header_bytes, response_header);
-        response.packet_len = execute_command(&header_bytes[2], received_bytes, payload_length, (ResponsePacket *)&response.data);
-        xQueueSend(transmit_queue, &response, 0);
+        uint16_t response_header_and_id[2];
+        message_get_response_id(header, identifier, response_header_and_id);
+        response.header = response_header_and_id[0];
+        response.identifier = response_header_and_id[1];
+        osMutexAcquire(sensorDataMutexHandle, osWaitForever);
+        response.packet_len = execute_command(identifier, received_bytes, payload_length, (ResponsePacket *)&response.data);
+        osMutexRelease(sensorDataMutexHandle);
+        xQueueSend(transmit_queue, &response, portMAX_DELAY);
         break;
       }
       case MSGID_SYSTEM_MANAGER_REDIRECT:

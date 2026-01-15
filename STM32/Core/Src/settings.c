@@ -67,16 +67,12 @@ bool settings_write_firm_settings(FIRMSettings_t* firm_settings) {
     // Reads the current settings (FIRM and Calibration) into buffer_to_write
     w25q128jv_read_sector(buffer_to_write, 0, 0, SETTINGS_FLASH_BLOCK_SIZE_BYTES);
 
-    // Adds null-terminators
-    FIRMSettings_t sanitized = *firm_settings;
-    sanitized.device_name[sizeof(sanitized.device_name) - 1] = '\0';
-    sanitized.firmware_version[sizeof(sanitized.firmware_version) - 1] = '\0';
 
     // Writes over just the FIRM settings portion (after the calibration settings)
-    memcpy(buffer_to_write + sizeof(CalibrationSettings_t), &sanitized, sizeof(FIRMSettings_t));
+    memcpy(&buffer_to_write[sizeof(CalibrationSettings_t)], firm_settings, sizeof(FIRMSettings_t));
     bool ok = settings_write_flash_block(buffer_to_write);
     if (ok) {
-      firmSettings = sanitized;
+      firmSettings = *firm_settings;
     }
     return ok;
 }
@@ -124,7 +120,6 @@ static bool settings_write_flash_block(uint8_t* block_to_write) {
 
     // verify
     // Read back in small chunks to avoid large stack allocations.
-    // (commandHandlerTask has a 2KB stack; a 1KB verify buffer can overflow it.)
     uint8_t verify[64];
     for (uint32_t offset = 0; offset < SETTINGS_FLASH_BLOCK_SIZE_BYTES; offset += (uint32_t)sizeof(verify)) {
         uint32_t remaining = SETTINGS_FLASH_BLOCK_SIZE_BYTES - offset;

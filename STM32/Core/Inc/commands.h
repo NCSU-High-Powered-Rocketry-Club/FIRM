@@ -44,10 +44,14 @@ typedef struct {
   char firmware_version[FIRMWARE_VERSION_LENGTH];
 } DeviceInfo;
 
+typedef struct {
+  bool b;
+} CommandSuccess;
+
 typedef union {
   DeviceConfig device_config;
   DeviceInfo device_info;
-  bool success;
+  CommandSuccess success;
 } ResponsePacket;
 
-uint32_t execute_command(uint8_t *command, uint8_t *data, uint32_t data_len, ResponsePacket* response_packet);
+uint32_t execute_command(CommandIdentifier identifier, uint8_t *data, uint32_t data_len, ResponsePacket* response_packet);

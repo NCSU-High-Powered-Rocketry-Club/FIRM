@@ -75,7 +75,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/data_processing/data_preprocess.c
     Core/Src/settings.c
     Core/Src/utils.c
-    Core/Src/usb_serializer.c
     Core/Src/commands.c
     Core/Src/messages.c
     Core/Src/mock_handler.c

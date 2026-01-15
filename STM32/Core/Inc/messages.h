@@ -2,17 +2,16 @@
 #include "commands.h"
 #include "utils.h"
 #include <string.h>
-
 /**
  * The first two bytes of the header field of a message packet being sent or received.
  */
 typedef enum {
   MSGID_INVALID = 0xFFFF,
-  MSGID_SYSTEM_MANAGER_REDIRECT = 0x0001,
+  MSGID_SYSTEM_MANAGER_REDIRECT = (uint16_t)0x0001,
   MSGID_DATA_PACKET = 0xA55A,
   MSGID_RESPONSE_PACKET = 0x5AA5,
-  MSGID_COMMAND_PACKET = 0x6BB6,
-  MSGID_MOCK_PACKET = 0xB66B,
+  MSGID_COMMAND_PACKET = 0xB66B,
+  MSGID_MOCK_PACKET = 0x6BB6,
 } MessageIdentifier;
 
 /**
@@ -21,10 +20,10 @@ typedef enum {
  * @param header the 4 header bytes as an unsigned integer
  * @return the message identifier type of the header
  */
-MessageIdentifier validate_message_header(const uint8_t *header);
+MessageIdentifier validate_message_header(uint16_t header);
 
 
-void message_get_response_id(const uint8_t* header, uint8_t* response_header);
+void message_get_response_id(uint16_t header, uint16_t identifier, uint16_t* response_header_and_id);
 /**
  * Validates CRC16 across separate header, length, and payload buffers without copying.
  * 
@@ -33,4 +32,4 @@ void message_get_response_id(const uint8_t* header, uint8_t* response_header);
  * @param payload_and_crc Pointer to payload + 2 CRC bytes
  * @return true if CRC is valid, false otherwise
  */
-bool validate_message_crc16(const uint8_t* header_bytes, uint32_t payload_length, const uint8_t* payload_and_crc);
+bool validate_message_crc16(uint16_t header, uint16_t identifier, uint32_t payload_length, const uint8_t* payload_and_crc);

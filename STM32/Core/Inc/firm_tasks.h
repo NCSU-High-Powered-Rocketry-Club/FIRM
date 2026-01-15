@@ -68,7 +68,8 @@ typedef union {
 } PacketPayload;
 
 typedef struct {
-  uint8_t identifier[4];
+  uint16_t header;
+  uint16_t identifier;
   uint32_t packet_len;
   PacketPayload data;
   uint16_t crc;
