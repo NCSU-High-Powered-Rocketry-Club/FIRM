@@ -83,8 +83,4 @@ static void settings_write_defaults(void) {
     write_settings(calibrationSettings,firmSettings, init);
 }
 
- void write_mock_settings() { //This function is now redundant, but I don't know if its still wanted
-    write_settings(calibrationSettings,firmSettings, mock);
-    return;
-}
 
