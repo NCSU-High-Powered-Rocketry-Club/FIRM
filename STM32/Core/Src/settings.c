@@ -9,6 +9,8 @@ CalibrationSettings_t calibrationSettings;
 static void settings_write_defaults(void);
 static bool settings_write_flash_block(uint8_t* block_to_write);
 
+static bool settings_write_flash_block_to_sector(uint8_t* block_to_write, uint8_t sector);
+
 int settings_init(SPI_HandleTypeDef* flash_hspi, GPIO_TypeDef* flash_cs_channel, uint16_t flash_cs_pin) {
     // set up flash chip porting layer
     w25q128jv_set_spi_settings(flash_hspi, flash_cs_channel, flash_cs_pin);
@@ -131,4 +133,45 @@ static bool settings_write_flash_block(uint8_t* block_to_write) {
         }
     }
     return true;
+}
+
+static bool settings_write_flash_block_to_sector(uint8_t* block_to_write, uint8_t sector) {
+    if (block_to_write == NULL) {
+        return false;
+    }
+
+    // Erase the specified sector first (4 KB, covers our 512 bytes)
+    w25q128jv_erase_sector(sector);
+    w25q128jv_write_sector(block_to_write, sector, 0, SETTINGS_FLASH_BLOCK_SIZE_BYTES);
+
+    // verify
+    // Read back in small chunks to avoid large stack allocations.
+    uint8_t verify[64];
+    for (uint32_t offset = 0; offset < SETTINGS_FLASH_BLOCK_SIZE_BYTES; offset += (uint32_t)sizeof(verify)) {
+        uint32_t remaining = SETTINGS_FLASH_BLOCK_SIZE_BYTES - offset;
+        uint32_t to_read = remaining < (uint32_t)sizeof(verify) ? remaining : (uint32_t)sizeof(verify);
+
+        w25q128jv_read_sector(verify, sector, offset, to_read);
+        if (memcmp(verify, block_to_write + offset, to_read) != 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool settings_write_mock_settings(FIRMSettings_t* firm_settings, CalibrationSettings_t* calibration_settings) {
+    if (firm_settings == NULL || calibration_settings == NULL) {
+        return false;
+    }
+
+    uint8_t buffer_to_write[SETTINGS_FLASH_BLOCK_SIZE_BYTES];
+    
+    // Write calibration settings at the beginning
+    memcpy(buffer_to_write, calibration_settings, sizeof(CalibrationSettings_t));
+    
+    // Write firm settings after calibration settings
+    memcpy(buffer_to_write + sizeof(CalibrationSettings_t), firm_settings, sizeof(FIRMSettings_t));
+    
+    // Write to sector 2 instead of sector 0
+    return settings_write_flash_block_to_sector(buffer_to_write, 2);
 }

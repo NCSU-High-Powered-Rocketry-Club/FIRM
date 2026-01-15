@@ -103,3 +103,11 @@ bool settings_write_calibration_settings(CalibrationSettings_t* calibration_sett
  */
 bool settings_write_firm_settings(FIRMSettings_t* firm_settings);
 
+/**
+ * Writes mock calibration and firmware settings to sector 2 of the flash chip.
+ *
+ * @param firm_settings pointer to firm settings to write
+ * @param calibration_settings pointer to calibration settings to write
+ */
+bool settings_write_mock_settings(FIRMSettings_t* firm_settings, CalibrationSettings_t* calibration_settings);
+

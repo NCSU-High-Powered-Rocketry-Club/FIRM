@@ -4,8 +4,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#define COMMAND_READ_CHUNK_SIZE_BYTES 64
-#define COMMAND_PAYLOAD_MAX_LEN_BYTES 56
+#define COMMAND_READ_CHUNK_SIZE_BYTES 256
+#define COMMAND_PAYLOAD_MAX_LEN_BYTES 248
 
 // TODO clean these up
 #define CMD_START_MARKER_1 0x55

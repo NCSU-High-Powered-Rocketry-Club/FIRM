@@ -220,3 +220,38 @@ static void logger_swap_buffers() {
 
     current_offset = 0;
 }
+
+FRESULT logger_append_mock_header(FIRMSettings_t* firm_settings, CalibrationSettings_t* calibration_settings, HeaderFields* sensor_scale_factors) {
+    if (firm_settings == NULL || calibration_settings == NULL || sensor_scale_factors == NULL) {
+        return FR_INVALID_PARAMETER;
+    }
+
+    const char* mock_header = "FIRM LOG v1.1\n";
+    size_t header_len = strlen(mock_header);
+    size_t firm_settings_len = sizeof(FIRMSettings_t);
+    size_t calibration_settings_len = sizeof(CalibrationSettings_t);
+    size_t scale_factor_len = sizeof(HeaderFields);
+
+    FRESULT error_status = logger_ensure_capacity(header_len + firm_settings_len + calibration_settings_len + scale_factor_len);
+    if (error_status) {
+        return error_status;
+    }
+
+    // Append mock header marker
+    memcpy(current_buffer + current_offset, mock_header, header_len);
+    current_offset += header_len;
+    
+    // Append mock firmware settings
+    memcpy(current_buffer + current_offset, firm_settings, firm_settings_len);
+    current_offset += firm_settings_len;
+    
+    // Append mock calibration settings
+    memcpy(current_buffer + current_offset, calibration_settings, calibration_settings_len);
+    current_offset += calibration_settings_len;
+    
+    // Append sensor scale factors
+    memcpy(current_buffer + current_offset, sensor_scale_factors, scale_factor_len);
+    current_offset += scale_factor_len;
+
+    return error_status;
+}

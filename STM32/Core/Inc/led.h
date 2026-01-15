@@ -25,7 +25,7 @@ typedef enum {
 
 typedef enum {
     FIRM_MODE_DEFAULT = 0b000,
-    FIRM_MODE_BOOT = 0b001,
+    FIRM_MODE_BOOT = 0b100,
     FIRM_MODE_LIVE = 0b010,
     FIRM_MODE_MOCK = 0b001,
 } LED_Mode_Indicator_Status;

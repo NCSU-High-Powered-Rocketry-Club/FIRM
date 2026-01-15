@@ -22,6 +22,8 @@ typedef enum {
  */
 MessageIdentifier validate_message_header(uint16_t header);
 
+MessageIdentifier validate_message_identifier(uint16_t header, uint16_t identifier);
+
 
 void message_get_response_id(uint16_t header, uint16_t identifier, uint16_t* response_header_and_id);
 /**

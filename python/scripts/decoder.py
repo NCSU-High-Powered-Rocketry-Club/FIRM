@@ -17,12 +17,17 @@ MMC5983MA_ID = 'M'
 BMP581_SIZE = 6
 ICM45686_SIZE = 15
 MMC5983MA_SIZE = 7
+
+# header order
 HEADER_SIZE_TEXT = 14 # size of the "FIRM LOG vx.x" text
 HEADER_UID_SIZE = 8
-HEADER_DEVICE_NAME_LEN = 33
-HEADER_COMM_SIZE = 2 # 1 byte for usb, 1 for uart
+HEADER_DEVICE_NAME_LEN = 32
+HEADER_COMM_SIZE = 4
+FIRMWARE_VERSION_LEN = 8
+FREQUENCY_LEN = 2
+PADDING_BYTES = 2
 HEADER_CAL_SIZE = (3 + 9) * 3 * 4 # 3 offsets, 3x3 scale factor matrix, 3 sensors, 4 bytes per float
-HEADER_NUM_SCALE_FACTORS = 5 # number of scale factor floats in the header
+HEADER_SCALE_FACTOR_SIZE = 5 * 4
 
 def twos_complement(val, bits):
     if (val & (1 << (bits - 1))) != 0:
@@ -62,7 +67,10 @@ class Decoder:
     def read_packet(self):
         try:
             # read packet ID
-            id_byte = self.f.read(1)[0]
+            id_byte_data = self.f.read(1)
+            if not id_byte_data:
+                return False
+            id_byte = id_byte_data[0]
             if id_byte == 0:
                 # whitespace, skip
                 self.num_repeat_whitespace += 1
@@ -72,24 +80,36 @@ class Decoder:
                 return True
             self.num_repeat_whitespace = 0
 
+            # Validate packet ID - if not valid, skip byte and try next
+            if id_byte not in [ord(BMP581_ID), ord(ICM45686_ID), ord(MMC5983MA_ID)]:
+                return True  # Skip this byte and try next
+
             # read timestamp
             clock_count_bytes = self.f.read(3)
+            if len(clock_count_bytes) < 3:
+                return False
             clock_count = struct.unpack('>I', b'\x00' + clock_count_bytes)[0]
             self.timestamp_seconds += (self.get_delta_timestamp(clock_count)) / 168e6
             self.last_clock_count = clock_count
 
             if id_byte == ord(BMP581_ID):
                 bytes = self.f.read(BMP581_SIZE)
+                if len(bytes) < BMP581_SIZE:
+                    return False
                 data = self.convert_bmp581(bytes)
                 self.bmp581_data.append(data)
                 return True
             if id_byte == ord(ICM45686_ID):
                 bytes = self.f.read(ICM45686_SIZE)
+                if len(bytes) < ICM45686_SIZE:
+                    return False
                 data = self.convert_icm45686(bytes)
                 self.icm45686_data.append(data)
                 return True
             if id_byte == ord(MMC5983MA_ID):
                 bytes = self.f.read(MMC5983MA_SIZE)
+                if len(bytes) < MMC5983MA_SIZE:
+                    return False
                 data = self.convert_mmc5983ma(bytes)
                 self.mmc5983ma_data.append(data)
                 return True
@@ -107,15 +127,23 @@ class Decoder:
         
         device_name_b = file.read(HEADER_DEVICE_NAME_LEN)
         comms_b = file.read(HEADER_COMM_SIZE)
-        padding_bytes = 8 - (HEADER_UID_SIZE + HEADER_DEVICE_NAME_LEN + HEADER_COMM_SIZE) % 8
-        file.read(padding_bytes)
+        firmware_b = file.read(FIRMWARE_VERSION_LEN)
+        frequency_b = file.read(FREQUENCY_LEN)
+        # Calculate padding needed to align to 8-byte boundary
+        header_before_padding = HEADER_UID_SIZE + HEADER_DEVICE_NAME_LEN + HEADER_COMM_SIZE + FIRMWARE_VERSION_LEN + FREQUENCY_LEN
+        padding_bytes = (8 - (header_before_padding % 8)) % 8
+        if padding_bytes > 0:
+            file.read(padding_bytes)
         calibration_b = file.read(HEADER_CAL_SIZE)
 
         self.uid = struct.unpack("<Q", uid_b)[0]
         device_name_format_string = "<" + str(HEADER_DEVICE_NAME_LEN) + "s"
         name_bytes, = struct.unpack(device_name_format_string, device_name_b)
         self.device_name = name_bytes.rstrip(b"\x00").decode("utf-8")
-        self.comms = struct.unpack("??", comms_b)
+        self.comms = struct.unpack("????", comms_b)
+        firmware_format_string = "<" + str(FIRMWARE_VERSION_LEN) + "s"
+        self.firmware = struct.unpack(firmware_format_string, firmware_b)
+        self.frequency = struct.unpack("<H", frequency_b)
 
         cal_format_string = "<" + ("f" * int(HEADER_CAL_SIZE / 4))
         calibrations = struct.unpack(cal_format_string, calibration_b)
@@ -123,7 +151,7 @@ class Decoder:
         self.gyro_cal = calibrations[12 : 24]
         self.mag_cal = calibrations[24 : 36]
 
-        scale_factor_bytes = file.read(HEADER_NUM_SCALE_FACTORS * 4)
+        scale_factor_bytes = file.read(HEADER_SCALE_FACTOR_SIZE)
         scale_factors = struct.unpack('<fffff', scale_factor_bytes)
         self.bmp581_scale_factors = scale_factors[0 : 2]
         self.icm45686_scale_factors = scale_factors[2 : 4]
@@ -183,6 +211,8 @@ def write_to_csv(data: pd.DataFrame, filename, decoder: Decoder):
         f.write(f"{decoder.device_name},{str(decoder.uid)}\n")
         f.write(f"usb enabled:,{str(decoder.comms[0])}\n")
         f.write(f"uart enabled:,{str(decoder.comms[1])}\n")
+        f.write(f"i2c enabled:,{str(decoder.comms[2])}\n")
+        f.write(f"spi enabled:,{str(decoder.comms[3])}\n")
         f.write("ICM45686 Acceleration Calibration,")
         for cal in decoder.accel_cal:
             f.write(f"{cal},")

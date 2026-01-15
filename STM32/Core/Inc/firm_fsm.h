@@ -1,4 +1,6 @@
 #pragma once
+#include <stdbool.h>
+#include <stdint.h>
 
 #define MAX_TASK_COMMANDS 15
 
@@ -13,7 +15,7 @@ typedef enum {
   SYSREQ_SETUP = 0,
   SYSREQ_FINISH_SETUP = 1,
   SYSREQ_START_MOCK = 0x0005, // command sent by host
-  SYSREQ_CANCEL = 0xFFFF, // command sent by host
+  SYSREQ_CANCEL = 0x00FF, // command sent by host
 } SystemRequest;
 
 typedef enum {
@@ -21,6 +23,8 @@ typedef enum {
   TASKCMD_MOCK,
   TASKCMD_LIVE,
   TASKCMD_SETUP,
+  TASKCMD_SYSTEM_PACKET_SUCCESS,
+  TASKCMD_SYSTEM_PACKET_FAILURE,
 } TaskCommandOption;
 
 typedef enum {
@@ -29,6 +33,7 @@ typedef enum {
   TASK_MMC5983MA,
   TASK_DATA_FILTER,
   TASK_MODE_INDICATOR,
+  TASK_PACKETIZER,
   TASK_NULL,
 } FIRMTask;
 
@@ -41,5 +46,10 @@ typedef enum {
   FSMRES_VALID,
   FSMRES_INVALID,
 } FSMResponse;
+
+typedef struct {
+  uint16_t identifier;
+  bool success;
+} SystemResponsePacket;
 
 FSMResponse fsm_process_request(SystemRequest sysreq, TaskCommand* task_command_queue);

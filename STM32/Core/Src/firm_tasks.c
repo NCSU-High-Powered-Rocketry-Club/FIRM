@@ -29,6 +29,7 @@ QueueHandle_t bmp581_command_queue;
 QueueHandle_t icm45686_command_queue;
 QueueHandle_t mmc5983ma_command_queue;
 QueueHandle_t data_filter_command_queue;
+QueueHandle_t packetizer_command_queue;
 
 // mock queues
 QueueHandle_t mock_bmp581_queue;
@@ -177,6 +178,7 @@ void firm_rtos_init(void) {
   mmc5983ma_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
   data_filter_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
   mode_indicator_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
+  packetizer_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(SystemResponsePacket));
 
   // queue for mock packets
   mock_bmp581_queue = xQueueCreate(MOCK_QUEUE_LENGTH, sizeof(SensorPacket));
@@ -192,7 +194,13 @@ void system_manager_task(void *argument) {
     // wait to recieve a system request
     if (xQueueReceive(system_request_queue, &sysreq, portMAX_DELAY) == pdTRUE) {
       // pass system request to FSM, confirm that it's valid
-      if (!fsm_process_request(sysreq, task_command_queue)) {
+      FSMResponse response = fsm_process_request(sysreq, task_command_queue);
+      SystemResponsePacket sys_response = {
+        .identifier = sysreq,
+        .success = (response == FSMRES_VALID)
+      };
+      
+      if (!response) {
         // send command to the appropriate task
         for (int i = 0; i < MAX_TASK_COMMANDS; i++) {
           TaskCommand cmd = task_command_queue[i];
@@ -215,6 +223,10 @@ void system_manager_task(void *argument) {
               break;
             case TASK_MODE_INDICATOR:
               xQueueSend(mode_indicator_command_queue, &cmd.command, 0);
+              break;
+            case TASK_PACKETIZER:
+              xQueueSend(packetizer_command_queue, &sys_response, 0);
+              break;
             case TASK_NULL: {
               break;
             }
@@ -222,6 +234,11 @@ void system_manager_task(void *argument) {
               break;
           }
         }
+        
+        // If cancel was successful, no file switching needed - continue logging to same file
+      } else {
+        // FSM returned invalid, send failure response
+        xQueueSend(packetizer_command_queue, &sys_response, 0);
       }
     }
   }
@@ -358,23 +375,29 @@ void collect_mmc5983ma_data_task(void *argument) {
 }
 
 void filter_data_task(void *argument) {
-  // time that FIRM should be running for (collecting sensor data) before starting the
-  // kalman filter
+  
   UKF ukf;
   ukf.measurement_function = ukf_measurement_function;
   ukf.state_transition_function = ukf_state_transition_function;
   vTaskDelay(pdMS_TO_TICKS(KALMAN_FILTER_STARTUP_DELAY_TIME_MS));
   DataPacket *packet = (DataPacket *)&data_packet.data;
-  
-  // filter can initialize, and FIRM can go into live mode
-  ukf_init(&ukf, packet->pressure_pascals, &packet->raw_acceleration_x_gs, &packet->magnetic_field_x_microteslas);
-  xQueueSend(system_request_queue, &(SystemRequest){SYSREQ_FINISH_SETUP}, 0);
-  
-  // set the last time to calculate the delta timestamp, minus some initial offset so that the
-  // first iteration of the filter doesn't have an extremely small dt.
-  float last_time = (float)packet->timestamp_seconds - 0.005F;
+  TaskCommandOption cmd_status;
+  float last_time; 
 
   for (;;) {
+    xQueueReceive(data_filter_command_queue, &cmd_status, 0);
+    if (cmd_status == TASKCMD_SETUP || cmd_status == TASKCMD_MOCK) {
+      // time that FIRM should be running for (collecting sensor data) before starting the kalman filter
+      vTaskDelay(pdMS_TO_TICKS(KALMAN_FILTER_STARTUP_DELAY_TIME_MS));
+      // filter can initialize, and FIRM can go into live mode
+      ukf_init(&ukf, packet->pressure_pascals, &packet->raw_acceleration_x_gs, &packet->magnetic_field_x_microteslas);
+      // set the last time to calculate the delta timestamp, minus some initial offset so that the
+      // first iteration of the filter doesn't have an extremely small dt.
+      last_time = (float)packet->timestamp_seconds - 0.005F;
+      if (cmd_status == TASKCMD_SETUP) {
+        xQueueSend(system_request_queue, &(SystemRequest){SYSREQ_FINISH_SETUP}, 0);
+      }
+    }
     vTaskDelay(1000);
     float dt = (float)packet->timestamp_seconds - last_time;
     // ukf_predict(&ukf, dt);
@@ -394,8 +417,17 @@ void packetizer_task(void *argument) {
   // set the timer based on the set packet transmission frequency
   const TickType_t transmit_freq = MAX_WAIT_TIME(TRANSMIT_FREQUENCY_HZ);
   TickType_t last_wake_time = xTaskGetTickCount();
+  SystemResponsePacket sys_response;
 
   for (;;) {
+    if (xQueueReceive(packetizer_command_queue, &sys_response, 0) == pdTRUE) {
+      Packet response;
+      response.header = MSGID_RESPONSE_PACKET;
+      response.identifier = sys_response.identifier;
+      response.packet_len = sizeof(response.data.response_packet.success.b);
+      response.data.response_packet.success.b = sys_response.success;
+      xQueueSend(transmit_queue, &response, 0);
+    } 
     // send to queue at the specified frequency
     // xQueueSend(transmit_queue, &data_packet, 0);
     vTaskDelayUntil(&last_wake_time, transmit_freq);
@@ -411,7 +443,7 @@ void transmit_data(void *argument) {
       packet.crc = crc16_ccitt((uint8_t *)&(packet), serialized_packet_len - 2);
       // move the location of the crc bytes directly after the payload
       memmove((uint8_t*)&packet + serialized_packet_len - 2, &packet.crc, sizeof(packet.crc));
-      CDC_Transmit_FS((uint8_t*)&packet, serialized_packet_len);
+      //CDC_Transmit_FS((uint8_t*)&packet, serialized_packet_len);
       // optionally transmit over uart if the setting is enabled
       if (firmSettings.uart_transfer_enabled && uart_tx_done) {
         uart_tx_done = false;
@@ -444,19 +476,22 @@ void usb_read_data(void *argument) {
     // valid header, so get the identifier
     uint16_t identifier;
     xStreamBufferReceive(usb_rx_stream, (uint8_t *)&identifier, 2, portMAX_DELAY);
-    
-    
+    msg_id = validate_message_identifier(header, identifier);
+
     // parse length field and get payload + crc bytes
     xStreamBufferReceive(usb_rx_stream, &payload_length, sizeof(payload_length), portMAX_DELAY);
     if (payload_length > COMMAND_READ_CHUNK_SIZE_BYTES - 2)
       continue;
 
-    xStreamBufferReceive(usb_rx_stream, received_bytes, payload_length + 2, portMAX_DELAY);
-    
+    uint16_t bytes_read = xStreamBufferReceive(usb_rx_stream, received_bytes, payload_length + 2, portMAX_DELAY);
+    if (bytes_read != payload_length + 2)
+      led_set_status(MMC5983MA_FAIL);
+    CDC_Transmit_FS((uint8_t *)&bytes_read, 2);
     // verify the data in the packet is valid by checking the crc across header, length, and payload
     if (!validate_message_crc16(header, identifier, payload_length, received_bytes)) {
       continue;
     }
+    led_set_status(SD_CARD_FAIL);
 
     switch (msg_id) {
       case MSGID_MOCK_PACKET: {
@@ -473,10 +508,24 @@ void usb_read_data(void *argument) {
           case MOCKID_MMC5983MA:
             xQueueSend(mock_mmc5983ma_queue, &mock_packet, portMAX_DELAY);
             break;
+          case MOCKID_SETTINGS: {
+            // Process mock settings/calibration header and append to current log file
+            FIRMSettings_t mock_firm_settings;
+            CalibrationSettings_t mock_calibration_settings;
+            HeaderFields header_fields;
+            
+            if (process_mock_settings_packet(received_bytes, payload_length, &mock_firm_settings, &mock_calibration_settings, &header_fields)) {
+              // Successfully processed, append mock header to current log file
+              logger_append_mock_header(&mock_firm_settings, &mock_calibration_settings, &header_fields);
+              
+            }
+            logger_append_mock_header(&mock_firm_settings, &mock_calibration_settings, &header_fields);
+            break;
+          }
           default:
-            // currently not handling first packet of mock, the header settings
             break;
         }
+        break;
       }
       case MSGID_COMMAND_PACKET: {
         Packet response;
@@ -489,7 +538,8 @@ void usb_read_data(void *argument) {
         break;
       }
       case MSGID_SYSTEM_MANAGER_REDIRECT:
-        xQueueSend(system_request_queue, &msg_id, portMAX_DELAY);
+        
+        xQueueSend(system_request_queue, (SystemRequest *)&identifier, portMAX_DELAY);
         break;
       default:
         continue;
