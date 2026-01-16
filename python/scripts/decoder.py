@@ -67,10 +67,7 @@ class Decoder:
     def read_packet(self):
         try:
             # read packet ID
-            id_byte_data = self.f.read(1)
-            if not id_byte_data:
-                return False
-            id_byte = id_byte_data[0]
+            id_byte = self.f.read(1)[0]
             if id_byte == 0:
                 # whitespace, skip
                 self.num_repeat_whitespace += 1
@@ -80,36 +77,24 @@ class Decoder:
                 return True
             self.num_repeat_whitespace = 0
 
-            # Validate packet ID - if not valid, skip byte and try next
-            if id_byte not in [ord(BMP581_ID), ord(ICM45686_ID), ord(MMC5983MA_ID)]:
-                return True  # Skip this byte and try next
-
             # read timestamp
             clock_count_bytes = self.f.read(3)
-            if len(clock_count_bytes) < 3:
-                return False
             clock_count = struct.unpack('>I', b'\x00' + clock_count_bytes)[0]
             self.timestamp_seconds += (self.get_delta_timestamp(clock_count)) / 168e6
             self.last_clock_count = clock_count
 
             if id_byte == ord(BMP581_ID):
                 bytes = self.f.read(BMP581_SIZE)
-                if len(bytes) < BMP581_SIZE:
-                    return False
                 data = self.convert_bmp581(bytes)
                 self.bmp581_data.append(data)
                 return True
             if id_byte == ord(ICM45686_ID):
                 bytes = self.f.read(ICM45686_SIZE)
-                if len(bytes) < ICM45686_SIZE:
-                    return False
                 data = self.convert_icm45686(bytes)
                 self.icm45686_data.append(data)
                 return True
             if id_byte == ord(MMC5983MA_ID):
                 bytes = self.f.read(MMC5983MA_SIZE)
-                if len(bytes) < MMC5983MA_SIZE:
-                    return False
                 data = self.convert_mmc5983ma(bytes)
                 self.mmc5983ma_data.append(data)
                 return True

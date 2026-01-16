@@ -156,7 +156,7 @@ void* logger_malloc_packet(size_t capacity) {
   if (logger_ensure_capacity(capacity + packet_metadata_size)) {
     return NULL;
   }
-  return &current_buffer[current_offset + packet_metadata_size];
+  return &current_buffer[current_offset];
 }
 
 void logger_write_entry(char type, size_t packet_size) {

@@ -36,3 +36,5 @@ int mmc5983ma_read_data(MMC5983MAPacket_t* packet);
  * @retval float value to divide binary data by to get magnetic field in microteslas.
  */
 float mmc5983ma_get_magnetic_field_scale_factor(void);
+
+void set_spi_mmc(I2C_HandleTypeDef* hi2c, uint8_t device_i2c_addr);

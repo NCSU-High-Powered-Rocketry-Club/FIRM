@@ -332,7 +332,7 @@ void collect_icm45686_data_task(void *argument) {
         icm45686_packet->timestamp[3] =  clock_cycle_count & 0xFF;
       }
       if (!err) {
-        logger_write_entry('B', sizeof(ICM45686Packet_t));
+        logger_write_entry('I', sizeof(ICM45686Packet_t));
         icm45686_convert_packet(icm45686_packet, (DataPacket *)&data_packet.data);
       }
       osMutexRelease(sensorDataMutexHandle);
@@ -366,7 +366,7 @@ void collect_mmc5983ma_data_task(void *argument) {
         mmc5983ma_packet->timestamp[3] =  clock_cycle_count & 0xFF;
       }
       if (!err) {
-        logger_write_entry('B', sizeof(MMC5983MAPacket_t));
+        logger_write_entry('M', sizeof(MMC5983MAPacket_t));
         mmc5983ma_convert_packet(mmc5983ma_packet, (DataPacket *)&data_packet.data);
       }
       osMutexRelease(sensorDataMutexHandle);
@@ -427,7 +427,7 @@ void packetizer_task(void *argument) {
       response.packet_len = sizeof(response.data.response_packet.success.b);
       response.data.response_packet.success.b = sys_response.success;
       xQueueSend(transmit_queue, &response, 0);
-    } 
+    }
     // send to queue at the specified frequency
     xQueueSend(transmit_queue, &data_packet, 0);
     vTaskDelayUntil(&last_wake_time, transmit_freq);

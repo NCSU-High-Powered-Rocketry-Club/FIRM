@@ -57,3 +57,5 @@ float icm45686_get_accel_scale_factor(void);
  *         Returns -1 if sensor is not initialized yet.
  */
 float icm45686_get_gyro_scale_factor(void);
+
+void set_spi_icm(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin);

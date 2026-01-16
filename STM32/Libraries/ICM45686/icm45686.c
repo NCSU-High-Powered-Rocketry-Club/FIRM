@@ -99,6 +99,12 @@ static const float base_gyro_scale_factor = 8.192F;
 
 static SPISettings spiSettings;
 
+void set_spi_icm(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin) {
+  spiSettings.hspi = hspi;
+  spiSettings.cs_channel = cs_channel;
+  spiSettings.cs_pin = cs_pin;
+}
+
 int icm45686_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin) {
     if (hspi == NULL || cs_channel == NULL) {
         serialPrintStr("Invalid spi handle or chip select pin for ICM45686");

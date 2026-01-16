@@ -705,6 +705,9 @@ void StartupTask(void *argument)
   // even though we call this function in settings setup, it somehow breaks settings
   // when you try to write to it during rtos. So we have to call this again.
   w25q128jv_set_spi_settings(&hspi1, GPIOC, GPIO_PIN_4);
+  set_spi_icm(&hspi2, GPIOB, GPIO_PIN_9);
+  set_spi_bmp(&hspi2, GPIOC, GPIO_PIN_2);
+  set_spi_mmc(&hi2c1, 0x30);
   
   // re-enable ISR's so that interrupts can trigger the sensor tasks to run
   HAL_NVIC_EnableIRQ(EXTI2_IRQn);
