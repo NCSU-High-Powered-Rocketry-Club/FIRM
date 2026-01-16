@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "led.h"
 
 #ifndef TEST
     #include <w25q128jv.h>

@@ -464,34 +464,40 @@ void usb_read_data(void *argument) {
   for (;;) {
     // Receive incoming USB data, attempt to parse header
     header_bytes[0] = header_bytes[1];
+    // sets the buffer size needed in the usb data stream to be able to read bytes. This prevents
+    // incomplete data packets from being received.
+    xStreamBufferSetTriggerLevel(usb_rx_stream, 1);
     xStreamBufferReceive(usb_rx_stream, &(header_bytes[1]), 1, portMAX_DELAY);
     // check if the 2 header bytes are valid, skip if invalid
     uint16_t header = header_bytes[0] | ((uint16_t)header_bytes[1] << 8);
     uint16_t msg_id = validate_message_header(header);
     if (msg_id == MSGID_INVALID) {
       continue;
-    } 
+    }
     // reset header bytes
     header_bytes[1] = 0x11;
     // valid header, so get the identifier
     uint16_t identifier;
+    xStreamBufferSetTriggerLevel(usb_rx_stream, 2);
     xStreamBufferReceive(usb_rx_stream, (uint8_t *)&identifier, 2, portMAX_DELAY);
     msg_id = validate_message_identifier(header, identifier);
 
     // parse length field and get payload + crc bytes
+    xStreamBufferSetTriggerLevel(usb_rx_stream, sizeof(payload_length));
     xStreamBufferReceive(usb_rx_stream, &payload_length, sizeof(payload_length), portMAX_DELAY);
     if (payload_length > COMMAND_READ_CHUNK_SIZE_BYTES - 2)
       continue;
+    
+    // wait until theres enough bytes in the stream to read
+    while (xStreamBufferBytesAvailable(usb_rx_stream) <= payload_length) {
+      vTaskDelay(1);
+    }
+    xStreamBufferReceive(usb_rx_stream, received_bytes, payload_length + 2, portMAX_DELAY);
 
-    uint16_t bytes_read = xStreamBufferReceive(usb_rx_stream, received_bytes, payload_length + 2, portMAX_DELAY);
-    if (bytes_read != payload_length + 2)
-      led_set_status(MMC5983MA_FAIL);
-    CDC_Transmit_FS((uint8_t *)&bytes_read, 2);
     // verify the data in the packet is valid by checking the crc across header, length, and payload
     if (!validate_message_crc16(header, identifier, payload_length, received_bytes)) {
       continue;
     }
-    led_set_status(SD_CARD_FAIL);
 
     switch (msg_id) {
       case MSGID_MOCK_PACKET: {
@@ -513,13 +519,14 @@ void usb_read_data(void *argument) {
             FIRMSettings_t mock_firm_settings;
             CalibrationSettings_t mock_calibration_settings;
             HeaderFields header_fields;
-            
-            if (process_mock_settings_packet(received_bytes, payload_length, &mock_firm_settings, &mock_calibration_settings, &header_fields)) {
-              // Successfully processed, append mock header to current log file
-              logger_append_mock_header(&mock_firm_settings, &mock_calibration_settings, &header_fields);
-              
+            osMutexAcquire(sensorDataMutexHandle, osWaitForever);
+            if (!process_mock_settings_packet(received_bytes, payload_length, &mock_firm_settings, &mock_calibration_settings, &header_fields)) {
+              led_set_status(SD_CARD_FAIL);
             }
-            logger_append_mock_header(&mock_firm_settings, &mock_calibration_settings, &header_fields);
+            if (logger_append_mock_header(&mock_firm_settings, &mock_calibration_settings, &header_fields) != FR_OK) {
+              led_set_status(MMC5983MA_FAIL);
+            }
+            osMutexRelease(sensorDataMutexHandle);
             break;
           }
           default:

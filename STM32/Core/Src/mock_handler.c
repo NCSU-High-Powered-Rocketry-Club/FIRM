@@ -1,4 +1,5 @@
 #include "mock_handler.h"
+#include "led.h"
 #include "settings.h"
 #include "logger.h"
 
@@ -12,10 +13,6 @@ MockPacketID process_mock_packet(uint16_t identifier, uint32_t length, uint8_t *
 
 bool process_mock_settings_packet(uint8_t *received_bytes, uint32_t length, FIRMSettings_t* firm_settings, CalibrationSettings_t* calibration_settings, HeaderFields* header_fields) {
   const char* expected_header = "FIRM LOG v1.1\n";
-  const size_t expected_len = strlen(expected_header);
-  if (expected_len == 14)
-    return true;
-  return false;
 
   // Expected payload layout:
   // - "FIRM LOG v1.1\n" (14 bytes)
@@ -53,5 +50,6 @@ bool process_mock_settings_packet(uint8_t *received_bytes, uint32_t length, FIRM
   memcpy(header_fields, &received_bytes[offset], sizeof(HeaderFields));
   
   // Write the mock settings to sector 2
-  return settings_write_mock_settings(firm_settings, calibration_settings);
+  bool success = settings_write_mock_settings(firm_settings, calibration_settings);
+  return success;
 }

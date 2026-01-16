@@ -232,7 +232,7 @@ FRESULT logger_append_mock_header(FIRMSettings_t* firm_settings, CalibrationSett
     size_t calibration_settings_len = sizeof(CalibrationSettings_t);
     size_t scale_factor_len = sizeof(HeaderFields);
 
-    FRESULT error_status = logger_ensure_capacity(header_len + firm_settings_len + calibration_settings_len + scale_factor_len);
+    FRESULT error_status = logger_ensure_capacity(header_len + firm_settings_len + 2 + calibration_settings_len + scale_factor_len);
     if (error_status) {
         return error_status;
     }
@@ -244,7 +244,6 @@ FRESULT logger_append_mock_header(FIRMSettings_t* firm_settings, CalibrationSett
     // Append mock firmware settings
     memcpy(current_buffer + current_offset, firm_settings, firm_settings_len);
     current_offset += firm_settings_len;
-    
     // Append mock calibration settings
     memcpy(current_buffer + current_offset, calibration_settings, calibration_settings_len);
     current_offset += calibration_settings_len;
