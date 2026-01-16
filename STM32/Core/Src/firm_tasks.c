@@ -429,7 +429,7 @@ void packetizer_task(void *argument) {
       xQueueSend(transmit_queue, &response, 0);
     } 
     // send to queue at the specified frequency
-    // xQueueSend(transmit_queue, &data_packet, 0);
+    xQueueSend(transmit_queue, &data_packet, 0);
     vTaskDelayUntil(&last_wake_time, transmit_freq);
   }
 }
@@ -443,7 +443,7 @@ void transmit_data(void *argument) {
       packet.crc = crc16_ccitt((uint8_t *)&(packet), serialized_packet_len - 2);
       // move the location of the crc bytes directly after the payload
       memmove((uint8_t*)&packet + serialized_packet_len - 2, &packet.crc, sizeof(packet.crc));
-      //CDC_Transmit_FS((uint8_t*)&packet, serialized_packet_len);
+      CDC_Transmit_FS((uint8_t*)&packet, serialized_packet_len);
       // optionally transmit over uart if the setting is enabled
       if (firmSettings.uart_transfer_enabled && uart_tx_done) {
         uart_tx_done = false;
@@ -466,7 +466,6 @@ void usb_read_data(void *argument) {
     header_bytes[0] = header_bytes[1];
     // sets the buffer size needed in the usb data stream to be able to read bytes. This prevents
     // incomplete data packets from being received.
-    xStreamBufferSetTriggerLevel(usb_rx_stream, 1);
     xStreamBufferReceive(usb_rx_stream, &(header_bytes[1]), 1, portMAX_DELAY);
     // check if the 2 header bytes are valid, skip if invalid
     uint16_t header = header_bytes[0] | ((uint16_t)header_bytes[1] << 8);
@@ -478,18 +477,16 @@ void usb_read_data(void *argument) {
     header_bytes[1] = 0x11;
     // valid header, so get the identifier
     uint16_t identifier;
-    xStreamBufferSetTriggerLevel(usb_rx_stream, 2);
     xStreamBufferReceive(usb_rx_stream, (uint8_t *)&identifier, 2, portMAX_DELAY);
     msg_id = validate_message_identifier(header, identifier);
 
     // parse length field and get payload + crc bytes
-    xStreamBufferSetTriggerLevel(usb_rx_stream, sizeof(payload_length));
     xStreamBufferReceive(usb_rx_stream, &payload_length, sizeof(payload_length), portMAX_DELAY);
     if (payload_length > COMMAND_READ_CHUNK_SIZE_BYTES - 2)
       continue;
     
     // wait until theres enough bytes in the stream to read
-    while (xStreamBufferBytesAvailable(usb_rx_stream) <= payload_length) {
+    while (xStreamBufferBytesAvailable(usb_rx_stream) < (payload_length + 2)) {
       vTaskDelay(1);
     }
     xStreamBufferReceive(usb_rx_stream, received_bytes, payload_length + 2, portMAX_DELAY);
@@ -498,12 +495,13 @@ void usb_read_data(void *argument) {
     if (!validate_message_crc16(header, identifier, payload_length, received_bytes)) {
       continue;
     }
-
+    
     switch (msg_id) {
       case MSGID_MOCK_PACKET: {
         // create and fill a mock packet with data, and send to queue
         SensorPacket mock_packet;
         MockPacketID mock_type = process_mock_packet(identifier, payload_length, received_bytes, (uint8_t*)&mock_packet);
+        led_toggle_status(MMC5983MA_FAIL);
         switch (mock_type) {
           case MOCKID_BMP581:
             xQueueSend(mock_bmp581_queue, &mock_packet, portMAX_DELAY);
@@ -519,14 +517,13 @@ void usb_read_data(void *argument) {
             FIRMSettings_t mock_firm_settings;
             CalibrationSettings_t mock_calibration_settings;
             HeaderFields header_fields;
-            osMutexAcquire(sensorDataMutexHandle, osWaitForever);
             if (!process_mock_settings_packet(received_bytes, payload_length, &mock_firm_settings, &mock_calibration_settings, &header_fields)) {
-              led_set_status(SD_CARD_FAIL);
+              break;  // Exit early on parse failure, don't attempt to log
             }
+            // osMutexAcquire(sensorDataMutexHandle, osWaitForever);
             if (logger_append_mock_header(&mock_firm_settings, &mock_calibration_settings, &header_fields) != FR_OK) {
-              led_set_status(MMC5983MA_FAIL);
             }
-            osMutexRelease(sensorDataMutexHandle);
+            // osMutexRelease(sensorDataMutexHandle);
             break;
           }
           default:
