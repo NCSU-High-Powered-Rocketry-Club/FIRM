@@ -20,17 +20,19 @@ void serialPrintStr(const char* s) {
     }
 }
 
-void serialPrintInt(int d) {
-    char buffer[16];
-    sprintf(buffer, "%d", d);
+
+void serialPrintInt(int d, bool newLine) {
+    char buffer[32];
+
+    if (newLine == false) {
+        sprintf(buffer, "%d", d);
+    }
+    else {
+        snprintf(buffer, sizeof(buffer), "%d\r\n", d);
+    }
     CDC_Transmit_FS((uint8_t*)buffer, strlen(buffer));
 }
 
-void serialPrintlnInt(int d) {
-    char buffer[32];
-    snprintf(buffer, sizeof(buffer), "%d\r\n", d);
-    CDC_Transmit_FS((uint8_t*)buffer, strlen(buffer));
-}
 
 void serialPrintFloat(float f) {
     char buffer[32];
