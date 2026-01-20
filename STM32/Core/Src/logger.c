@@ -190,9 +190,12 @@ static FRESULT logger_ensure_capacity(size_t capacity) {
 static void logger_log_type_timestamp(char type) {
     current_buffer[current_offset++] = type;
     uint32_t current_time = DWT->CYCCNT;
-    current_buffer[current_offset++] = (char)((current_time >> 16) & 0xFF);
-    current_buffer[current_offset++] = (char)((current_time >> 8) & 0xFF);
+    //current_buffer[current_offset++] = (char)((current_time >> 16) & 0xFF);
+    //current_buffer[current_offset++] = (char)((current_time >> 8) & 0xFF);
+    //current_buffer[current_offset++] = (char)(current_time & 0xFF);
     current_buffer[current_offset++] = (char)(current_time & 0xFF);
+    current_buffer[current_offset++] = (char)((current_time >> 8) & 0xFF);
+    current_buffer[current_offset++] = (char)((current_time >> 16) & 0xFF);
 }
 
 

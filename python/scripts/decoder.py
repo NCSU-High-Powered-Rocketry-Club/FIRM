@@ -5,8 +5,6 @@ import os
 import struct
 import sys
 
-import pandas as pd
-
 
 # identifier for each packet type
 BMP581_ID = 'B'
@@ -74,7 +72,7 @@ class Decoder:
 
             # read timestamp
             clock_count_bytes = self.f.read(3)
-            clock_count = struct.unpack('>I', b'\x00' + clock_count_bytes)[0]
+            clock_count = struct.unpack('<I', b'\x00' + clock_count_bytes)[0]
             self.timestamp_seconds += (self.get_delta_timestamp(clock_count)) / 168e6
             self.last_clock_count = clock_count
 
