@@ -39,8 +39,9 @@ static HAL_StatusTypeDef read_registers(uint8_t addr, uint8_t* buffer, size_t le
 static HAL_StatusTypeDef write_register(uint8_t addr, uint8_t data);
 
 
-static const uint8_t chip_id = 0x01;
+static const uint8_t chip_id = 0x02;
 static const uint8_t who_am_i = 0x00; 
+static const uint8_t fifo_samples =0x39;
 
 static SPISettings spiSettings;
 
@@ -136,7 +137,13 @@ static int setup_device(bool soft_reset_complete) {
 
     // verify chip ID read works
     read_registers(who_am_i, &result, 1);
-    if (result != 0x1D) {
+    if (result != 0xFA) {
+        serialPrintStr("\tIMU could not read chip ID");
+        return 1;
+    }
+
+    read_registers(fifo_samples, &result, 1);
+    if (result != 0xFA) {
         serialPrintStr("\tIMU could not read chip ID");
         return 1;
     }
