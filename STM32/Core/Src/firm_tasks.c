@@ -80,7 +80,7 @@ const osThreadAttr_t transmitTask_attributes = {
 };
 const osThreadAttr_t usbReadTask_attributes = {
     .name = "usbReadTask",
-    .stack_size = 4096 * 4,
+    .stack_size = 2048 * 4,
     .priority = (osPriority_t)osPriorityNormal,
 };
 
@@ -91,6 +91,7 @@ const osMutexAttr_t sensorDataMutex_attributes = {
 };
 
 static int mock_fetch_sensor_queue(SensorPacket *packet, QueueHandle_t queue) {
+  led_toggle_status(MMC5983MA_FAIL);
   xQueueReceive(queue, packet, portMAX_DELAY);
   return 0;
 }
@@ -351,6 +352,7 @@ void collect_mmc5983ma_data_task(void *argument) {
     notif_count = ulTaskNotifyTake(pdFALSE, max_wait);
 
     if (notif_count > 0) {
+      
       osMutexAcquire(sensorDataMutexHandle, osWaitForever);
       SensorPacket *mmc5983ma_packet = logger_malloc_packet(sizeof(MMC5983MAPacket_t));
       int err;
@@ -462,6 +464,9 @@ void usb_read_data(void *argument) {
   uint8_t received_bytes[COMMAND_READ_CHUNK_SIZE_BYTES];
 
   for (;;) {
+    if (xStreamBufferBytesAvailable(usb_rx_stream) > 1500) {
+      led_set_status(SD_CARD_FAIL);
+    }
     // Receive incoming USB data, attempt to parse header
     header_bytes[0] = header_bytes[1];
     // sets the buffer size needed in the usb data stream to be able to read bytes. This prevents
@@ -501,16 +506,18 @@ void usb_read_data(void *argument) {
         // create and fill a mock packet with data, and send to queue
         SensorPacket mock_packet;
         MockPacketID mock_type = process_mock_packet(identifier, payload_length, received_bytes, (uint8_t*)&mock_packet);
-        led_toggle_status(MMC5983MA_FAIL);
         switch (mock_type) {
           case MOCKID_BMP581:
             xQueueSend(mock_bmp581_queue, &mock_packet, portMAX_DELAY);
+            xTaskNotifyGive(bmp581_task_handle);
             break;
           case MOCKID_ICM45686:
             xQueueSend(mock_icm45686_queue, &mock_packet, portMAX_DELAY);
+            xTaskNotifyGive(icm45686_task_handle);
             break;
           case MOCKID_MMC5983MA:
             xQueueSend(mock_mmc5983ma_queue, &mock_packet, portMAX_DELAY);
+            xTaskNotifyGive(mmc5983ma_task_handle);
             break;
           case MOCKID_SETTINGS: {
             // Process mock settings/calibration header and append to current log file
@@ -530,6 +537,7 @@ void usb_read_data(void *argument) {
             break;
         }
         break;
+        continue;
       }
       case MSGID_COMMAND_PACKET: {
         Packet response;

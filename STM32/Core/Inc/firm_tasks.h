@@ -30,12 +30,12 @@
 
 #define MAX_WAIT_TIME(hz) (TickType_t)(pdMS_TO_TICKS(1000 / (hz)) + 1)
 
-#define USB_RX_STREAM_BUFFER_SIZE_BYTES 512
+#define USB_RX_STREAM_BUFFER_SIZE_BYTES 2048
 #define USB_RX_STREAM_TRIGGER_LEVEL_BYTES 1
 
 #define SYSTEM_REQUEST_QUEUE_LENGTH 5
 #define TRANSMIT_QUEUE_LENGTH 10
-#define MOCK_QUEUE_LENGTH 10
+#define MOCK_QUEUE_LENGTH 50
 
 extern osThreadId_t system_manager_task_handle;
 extern osThreadId_t firm_mode_indicator_task_handle;
