@@ -34,14 +34,24 @@ void serialPrintInt(int d, bool newLine) {
 }
 
 
-void serialPrintFloat(float f) {
+void serialPrintFloat(float f, bool newLine) {
     char buffer[32];
-    snprintf(buffer, sizeof(buffer), "%f\r\n", f);
+    if (newLine == false) {
+        snprintf(buffer, sizeof(buffer), "%f\r", f);
+    }
+    else {
+        snprintf(buffer, sizeof(buffer), "%f\r\n", f);
+    }
     CDC_Transmit_FS((uint8_t*)buffer, strlen(buffer));
 }
 
-void serialPrintChar(char c) {
+void serialPrintChar(char c, bool newLine) {
     char buffer[4];
-    snprintf(buffer, sizeof(buffer), "%c\r\n", c);
+    if (newLine == false) {
+        snprintf(buffer, sizeof(buffer), "%c\r", c);
+    }
+    else {
+        snprintf(buffer, sizeof(buffer), "%c\r\n", c);
+    }
     CDC_Transmit_FS((uint8_t*)buffer, strlen(buffer));
 }
