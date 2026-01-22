@@ -48,6 +48,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Libraries/W25Q128JV/w25q128jv.c
     Libraries/MMC5983MA/mmc5983ma.c
     Libraries/ICM45686/icm45686.c
+    Libraries/ADXL372/ADXL372.c
     Libraries/SPIUtils/spi_utils.c
     Core/Src/logger.c
     Core/Src/usb_print_debug.c
@@ -67,6 +68,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
    Libraries/MMC5983MA
    Libraries/W25Q128JV
    Libraries/SPIUtils
+   Libraries/ADXL372
 )
 
 # Add project symbols (macros)
