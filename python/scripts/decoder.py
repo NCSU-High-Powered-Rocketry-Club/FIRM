@@ -112,7 +112,7 @@ class Decoder:
         self.uid = struct.unpack("<Q", uid_b)[0]
         device_name_format_string = "<" + str(HEADER_DEVICE_NAME_LEN) + "s"
         name_bytes, = struct.unpack(device_name_format_string, device_name_b)
-        self.device_name = name_bytes.rstrip(b"\x00").decode("utf-8")
+        self.device_name = name_bytes.rstrip(b"\x00").decode("utf-8", errors='backslashreplace')
         self.comms = struct.unpack("??", comms_b)
 
         cal_format_string = "<" + ("f" * int(HEADER_CAL_SIZE / 4))
@@ -212,7 +212,7 @@ def decode(path):
 
         # write to csv
     
-        write_to_csv(bmp581_df, "BMP581_data.csv", decoder)
+        write_to_csv(bmp581_df, "BMP581_data_copy.csv", decoder)
         write_to_csv(icm45686_df, "ICM45686_data.csv", decoder)
         write_to_csv(mmc5983ma_df, "MMC5983MA_data.csv", decoder)
 

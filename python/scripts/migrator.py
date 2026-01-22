@@ -32,6 +32,9 @@ def new_file( path ):
     try:
         # open source file for reading log and destination file for writing the migrated log
         with open( path, 'rb' ) as src, open( dst_file, "wb" ) as dst:
+            # Checks if there is header info - skip/filler if not
+            if( src.read( HEADER_SIZE_TEXT ) != b'FIRM LOG v1.0\n' ):
+                return
             # reads and saves the header information
             header_text = src.read( HEADER_SIZE_TEXT )
             dst.write( header_text )
