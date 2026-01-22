@@ -42,6 +42,7 @@ static HAL_StatusTypeDef write_register(uint8_t addr, uint8_t data);
 static const uint8_t chip_id = 0x02;
 static const uint8_t who_am_i = 0x00; 
 static const uint8_t fifo_samples =0x39;
+static const uint8_t reset = 0x41;
 
 static SPISettings spiSettings;
 
@@ -62,7 +63,7 @@ int icm45686_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs
 
     // do a soft-reset of the sensor's settings
     serialPrintStr("\tIssuing ICM45686 software reset...");
-    write_register(reg_misc2, 0b00000010);
+    write_register(reset, 0x52);
     // verify correct setup again
     if (setup_device(true)) return 1;
 
@@ -142,12 +143,24 @@ static int setup_device(bool soft_reset_complete) {
         return 1;
     }
 
+    //write check
+
     read_registers(fifo_samples, &result, 1);
-    if (result != 0xFA) {
-        serialPrintStr("\tIMU could not read chip ID");
+
+    if (result != 0x80) {
+        serialPrintStr("\tIMU could not read fifo samples");
         return 1;
     }
 
+    write_register(fifo_samples, 0x00);
+
+    if (result != 0x00) {
+        serialPrintStr("\tIMU could not write fifo samples");
+        return 1;
+    }
+
+    write_register(fifo_samples, 0x80);
+    
 
     if (soft_reset_complete) {
         // Check bit 1 (soft reset bit) is set back to 0
