@@ -61,7 +61,7 @@ class Decoder:
         # if the clock cycle count loops around due to unsigned int overflow, the difference
         # is found by adding the size of the integer used to store the count
         if (next_clock_count < self.last_clock_count):
-            next_clock_count += (2**24)
+            next_clock_count += (2**32)
         return next_clock_count - self.last_clock_count
 
     def read_packet(self):
@@ -78,8 +78,8 @@ class Decoder:
             self.num_repeat_whitespace = 0
 
             # read timestamp
-            clock_count_bytes = self.f.read(3)
-            clock_count = struct.unpack('>I', b'\x00' + clock_count_bytes)[0]
+            clock_count_bytes = self.f.read(4)
+            clock_count = struct.unpack('<I', clock_count_bytes)[0]
             self.timestamp_seconds += (self.get_delta_timestamp(clock_count)) / 168e6
             self.last_clock_count = clock_count
 

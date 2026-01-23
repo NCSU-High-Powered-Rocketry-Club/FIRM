@@ -136,9 +136,8 @@ void icm45686_convert_packet(SensorPacket *packet, DataPacket *result_packet) {
 #ifndef TEST
 
 static double update_dwt_timestamp(const uint8_t clock_cycle_count[4]) {
-  // converting to uint32_t from big-endian
-  // TODO: Change to little endian in future
-  uint32_t current_cyccnt = ((uint32_t)clock_cycle_count[0] << 24) | ((uint32_t)clock_cycle_count[1] << 16) | ((uint32_t)clock_cycle_count[2] << 8) | ((uint32_t)clock_cycle_count[3]);
+  uint32_t current_cyccnt;
+  memcpy(&current_cyccnt, clock_cycle_count, sizeof(current_cyccnt));
   // Check for overflow by comparing with last value
   // Overflow occurred if current value is less than last value
   if (current_cyccnt < last_cyccnt) {

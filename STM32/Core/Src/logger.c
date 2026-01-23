@@ -40,8 +40,7 @@ static void logger_swap_buffers();
  * This is the size in bytes of the type of packet and the timestamp associated
  * with it.
  */
-static const int packet_metadata_size = 4;
-static const int packet_timestamp_size = 3;
+static const int packet_timestamp_size = 4;
 
 static char  buffer0[SD_SECTOR_SIZE];
 static char  buffer1[SD_SECTOR_SIZE];
@@ -153,7 +152,7 @@ FRESULT logger_write_header(HeaderFields* sensor_scale_factors) {
 }
 
 void* logger_malloc_packet(size_t capacity) {
-  if (logger_ensure_capacity(capacity + packet_metadata_size)) {
+  if (logger_ensure_capacity(capacity)) {
     return NULL;
   }
   return &current_buffer[current_offset];

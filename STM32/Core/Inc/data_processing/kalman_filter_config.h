@@ -54,7 +54,7 @@ extern float ukf_measurement_noise_covariance_diag[STATE_MACHINE_NUM_STATES][UKF
  * From page 21 Merwe et al. (2004)
  * doi: 10.2514/6.2004-5120
  */
-#define UKF_SIGMA_SPREAD_ALPHA 1e-2F
+#define UKF_SIGMA_SPREAD_ALPHA 3e-1F
 #define UKF_SIGMA_WEIGHT_BETA 2.0F
 #define UKF_SIGMA_TERTIARY_KAPPA 0
 

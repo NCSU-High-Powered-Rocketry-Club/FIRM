@@ -4,6 +4,7 @@
 #include "icm45686_packet.h"
 #include "led.h"
 #include "mmc5983ma_packet.h"
+#include "mock_handler.h"
 #include "usb_print_debug.h"
 #include "usbd_cdc_if.h"
 #include <string.h>
@@ -31,10 +32,15 @@ QueueHandle_t mmc5983ma_command_queue;
 QueueHandle_t data_filter_command_queue;
 QueueHandle_t packetizer_command_queue;
 
-// mock queues
-QueueHandle_t mock_bmp581_queue;
-QueueHandle_t mock_icm45686_queue;
-QueueHandle_t mock_mmc5983ma_queue;
+// mock packets
+// For mock mode, we receive raw bytes over USB that contain:
+//   [timestamp bytes][sensor payload bytes]
+// These buffers must be real storage (not pointers) and large enough for the
+// timestamp + each sensor's payload.
+#define SENSOR_TIMESTAMP_SIZE_BYTES (sizeof(((SensorPacket*)0)->timestamp))
+static uint8_t mock_bmp581_payload[SENSOR_TIMESTAMP_SIZE_BYTES + sizeof(BMP581Packet_t)];
+static uint8_t mock_icm45686_payload[SENSOR_TIMESTAMP_SIZE_BYTES + sizeof(ICM45686Packet_t)];
+static uint8_t mock_mmc5983ma_payload[SENSOR_TIMESTAMP_SIZE_BYTES + sizeof(MMC5983MAPacket_t)];
 
 
 // task attributes
@@ -89,12 +95,6 @@ osMutexId_t sensorDataMutexHandle;
 const osMutexAttr_t sensorDataMutex_attributes = {
   .name = "sensorDataMutex"
 };
-
-static int mock_fetch_sensor_queue(SensorPacket *packet, QueueHandle_t queue) {
-  led_toggle_status(MMC5983MA_FAIL);
-  xQueueReceive(queue, packet, portMAX_DELAY);
-  return 0;
-}
 
 
 // instance of the serialized verison of the data packet that will be reused and overriden as data
@@ -180,11 +180,6 @@ void firm_rtos_init(void) {
   data_filter_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
   mode_indicator_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
   packetizer_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(SystemResponsePacket));
-
-  // queue for mock packets
-  mock_bmp581_queue = xQueueCreate(MOCK_QUEUE_LENGTH, sizeof(SensorPacket));
-  mock_icm45686_queue = xQueueCreate(MOCK_QUEUE_LENGTH, sizeof(SensorPacket));
-  mock_mmc5983ma_queue = xQueueCreate(MOCK_QUEUE_LENGTH, sizeof(SensorPacket));
 }
 
 void system_manager_task(void *argument) {
@@ -285,18 +280,19 @@ void collect_bmp581_data_task(void *argument) {
     notif_count = ulTaskNotifyTake(pdFALSE, max_wait);
     if (notif_count > 0) {
       osMutexAcquire(sensorDataMutexHandle, osWaitForever);
-      SensorPacket *bmp581_packet = logger_malloc_packet(sizeof(BMP581Packet_t));
-      int err;
+      void *bmp581_storage = logger_malloc_packet(sizeof(BMP581Packet_t) + 5);
+      if (bmp581_storage == NULL) {
+        osMutexRelease(sensorDataMutexHandle);
+        continue;
+      }
+      SensorPacket *bmp581_packet = (SensorPacket *)((uint8_t *)bmp581_storage + 1);
+      int err = 0;
       if (cmd_status == TASKCMD_MOCK) {
-        err = mock_fetch_sensor_queue(bmp581_packet, mock_bmp581_queue);
+        memcpy(bmp581_packet, mock_bmp581_payload, SENSOR_TIMESTAMP_SIZE_BYTES + sizeof(BMP581Packet_t));
       } else {
         err = bmp581_read_data(&bmp581_packet->packet.bmp581_packet);
-        // TODO: change timestamp format to little endian
         uint32_t clock_cycle_count = DWT->CYCCNT;
-        bmp581_packet->timestamp[0] = (clock_cycle_count >> 24) & 0xFF;
-        bmp581_packet->timestamp[1] = (clock_cycle_count >> 16) & 0xFF;
-        bmp581_packet->timestamp[2] = (clock_cycle_count >> 8)  & 0xFF;
-        bmp581_packet->timestamp[3] =  clock_cycle_count & 0xFF;
+        memcpy(bmp581_packet->timestamp, &clock_cycle_count, sizeof(bmp581_packet->timestamp));
       }
       if (!err) {
         logger_write_entry('B', sizeof(BMP581Packet_t));
@@ -319,18 +315,19 @@ void collect_icm45686_data_task(void *argument) {
 
     if (notif_count > 0) {
       osMutexAcquire(sensorDataMutexHandle, osWaitForever);
-      SensorPacket *icm45686_packet = logger_malloc_packet(sizeof(ICM45686Packet_t));
-      int err;
+      void *icm45686_storage = logger_malloc_packet(sizeof(ICM45686Packet_t) + 5);
+      if (icm45686_storage == NULL) {
+        osMutexRelease(sensorDataMutexHandle);
+        continue;
+      }
+      SensorPacket *icm45686_packet = (SensorPacket *)((uint8_t *)icm45686_storage + 1);
+      int err = 0;
       if (cmd_status == TASKCMD_MOCK) {
-        err = mock_fetch_sensor_queue(icm45686_packet, mock_icm45686_queue);
+        memcpy(icm45686_packet, mock_icm45686_payload, SENSOR_TIMESTAMP_SIZE_BYTES + sizeof(ICM45686Packet_t));
       } else {
         err = icm45686_read_data(&icm45686_packet->packet.icm45686_packet);
-        // TODO: change timestamp format to little endian
         uint32_t clock_cycle_count = DWT->CYCCNT;
-        icm45686_packet->timestamp[0] = (clock_cycle_count >> 24) & 0xFF;
-        icm45686_packet->timestamp[1] = (clock_cycle_count >> 16) & 0xFF;
-        icm45686_packet->timestamp[2] = (clock_cycle_count >> 8)  & 0xFF;
-        icm45686_packet->timestamp[3] =  clock_cycle_count & 0xFF;
+        memcpy(icm45686_packet->timestamp, &clock_cycle_count, sizeof(icm45686_packet->timestamp));
       }
       if (!err) {
         logger_write_entry('I', sizeof(ICM45686Packet_t));
@@ -354,18 +351,19 @@ void collect_mmc5983ma_data_task(void *argument) {
     if (notif_count > 0) {
       
       osMutexAcquire(sensorDataMutexHandle, osWaitForever);
-      SensorPacket *mmc5983ma_packet = logger_malloc_packet(sizeof(MMC5983MAPacket_t));
-      int err;
+      void *mmc5983ma_storage = logger_malloc_packet(sizeof(MMC5983MAPacket_t) + 5);
+      if (mmc5983ma_storage == NULL) {
+        osMutexRelease(sensorDataMutexHandle);
+        continue;
+      }
+      SensorPacket *mmc5983ma_packet = (SensorPacket *)((uint8_t *)mmc5983ma_storage + 1);
+      int err = 0;
       if (cmd_status == TASKCMD_MOCK) {
-        err = mock_fetch_sensor_queue(mmc5983ma_packet, mock_mmc5983ma_queue);
+        memcpy(mmc5983ma_packet, mock_mmc5983ma_payload, SENSOR_TIMESTAMP_SIZE_BYTES + sizeof(MMC5983MAPacket_t));
       } else {
         err = mmc5983ma_read_data(&mmc5983ma_packet->packet.mmc5983ma_packet);
-        // TODO: change timestamp format to little endian
         uint32_t clock_cycle_count = DWT->CYCCNT;
-        mmc5983ma_packet->timestamp[0] = (clock_cycle_count >> 24) & 0xFF;
-        mmc5983ma_packet->timestamp[1] = (clock_cycle_count >> 16) & 0xFF;
-        mmc5983ma_packet->timestamp[2] = (clock_cycle_count >> 8)  & 0xFF;
-        mmc5983ma_packet->timestamp[3] =  clock_cycle_count & 0xFF;
+        memcpy(mmc5983ma_packet->timestamp, &clock_cycle_count, sizeof(mmc5983ma_packet->timestamp));
       }
       if (!err) {
         logger_write_entry('M', sizeof(MMC5983MAPacket_t));
@@ -400,13 +398,16 @@ void filter_data_task(void *argument) {
         xQueueSend(system_request_queue, &(SystemRequest){SYSREQ_FINISH_SETUP}, 0);
       }
     }
-    vTaskDelay(1000);
     float dt = (float)packet->timestamp_seconds - last_time;
-    // ukf_predict(&ukf, dt);
-    // float measurement[10];
-    // memcpy(measurement, &packet->pressure_pascals, sizeof(measurement));
-    // ukf_update(&ukf, measurement);
-    // memcpy(&packet->est_position_x_meters, ukf.X, UKF_STATE_DIMENSION * 4);
+    vTaskDelay(1000);
+    int err = ukf_predict(&ukf, dt);
+    float measurement[10];
+    memcpy(measurement, &packet->pressure_pascals, sizeof(measurement));
+    err = ukf_update(&ukf, measurement);
+    if (err) {
+      led_set_status(UKF_FAIL);
+    }
+    memcpy(&packet->est_position_x_meters, ukf.X, UKF_STATE_DIMENSION * 4);
     last_time += dt;
   }
 }
@@ -456,105 +457,164 @@ void transmit_data(void *argument) {
 }
 
 void usb_read_data(void *argument) {
-  uint8_t header_bytes[sizeof(data_packet.header)] = {
-    0x11,
-    0x11,
-  };
-  uint32_t payload_length;
+  uint8_t meta_bytes[sizeof(data_packet.header) + sizeof(data_packet.identifier) + sizeof(data_packet.packet_len)];
   uint8_t received_bytes[COMMAND_READ_CHUNK_SIZE_BYTES];
+  uint16_t header;
+  uint16_t identifier;
+  uint32_t payload_length;
+  
 
   for (;;) {
     if (xStreamBufferBytesAvailable(usb_rx_stream) > 1500) {
       led_set_status(SD_CARD_FAIL);
     }
-    // Receive incoming USB data, attempt to parse header
-    header_bytes[0] = header_bytes[1];
-    // sets the buffer size needed in the usb data stream to be able to read bytes. This prevents
-    // incomplete data packets from being received.
-    xStreamBufferReceive(usb_rx_stream, &(header_bytes[1]), 1, portMAX_DELAY);
+
+    xStreamBufferReceive(usb_rx_stream, meta_bytes, sizeof(meta_bytes), portMAX_DELAY);
     // check if the 2 header bytes are valid, skip if invalid
-    uint16_t header = header_bytes[0] | ((uint16_t)header_bytes[1] << 8);
-    uint16_t msg_id = validate_message_header(header);
-    if (msg_id == MSGID_INVALID) {
-      continue;
-    }
-    // reset header bytes
-    header_bytes[1] = 0x11;
-    // valid header, so get the identifier
-    uint16_t identifier;
-    xStreamBufferReceive(usb_rx_stream, (uint8_t *)&identifier, 2, portMAX_DELAY);
-    msg_id = validate_message_identifier(header, identifier);
-
-    // parse length field and get payload + crc bytes
-    xStreamBufferReceive(usb_rx_stream, &payload_length, sizeof(payload_length), portMAX_DELAY);
-    if (payload_length > COMMAND_READ_CHUNK_SIZE_BYTES - 2)
-      continue;
     
-    // wait until theres enough bytes in the stream to read
-    while (xStreamBufferBytesAvailable(usb_rx_stream) < (payload_length + 2)) {
-      vTaskDelay(1);
-    }
-    xStreamBufferReceive(usb_rx_stream, received_bytes, payload_length + 2, portMAX_DELAY);
-
-    // verify the data in the packet is valid by checking the crc across header, length, and payload
-    if (!validate_message_crc16(header, identifier, payload_length, received_bytes)) {
-      continue;
-    }
+    memcpy(&header, meta_bytes, 2);
+    memcpy(&identifier, &meta_bytes[2], 2);
+    memcpy(&payload_length, &meta_bytes[4], 4);
     
-    switch (msg_id) {
-      case MSGID_MOCK_PACKET: {
-        // create and fill a mock packet with data, and send to queue
-        SensorPacket mock_packet;
-        MockPacketID mock_type = process_mock_packet(identifier, payload_length, received_bytes, (uint8_t*)&mock_packet);
-        switch (mock_type) {
-          case MOCKID_BMP581:
-            xQueueSend(mock_bmp581_queue, &mock_packet, portMAX_DELAY);
-            xTaskNotifyGive(bmp581_task_handle);
-            break;
-          case MOCKID_ICM45686:
-            xQueueSend(mock_icm45686_queue, &mock_packet, portMAX_DELAY);
-            xTaskNotifyGive(icm45686_task_handle);
-            break;
-          case MOCKID_MMC5983MA:
-            xQueueSend(mock_mmc5983ma_queue, &mock_packet, portMAX_DELAY);
-            xTaskNotifyGive(mmc5983ma_task_handle);
-            break;
-          case MOCKID_SETTINGS: {
-            // Process mock settings/calibration header and append to current log file
-            FIRMSettings_t mock_firm_settings;
-            CalibrationSettings_t mock_calibration_settings;
-            HeaderFields header_fields;
-            if (!process_mock_settings_packet(received_bytes, payload_length, &mock_firm_settings, &mock_calibration_settings, &header_fields)) {
-              break;  // Exit early on parse failure, don't attempt to log
-            }
-            // osMutexAcquire(sensorDataMutexHandle, osWaitForever);
-            if (logger_append_mock_header(&mock_firm_settings, &mock_calibration_settings, &header_fields) != FR_OK) {
-            }
-            // osMutexRelease(sensorDataMutexHandle);
-            break;
-          }
-          default:
-            break;
+    if (header == MSGID_MOCK_PACKET && identifier != MOCKID_SETTINGS) {
+      uint32_t expected_payload_length = 0;
+      switch (identifier) {
+        case MOCKID_BMP581:
+          expected_payload_length = SENSOR_TIMESTAMP_SIZE_BYTES + sizeof(BMP581Packet_t);
+          break;
+        case MOCKID_ICM45686:
+          expected_payload_length = SENSOR_TIMESTAMP_SIZE_BYTES + sizeof(ICM45686Packet_t);
+          break;
+        case MOCKID_MMC5983MA:
+          expected_payload_length = SENSOR_TIMESTAMP_SIZE_BYTES + sizeof(MMC5983MAPacket_t);
+          break;
+        default:
+          expected_payload_length = 0;
+          break;
+      }
+
+      // If declared payload length doesn't match, discard payload+CRC to keep the stream aligned.
+      if (expected_payload_length == 0 || payload_length != expected_payload_length) {
+        uint32_t to_discard = payload_length + 2;
+        while (to_discard > 0) {
+          size_t chunk = (to_discard > sizeof(received_bytes)) ? sizeof(received_bytes) : (size_t)to_discard;
+          xStreamBufferReceive(usb_rx_stream, received_bytes, chunk, portMAX_DELAY);
+          to_discard -= (uint32_t)chunk;
         }
-        break;
         continue;
       }
-      case MSGID_COMMAND_PACKET: {
-        Packet response;
-        uint16_t response_header_and_id[2];
-        message_get_response_id(header, identifier, response_header_and_id);
-        response.header = response_header_and_id[0];
-        response.identifier = response_header_and_id[1];
-        response.packet_len = execute_command(identifier, received_bytes, payload_length, (ResponsePacket *)&response.data);
-        xQueueSend(transmit_queue, &response, portMAX_DELAY);
-        break;
+
+      switch (identifier) {
+        case MOCKID_BMP581:
+          osMutexAcquire(sensorDataMutexHandle, osWaitForever);
+          xStreamBufferReceive(usb_rx_stream, mock_bmp581_payload, expected_payload_length, portMAX_DELAY);
+          osMutexRelease(sensorDataMutexHandle);
+          xTaskNotifyGive(bmp581_task_handle);
+          break;
+        case MOCKID_ICM45686:
+          osMutexAcquire(sensorDataMutexHandle, osWaitForever);
+          xStreamBufferReceive(usb_rx_stream, mock_icm45686_payload, expected_payload_length, portMAX_DELAY);
+          osMutexRelease(sensorDataMutexHandle);
+          xTaskNotifyGive(icm45686_task_handle);
+          break;
+        case MOCKID_MMC5983MA:
+          osMutexAcquire(sensorDataMutexHandle, osWaitForever);
+          xStreamBufferReceive(usb_rx_stream, mock_mmc5983ma_payload, expected_payload_length, portMAX_DELAY);
+          osMutexRelease(sensorDataMutexHandle);
+          xTaskNotifyGive(mmc5983ma_task_handle);
+          led_toggle_status(MMC5983MA_FAIL);
+          break;
+        case MOCKID_SETTINGS:
+        default:
+          break;
       }
-      case MSGID_SYSTEM_MANAGER_REDIRECT:
-        
-        xQueueSend(system_request_queue, (SystemRequest *)&identifier, portMAX_DELAY);
-        break;
-      default:
+      xStreamBufferReceive(usb_rx_stream, received_bytes, 2, portMAX_DELAY);
+    } else {
+      uint16_t msg_id = validate_message_header(header);
+      if (msg_id == MSGID_INVALID) {
         continue;
+      }
+      // valid header, so get the identifier
+      msg_id = validate_message_identifier(header, identifier);
+    
+      if (payload_length > COMMAND_READ_CHUNK_SIZE_BYTES - 2) {
+        // Discard payload+CRC to keep the stream aligned.
+        uint32_t to_discard = payload_length + 2;
+        while (to_discard > 0) {
+          size_t chunk = (to_discard > sizeof(received_bytes)) ? sizeof(received_bytes) : (size_t)to_discard;
+          xStreamBufferReceive(usb_rx_stream, received_bytes, chunk, portMAX_DELAY);
+          to_discard -= (uint32_t)chunk;
+        }
+        continue;
+      }
+      
+      // wait until theres enough bytes in the stream to read
+      while (xStreamBufferBytesAvailable(usb_rx_stream) < (payload_length + 2)) {
+        vTaskDelay(1);
+      }
+      xStreamBufferReceive(usb_rx_stream, received_bytes, payload_length + 2, portMAX_DELAY);
+
+      // verify the data in the packet is valid by checking the crc across header, length, and payload
+      if (!validate_message_crc16(header, identifier, payload_length, received_bytes)) {
+        continue;
+      }
+    
+      switch (msg_id) {
+        case MSGID_MOCK_PACKET: {
+          // create and fill a mock packet with data, and send to queue
+          // SensorPacket mock_packet;
+          // MockPacketID mock_type = process_mock_packet(identifier, payload_length, received_bytes, (uint8_t*)&mock_packet);
+          switch (identifier) {
+            case MOCKID_BMP581:
+              // xQueueSend(mock_bmp581_queue, &mock_packet, portMAX_DELAY);
+              // xTaskNotifyGive(bmp581_task_handle);
+              // break;
+            case MOCKID_ICM45686:
+              // xQueueSend(mock_icm45686_queue, &mock_packet, portMAX_DELAY);
+              // xTaskNotifyGive(icm45686_task_handle);
+              // break;
+            case MOCKID_MMC5983MA:
+              // xQueueSend(mock_mmc5983ma_queue, &mock_packet, portMAX_DELAY);
+              // xTaskNotifyGive(mmc5983ma_task_handle);
+              // break;
+              break;
+            case MOCKID_SETTINGS: {
+              // Process mock settings/calibration header and append to current log file
+              FIRMSettings_t mock_firm_settings;
+              CalibrationSettings_t mock_calibration_settings;
+              HeaderFields header_fields;
+              if (!process_mock_settings_packet(received_bytes, payload_length, &mock_firm_settings, &mock_calibration_settings, &header_fields)) {
+                break;  // Exit early on parse failure, don't attempt to log
+              }
+              // osMutexAcquire(sensorDataMutexHandle, osWaitForever);
+              if (logger_append_mock_header(&mock_firm_settings, &mock_calibration_settings, &header_fields) != FR_OK) {
+              }
+              // osMutexRelease(sensorDataMutexHandle);
+              break;
+            }
+            default:
+              break;
+          }
+          break;
+          continue;
+        }
+        case MSGID_COMMAND_PACKET: {
+          Packet response;
+          uint16_t response_header_and_id[2];
+          message_get_response_id(header, identifier, response_header_and_id);
+          response.header = response_header_and_id[0];
+          response.identifier = response_header_and_id[1];
+          response.packet_len = execute_command(identifier, received_bytes, payload_length, (ResponsePacket *)&response.data);
+          xQueueSend(transmit_queue, &response, portMAX_DELAY);
+          break;
+        }
+        case MSGID_SYSTEM_MANAGER_REDIRECT:
+          
+          xQueueSend(system_request_queue, (SystemRequest *)&identifier, portMAX_DELAY);
+          break;
+        default:
+          continue;
+      }
     }
   }
 }
