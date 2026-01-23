@@ -175,7 +175,6 @@ void logger_write_entry(char type, size_t packet_size) {
     current_offset += packet_size;
 }
 
-
 static FRESULT logger_ensure_capacity(size_t capacity) {
     if (current_offset + capacity > SD_SECTOR_SIZE) {
         logger_write();
@@ -194,7 +193,6 @@ static void logger_log_type_timestamp(char type) {
     current_buffer[current_offset++] = (char)((current_time >> 8) & 0xFF);
     current_buffer[current_offset++] = (char)(current_time & 0xFF);
 }
-
 
 static FRESULT logger_write() {
     if (HAL_DMA_GetState(hdma_sdio_tx) != HAL_DMA_STATE_READY) {

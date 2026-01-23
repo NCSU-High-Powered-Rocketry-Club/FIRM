@@ -1,0 +1,6 @@
+build
+mx.scratch
+.settings
+CMakeFiles/
+.vscode/*
+!.vscode/c_cpp_properties.json
