@@ -15,7 +15,10 @@
   #include "fatfs.h"
   #include "ff.h"
 #else
-  // TODO: add stubs or mock
+  // Minimal stubs so headers compile in unit tests.
+  // We don't exercise the logger module in host tests.
+  typedef int FRESULT;
+  typedef struct { int dummy; } DMA_HandleTypeDef;
 #endif
 
 /** The sector size of the SD card. This is the smallest we are able to use. */

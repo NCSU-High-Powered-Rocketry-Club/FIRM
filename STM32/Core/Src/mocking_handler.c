@@ -1,10 +1,10 @@
-#include "mock_handler.h"
-
+#include "mocking_handler.h"
 
 MockPacketID process_mock_packet(uint16_t identifier, uint32_t length, uint8_t *received_bytes, uint8_t *mock_packet) {
   // if its the settings, return immediately because it has to be processed differently
-  if (identifier == MOCKID_SETTINGS)
+  if (identifier == MOCKID_SETTINGS) {
     return identifier;
+  }
   memcpy(mock_packet, received_bytes, length);
   return identifier;
 }
@@ -23,36 +23,35 @@ bool process_mock_settings_packet(uint8_t *received_bytes,
   // - FirmSettings struct
   // - CalibrationSettings struct
   // - HeaderFields struct
-  
-  
+
   size_t header_len = strlen(expected_header);
-  
+
   // Verify header
   if (length < header_len || memcmp(received_bytes, expected_header, header_len) != 0) {
     return false;
   }
-  
+
   // Extract FirmSettings
-  uint32_t offset = header_len;
+  uint32_t offset = (uint32_t)header_len;
   if (offset + sizeof(FIRMSettings_t) > length) {
     return false;
   }
   memcpy(firm_settings, &received_bytes[offset], sizeof(FIRMSettings_t));
-  offset += sizeof(FIRMSettings_t);
-  
+  offset += (uint32_t)sizeof(FIRMSettings_t);
+
   // Extract CalibrationSettings
   if (offset + sizeof(CalibrationSettings_t) > length) {
     return false;
   }
   memcpy(calibration_settings, &received_bytes[offset], sizeof(CalibrationSettings_t));
-  offset += sizeof(CalibrationSettings_t);
-  
+  offset += (uint32_t)sizeof(CalibrationSettings_t);
+
   // Extract HeaderFields
   if (offset + sizeof(HeaderFields) > length) {
     return false;
   }
   memcpy(header_fields, &received_bytes[offset], sizeof(HeaderFields));
-  
+
   // Delegate the side-effect (writing settings) to caller-provided callback.
   if (write_fn == NULL) {
     return false;

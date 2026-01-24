@@ -1,9 +1,22 @@
 #pragma once
 #include <stdint.h>
 #include <string.h>
-#include "logger.h"
 #include "settings.h"
 #include <stdbool.h>
+
+// HeaderFields is owned by logger.h. In host unit tests we avoid including
+// logger.h so Ceedling doesn't pull in logger.c (which depends on FATFS).
+#ifndef TEST
+  #include "logger.h"
+#else
+  typedef struct {
+      float temp_sf;
+      float pressure_sf;
+      float accel_sf;
+      float angular_rate_sf;
+      float magnetic_field_sf;
+  } HeaderFields;
+#endif
 
 typedef enum {
   MOCKID_BMP581 = 'B',
