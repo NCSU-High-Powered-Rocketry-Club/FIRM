@@ -1,6 +1,4 @@
 #include "messages.h"
-#include "mock_handler.h"
-#include "usbd_cdc_if.h"
 
 static uint8_t temp_buffer[COMMAND_READ_CHUNK_SIZE_BYTES];
 
@@ -36,15 +34,6 @@ bool validate_message_crc16(uint16_t header, uint16_t identifier, uint32_t paylo
   return (received_crc == calculated_crc);
 }
 
-void message_get_response_id(uint16_t header, uint16_t identifier, uint16_t* response_header_and_id) {
-  // currently response packets will only be sent when FIRM is sent a command
-  if (header == MSGID_COMMAND_PACKET) {
-    // copies the last 2 bytes (command selection bytes) and sets first two to response packet id.
-    response_header_and_id[0] = MSGID_RESPONSE_PACKET;
-    response_header_and_id[1] = identifier;
-  }
-}
-
 MessageIdentifier validate_message_identifier(uint16_t header, uint16_t identifier) {
   switch (header) {
     case MSGID_COMMAND_PACKET:
@@ -67,10 +56,10 @@ MessageIdentifier validate_message_identifier(uint16_t header, uint16_t identifi
     case MSGID_MOCK_PACKET:
       // mock packets must have the right identifier
       switch (identifier) {
-        case MOCKID_BMP581:
-        case MOCKID_ICM45686:
-        case MOCKID_MMC5983MA:
-        case MOCKID_SETTINGS:
+        case (uint16_t)'B':
+        case (uint16_t)'I':
+        case (uint16_t)'M':
+        case (uint16_t)'H':
           return MSGID_MOCK_PACKET;
         default:
           return MSGID_INVALID;
@@ -82,5 +71,69 @@ MessageIdentifier validate_message_identifier(uint16_t header, uint16_t identifi
     case MSGID_INVALID:
     default:
       return MSGID_INVALID;
+  }
+}
+
+bool usb_parse_message_meta(const uint8_t *meta_bytes, size_t meta_len, UsbMessageMeta *out) {
+  if (meta_bytes == NULL || out == NULL) {
+    return false;
+  }
+  if (meta_len < (sizeof(uint16_t) + sizeof(uint16_t) + sizeof(uint32_t))) {
+    return false;
+  }
+  memcpy(&out->header, &meta_bytes[0], sizeof(out->header));
+  memcpy(&out->identifier, &meta_bytes[sizeof(out->header)], sizeof(out->identifier));
+  memcpy(&out->payload_length, &meta_bytes[sizeof(out->header) + sizeof(out->identifier)], sizeof(out->payload_length));
+  return true;
+}
+
+UsbMessageType usb_interpret_usb_message(const UsbMessageMeta *meta,
+                                        const uint8_t *payload_and_crc,
+                                        size_t payload_and_crc_len) {
+  if (meta == NULL || payload_and_crc == NULL) {
+    return USBMSG_INVALID;
+  }
+
+  // Basic header validation
+  MessageIdentifier header_type = validate_message_header(meta->header);
+  if (header_type == MSGID_INVALID) {
+    return USBMSG_INVALID;
+  }
+
+  MessageIdentifier id_type = validate_message_identifier(meta->header, meta->identifier);
+  if (id_type == MSGID_INVALID) {
+    return USBMSG_INVALID;
+  }
+
+  // Ensure buffer contains payload + CRC bytes (even if CRC is ignored for mock sensors)
+  if (payload_and_crc_len < (size_t)meta->payload_length + 2U) {
+    return USBMSG_INVALID;
+  }
+
+  // Mock packet handling
+  if (meta->header == MSGID_MOCK_PACKET) {
+    // Settings mock packets should be CRC validated
+    if (meta->identifier == (uint16_t)'H') {
+      if (!validate_message_crc16(meta->header, meta->identifier, meta->payload_length, payload_and_crc)) {
+        return USBMSG_INVALID;
+      }
+      return USBMSG_MOCK_SETTINGS;
+    }
+    // Mock sensor packets ignore CRC (device behavior)
+    return USBMSG_MOCK_SENSOR;
+  }
+
+  // Command packet handling (CRC validated)
+  if (!validate_message_crc16(meta->header, meta->identifier, meta->payload_length, payload_and_crc)) {
+    return USBMSG_INVALID;
+  }
+
+  switch (id_type) {
+    case MSGID_SYSTEM_MANAGER_REDIRECT:
+      return USBMSG_SYSTEM_REQUEST;
+    case MSGID_COMMAND_PACKET:
+      return USBMSG_COMMAND;
+    default:
+      return USBMSG_INVALID;
   }
 }

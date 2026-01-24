@@ -8,6 +8,8 @@ static volatile uint32_t dwt_overflow_count = 0;
 static volatile uint32_t last_cyccnt = 0;
 
 
+
+#ifndef TEST
 /**
  * @brief Updates dwt overflow counter and returns current timestamp
  * @note Called frequently enough that we can't miss an overflow.
@@ -15,7 +17,29 @@ static volatile uint32_t last_cyccnt = 0;
  * 
  * @return Current timestamp as a double
  */
-static double update_dwt_timestamp(const uint8_t clock_cycle_count[4]);
+static double update_dwt_timestamp(const uint8_t clock_cycle_count[4]) {
+  uint32_t current_cyccnt;
+  memcpy(&current_cyccnt, clock_cycle_count, sizeof(current_cyccnt));
+  // Check for overflow by comparing with last value
+  // Overflow occurred if current value is less than last value
+  if (current_cyccnt < last_cyccnt) {
+    dwt_overflow_count++;
+  }
+  last_cyccnt = current_cyccnt;
+  uint64_t cycle_count = ((uint64_t)dwt_overflow_count << 32) | current_cyccnt;
+  // MCU clock speed is 168MHz
+  return ((double)cycle_count) / 168000000.0F;
+}
+
+#else
+
+// No DWT cycle counter so we gotta mock it
+static double update_dwt_timestamp(const uint8_t clock_cycle_count[4]) {
+    return 0.0;
+}
+
+#endif
+
 
 void bmp581_convert_packet(SensorPacket *packet, DataPacket *result_packet) {
     // get the current timestamp of the packet in seconds using the DWT counter
@@ -133,27 +157,3 @@ void icm45686_convert_packet(SensorPacket *packet, DataPacket *result_packet) {
     result_packet->raw_angular_rate_z_deg_per_s = gyro_float_x * calibrationSettings.icm45686_gyro.scale_multiplier[2] + gyro_float_y * calibrationSettings.icm45686_gyro.scale_multiplier[5] + gyro_float_z * calibrationSettings.icm45686_gyro.scale_multiplier[8];
 } 
 
-#ifndef TEST
-
-static double update_dwt_timestamp(const uint8_t clock_cycle_count[4]) {
-  uint32_t current_cyccnt;
-  memcpy(&current_cyccnt, clock_cycle_count, sizeof(current_cyccnt));
-  // Check for overflow by comparing with last value
-  // Overflow occurred if current value is less than last value
-  if (current_cyccnt < last_cyccnt) {
-    dwt_overflow_count++;
-  }
-  last_cyccnt = current_cyccnt;
-  uint64_t cycle_count = ((uint64_t)dwt_overflow_count << 32) | current_cyccnt;
-  // MCU clock speed is 168MHz
-  return ((double)cycle_count) / 168000000.0F;
-}
-
-#else
-
-// No DWT cycle counter so we gotta mock it
-static double update_dwt_timestamp(void) {
-    return 0.0;
-}
-
-#endif

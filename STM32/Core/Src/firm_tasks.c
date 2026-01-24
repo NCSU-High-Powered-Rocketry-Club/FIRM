@@ -9,6 +9,8 @@
 #include "usbd_cdc_if.h"
 #include <string.h>
 
+#include "stm32f4xx_hal_cortex.h"
+
 // task handles
 osThreadId_t system_manager_task_handle;
 osThreadId_t firm_mode_indicator_task_handle;
@@ -104,8 +106,20 @@ Packet data_packet;
 static UART_HandleTypeDef* firm_huart1;
 static volatile bool uart_tx_done = true;
 
+static void firm_system_reset_cb(void *ctx) {
+  (void)ctx;
+  HAL_NVIC_SystemReset();
+}
+
+static bool mock_settings_write_cb(void *ctx, FIRMSettings_t *firm_settings, CalibrationSettings_t *calibration_settings) {
+  (void)ctx;
+  return settings_write_mock_settings(firm_settings, calibration_settings);
+}
+
 int initialize_firm(SPIHandles* spi_handles_ptr, I2CHandles* i2c_handles_ptr, DMAHandles* dma_handles_ptr, UARTHandles* uart_handles_ptr) {
   firm_huart1 = uart_handles_ptr->huart1;
+
+  commands_register_system_reset(firm_system_reset_cb, NULL);
 
   // We use DWT (Data Watchpoint and Trace unit) to get a high resolution free-running timer
   // for our data packet timestamps. This allows us to use the clock cycle count instead of a
@@ -399,7 +413,6 @@ void filter_data_task(void *argument) {
       }
     }
     float dt = (float)packet->timestamp_seconds - last_time;
-    vTaskDelay(1000);
     int err = ukf_predict(&ukf, dt);
     float measurement[10];
     memcpy(measurement, &packet->pressure_pascals, sizeof(measurement));
@@ -457,164 +470,60 @@ void transmit_data(void *argument) {
 }
 
 void usb_read_data(void *argument) {
-  uint8_t meta_bytes[sizeof(data_packet.header) + sizeof(data_packet.identifier) + sizeof(data_packet.packet_len)];
+  uint8_t meta_bytes[sizeof(uint16_t) + sizeof(uint16_t) + sizeof(uint32_t)];
   uint8_t received_bytes[COMMAND_READ_CHUNK_SIZE_BYTES];
-  uint16_t header;
-  uint16_t identifier;
-  uint32_t payload_length;
-  
+  UsbMessageMeta meta;
 
   for (;;) {
+    // simply an overflow check that can be removed later
     if (xStreamBufferBytesAvailable(usb_rx_stream) > 1500) {
       led_set_status(SD_CARD_FAIL);
     }
 
     xStreamBufferReceive(usb_rx_stream, meta_bytes, sizeof(meta_bytes), portMAX_DELAY);
-    // check if the 2 header bytes are valid, skip if invalid
-    
-    memcpy(&header, meta_bytes, 2);
-    memcpy(&identifier, &meta_bytes[2], 2);
-    memcpy(&payload_length, &meta_bytes[4], 4);
-    
-    if (header == MSGID_MOCK_PACKET && identifier != MOCKID_SETTINGS) {
-      uint32_t expected_payload_length = 0;
-      switch (identifier) {
-        case MOCKID_BMP581:
-          expected_payload_length = SENSOR_TIMESTAMP_SIZE_BYTES + sizeof(BMP581Packet_t);
-          break;
-        case MOCKID_ICM45686:
-          expected_payload_length = SENSOR_TIMESTAMP_SIZE_BYTES + sizeof(ICM45686Packet_t);
-          break;
-        case MOCKID_MMC5983MA:
-          expected_payload_length = SENSOR_TIMESTAMP_SIZE_BYTES + sizeof(MMC5983MAPacket_t);
-          break;
-        default:
-          expected_payload_length = 0;
-          break;
-      }
+    if (!usb_parse_message_meta(meta_bytes, sizeof(meta_bytes), &meta)) {
+      continue;
+    }
 
-      // If declared payload length doesn't match, discard payload+CRC to keep the stream aligned.
-      if (expected_payload_length == 0 || payload_length != expected_payload_length) {
-        uint32_t to_discard = payload_length + 2;
-        while (to_discard > 0) {
-          size_t chunk = (to_discard > sizeof(received_bytes)) ? sizeof(received_bytes) : (size_t)to_discard;
-          xStreamBufferReceive(usb_rx_stream, received_bytes, chunk, portMAX_DELAY);
-          to_discard -= (uint32_t)chunk;
-        }
-        continue;
-      }
+    xStreamBufferReceive(usb_rx_stream, received_bytes, meta.payload_length + 2U, portMAX_DELAY);
 
-      switch (identifier) {
-        case MOCKID_BMP581:
-          osMutexAcquire(sensorDataMutexHandle, osWaitForever);
-          xStreamBufferReceive(usb_rx_stream, mock_bmp581_payload, expected_payload_length, portMAX_DELAY);
-          osMutexRelease(sensorDataMutexHandle);
+    UsbMessageType type = usb_interpret_usb_message(&meta, received_bytes, meta.payload_length + 2U);
+    switch (type) {
+      case USBMSG_MOCK_SENSOR: {
+        size_t copy_len = (size_t)meta.payload_length;
+        if (meta.identifier == (uint16_t)MOCKID_BMP581) {
+          memcpy(mock_bmp581_payload, received_bytes, copy_len);
           xTaskNotifyGive(bmp581_task_handle);
-          break;
-        case MOCKID_ICM45686:
-          osMutexAcquire(sensorDataMutexHandle, osWaitForever);
-          xStreamBufferReceive(usb_rx_stream, mock_icm45686_payload, expected_payload_length, portMAX_DELAY);
-          osMutexRelease(sensorDataMutexHandle);
+        } else if (meta.identifier == (uint16_t)MOCKID_ICM45686) {
+          memcpy(mock_icm45686_payload, received_bytes, copy_len);
           xTaskNotifyGive(icm45686_task_handle);
-          break;
-        case MOCKID_MMC5983MA:
-          osMutexAcquire(sensorDataMutexHandle, osWaitForever);
-          xStreamBufferReceive(usb_rx_stream, mock_mmc5983ma_payload, expected_payload_length, portMAX_DELAY);
-          osMutexRelease(sensorDataMutexHandle);
+        } else if (meta.identifier == (uint16_t)MOCKID_MMC5983MA) {
+          memcpy(mock_mmc5983ma_payload, received_bytes, copy_len);
           xTaskNotifyGive(mmc5983ma_task_handle);
-          led_toggle_status(MMC5983MA_FAIL);
-          break;
-        case MOCKID_SETTINGS:
-        default:
-          break;
-      }
-      xStreamBufferReceive(usb_rx_stream, received_bytes, 2, portMAX_DELAY);
-    } else {
-      uint16_t msg_id = validate_message_header(header);
-      if (msg_id == MSGID_INVALID) {
-        continue;
-      }
-      // valid header, so get the identifier
-      msg_id = validate_message_identifier(header, identifier);
-    
-      if (payload_length > COMMAND_READ_CHUNK_SIZE_BYTES - 2) {
-        // Discard payload+CRC to keep the stream aligned.
-        uint32_t to_discard = payload_length + 2;
-        while (to_discard > 0) {
-          size_t chunk = (to_discard > sizeof(received_bytes)) ? sizeof(received_bytes) : (size_t)to_discard;
-          xStreamBufferReceive(usb_rx_stream, received_bytes, chunk, portMAX_DELAY);
-          to_discard -= (uint32_t)chunk;
         }
-        continue;
+        break;
       }
-      
-      // wait until theres enough bytes in the stream to read
-      while (xStreamBufferBytesAvailable(usb_rx_stream) < (payload_length + 2)) {
-        vTaskDelay(1);
-      }
-      xStreamBufferReceive(usb_rx_stream, received_bytes, payload_length + 2, portMAX_DELAY);
-
-      // verify the data in the packet is valid by checking the crc across header, length, and payload
-      if (!validate_message_crc16(header, identifier, payload_length, received_bytes)) {
-        continue;
-      }
-    
-      switch (msg_id) {
-        case MSGID_MOCK_PACKET: {
-          // create and fill a mock packet with data, and send to queue
-          // SensorPacket mock_packet;
-          // MockPacketID mock_type = process_mock_packet(identifier, payload_length, received_bytes, (uint8_t*)&mock_packet);
-          switch (identifier) {
-            case MOCKID_BMP581:
-              // xQueueSend(mock_bmp581_queue, &mock_packet, portMAX_DELAY);
-              // xTaskNotifyGive(bmp581_task_handle);
-              // break;
-            case MOCKID_ICM45686:
-              // xQueueSend(mock_icm45686_queue, &mock_packet, portMAX_DELAY);
-              // xTaskNotifyGive(icm45686_task_handle);
-              // break;
-            case MOCKID_MMC5983MA:
-              // xQueueSend(mock_mmc5983ma_queue, &mock_packet, portMAX_DELAY);
-              // xTaskNotifyGive(mmc5983ma_task_handle);
-              // break;
-              break;
-            case MOCKID_SETTINGS: {
-              // Process mock settings/calibration header and append to current log file
-              FIRMSettings_t mock_firm_settings;
-              CalibrationSettings_t mock_calibration_settings;
-              HeaderFields header_fields;
-              if (!process_mock_settings_packet(received_bytes, payload_length, &mock_firm_settings, &mock_calibration_settings, &header_fields)) {
-                break;  // Exit early on parse failure, don't attempt to log
-              }
-              // osMutexAcquire(sensorDataMutexHandle, osWaitForever);
-              if (logger_append_mock_header(&mock_firm_settings, &mock_calibration_settings, &header_fields) != FR_OK) {
-              }
-              // osMutexRelease(sensorDataMutexHandle);
-              break;
-            }
-            default:
-              break;
-          }
-          break;
-          continue;
+      case USBMSG_MOCK_SETTINGS: {
+        FIRMSettings_t mock_firm_settings;
+        CalibrationSettings_t mock_calibration_settings;
+        HeaderFields header_fields;
+        if (process_mock_settings_packet(received_bytes, meta.payload_length, &mock_firm_settings, &mock_calibration_settings, &header_fields, mock_settings_write_cb, NULL)) {
+          (void)logger_append_mock_header(&mock_firm_settings, &mock_calibration_settings, &header_fields);
         }
-        case MSGID_COMMAND_PACKET: {
-          Packet response;
-          uint16_t response_header_and_id[2];
-          message_get_response_id(header, identifier, response_header_and_id);
-          response.header = response_header_and_id[0];
-          response.identifier = response_header_and_id[1];
-          response.packet_len = execute_command(identifier, received_bytes, payload_length, (ResponsePacket *)&response.data);
-          xQueueSend(transmit_queue, &response, portMAX_DELAY);
-          break;
-        }
-        case MSGID_SYSTEM_MANAGER_REDIRECT:
-          
-          xQueueSend(system_request_queue, (SystemRequest *)&identifier, portMAX_DELAY);
-          break;
-        default:
-          continue;
+        break;
       }
+      case USBMSG_COMMAND: {
+        Packet response;
+        response.packet_len = commands_execute_to_response(meta.identifier, received_bytes, meta.payload_length, &response.header, &response.identifier, (ResponsePacket *)&response.data);
+        xQueueSend(transmit_queue, &response, portMAX_DELAY);
+        break;
+      }
+      case USBMSG_SYSTEM_REQUEST:
+        xQueueSend(system_request_queue, (SystemRequest *)&meta.identifier, portMAX_DELAY);
+        break;
+      case USBMSG_INVALID:
+      default:
+        break;
     }
   }
 }

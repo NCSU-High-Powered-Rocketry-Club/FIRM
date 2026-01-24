@@ -1,16 +1,15 @@
 #include "unity.h"
 #include "commands.h"
+#include "settings.h"
 #include "utils.h"
 #include "stm32_hal_stubs.h"
 
+// `commands.c` pulls in `settings.c`, which depends on flash + GPIO.
+// Include the mocks so the unit-test link step succeeds.
+#include "mock_w25q128jv_stubs.h"
+#include "mock_hal_gpio.h"
+
 
 void setUp(void) {
-    FIRMSettings_t dummy;
-    settings_write_firm_settings_ExpectAndReturn(&dummy, true);
-    // or you could do a stub
-}
-
-void test_commands_update_parser(void) {
-    uint8_t received_bytes[COMMAND_READ_CHUNK_SIZE_BYTES];
-    CommandsStreamParser_t command_parser = { .len = 0 };
+    // no-op
 }

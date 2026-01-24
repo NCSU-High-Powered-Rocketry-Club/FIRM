@@ -1,13 +1,16 @@
 #include "commands.h"
+#include "messages.h"
 #include "settings.h"
 #include "utils.h"
 #include <string.h>
 
-#ifdef TEST
-  #include "stm32_hal_stubs.h" // for HAL_NVIC_SystemReset
-#else
-  #include "stm32f4xx_hal_cortex.h"
-#endif
+static CommandSystemResetFn g_system_reset_fn = NULL;
+static void *g_system_reset_ctx = NULL;
+
+void commands_register_system_reset(CommandSystemResetFn fn, void *ctx) {
+  g_system_reset_fn = fn;
+  g_system_reset_ctx = ctx;
+}
 
 
 
@@ -46,7 +49,9 @@ static bool set_device_config(DeviceConfig *new_config) {
 uint32_t execute_command(CommandIdentifier identifier, uint8_t *data, uint32_t data_len, ResponsePacket* response_packet) {
   switch (identifier) {
     case CMDID_REBOOT: // system reboots, dont worry about sending response packet
-      HAL_NVIC_SystemReset();
+      if (g_system_reset_fn != NULL) {
+        g_system_reset_fn(g_system_reset_ctx);
+      }
       return 0;
 
     case CMDID_SET_DEVICE_CONFIG: {
@@ -84,4 +89,15 @@ uint32_t execute_command(CommandIdentifier identifier, uint8_t *data, uint32_t d
     default:
       return 0;
   }
+}
+
+uint32_t commands_execute_to_response(uint16_t request_identifier,
+                                     uint8_t *payload_bytes,
+                                     uint32_t payload_len,
+                                     uint16_t *out_response_header,
+                                     uint16_t *out_response_identifier,
+                                     ResponsePacket *out_response_payload) {
+  *out_response_header = MSGID_RESPONSE_PACKET;
+  *out_response_identifier = request_identifier;
+  return execute_command((CommandIdentifier)request_identifier, payload_bytes, payload_len, out_response_payload);
 }

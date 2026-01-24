@@ -1,7 +1,5 @@
 #include "mock_handler.h"
-#include "led.h"
-#include "settings.h"
-#include "logger.h"
+
 
 MockPacketID process_mock_packet(uint16_t identifier, uint32_t length, uint8_t *received_bytes, uint8_t *mock_packet) {
   // if its the settings, return immediately because it has to be processed differently
@@ -11,7 +9,13 @@ MockPacketID process_mock_packet(uint16_t identifier, uint32_t length, uint8_t *
   return identifier;
 }
 
-bool process_mock_settings_packet(uint8_t *received_bytes, uint32_t length, FIRMSettings_t* firm_settings, CalibrationSettings_t* calibration_settings, HeaderFields* header_fields) {
+bool process_mock_settings_packet(uint8_t *received_bytes,
+                                 uint32_t length,
+                                 FIRMSettings_t* firm_settings,
+                                 CalibrationSettings_t* calibration_settings,
+                                 HeaderFields* header_fields,
+                                 MockSettingsWriteFn write_fn,
+                                 void *write_ctx) {
   const char* expected_header = "FIRM LOG v1.1\n";
 
   // Expected payload layout:
@@ -49,7 +53,9 @@ bool process_mock_settings_packet(uint8_t *received_bytes, uint32_t length, FIRM
   }
   memcpy(header_fields, &received_bytes[offset], sizeof(HeaderFields));
   
-  // Write the mock settings to sector 2
-  bool success = settings_write_mock_settings(firm_settings, calibration_settings);
-  return success;
+  // Delegate the side-effect (writing settings) to caller-provided callback.
+  if (write_fn == NULL) {
+    return false;
+  }
+  return write_fn(write_ctx, firm_settings, calibration_settings);
 }
