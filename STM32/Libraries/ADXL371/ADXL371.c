@@ -43,6 +43,7 @@ static const uint8_t chip_id = 0x02;
 static const uint8_t who_am_i = 0x00; 
 static const uint8_t fifo_samples =0x39;
 static const uint8_t reset = 0x41;
+static const uint8_t status = 0x41;
 
 static SPISettings spiSettings;
 
@@ -164,8 +165,8 @@ static int setup_device(bool soft_reset_complete) {
 
     if (soft_reset_complete) {
         // Check bit 1 (soft reset bit) is set back to 0
-        read_registers(reg_misc2, &result, 1);
-        if ((result & 0x02) != 0) {
+        read_registers(status, &result, 1);
+        if ((result & 0x80) != 0) {
             serialPrintStr("\tSoftware reset failed!");
             return 1;
         }
