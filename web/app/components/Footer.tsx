@@ -10,7 +10,7 @@ export function Footer() {
             <Rocket className="h-4 w-4 text-white" />
             <p className="font-medium">NCSU High-Powered Rocketry Club</p>
           </div>
-          <p className="text-xs opacity-90">© 2025 FIRM Dashboard</p>
+          <p className="text-xs opacity-90">© 2026 FIRM Dashboard</p>
         </div>
       </div>
     </footer>

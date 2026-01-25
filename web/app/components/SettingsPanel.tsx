@@ -1,10 +1,8 @@
 import React, { Fragment, useEffect, useState } from "react";
 import { Listbox, Transition } from "@headlessui/react";
 import { Check, ChevronsUpDown, Download, Upload, Save, Loader2 } from "lucide-react";
-import { useFirm } from "~/contexts/FirmContext";
+import { useFIRM } from "~/contexts/FIRMContext";
 
-// Mapping UI strings to Firmware Integer values
-// Adjust these integers to match your Rust Firmware Enum values
 const PROTOCOL_MAP: Record<string, number> = {
   USB: 1,
   UART: 2,
@@ -12,7 +10,6 @@ const PROTOCOL_MAP: Record<string, number> = {
   SPI: 4,
 };
 
-// Inverse map for loading settings
 const PROTOCOL_MAP_INVERSE: Record<number, string> = Object.entries(PROTOCOL_MAP).reduce(
   (acc, [key, val]) => ({ ...acc, [val]: key }),
   {},
@@ -25,29 +22,23 @@ function classNames(...classes: Array<string | boolean | null | undefined>) {
 }
 
 export function SettingsPanel() {
-  const { firm, deviceConfig, refreshDeviceMeta, isConnected } = useFirm();
+  const { firm, deviceConfig, refreshDeviceMeta, isConnected } = useFIRM();
 
-  // Local Form State
   const [deviceName, setDeviceName] = useState("FIRM Device");
   const [freqInput, setFreqInput] = useState("100");
   const [protocol, setProtocol] = useState("USB");
 
-  // Validation & UI State
   const [freqError, setFreqError] = useState<string | null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Sync state with connected device config when it loads
   useEffect(() => {
     if (deviceConfig) {
       if (deviceConfig.name) setDeviceName(deviceConfig.name);
       if (deviceConfig.frequency) setFreqInput(String(deviceConfig.frequency));
 
-      // Assuming deviceConfig.protocol returns the number (1, 2, etc)
-      // We map it back to the string "USB"
       if (deviceConfig.protocol) {
-        // @ts-expect-error - protocol type mismatch in library
         const protoStr = PROTOCOL_MAP_INVERSE[deviceConfig.protocol];
         if (protoStr) setProtocol(protoStr);
       }

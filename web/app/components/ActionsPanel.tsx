@@ -1,7 +1,7 @@
 import React, { Fragment, useState, useRef, useEffect } from "react";
 import { Listbox, Transition } from "@headlessui/react";
 import { ChevronsUpDown, Check, Download, RefreshCcw, XCircle } from "lucide-react";
-import { useFirm } from "~/contexts/FirmContext";
+import { useFIRM } from "~/contexts/FIRMContext";
 
 // The length each calibration takes
 const TIME_CAL_IMU_SECONDS = 10;
@@ -33,7 +33,7 @@ function classNames(...classes: Array<string | false | null | undefined>) {
 }
 
 export function ActionsPanel() {
-  const { firm } = useFirm();
+  const { firm } = useFIRM();
   const [selectedLog, setSelectedLog] = useState<LogOption>(LOG_OPTIONS[0]);
 
   // Calibration State

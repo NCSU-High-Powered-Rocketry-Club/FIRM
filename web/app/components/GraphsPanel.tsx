@@ -10,11 +10,12 @@ import {
   AreaChart,
   Area,
 } from "recharts";
-import { useFirm } from "~/contexts/FirmContext";
+import { useFIRM } from "~/contexts/FIRMContext";
 import type { FIRMPacket } from "firm-client";
 
-// CONFIGURATION
+// Limits how many samples are retained for each chart.
 const MAX_HISTORY_POINTS = 60;
+// Controls how often the chart re-renders.
 const REFRESH_RATE_MS = 50;
 
 interface GraphDataPoint {
@@ -55,28 +56,26 @@ const LegendHeader = () => (
 );
 
 export function GraphsPanel() {
-  const { firm } = useFirm();
+  const { latestPacket } = useFIRM();
 
-  // Theme Color (We use CSS filters to make the Light/Dark variants)
-  // Ensure this CSS variable is defined in your global CSS or parent component
   const themeColor = "var(--color-theme)";
 
   const historyBuffer = useRef<GraphDataPoint[]>([]);
   const [graphData, setGraphData] = useState<GraphDataPoint[]>([]);
+  const lastPktTs = useRef<number | null>(null);
 
   const processPacket = (pkt: FIRMPacket) => {
     const tLabel = pkt.timestamp_seconds.toFixed(2);
 
-    // Push to History
     historyBuffer.current.push({
       t: tLabel,
-      ax: pkt.accel_x_meters_per_s2,
-      ay: pkt.accel_y_meters_per_s2,
-      az: pkt.accel_z_meters_per_s2,
-      mx: pkt.mag_x_microteslas,
-      my: pkt.mag_y_microteslas,
-      mz: pkt.mag_z_microteslas,
-      alt: pkt.pressure_altitude_meters,
+      ax: pkt.raw_acceleration_x_gs,
+      ay: pkt.raw_acceleration_y_gs,
+      az: pkt.raw_acceleration_z_gs,
+      mx: pkt.magnetic_field_x_microteslas,
+      my: pkt.magnetic_field_y_microteslas,
+      mz: pkt.magnetic_field_z_microteslas,
+      alt: pkt.pressure_pascals,
     });
 
     if (historyBuffer.current.length > MAX_HISTORY_POINTS) {
@@ -84,19 +83,23 @@ export function GraphsPanel() {
     }
   };
 
+  // Append a point whenever the latest packet changes
+  useEffect(() => {
+    if (!latestPacket) return;
+
+    const ts = latestPacket.timestamp_seconds;
+    if (lastPktTs.current === ts) return;
+    lastPktTs.current = ts;
+
+    processPacket(latestPacket);
+  }, [latestPacket]);
+
+  // Render throttle independent of packet arrival rate
   useEffect(() => {
     let animationFrameId: number;
     let lastRender = 0;
 
     const loop = (timestamp: number) => {
-      // 1. Poll Data
-      if (firm) {
-        firm.getMostRecentDataPacket().then((pkt) => {
-          if (pkt) processPacket(pkt);
-        });
-      }
-
-      // 2. Render Throttle
       if (timestamp - lastRender > REFRESH_RATE_MS) {
         setGraphData([...historyBuffer.current]);
         lastRender = timestamp;
@@ -106,7 +109,7 @@ export function GraphsPanel() {
 
     animationFrameId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animationFrameId);
-  }, [firm]);
+  }, []);
 
   return (
     <section className="mt-4 rounded-xl border border-slate-300 bg-white px-6 pt-3.5 pb-4 shadow-sm text-slate-900">
@@ -118,7 +121,7 @@ export function GraphsPanel() {
         {/* --- 1. IMU Graph (Line Chart) --- */}
         <div className="flex flex-col rounded-lg border border-slate-300 bg-slate-50/80 p-4 relative">
           <div className="flex justify-between items-center mb-2">
-            <h3 className="text-sm font-semibold text-slate-800">Accelerometer (m/s²)</h3>
+            <h3 className="text-sm font-semibold text-slate-800">Accelerometer (gs)</h3>
             <LegendHeader />
           </div>
           <div className="h-48" style={{ color: themeColor }}>
@@ -214,7 +217,7 @@ export function GraphsPanel() {
 
         {/* --- 3. Barometer (Area Chart) --- */}
         <div className="flex flex-col rounded-lg border border-slate-300 bg-slate-50/80 p-4">
-          <h3 className="mb-2 text-sm font-semibold text-slate-800">Altitude (m)</h3>
+          <h3 className="mb-2 text-sm font-semibold text-slate-800">Pressure (Pa)</h3>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={graphData}>
