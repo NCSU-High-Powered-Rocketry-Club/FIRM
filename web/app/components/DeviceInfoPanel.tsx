@@ -1,6 +1,6 @@
 import React from "react";
 import { Cpu, GaugeCircle, Wifi, RefreshCcw } from "lucide-react";
-import { useFirm } from "~/contexts/FirmContext";
+import { useFIRM } from "~/contexts/FIRMContext";
 
 function safeStr(v: unknown): string {
   if (v === null || v === undefined) return "—";
@@ -11,7 +11,7 @@ function safeStr(v: unknown): string {
 
 export function DeviceInfoPanel() {
   const { isConnected, isLoadingDeviceMeta, refreshDeviceMeta, deviceInfo, deviceConfig } =
-    useFirm();
+    useFIRM();
 
   const items = [
     {

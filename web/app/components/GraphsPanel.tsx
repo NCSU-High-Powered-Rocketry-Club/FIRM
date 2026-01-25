@@ -10,11 +10,12 @@ import {
   AreaChart,
   Area,
 } from "recharts";
-import { useFirm } from "~/contexts/FirmContext";
+import { useFIRM } from "~/contexts/FIRMContext";
 import type { FIRMPacket } from "firm-client";
 
-// CONFIGURATION
+// Limits how many samples are retained for each chart.
 const MAX_HISTORY_POINTS = 60;
+// Controls how often the chart re-renders.
 const REFRESH_RATE_MS = 50;
 
 interface GraphDataPoint {
@@ -55,10 +56,8 @@ const LegendHeader = () => (
 );
 
 export function GraphsPanel() {
-  const { latestPacket } = useFirm();
+  const { latestPacket } = useFIRM();
 
-  // Theme Color (We use CSS filters to make the Light/Dark variants)
-  // Ensure this CSS variable is defined in your global CSS or parent component
   const themeColor = "var(--color-theme)";
 
   const historyBuffer = useRef<GraphDataPoint[]>([]);
@@ -68,7 +67,6 @@ export function GraphsPanel() {
   const processPacket = (pkt: FIRMPacket) => {
     const tLabel = pkt.timestamp_seconds.toFixed(2);
 
-    // Push to History
     historyBuffer.current.push({
       t: tLabel,
       ax: pkt.raw_acceleration_x_gs,
@@ -89,7 +87,6 @@ export function GraphsPanel() {
   useEffect(() => {
     if (!latestPacket) return;
 
-    // Avoid duplicating the same packet if state updates with identical value
     const ts = latestPacket.timestamp_seconds;
     if (lastPktTs.current === ts) return;
     lastPktTs.current = ts;

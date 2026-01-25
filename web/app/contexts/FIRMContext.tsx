@@ -2,27 +2,27 @@ import React, {
   createContext,
   useCallback,
   useContext,
-  useState,
   useEffect,
+  useState,
   type ReactNode,
 } from "react";
-import { FIRM as FirmClient } from "firm-client";
-import type { DeviceInfo, DeviceConfig, FIRMPacket } from "firm-client";
+import { FIRM as FIRMClient } from "firm-client";
+import type { DeviceConfig, DeviceInfo, FIRMPacket } from "firm-client";
 
-export type FirmInstance = FirmClient;
+export type FIRMInstance = FIRMClient;
 
-type FirmContextValue = {
-  firm: FirmInstance | null;
+type FIRMContextValue = {
+  firm: FIRMInstance | null;
   isConnected: boolean;
   isConnecting: boolean;
   connect: () => Promise<void>;
-  disconnect: () => Promise<void>; // Added disconnect function
+  disconnect: () => Promise<void>;
   deviceInfo: DeviceInfo | null;
   deviceConfig: DeviceConfig | null;
   isLoadingDeviceMeta: boolean;
   refreshDeviceMeta: () => Promise<void>;
 
-  // Dev telemetry
+  // Telemetry (dev + charts)
   latestPacket: FIRMPacket | null;
   receivedBytes: number;
   sentBytes: number;
@@ -31,22 +31,22 @@ type FirmContextValue = {
   packetsPerSecond: number;
 };
 
-const FirmContext = createContext<FirmContextValue | undefined>(undefined);
+const FIRMContext = createContext<FIRMContextValue | undefined>(undefined);
 
-// Used by global keyboard shortcuts to avoid triggering while typing
+/**
+ * Returns true if the event target is an element the user can type into.
+ * Used to prevent global shortcuts from firing while typing.
+ */
 export function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   const tag = target.tagName.toLowerCase();
-  if (tag === "input" || tag === "textarea" || tag === "select") return true;
-  if (target.isContentEditable) return true;
-  return false;
+  return tag === "input" || tag === "textarea" || tag === "select" || target.isContentEditable;
 }
 
 function bytesToHex(bytes: Uint8Array): string {
   let out = "";
   for (let i = 0; i < bytes.length; i++) {
-    const b = bytes[i];
-    out += b.toString(16).padStart(2, "0") + (i === bytes.length - 1 ? "" : " ");
+    out += bytes[i].toString(16).padStart(2, "0") + (i === bytes.length - 1 ? "" : " ");
   }
   return out;
 }
@@ -55,12 +55,11 @@ function appendHexLog(prev: string, chunkHex: string, maxChars: number): string 
   if (!chunkHex) return prev;
   const next = prev ? prev + "\n" + chunkHex : chunkHex;
   if (next.length <= maxChars) return next;
-  // Trim from the start to keep tail (most recent) visible
   return next.slice(next.length - maxChars);
 }
 
-export function FirmProvider({ children }: { children: ReactNode }) {
-  const [firm, setFirm] = useState<FirmInstance | null>(null);
+export function FIRMProvider({ children }: { children: ReactNode }) {
+  const [firm, setFIRM] = useState<FIRMInstance | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
 
@@ -76,18 +75,15 @@ export function FirmProvider({ children }: { children: ReactNode }) {
   const [packetsPerSecond, setPacketsPerSecond] = useState(0);
 
   const disconnect = useCallback(async () => {
-    // If there is an active instance, try to close it gently
     if (firm) {
       try {
-        // This might throw if the device is already gone (unplugged), so we catch it
         await firm.close();
       } catch (err) {
-        console.warn("Error closing firm instance (device likely unplugged):", err);
+        console.warn("FIRM close failed (device may have been unplugged):", err);
       }
     }
 
-    // Reset all state
-    setFirm(null);
+    setFIRM(null);
     setIsConnected(false);
     setIsConnecting(false);
     setDeviceInfo(null);
@@ -98,24 +94,22 @@ export function FirmProvider({ children }: { children: ReactNode }) {
     setSentBytes(0);
     setRecentRxHex("");
     setRecentTxHex("");
+    setPacketsPerSecond(0);
   }, [firm]);
 
+  // Auto-reset UI state if the serial device disconnects.
   useEffect(() => {
     if (!("serial" in navigator)) return;
 
     const handleNativeDisconnect = (event: Event) => {
-      console.log("USB Device disconnected physically:", event);
-      // We assume if *any* serial disconnect happens while we are connected,
-      // we should reset our app state.
+      console.log("USB serial disconnected:", event);
       disconnect();
     };
 
-    // For some reason I can't get TS to recognize the serial API, so we cast it here.
     const serial = (navigator as unknown as { serial: EventTarget }).serial;
     if (!serial) return;
 
     serial.addEventListener("disconnect", handleNativeDisconnect);
-
     return () => {
       serial.removeEventListener("disconnect", handleNativeDisconnect);
     };
@@ -127,11 +121,10 @@ export function FirmProvider({ children }: { children: ReactNode }) {
     setIsLoadingDeviceMeta(true);
     try {
       const [info, cfg] = await Promise.all([firm.getDeviceInfo(), firm.getDeviceConfig()]);
-
       setDeviceInfo(info);
       setDeviceConfig(cfg);
     } catch (err) {
-      console.error("Failed to refresh meta:", err);
+      console.error("Failed to refresh device metadata:", err);
     } finally {
       setIsLoadingDeviceMeta(false);
     }
@@ -148,33 +141,29 @@ export function FirmProvider({ children }: { children: ReactNode }) {
     try {
       setIsConnecting(true);
 
-      // reset telemetry on connect attempt
       setLatestPacket(null);
       setReceivedBytes(0);
       setSentBytes(0);
       setRecentRxHex("");
       setRecentTxHex("");
+      setPacketsPerSecond(0);
 
-      const instance = await FirmClient.connect({ baudRate: 115200 });
-      setFirm(instance);
+      const instance = await FIRMClient.connect({ baudRate: 115200 });
+      setFIRM(instance);
       setIsConnected(true);
 
-      // Fetch device meta right after connect
       try {
-        const [info, cfg] = await Promise.all([
-          instance.getDeviceInfo(),
-          instance.getDeviceConfig(),
-        ]);
+        const [info, cfg] = await Promise.all([instance.getDeviceInfo(), instance.getDeviceConfig()]);
         setDeviceInfo(info);
         setDeviceConfig(cfg);
       } catch {
-        // If meta fetch fails, just keep going
+        // Best-effort; some devices may not support metadata requests.
       }
     } catch (err) {
       console.error("[FIRM] Connection failed:", err);
       alert("Failed to connect to FIRM. Check the device and try again.");
-      // Ensure clean state if connection threw halfway
-      setFirm(null);
+
+      setFIRM(null);
       setIsConnected(false);
       setDeviceInfo(null);
       setDeviceConfig(null);
@@ -184,45 +173,39 @@ export function FirmProvider({ children }: { children: ReactNode }) {
       setSentBytes(0);
       setRecentRxHex("");
       setRecentTxHex("");
+      setPacketsPerSecond(0);
     } finally {
       setIsConnecting(false);
     }
   }, [isConnected, isConnecting]);
 
-  // Telemetry: byte counters + hex logs
+  // Track RX/TX byte counts and hex logs.
   useEffect(() => {
     if (!firm) return;
 
-    // keep last ~30k chars per log (fits nicely in a scroll box)
     const MAX_LOG_CHARS = 30000;
 
     const unsubRx = firm.onRawBytes((bytes) => {
       setReceivedBytes((n) => n + bytes.length);
-      const hex = bytesToHex(bytes);
-      setRecentRxHex((prev) => appendHexLog(prev, hex, MAX_LOG_CHARS));
+      setRecentRxHex((prev) => appendHexLog(prev, bytesToHex(bytes), MAX_LOG_CHARS));
     });
 
     const unsubTx = firm.onOutgoingBytes((bytes) => {
       setSentBytes((n) => n + bytes.length);
-      const hex = bytesToHex(bytes);
-      setRecentTxHex((prev) => appendHexLog(prev, hex, MAX_LOG_CHARS));
+      setRecentTxHex((prev) => appendHexLog(prev, bytesToHex(bytes), MAX_LOG_CHARS));
     });
 
     return () => {
       try {
         unsubRx();
-      } catch {
-        // ignore
-      }
+      } catch {}
       try {
         unsubTx();
-      } catch {
-        // ignore
-      }
+      } catch {}
     };
   }, [firm]);
 
-  // Telemetry: latest packet (FirmContext owns the packet stream)
+  // Own the packet stream: update latestPacket on each parsed packet.
   useEffect(() => {
     if (!firm) return;
 
@@ -249,14 +232,11 @@ export function FirmProvider({ children }: { children: ReactNode }) {
           updateRate();
         }
       } catch {
-        // ignore; disconnect handler will reset state
+        // ignore
       }
     })();
 
-    const rateTimer = window.setInterval(() => {
-      // keep rate from staying stale if packets stop
-      updateRate();
-    }, 250);
+    const rateTimer = window.setInterval(updateRate, 250);
 
     return () => {
       cancelled = true;
@@ -265,7 +245,7 @@ export function FirmProvider({ children }: { children: ReactNode }) {
     };
   }, [firm]);
 
-  const value: FirmContextValue = {
+  const value: FIRMContextValue = {
     firm,
     isConnected,
     isConnecting,
@@ -284,11 +264,11 @@ export function FirmProvider({ children }: { children: ReactNode }) {
     packetsPerSecond,
   };
 
-  return <FirmContext.Provider value={value}>{children}</FirmContext.Provider>;
+  return <FIRMContext.Provider value={value}>{children}</FIRMContext.Provider>;
 }
 
-export function useFirm(): FirmContextValue {
-  const ctx = useContext(FirmContext);
-  if (!ctx) throw new Error("useFirm must be used within a FirmProvider");
+export function useFIRM(): FIRMContextValue {
+  const ctx = useContext(FIRMContext);
+  if (!ctx) throw new Error("useFIRM must be used within a FIRMProvider");
   return ctx;
 }

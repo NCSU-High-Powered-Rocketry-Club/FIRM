@@ -1,9 +1,9 @@
-// src/components/FirmConnectionBar.tsx
 import React from "react";
-import { useFirm } from "~/contexts/FirmContext";
+import { useFIRM } from "~/contexts/FIRMContext";
 
-export function FirmConnectionBar() {
-  const { isConnected, isConnecting, connect } = useFirm();
+export function ConnectionBar() {
+  const { isConnected, isConnecting, connect } = useFIRM();
+
   return (
     <div className="mx-auto max-w-5xl w-full px-6 pt-6 flex items-center gap-3 text-sm text-gray-600">
       <span
@@ -15,7 +15,9 @@ export function FirmConnectionBar() {
       >
         <span
           className={
-            isConnected ? "h-2 w-2 rounded-full bg-green-500" : "h-2 w-2 rounded-full bg-gray-500"
+            isConnected
+              ? "h-2 w-2 rounded-full bg-green-500"
+              : "h-2 w-2 rounded-full bg-gray-500"
           }
         />
         {isConnected ? "FIRM connected" : "No device connected"}
