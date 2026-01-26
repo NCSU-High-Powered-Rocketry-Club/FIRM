@@ -170,15 +170,17 @@ int icm45686_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs
 int icm45686_read_data(ICM45686Packet_t* packet) {
     uint8_t data_ready = 0;
     // checking (and resetting) interrupt status
-    read_registers(int1_status0, &data_ready, 1);
+    HAL_StatusTypeDef err;
+    err = read_registers(int1_status0, &data_ready, 1);
     if (data_ready & 0x04) { // bit 2 is data_ready flag for UI channel
         // each packet from the fifo is 20 bytes, with the first being the header, the next 12
         // being the most significant bytes and middle bytes of accel/gyro data, and the last 3
         // bytes of the packet are the least significant bytes of the accel/gyro data. The other
         // bytes in the packet are for timestamp and temperature data, which we discard.
         uint8_t raw_data[20];
-        read_registers(fifo_data, raw_data, 20);
-
+        err = read_registers(fifo_data, raw_data, 20);
+        if (err)
+          return 1;
         // copying 12 bytes after the header byte (most significant byte and middle byte of accel/gyro data)
         memcpy(packet, &raw_data[1], 12);
         // copying the last 3 bytes (4-bit LSB's for accel/gyro)
