@@ -44,10 +44,15 @@ static const uint8_t who_am_i = 0x00;
 static const uint8_t fifo_samples =0x39;
 static const uint8_t reset = 0x41;
 static const uint8_t status = 0x41;
+static const uint8_t timing = 0x3D;
+static const uint8_t int1_map = 0x3B;
+static const uint8_t int2_map = 0x3C;
 
 static SPISettings spiSettings;
 
 int icm45686_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin) {
+   
+   
     if (hspi == NULL || cs_channel == NULL) {
         serialPrintStr("Invalid spi handle or chip select pin for ICM45686");
         return 1;
@@ -68,20 +73,24 @@ int icm45686_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs
     // verify correct setup again
     if (setup_device(true)) return 1;
 
-    // sets accel range to +/- 32g, and ODR to 800hz
-    write_register(accel_config0, 0b00000110);
-    // sets gyro range to 4000dps, and ODR to 800hz
-    write_register(gyro_config0, 0b00000110);
-    // fifo set to stream mode, and 2k byte size
-    write_register(fifo_config0, 0b01000111);
-    // enable fifo for acceleration and gyroscope
-    write_register(fifo_config3, 0b00001111);
-    // disables all interrupts, to allow interrupt settings to be configured
-    write_register(int1_config0, 0b00000000);
-    // sets interrupt pin to push-pull, latching, and active low
-    write_register(int1_config2, 0b00000010);
-    // sets interrupt pin to only trigger when data is ready or reset is complete
-    write_register(int1_config0, 0b10000100);
+    //sets ODR to 1280
+    write_register(timing,0b01000000);
+
+   // Accelerometer is fixed to +-200g
+    
+
+    //bit 3-1 in int1_map are reserved so I am masking. To avoid modifying those bits
+    uint8_t value;
+    //sets all non reserved bits to 0 thus disabeling interrups before config
+    read_registers(int1_map,&value);
+    value = value & 0b00001110;
+    write_register(int1_map, value);
+    //Map Data Ready to Int1
+    read_registers(int1_map,&value);
+    value = value & 0b00001110;
+    value = value | & 0b00000001;
+    write_register(int1_map, value);
+
 
     // big endian mode
     write_ireg_register(IPREG_TOP1, (uint16_t)sreg_ctrl, 0b00000010);
