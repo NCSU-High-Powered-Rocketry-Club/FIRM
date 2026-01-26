@@ -2,12 +2,13 @@
 // Keep the suite runnable by providing Unity's required hooks.
 
 #include "unity.h"
-// #include "matrixhelper.h"
-// #include "kalman_filter_config.h"
-// #include "unscented_kalman_filter.h"
-// #include "ukf_functions.h"
-// #include <string.h>
-// #include <stdlib.h>
+#include "matrixhelper.h"
+#include "kalman_filter_config.h"
+#include "unscented_kalman_filter.h"
+#include "ukf_functions.h"
+#include <string.h>
+#include "state_machine.h"
+#include <stdlib.h>
 
 
 // UKF ukf;
@@ -87,6 +88,31 @@ void tearDown(void) {}
 //   TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-7, exp_initial_x, ukf.X, 16);
 //   TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-7, exp_initial_p, ukf.P, 15*15);
 // }
+
+
+void test_initial_quaternion_avab(void) {
+    float acc_raw[3] = {0.66354551F,-0.70960469F,0.01006805F};
+    float mag_raw[3] = {-0.90131203F,-0.09004472F,-0.42370813F};
+    float quat[4];
+    float mag_world[3];
+    float quat_exp[4] = {0.652742028009966F, 0.25655059546948F, -0.65498123710736F, 0.281263605663803F};
+    float mag_world_exp[3] = {-0.22320774F,-0.39001031F,-0.89334778F};
+    calculate_initial_orientation(acc_raw, mag_raw, quat, mag_world);
+    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-6, quat_exp, quat, 4);
+    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-6, mag_world_exp, mag_world, 3);
+}
+
+void test_initial_quaternion_nc(void) {
+    float acc_raw[3] = {-0.714738281250000F, 0.683763789062500F, -0.002533593750000F};
+    float mag_raw[3] = {0.949800688591410F, -0.186446599203042F, 0.251229611305882F};
+    float quat[4];
+    float mag_world[3];
+    float quat_exp[4] = {-0.118113970323671F, -0.695245545201947F, -0.133844470601829F, 0.696253100230472F};
+    float mag_world_exp[3] = {0.164819239805933F, 0.283198344327452F, -0.944792737038121F};
+    calculate_initial_orientation(acc_raw, mag_raw, quat, mag_world);
+    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-6, quat_exp, quat, 4);
+    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-6, mag_world_exp, mag_world, 3);
+}
 
 // void test_predict_sigma_points(void) {
 //   ukf.state_transition_function = ukf_state_transition_function;

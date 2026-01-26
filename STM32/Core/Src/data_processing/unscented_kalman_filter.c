@@ -479,7 +479,6 @@ float* ukf_test_get_sigmas_h(void) { return sigmas_h; }
 void ukf_test_get_sigma_points(float sigmas[UKF_NUM_SIGMAS][UKF_STATE_DIMENSION]) { memcpy(sigmas, sigma_points, UKF_NUM_SIGMAS * UKF_STATE_DIMENSION * sizeof(float));}
 float* ukf_test_get_residuals(void) { return temp_residuals_data; }
 float* ukf_test_get_weighted_vector_sigmas(void) { return weighted_vector_sigmas; }
-float* ukf_test_get_Q_scaled(void) { return Q_scaled_data; }
 float* ukf_test_get_S(void) { return innovation_data; }
 float* ukf_test_get_pred_z(void) { return predicted_measurement; }
 #endif

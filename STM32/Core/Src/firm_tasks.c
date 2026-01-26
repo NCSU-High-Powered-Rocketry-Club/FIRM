@@ -415,12 +415,16 @@ void filter_data_task(void *argument) {
     float dt = (float)packet->timestamp_seconds - last_time;
     int err = ukf_predict(&ukf, dt);
     float measurement[10];
+    osMutexAcquire(sensorDataMutexHandle, osWaitForever);
     memcpy(measurement, &packet->pressure_pascals, sizeof(measurement));
+    osMutexRelease(sensorDataMutexHandle);
     err = ukf_update(&ukf, measurement);
     if (err) {
       led_set_status(UKF_FAIL);
     }
+    osMutexAcquire(sensorDataMutexHandle, osWaitForever);
     memcpy(&packet->est_position_x_meters, ukf.X, UKF_STATE_DIMENSION * 4);
+    osMutexRelease(sensorDataMutexHandle);
     last_time += dt;
   }
 }
