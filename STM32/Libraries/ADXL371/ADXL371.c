@@ -85,12 +85,11 @@ int icm45686_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs
     read_registers(int1_map,&value);
     value = value & 0b00001110;
     write_register(int1_map, value);
-    //Map Data Ready to Int1
+    //Map Data Ready to Int1 and Active low
     read_registers(int1_map,&value);
     value = value & 0b00001110;
-    value = value | & 0b00000001;
+    value = value | & 0b10000001;
     write_register(int1_map, value);
-
 
     // big endian mode
     write_ireg_register(IPREG_TOP1, (uint16_t)sreg_ctrl, 0b00000010);
