@@ -353,7 +353,7 @@ void collect_icm45686_data_task(void *argument) {
 }
 
 void collect_mmc5983ma_data_task(void *argument) {
-  const TickType_t max_wait = MAX_WAIT_TIME(ICM45686_POLL_RATE_HZ);
+  const TickType_t max_wait = MAX_WAIT_TIME(MMC5983MA_POLL_RATE_HZ);
   uint32_t notif_count = 0;
   TaskCommandOption cmd_status;
 
