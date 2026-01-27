@@ -186,13 +186,13 @@ static int setup_device(bool soft_reset_complete) {
 
 }
 
-int adxl371_read_data(BMP581Packet_t* packet) {
+int adxl371_read_data(ADXL371Packet_t* packet) {
     // clear interrupt (pulls interrupt back up high) and verify new data is ready
     uint8_t data_ready = 0;
     read_registers(status, &data_ready, 1);
     if (data_ready & 0b00000001) { // bit 0 (LSB) will be 1 if new data is ready
 
-        
+
         return 0;
     }
     return 1;
