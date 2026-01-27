@@ -109,25 +109,13 @@ int icm45686_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs
 
     //Configures measurement settings (Antialiasing 640), normal noise operation
     //Turn off autosleep, link loop. Set default noise operation
-    write_register(measure, 0b00000010);
-    // verify ireg read/write works
+    write_register(measure, 0b00001010);
 
 
-    uint8_t result = 0;
-    read_ireg_register(IPREG_SYS2, (uint16_t)ipreg_sys2_reg_123, &result);
-    if (result != 0b00010100) {
-        serialPrintStr("\tFailed to read or write to IREG registers");
-        return 1;
-    }
-    // place both accel and gyro in low noise mode
-    write_register(pwr_mgmt0, 0b00001111);
+    // delay for accel to get ready
+    HAL_Delay(12);
 
-    // delay for gyro to get ready
-    HAL_Delay(74);
 
-    // read to clear any interrupts
-    read_registers(int1_status0, &result, 1);
-    read_registers(int1_status1, &result, 1);
     serialPrintStr("\tICM45686 startup successful!");
     return 0;
 }
@@ -196,6 +184,18 @@ static int setup_device(bool soft_reset_complete) {
     }
     return 0;
 
+}
+
+int adxl371_read_data(BMP581Packet_t* packet) {
+    // clear interrupt (pulls interrupt back up high) and verify new data is ready
+    uint8_t data_ready = 0;
+    read_registers(status, &data_ready, 1);
+    if (data_ready & 0b00000001) { // bit 0 (LSB) will be 1 if new data is ready
+
+        
+        return 0;
+    }
+    return 1;
 }
 
 static HAL_StatusTypeDef read_registers(uint8_t addr, uint8_t* buffer, size_t len) {
