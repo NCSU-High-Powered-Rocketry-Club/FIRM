@@ -47,6 +47,8 @@ static const uint8_t status = 0x41;
 static const uint8_t timing = 0x3D;
 static const uint8_t int1_map = 0x3B;
 static const uint8_t int2_map = 0x3C;
+static const uint8_t power_ctl = 0x3F;
+static const uint8_t measure = 0x3E;
 
 static SPISettings spiSettings;
 
@@ -82,21 +84,23 @@ int icm45686_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs
     //bit 3-1 in int1_map are reserved so I am masking. To avoid modifying those bits
     uint8_t value;
     //sets all non reserved bits to 0 thus disabeling interrups before config
-    read_registers(int1_map,&value);
+    read_registers(int1_map, &value);
     value = value & 0b00001110;
     write_register(int1_map, value);
     //Map Data Ready to Int1 and Active low
-    read_registers(int1_map,&value);
+    read_registers(int1_map, &value);
     value = value & 0b00001110;
-    value = value | & 0b10000001;
+    value = value | 0b10000001;
     write_register(int1_map, value);
 
-    // big endian mode
-    write_ireg_register(IPREG_TOP1, (uint16_t)sreg_ctrl, 0b00000010);
-    // turn interpolator and FIR filter off for gyro
-    write_ireg_register(IPREG_SYS1, (uint16_t)ipreg_sys1_reg_166, 0b00001011);
-    // turn interpolator and FIR filter off for acceleration
-    write_ireg_register(IPREG_SYS2, (uint16_t)ipreg_sys2_reg_123, 0b00010100);
+    //Turning off High Pass Filter and Low Pass Filter
+    read_registers(power_ctl, &value);
+    value = value & 0b1110011;
+    value = value | 0b00001100;
+    write_register(power_ctl, value);
+
+    //Configures Antialiasing filter (MEASURE REG)
+
     // verify ireg read/write works
     uint8_t result = 0;
     read_ireg_register(IPREG_SYS2, (uint16_t)ipreg_sys2_reg_123, &result);
