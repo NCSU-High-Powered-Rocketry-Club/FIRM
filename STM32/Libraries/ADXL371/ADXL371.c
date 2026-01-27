@@ -99,8 +99,9 @@ int icm45686_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs
     value = value | 0b00001100;
     write_register(power_ctl, value);
 
-    //Configures Antialiasing filter (MEASURE REG)
-
+    //Configures measurement settings (Antialiasing 640), normal noise operation
+    //LinkLoop? No autosleep? overrage?
+    write_register(measure, 0b00000010);
     // verify ireg read/write works
     uint8_t result = 0;
     read_ireg_register(IPREG_SYS2, (uint16_t)ipreg_sys2_reg_123, &result);
