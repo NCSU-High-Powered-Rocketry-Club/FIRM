@@ -10,6 +10,5 @@
 
 void serialPrintStr(const char* s);
 void serialPrintInt(int d);
-void serialPrintlnInt(int d);
 void serialPrintFloat(float f);
 void serialPrintChar(char c);
