@@ -49,6 +49,7 @@ static const uint8_t int1_map = 0x3B;
 static const uint8_t int2_map = 0x3C;
 static const uint8_t power_ctl = 0x3F;
 static const uint8_t measure = 0x3E;
+static const uint8_t fifo_clt= 0x3A;
 
 static SPISettings spiSettings;
 
@@ -81,6 +82,7 @@ int icm45686_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs
    // Accelerometer is fixed to +-200g
     
 
+
     //bit 3-1 in int1_map are reserved so I am masking. To avoid modifying those bits
     uint8_t value;
     //sets all non reserved bits to 0 thus disabeling interrups before config
@@ -93,6 +95,12 @@ int icm45686_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs
     value = value | 0b10000001;
     write_register(int1_map, value);
 
+    //Disable FIFO
+    read_registers(fifo_clt, &value);
+    value = value & 0b11111001;
+    value = value | 0b00000000;
+    write_register(fifo_clt, value);
+
     //Turning off High Pass Filter and Low Pass Filter
     read_registers(power_ctl, &value);
     value = value & 0b1110011;
@@ -100,9 +108,11 @@ int icm45686_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs
     write_register(power_ctl, value);
 
     //Configures measurement settings (Antialiasing 640), normal noise operation
-    //LinkLoop? No autosleep? overrage?
+    //Turn off autosleep, link loop. Set default noise operation
     write_register(measure, 0b00000010);
     // verify ireg read/write works
+
+
     uint8_t result = 0;
     read_ireg_register(IPREG_SYS2, (uint16_t)ipreg_sys2_reg_123, &result);
     if (result != 0b00010100) {
