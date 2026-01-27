@@ -1,4 +1,4 @@
-#include "ADXL372.h"
+#include "ADXL371.h"
 #include "spi_utils.h"
 
 /**
