@@ -43,9 +43,11 @@ int ukf_init(UKF *ukfh, float initial_pressure, float* initial_acceleration, flo
  */
 int ukf_predict(UKF *ukfh, float delta_time);
 
-int ukf_update(UKF *ukfh, float *measurement);
+int ukf_update(UKF *ukfh);
 
 void calculate_initial_orientation(const float *imu_accel, const float *mag_field, float *init_quaternion, float *mag_world_frame);
+
+void ukf_set_measurement(UKF *ukfh, const float *measurements);
 
 #ifdef TEST
 float ukf_test_get_lambda(void);
@@ -55,7 +57,6 @@ float* ukf_test_get_sigmas_f(void);
 float* ukf_test_get_sigmas_h(void);
 void ukf_test_get_sigma_points(float sigmas[][UKF_STATE_DIMENSION]);
 float* ukf_test_get_residuals(void);
-float* ukf_test_get_weighted_vector_sigmas(void);
 float* ukf_test_get_Q_scaled(void);
 float* ukf_test_get_S(void);
 float* ukf_test_get_pred_z(void);

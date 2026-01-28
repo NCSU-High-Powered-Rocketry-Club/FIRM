@@ -7,17 +7,17 @@ State state = STANDBY;
  * @param ukfh ukf struct handle pointer
  */
 static void set_state_matrices(struct UKF* ukfh) {
-    for (int i = 0; i < UKF_STATE_DIMENSION - 1; i++) {
-        ukfh->Q[i + (i * (UKF_STATE_DIMENSION - 1))] = ukf_state_process_covariance_diag[state][i];
+    for (int i = 0; i < UKF_COVARIANCE_DIMENSION; i++) {
+        ukfh->Q[i + (i * (UKF_COVARIANCE_DIMENSION))] = ukf_state_process_covariance_diag[state][i];
     }
     for (int i = 0; i < UKF_MEASUREMENT_DIMENSION; i++) {
-        ukfh->R[i + (i * (UKF_MEASUREMENT_DIMENSION - 1))] = ukf_measurement_noise_covariance_diag[state][i];
+        ukfh->R[i + (i * (UKF_MEASUREMENT_DIMENSION))] = ukf_measurement_noise_covariance_diag[state][i];
     }
 }
 
 void init_state(struct UKF* ukfh) {
     state = STANDBY;
-    memset(ukfh->Q, 0, sizeof(float) * (UKF_STATE_DIMENSION - 1) * (UKF_STATE_DIMENSION - 1));
+    memset(ukfh->Q, 0, sizeof(float) * (UKF_COVARIANCE_DIMENSION) * (UKF_COVARIANCE_DIMENSION));
     memset(ukfh->R, 0, sizeof(float) * UKF_MEASUREMENT_DIMENSION * UKF_MEASUREMENT_DIMENSION);
     set_state_matrices(ukfh);
 }
@@ -65,7 +65,7 @@ void state_update(struct UKF* ukfh) {
             if (ukfh->X[2] < 100.0F) {
                 for (int i = 6; i < 12; i++) {
                     float variance_multipler = powf(101.0F - ukfh->X[2], 1.5F);
-                    ukfh->Q[i + i * (UKF_STATE_DIMENSION - 1)] = ukf_state_process_covariance_diag[state][i] * variance_multipler;
+                    ukfh->Q[i + i * (UKF_COVARIANCE_DIMENSION)] = ukf_state_process_covariance_diag[state][i] * variance_multipler;
                 }
             }
             break;

@@ -1,6 +1,3 @@
-// NOTE: Most of this file is intentionally commented out because it is out of date.
-// Keep the test build runnable by providing Unity's required hooks.
-
 #include "unity.h"
 #include "matrixhelper.h"
 #include "ukf_functions.h"

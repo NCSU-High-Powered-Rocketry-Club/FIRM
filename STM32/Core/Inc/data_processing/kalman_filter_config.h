@@ -13,6 +13,8 @@ typedef enum {
  */
 #define UKF_STATE_DIMENSION 16
 
+#define UKF_COVARIANCE_DIMENSION (UKF_STATE_DIMENSION - 1)
+
 /**
  * @brief Number of measurements in the UKF measurement vector
  */
@@ -31,12 +33,12 @@ extern float ukf_initial_state_estimate[UKF_STATE_DIMENSION];
 /**
  * @brief Initial values for the UKF covariance matrix diagonal elements
  */
-extern float ukf_initial_state_covariance_diag[UKF_STATE_DIMENSION - 1];
+extern float ukf_initial_state_covariance_diag[UKF_COVARIANCE_DIMENSION];
 
 /**
  * @brief Diagonal elements for the state process covariance matrices of each flight state
  */
-extern float ukf_state_process_covariance_diag[STATE_MACHINE_NUM_STATES][UKF_STATE_DIMENSION - 1];
+extern float ukf_state_process_covariance_diag[STATE_MACHINE_NUM_STATES][UKF_COVARIANCE_DIMENSION];
 
 /**
  * @brief Diagonal elements for the measurement noise covariance matrices of each flight state
@@ -56,7 +58,7 @@ extern float ukf_measurement_noise_covariance_diag[STATE_MACHINE_NUM_STATES][UKF
  */
 #define UKF_SIGMA_SPREAD_ALPHA 3e-1F
 #define UKF_SIGMA_WEIGHT_BETA 2.0F
-#define UKF_SIGMA_TERTIARY_KAPPA 0
+#define UKF_SIGMA_TERTIARY_KAPPA 0.0F
 
 #define GROUND_ALTITUDE_METERS 20.0F
 
