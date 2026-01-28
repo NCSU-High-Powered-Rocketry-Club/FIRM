@@ -8,7 +8,7 @@
 typedef struct{
     SPI_TypeDef* hspi;
     GPIO_TypeDef* cs_channel;
-    unit16_t cs_pin;
+    uint16_t cs_pin;
 }SPISettings;
 
 /**
@@ -51,13 +51,22 @@ static const uint8_t power_ctl = 0x3F;
 static const uint8_t measure = 0x3E;
 static const uint8_t fifo_clt= 0x3A;
 
+static const uint8_t xdata_h= 0x08;
+static const uint8_t xdata_l= 0x09;
+static const uint8_t ydata_h= 0x0A;
+static const uint8_t ydata_l= 0x0B;
+static const uint8_t zdata_h= 0x0C;
+static const uint8_t zdata_l= 0x0D;
+
+static const float scale_factor_accel;
+
 static SPISettings spiSettings;
 
 int icm45686_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin) {
    
    
     if (hspi == NULL || cs_channel == NULL) {
-        serialPrintStr("Invalid spi handle or chip select pin for ICM45686");
+        serialPrintStr("Invalid spi handle or chip select pin for ADXL371");
         return 1;
     }
     // set up the SPI settings
@@ -66,12 +75,12 @@ int icm45686_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs
     spiSettings.cs_pin = cs_pin;
 
 
-    serialPrintStr("Beginning ADXL372 initialization");
+    serialPrintStr("Beginning ADXL371 initialization");
     // sets up the IMU in SPI mode and ensures SPI is working
     if (setup_device(false)) return 1;
 
     // do a soft-reset of the sensor's settings
-    serialPrintStr("\tIssuing ICM45686 software reset...");
+    serialPrintStr("\tIssuing ADXL371 software reset...");
     write_register(reset, 0x52);
     // verify correct setup again
     if (setup_device(true)) return 1;
@@ -86,37 +95,44 @@ int icm45686_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs
     //bit 3-1 in int1_map are reserved so I am masking. To avoid modifying those bits
     uint8_t value;
     //sets all non reserved bits to 0 thus disabeling interrups before config
-    read_registers(int1_map, &value);
+    read_registers(int1_map, &value, 1);
     value = value & 0b00001110;
     write_register(int1_map, value);
     //Map Data Ready to Int1 and Active low
-    read_registers(int1_map, &value);
+    read_registers(int1_map, &value,1);
     value = value & 0b00001110;
     value = value | 0b10000001;
     write_register(int1_map, value);
 
     //Disable FIFO
-    read_registers(fifo_clt, &value);
+    read_registers(fifo_clt, &value,1);
     value = value & 0b11111001;
     value = value | 0b00000000;
     write_register(fifo_clt, value);
 
     //Turning off High Pass Filter and Low Pass Filter
-    read_registers(power_ctl, &value);
-    value = value & 0b1110011;
+    read_registers(power_ctl, &value,1);
+    value = value & 0b11110011;
     value = value | 0b00001100;
     write_register(power_ctl, value);
 
     //Configures measurement settings (Antialiasing 640), normal noise operation
-    //Turn off autosleep, link loop. Set default noise operation
+    //Turn off autosleep, link loop. Set low noise operation
     write_register(measure, 0b00001010);
 
 
     // delay for accel to get ready
     HAL_Delay(12);
 
+    //set adxl to measure more
+    read_registers(power_ctl, &value,1);
+    value = value & 0b1111100;
+    value = value | 0b00000011;
+    write_register(power_ctl, value);
+    
+    serialPrintStr("\tADXL371 startup successful!");
+    
 
-    serialPrintStr("\tICM45686 startup successful!");
     return 0;
 }
 
@@ -186,13 +202,17 @@ static int setup_device(bool soft_reset_complete) {
 
 }
 
+float bmp581_get_pressure_scale_factor(void) {
+    return scale_factor_accel;
+}
+
 int adxl371_read_data(ADXL371Packet_t* packet) {
     // clear interrupt (pulls interrupt back up high) and verify new data is ready
     uint8_t data_ready = 0;
     read_registers(status, &data_ready, 1);
     if (data_ready & 0b00000001) { // bit 0 (LSB) will be 1 if new data is ready
-
-
+        //Burst read xdata_h to zdata_l (0x08 to 0x0D) into packet
+        read_registers(xdata_h,(uint8_t*)packet, 6);
         return 0;
     }
     return 1;
