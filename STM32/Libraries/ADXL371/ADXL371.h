@@ -1,5 +1,5 @@
 /*
- * icm45686.h
+ * Adxl371.h
  *
  *  Created on: Jan 29, 2026
  *      Author: Adapted by ERM from code written by Wlsan
