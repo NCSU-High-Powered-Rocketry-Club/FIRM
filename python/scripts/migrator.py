@@ -33,28 +33,59 @@ def new_file( path ):
         # open source file for reading log and destination file for writing the migrated log
         with open( path, 'rb' ) as src, open( dst_file, "wb" ) as dst:
             # Checks if there is header info - skip/filler if not
-            if( src.read( HEADER_SIZE_TEXT ) != b'FIRM LOG v1.0\n' ):
-                return
-            # reads and saves the header information
             header_text = src.read( HEADER_SIZE_TEXT )
-            dst.write( header_text )
-            uid_b = src.read( HEADER_UID_SIZE )
-            dst.write( uid_b )
-            device_name_b = src.read( HEADER_DEVICE_NAME_LEN)
-            dst.write( device_name_b )
-            comms_b = src.read( HEADER_COMM_SIZE )
-            dst.write( comms_b )
-            padding_bytes = 8 - ( HEADER_UID_SIZE + HEADER_DEVICE_NAME_LEN + HEADER_COMM_SIZE ) % 8
-            padd = src.read( padding_bytes )
-            dst.write( padd )
 
-            # calibration data
-            cal_bytes = src.read( HEADER_CAL_SIZE )
-            dst.write( cal_bytes )
+            if( header_text != b'FIRM LOG v1.0\n' ):
+                dst.write( header_text )
+                #adds default values for the header information
+                uid_b = b'0' * HEADER_UID_SIZE
+                dst.write( uid_b )
+                device_name_b = b'driver0'
+                dst.write( device_name_b )
+                comms_b = b'\x00' * HEADER_COMM_SIZE
+                dst.write( comms_b )
+                padding_bytes = 8 - ( HEADER_UID_SIZE + HEADER_DEVICE_NAME_LEN + HEADER_COMM_SIZE ) % 8
+                padd = b'\x00' * padding_bytes
+                dst.write( padd )
 
-            # scale factors
-            scale_factor_bytes = src.read( HEADER_NUM_SCALE_FACTORS * 4 )
-            dst.write( scale_factor_bytes )
+                # calibration data
+                cal_grid = [ 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1,
+                             0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1,
+                             0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1 ]
+                num_cal_grid = len( cal_grid )
+                format_str = f'<{num_cal_grid}f'
+                cal_bytes = struct.pack( format_str, *cal_grid )
+                dst.write( cal_bytes )
+                
+                # Scale factors
+                scale_factor_bytes = b'1' * HEADER_NUM_SCALE_FACTORS
+                dst.write( scale_factor_bytes )
+
+            elif( header_text != b'FIRM LOG v1.1\n' ):
+                dst.write( header_text )
+                # reads and saves the header information
+                uid_b = src.read( HEADER_UID_SIZE )
+                dst.write( uid_b )
+                device_name_b = src.read( HEADER_DEVICE_NAME_LEN)
+                dst.write( device_name_b )
+                comms_b = src.read( HEADER_COMM_SIZE )
+                dst.write( comms_b )
+                padding_bytes = 8 - ( HEADER_UID_SIZE + HEADER_DEVICE_NAME_LEN + HEADER_COMM_SIZE ) % 8
+                padd = src.read( padding_bytes )
+                dst.write( padd )
+
+                # calibration data
+                cal_bytes = src.read( HEADER_CAL_SIZE )
+                dst.write( cal_bytes )
+
+                # scale factors
+                scale_factor_bytes = src.read( HEADER_NUM_SCALE_FACTORS * 4 )
+                dst.write( scale_factor_bytes )
+            elif( header_text != b'FIRM LOG v1.2\n' ):
+                # Will work on version 1.2 later, hopefully.
+                return
+            else:
+                return
 
             # reads each packet
             while( True ):
