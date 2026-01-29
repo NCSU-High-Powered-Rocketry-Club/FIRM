@@ -39,14 +39,13 @@ static HAL_StatusTypeDef read_registers(uint8_t addr, uint8_t* buffer, size_t le
 static HAL_StatusTypeDef write_register(uint8_t addr, uint8_t data);
 
 
-static const uint8_t chip_id = 0x02;
+
 static const uint8_t who_am_i = 0x00; 
 static const uint8_t fifo_samples =0x39;
 static const uint8_t reset = 0x41;
 static const uint8_t status = 0x41;
 static const uint8_t timing = 0x3D;
 static const uint8_t int1_map = 0x3B;
-static const uint8_t int2_map = 0x3C;
 static const uint8_t power_ctl = 0x3F;
 static const uint8_t measure = 0x3E;
 static const uint8_t fifo_clt= 0x3A;
@@ -58,11 +57,11 @@ static const uint8_t ydata_l= 0x0B;
 static const uint8_t zdata_h= 0x0C;
 static const uint8_t zdata_l= 0x0D;
 
-static const float scale_factor_accel = 0.0976;
+static const float scale_factor_accel = 0.0976;// Range 400Gs/12 2'c bits
 
 static SPISettings spiSettings;
 
-int icm45686_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin) {
+int adxl371_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin) {
    
    
     if (hspi == NULL || cs_channel == NULL) {
@@ -167,33 +166,33 @@ static int setup_device(bool soft_reset_complete) {
     // verify chip ID read works
     read_registers(who_am_i, &result, 1);
     if (result != 0xFA) {
-        serialPrintStr("\tIMU could not read chip ID");
+        serialPrintStr("\n could not read chip ID");
         return 1;
     }
 
     //write check
 
-    read_registers(fifo_samples, &result, 1);
+    read_registers(fifo_samples, &result, 1);//FIFO_SAMPLES is default to 0x80
 
     if (result != 0x80) {
-        serialPrintStr("\tIMU could not read fifo samples");
+        serialPrintStr("\t could not read fifo samples");
         return 1;
     }
 
     write_register(fifo_samples, 0x00);
 
     if (result != 0x00) {
-        serialPrintStr("\tIMU could not write fifo samples");
+        serialPrintStr("\t could not write fifo samples");
         return 1;
     }
 
-    write_register(fifo_samples, 0x80);
+    write_register(fifo_samples, 0x80);//Set it back to default (0x80)
     
 
     if (soft_reset_complete) {
         // Check bit 1 (soft reset bit) is set back to 0
-        read_registers(status, &result, 1);
-        if ((result & 0x80) != 0) {
+        read_registers(status, &result, 1); //Status MSB flips to zero after the first register write
+        if ((result & 0x80) != 0) {//Might need to rework this?
             serialPrintStr("\tSoftware reset failed!");
             return 1;
         }
