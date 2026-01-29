@@ -115,7 +115,7 @@ int adxl371_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_
     value = value | 0b00001100;
     write_register(power_ctl, value);
 
-    //Configures measurement settings (Antialiasing 640), normal noise operation
+    //Configures measurement settings (Antialiasing 640), low noise operation
     //Turn off autosleep, link loop. Set low noise operation
     write_register(measure, 0b00001010);
 
