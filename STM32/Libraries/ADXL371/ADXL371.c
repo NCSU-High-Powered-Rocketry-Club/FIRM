@@ -58,7 +58,7 @@ static const uint8_t ydata_l= 0x0B;
 static const uint8_t zdata_h= 0x0C;
 static const uint8_t zdata_l= 0x0D;
 
-static const float scale_factor_accel;
+static const float scale_factor_accel = 0.0976;
 
 static SPISettings spiSettings;
 
@@ -202,7 +202,7 @@ static int setup_device(bool soft_reset_complete) {
 
 }
 
-float bmp581_get_pressure_scale_factor(void) {
+float adxl371_get_pressure_scale_factor(void) {
     return scale_factor_accel;
 }
 
