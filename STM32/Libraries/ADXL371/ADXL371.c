@@ -137,10 +137,12 @@ int adxl371_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_
 
 
 static int setup_device(bool soft_reset_complete) {
+    uint8_t result = 0;
+
     // datasheet says 6ms to powerup, include some factor of safety (so we using 18!)
     HAL_Delay(18);
 
-    uint8_t result = 0;
+ 
     // perform dummy read as required by datasheet
     HAL_StatusTypeDef hal_status = read_registers(who_am_i, &result, 1);
     if (hal_status) {
@@ -170,6 +172,15 @@ static int setup_device(bool soft_reset_complete) {
         return 1;
     }
 
+      if (soft_reset_complete) {
+        // Check bit 1 (soft reset bit) is set back to 0
+        read_registers(status, &result, 1); //Status MSB flips to zero after the first register write
+        if ((result & 0x80) != 0) {//Might need to rework this?
+            serialPrintStr("\tSoftware reset failed!");
+            return 1;
+        }
+    }
+
     //write check
 
     read_registers(fifo_samples, &result, 1);//FIFO_SAMPLES is default to 0x80
@@ -189,14 +200,6 @@ static int setup_device(bool soft_reset_complete) {
     write_register(fifo_samples, 0x80);//Set it back to default (0x80)
     
 
-    if (soft_reset_complete) {
-        // Check bit 1 (soft reset bit) is set back to 0
-        read_registers(status, &result, 1); //Status MSB flips to zero after the first register write
-        if ((result & 0x80) != 0) {//Might need to rework this?
-            serialPrintStr("\tSoftware reset failed!");
-            return 1;
-        }
-    }
     return 0;
 
 }
