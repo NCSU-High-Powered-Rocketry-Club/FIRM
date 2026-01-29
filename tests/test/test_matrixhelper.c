@@ -57,8 +57,8 @@ void test_rotvec_to_quat(void) {
     float rotvec[3] = {2.0, 4.0, 6.0};
     float quat[4];
     rotvec_to_quat(rotvec, quat);
-    float exp[4] = {-0.82529906, -0.15092133, -0.30184265, -0.45276398};
-    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-6, exp, quat, 4);
+    float exp[4] = {-0.82529906F, -0.15092133F, -0.30184265F, -0.45276398F};
+    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-7, exp, quat, 4);
 
     float rotvec2[3] = {-0.4, -0.1, -3.9};
     float quat2[4];
@@ -113,6 +113,52 @@ void test_mat_vec_mult_f32(void) {
 
 }
 
+void test_mat_sub_f32(void) {
+    float a_data[6] = {1.0F, -2.0F, 3.5F, 0.25F, 8.0F, -0.5F};
+    float b_data[6] = {0.5F, 1.0F, -1.5F, 0.25F, -2.0F, 2.5F};
+    float out_data[6] = {0};
+
+    arm_matrix_instance_f32 A = {2, 3, a_data};
+    arm_matrix_instance_f32 B = {2, 3, b_data};
+    arm_matrix_instance_f32 Out = {2, 3, out_data};
+
+    mat_sub_f32(&A, &B, &Out);
+
+    float exp[6] = {0.5F, -3.0F, 5.0F, 0.0F, 10.0F, -3.0F};
+    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-7, exp, out_data, 6);
+
+    // inputs must not be modified
+    float exp_a[6] = {1.0F, -2.0F, 3.5F, 0.25F, 8.0F, -0.5F};
+    float exp_b[6] = {0.5F, 1.0F, -1.5F, 0.25F, -2.0F, 2.5F};
+    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-7, exp_a, a_data, 6);
+    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-7, exp_b, b_data, 6);
+}
+
+void test_vec_scale_f32_out_of_place(void) {
+    float in[5] = {1.0F, -2.0F, 3.5F, 0.0F, -4.25F};
+    float out[5] = {0};
+    vec_scale_f32(in, 2.5F, out, 5);
+
+    float exp[5] = {2.5F, -5.0F, 8.75F, 0.0F, -10.625F};
+    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-7, exp, out, 5);
+    // input must not be modified for out-of-place usage
+    float exp_in[5] = {1.0F, -2.0F, 3.5F, 0.0F, -4.25F};
+    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-7, exp_in, in, 5);
+}
+
+void test_vec_scale_f32_in_place_and_sign(void) {
+    float data[4] = {2.0F, -1.0F, 0.25F, 8.0F};
+    vec_scale_f32(data, -0.5F, data, 4);
+
+    float exp[4] = {-1.0F, 0.5F, -0.125F, -4.0F};
+    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-7, exp, data, 4);
+
+    // scaling by 0 should yield all zeros
+    vec_scale_f32(data, 0.0F, data, 4);
+    float exp_zero[4] = {0.0F, 0.0F, 0.0F, 0.0F};
+    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-7, exp_zero, data, 4);
+}
+
 void test_mat_inv_kalman_gain(void) {
     float pxy_data[20];
     for (int i = 1; i <= 20; i++) {
@@ -142,3 +188,30 @@ void test_mat_inv_kalman_gain(void) {
     TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-5, result_inv_data, result_data, 20);    
 }
 
+void test_quaternion_normalize_f32(void) {
+    float q_in[4] = {0.4F, -0.8F, -0.1F, 0.5F};
+    float q_exp[4] = {0.38851434F, -0.7770287F, -0.09712858F, 0.4856429F};
+    quaternion_normalize_f32(q_in);
+    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-7, q_exp, q_in, 4);
+}
+
+void test_quat_multiply_f32(void) {
+    float q_in1[4] = {0.182574185835055F, 0.365148371670111F, 0.547722557505166F, 0.730296743340221F};
+    float q_in2[4] = {0.599938784879706F, -0.799918379839608F, 0.0F, 0.0142842567828501F};
+    float q_exp_in1[4] = {0.182574185835055F, 0.365148371670111F, 0.547722557505166F, 0.730296743340221F};
+    float q_exp_in2[4] = {0.599938784879706F, -0.799918379839608F, 0.0F, 0.0142842567828501F};
+    float exp_ans[4] = {0.39119048285816F, 0.0808460331240197F, -0.260793655238773F, 0.878874618154666F};
+    float q_ans[4];
+    quaternion_product_f32(q_in1, q_in2, q_ans);
+    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-7, exp_ans, q_ans, 4);
+    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-7, q_exp_in1, q_in1, 4);
+    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-7, q_exp_in2, q_in2, 4);
+}
+
+void test_quat_multiply_f32_overwrite(void) {
+    float q_in1[4] = {0.182574185835055F, 0.365148371670111F, 0.547722557505166F, 0.730296743340221F};
+    float q_in2[4] = {0.599938784879706F, -0.799918379839608F, 0.0F, 0.0142842567828501F};
+    float exp_ans[4] = {0.39119048285816F, 0.0808460331240197F, -0.260793655238773F, 0.878874618154666F};
+    quaternion_product_f32(q_in1, q_in2, q_in2);
+    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-7, exp_ans, q_in2, 4);
+}

@@ -73,7 +73,7 @@ const osThreadAttr_t mmc5983maTask_attributes = {
 };
 const osThreadAttr_t filterDataTask_attributes = {
     .name = "filterDataTask",
-    .stack_size = 4096 * 4,
+    .stack_size = 5120 * 4,
     .priority = (osPriority_t)osPriorityLow,
 };
 const osThreadAttr_t packetizerTask_attributes = {
@@ -395,7 +395,7 @@ void filter_data_task(void *argument) {
   ukf.state_transition_function = ukf_state_transition_function;
   vTaskDelay(pdMS_TO_TICKS(KALMAN_FILTER_STARTUP_DELAY_TIME_MS));
   DataPacket *packet = &data_packet.data.data_packet;
-  TaskCommandOption cmd_status;
+  TaskCommandOption cmd_status = TASKCMD_SETUP;
   float last_time; 
 
   for (;;) {
@@ -412,20 +412,22 @@ void filter_data_task(void *argument) {
         xQueueSend(system_request_queue, &(SystemRequest){SYSREQ_FINISH_SETUP}, 0);
       }
     }
-    
-    float dt = (float)packet->timestamp_seconds - last_time;
-    int err = ukf_predict(&ukf, dt);
-    osMutexAcquire(sensorDataMutexHandle, osWaitForever);
-    ukf_set_measurement(&ukf, &packet->pressure_pascals);
-    osMutexRelease(sensorDataMutexHandle);
-    err = ukf_update(&ukf);
-    if (err) {
-      led_set_status(UKF_FAIL);
+    if (cmd_status != TASKCMD_SETUP) {
+      float dt = (float)packet->timestamp_seconds - last_time;
+      int err = ukf_predict(&ukf, dt);
+      osMutexAcquire(sensorDataMutexHandle, osWaitForever);
+      ukf_set_measurement(&ukf, &packet->pressure_pascals);
+      osMutexRelease(sensorDataMutexHandle);
+      err = ukf_update(&ukf);
+      if (err) {
+        led_set_status(UKF_FAIL);
+      }
+      osMutexAcquire(sensorDataMutexHandle, osWaitForever);
+      memcpy(&packet->est_position_x_meters, ukf.X, UKF_STATE_DIMENSION * 4);
+      osMutexRelease(sensorDataMutexHandle);
+      serialPrintFloat(ukf.X[8]);
+      last_time += dt;
     }
-    osMutexAcquire(sensorDataMutexHandle, osWaitForever);
-    memcpy(&packet->est_position_x_meters, ukf.X, UKF_STATE_DIMENSION * 4);
-    osMutexRelease(sensorDataMutexHandle);
-    last_time += dt;
   }
 }
 

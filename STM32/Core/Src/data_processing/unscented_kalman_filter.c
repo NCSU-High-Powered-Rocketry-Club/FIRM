@@ -296,10 +296,12 @@ static int unscented_transform_f() {
         // find the delta quaternion by multiplying by the conjugate of the current orientation
         float *delta_quat = temp_quat2;
         quaternion_product_f32(&sigmas_f[i * UKF_STATE_DIMENSION + (UKF_STATE_DIMENSION - 4)], quat_state_conj, delta_quat);
-        // convert the delta quaternions to delta rotation vectors, and scale by Wm
-        float *delta_rotvec_sigmas = temp_rotvec2;
-        float *weighted_delta_rotvec_sigmas = temp_rotvec2;
+        // convert the delta quaternions to delta rotation vectors
+        float delta_rotvec_sigmas[3];
         quat_to_rotvec(delta_quat, delta_rotvec_sigmas);
+
+        // scale delta rotation vectors by Wm for mean computation only
+        float weighted_delta_rotvec_sigmas[3];
         vec_scale_f32(delta_rotvec_sigmas, Wm[i], weighted_delta_rotvec_sigmas, 3);
 
         // add the vector and rotvec components to the mean vectors
@@ -310,8 +312,8 @@ static int unscented_transform_f() {
         mean_delta_rotvec[1] += weighted_delta_rotvec_sigmas[1];
         mean_delta_rotvec[2] += weighted_delta_rotvec_sigmas[2];
 
-        // set the last 3 elements of the row in the residuals matrix to the delta rotvec
-        memcpy(&temp_residuals_data[i * (UKF_STATE_DIMENSION - 1) + (UKF_STATE_DIMENSION - 4)], delta_rotvec_sigmas, sizeof(temp_rotvec2));
+        // set the last 3 elements of the row in the residuals matrix to the UNWEIGHTED delta rotvec
+        memcpy(&temp_residuals_data[i * UKF_COVARIANCE_DIMENSION + (UKF_STATE_DIMENSION - 4)], delta_rotvec_sigmas, sizeof(float) * 3);
     }
 
     // convert the mean delta rotation vector into a mean delta quaternion, then multiply the
@@ -319,11 +321,12 @@ static int unscented_transform_f() {
     float *mean_delta_quat = temp_quat2;
     rotvec_to_quat(mean_delta_rotvec, mean_delta_quat);
     quaternion_product_f32(mean_delta_quat, quat_state, quat_state);
+    quaternion_normalize_f32(quat_state);
     // copy the mean x vector into the X state vector
     memcpy(X, mean_x, sizeof(mean_x));
     // calculate and copy in the vector residuals into the resiudals matrix
     for (int i = 0; i < UKF_NUM_SIGMAS; i++) {
-        vec_sub_f32(&sigmas_f[i * UKF_STATE_DIMENSION], X, &temp_residuals_data[i * (UKF_STATE_DIMENSION - 1)], UKF_STATE_DIMENSION - 4);
+        vec_sub_f32(&sigmas_f[i * UKF_STATE_DIMENSION], X, &temp_residuals_data[i * UKF_COVARIANCE_DIMENSION], UKF_STATE_DIMENSION - 4);
     }
 
     // compute updated P matrix
@@ -337,7 +340,7 @@ static int unscented_transform_f() {
     }
     
     mat_mult_f32(&temp_weighted_residuals_transpose, &temp_residuals, &P);
-    //serialPrintFloat(P.pData[0]);
+    
     return 0;
 }
 
@@ -421,7 +424,7 @@ static int calculate_cross_covariance(const float *measurement_mean, arm_matrix_
         vec_scale_f32(&temp_dz_residuals_data[i * UKF_MEASUREMENT_DIMENSION], Wc[i], &weighted_dz->pData[i * UKF_MEASUREMENT_DIMENSION], UKF_MEASUREMENT_DIMENSION);
     }
 
-    // Transpose dx_res to dx_t (21 x 43) using temp_residuals_transpose
+    // Transpose dx_res to dx_t using temp_residuals_transpose
     for (int j = 0; j < UKF_COVARIANCE_DIMENSION; j++) {
         for (int i = 0; i < UKF_NUM_SIGMAS; i++) {
             temp_residuals_transpose_data[j * UKF_NUM_SIGMAS + i] = temp_residuals_data[i * UKF_COVARIANCE_DIMENSION + j];

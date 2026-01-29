@@ -24,7 +24,7 @@ void ukf_state_transition_function(const float *sigmas, const float dt, const St
         // next quat = quat * delta_q
         float next_q[4];
         quaternion_product_f32(quat, delta_quat, next_q);
-        memcpy(&prediction[UKF_STATE_DIMENSION - 4], next_q, sizeof(float) * 4);
+        memcpy(&prediction[UKF_STATE_DIMENSION - 4], next_q, sizeof(next_q));
         
 
         // calculate next velocity and position

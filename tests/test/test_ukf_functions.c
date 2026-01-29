@@ -49,7 +49,22 @@ void test_state_transition_function_standby(void) {
     TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-6, expected, prediction, DIM_X);
 }
 
-void test_state_transition_function_freefall(void) {
+void test_state_transition_function_coast(void) {
+    // last row of sigmas
+    float sigmas[DIM_X] = {
+        0.00000000F, 0.00000000F, 4.00000000F, 0.00000000F, 1.00000000F, 5.50000000F, 1.00000000F, 2.50000000F, -2.50000000F, 6.40000010F, 0.20000000F, -0.30000001F, 0.47069395F, -0.74620968F, -0.23744194F, 0.40649682F
+    };
+    float dt = 0.1;
+    int state = 2;
+    float prediction[DIM_X];
+    float expected[DIM_X] = {
+        0.00000000F, 0.10000000F, 4.55000019F, 0.97980005F, 3.44950008F, 2.07069993F, 1.00000000F, 2.50000000F, -2.50000000F, 6.40000010F, 0.20000000F, -0.30000001F, 0.68977159F, -0.56064773F, -0.10386276F, 0.44620833F
+    };
+    ukf_state_transition_function(sigmas, dt, state, prediction);
+    TEST_ASSERT_FLOAT_ARRAY_WITHIN(1e-6, expected, prediction, DIM_X);
+}
+
+void test_state_transition_function_descent(void) {
     // second row of sigmas
     float sigmas[DIM_X] = {
         1.44914492e-02F, 1.44913043e-02F, 4.01449130e+00F, 1.44913043e-02F,

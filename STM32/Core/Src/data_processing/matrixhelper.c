@@ -84,7 +84,7 @@ void mat_add_f32(const arm_matrix_instance_f32 *pSrcA, const arm_matrix_instance
 void mat_sub_f32(const arm_matrix_instance_f32 *pSrcA, const arm_matrix_instance_f32 *pSrcB, arm_matrix_instance_f32 *pDst) {
     int numElements = pSrcA->numRows * pSrcA->numCols;
     for (int i = 0; i < numElements; i++) {
-        pDst->pData[i] = pSrcA->pData[i] + pSrcB->pData[i];
+        pDst->pData[i] = pSrcA->pData[i] - pSrcB->pData[i];
     }
 }
 
