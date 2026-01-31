@@ -39,6 +39,28 @@ void bmp581_convert_packet(BMP581Packet_t *packet, CalibratedDataPacket_t *resul
     result_packet -> pressure = pressure_float;
 }
 
+void adxl371_convert_packet(ADXL371Packet_t *packet, CalibratedDataPacket_t *result_packet){
+    // get the current timestamp of the packet in seconds using the DWT counter
+    result_packet->timestamp_sec = update_dwt_timestamp();
+    int32_t accel_binary_x,accel_binary_y,accel_binary_z;
+    float scale = adxl371_get_accel_scale_factor();
+    // extract pressure and temp bytes as a 32 bit int, preserving sign
+    accel_binary_x = ((int32_t)(int8_t)packet->accX_H <<8 | (int32_t)packet->accX_L);
+
+    accel_binary_y = ((int32_t)(int8_t)packet->accY_H <<8 | (int32_t)packet->accY_L);
+
+    accel_binary_z = ((int32_t)(int8_t)packet->accZ_H <<8 | (int32_t)packet->accZ_L);
+
+    //convert acceleration to g's
+    float accel_x_float = (float)accel_binary_x * scale;
+    float accel_y_float = (float)accel_binary_y * scale;
+    float accel_z_float = (float)accel_binary_z * scale;
+
+    result_packet->adxl_accel_x = accel_x_float;
+    result_packet->adxl_accel_y = accel_y_float;
+    result_packet->adxl_accel_z = accel_z_float;
+}
+
 void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, CalibratedDataPacket_t *result_packet) {
     // get the current timestamp of the packet in seconds using the DWT counter
     result_packet->timestamp_sec = update_dwt_timestamp();

@@ -2,6 +2,7 @@
 #include <bmp581.h>
 #include <mmc5983ma.h>
 #include <icm45686.h>
+#include <ADXL371.h>
 
 
 /**
@@ -14,6 +15,9 @@ typedef struct {
     float accel_x;
     float accel_y;
     float accel_z;
+    float adxl_accel_x;
+    float adxl_accel_y;
+    float adxl_accel_z;
     float angular_rate_x;
     float angular_rate_y;
     float angular_rate_z;

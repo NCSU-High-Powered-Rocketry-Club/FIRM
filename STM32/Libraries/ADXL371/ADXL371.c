@@ -204,7 +204,7 @@ static int setup_device(bool soft_reset_complete) {
 
 }
 
-float adxl371_get_pressure_scale_factor(void) {
+float adxl371_get_accel_scale_factor(void) {
     return scale_factor_accel;
 }
 

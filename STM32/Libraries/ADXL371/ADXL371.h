@@ -49,5 +49,5 @@ int adxl371_read_data(ADXL371Packet_t* packet);
  * @brief gets the scale factor.
  * 
  */
-float bmp581_get_temp_scale_factor(void);
+float adxl371_get_accel_scale_factor(void);
 
