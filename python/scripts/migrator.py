@@ -21,11 +21,10 @@ HEADER_NUM_SCALE_FACTORS = 5 # number of scale factor floats in the header
 
 TIMESTAMP_SIZE = 3 # size of timestamp in bytes
 
-
 # migrates a log file to have little-endian timestamp bytes
 def new_file( path ):
     # define source(s) and destination(s) files ( for testing )
-    dst_file = "LOGX_copy.txt"
+    dst_file = "migrated_log.txt"
 
     # opens source file and destination file
     try:
