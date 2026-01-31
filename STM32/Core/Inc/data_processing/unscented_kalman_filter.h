@@ -6,6 +6,8 @@
 #define SQRT2_F 1.414213562373095F
 #define PI_F 3.141592653589793F
 
+#define UKF_NUM_SIGMAS (2 * UKF_COVARIANCE_DIMENSION + 1)
+
 /**
  * @brief UKF parameters
  */
@@ -60,4 +62,5 @@ float* ukf_test_get_residuals(void);
 float* ukf_test_get_Q_scaled(void);
 float* ukf_test_get_S(void);
 float* ukf_test_get_pred_z(void);
+float* ukf_test_get_cholesky(void);
 #endif

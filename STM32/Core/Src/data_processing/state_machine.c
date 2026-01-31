@@ -16,7 +16,7 @@ static void set_state_matrices(struct UKF* ukfh) {
 }
 
 void init_state(struct UKF* ukfh) {
-    state = STANDBY;
+    state = MOTOR_BURN;
     memset(ukfh->Q, 0, sizeof(float) * (UKF_COVARIANCE_DIMENSION) * (UKF_COVARIANCE_DIMENSION));
     memset(ukfh->R, 0, sizeof(float) * UKF_MEASUREMENT_DIMENSION * UKF_MEASUREMENT_DIMENSION);
     set_state_matrices(ukfh);
@@ -43,7 +43,7 @@ void state_update(struct UKF* ukfh) {
             // increase noise in pressure to filter transonic effects based on how fast the rocket is going
             ukfh->R[0] = ukf_measurement_noise_covariance_diag[state][0] * fmaxf(ukfh->X[5], 1.0F);
             
-            if (ukfh->X[2] > 15.0F && ukfh->X[8] < -0.1F) {
+            if (ukfh->X[2] > 15.0F && ukfh->X[8] < -0.1F && 0) {
                 state = COAST;
                 set_state_matrices(ukfh);
             }

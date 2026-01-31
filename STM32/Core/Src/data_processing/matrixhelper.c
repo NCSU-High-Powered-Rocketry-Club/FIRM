@@ -171,23 +171,36 @@ void mat_trans_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 
 }
 
 int mat_cholesky_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 *pDst) {
-    int n = pDst->numRows;
-    for (int i = 0; i < n; i++) {
-        pDst->pData[n * i + i] = pSrc->pData[n * i + i];
-        for (int k = 0; k < i; k++)
-	        pDst->pData[n * i + i] -= pDst->pData[n * k + i]*pDst->pData[n * k + i];
-        if (pDst->pData[n * i + i] <= 0)
-            return 1;
-        pDst->pData[n * i + i] = sqrtf(pDst->pData[n * i + i]);
+    const int n = (int)pDst->numRows;
+    if (pSrc->numRows != pSrc->numCols || pDst->numRows != pDst->numCols || pSrc->numRows != pDst->numRows) {
+        return 1;
+    }
 
-        for (int j = i + 1; j < n; j++) {
-            pDst->pData[n * i + j] = pSrc->pData[n * i + j];
-            for (int k = 0; k < i; k++)
-                pDst->pData[n * i + j] -= pDst->pData[n * k + i]*pDst->pData[n * k + j];
-            pDst->pData[n * i + j] /= pDst->pData[n * i + i];
+    // computes lower triangular cholesky
+    for (int row = 0; row < n; row++) {
+        for (int col = 0; col <= row; col++) {
+            float sum = pSrc->pData[row * n + col];
+            for (int k = 0; k < col; k++) {
+                sum -= pDst->pData[row * n + k] * pDst->pData[col * n + k];
+            }
+
+            if (row == col) {
+                if (sum <= 0.0F) {
+                    return 1; // not positive definite
+                }
+                pDst->pData[row * n + col] = sqrtf(sum);
+            } else {
+                pDst->pData[row * n + col] = sum / pDst->pData[col * n + col];
+            }
         }
-   }
-   return 0;
+
+        // Zero the upper triangle for clarity/determinism.
+        for (int col = row + 1; col < n; col++) {
+            pDst->pData[row * n + col] = 0.0F;
+        }
+    }
+
+    return 0;
 }
 
 int get_kalman_gain(const arm_matrix_instance_f32 *pxy, const arm_matrix_instance_f32 *s, arm_matrix_instance_f32 *k) {

@@ -409,23 +409,21 @@ void filter_data_task(void *argument) {
       // first iteration of the filter doesn't have an extremely small dt.
       last_time = (float)packet->timestamp_seconds - 0.005F;
       if (cmd_status == TASKCMD_SETUP) {
-        xQueueSend(system_request_queue, &(SystemRequest){SYSREQ_FINISH_SETUP}, 0);
+        xQueueSend(system_request_queue, &(SystemRequest){SYSREQ_FINISH_SETUP}, portMAX_DELAY);
       }
     }
     if (cmd_status != TASKCMD_SETUP) {
       float dt = (float)packet->timestamp_seconds - last_time;
       int err = ukf_predict(&ukf, dt);
-      osMutexAcquire(sensorDataMutexHandle, osWaitForever);
       ukf_set_measurement(&ukf, &packet->pressure_pascals);
-      osMutexRelease(sensorDataMutexHandle);
       err = ukf_update(&ukf);
       if (err) {
         led_set_status(UKF_FAIL);
       }
-      osMutexAcquire(sensorDataMutexHandle, osWaitForever);
+      //osMutexAcquire(sensorDataMutexHandle, osWaitForever);
       memcpy(&packet->est_position_x_meters, ukf.X, UKF_STATE_DIMENSION * 4);
-      osMutexRelease(sensorDataMutexHandle);
-      serialPrintFloat(ukf.X[8]);
+      //osMutexRelease(sensorDataMutexHandle);
+      
       last_time += dt;
     }
   }

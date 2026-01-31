@@ -3,8 +3,6 @@
 #include "usb_print_debug.h"
 
 
-#define UKF_NUM_SIGMAS (2 * UKF_COVARIANCE_DIMENSION + 1)
-
 // static array allocation
 static float X[UKF_STATE_DIMENSION]; // state vector
 static float measurement_vector[UKF_MEASUREMENT_DIMENSION]; // raw measurements
@@ -62,6 +60,8 @@ static void calculate_sigma_weights(void);
  */
 static int calculate_sigmas_f(UKF *ukfh, float dt);
 
+static void ukf_clear_internal_buffers(void);
+
 static int unscented_transform_f(void);
 
 static int unscented_transform_h(float measurement_mean[UKF_MEASUREMENT_DIMENSION], arm_matrix_instance_f32 *innovation_cov);
@@ -70,6 +70,8 @@ static int calculate_cross_covariance(const float *measurement_mean, arm_matrix_
 
 
 int ukf_init(UKF *ukfh, float initial_pressure, float* initial_acceleration, float* initial_magnetic_field) {
+  ukf_clear_internal_buffers();
+
   // assign ukf struct to matrix values
   ukfh->X = X;
   ukfh->P = P.pData;
@@ -78,9 +80,8 @@ int ukf_init(UKF *ukfh, float initial_pressure, float* initial_acceleration, flo
   ukfh->flight_state = &state;
   ukfh->measurement_errors = measurement_errors;
   ukfh->measurement_vector = measurement_vector;
-  // set covariance matrix to all zeros and initialize state machine
-  memset(P_data, 0, sizeof(P_data));
-  memset(measurement_vector, 0, sizeof(measurement_vector));
+
+  // initialize state machine (also initializes Q/R diagonals)
   init_state(ukfh);
   
   // set inital values of state vector, and initial diagonals of covariance matrix
@@ -96,6 +97,48 @@ int ukf_init(UKF *ukfh, float initial_pressure, float* initial_acceleration, flo
   // calculate ukf constants that are needed before running first predict and update
   calculate_sigma_weights();
   return 0;
+}
+
+static void ukf_clear_internal_buffers(void) {
+  memset(X, 0, sizeof(X));
+  memset(measurement_vector, 0, sizeof(measurement_vector));
+  memset(P_data, 0, sizeof(P_data));
+  memset(Q_data, 0, sizeof(Q_data));
+  memset(R_data, 0, sizeof(R_data));
+
+  memset(sigma_points, 0, sizeof(sigma_points));
+  memset(sigmas_f, 0, sizeof(sigmas_f));
+  memset(sigmas_h, 0, sizeof(sigmas_h));
+  memset(cholesky_data, 0, sizeof(cholesky_data));
+
+  memset(Wm, 0, sizeof(Wm));
+  memset(Wc, 0, sizeof(Wc));
+  lambda_scaling_parameter = 0.0F;
+
+  memset(predicted_measurement, 0, sizeof(predicted_measurement));
+  memset(innovation_data, 0, sizeof(innovation_data));
+  memset(kalman_gain_data, 0, sizeof(kalman_gain_data));
+  memset(P_cross_covariance_data, 0, sizeof(P_cross_covariance_data));
+  memset(measurement_errors, 0, sizeof(measurement_errors));
+
+  memset(temp_residuals_data, 0, sizeof(temp_residuals_data));
+  memset(temp_residuals_transpose_data, 0, sizeof(temp_residuals_transpose_data));
+  memset(temp_weighted_residuals_transpose_data, 0, sizeof(temp_weighted_residuals_transpose_data));
+  memset(weighted_vector_sigmas, 0, sizeof(weighted_vector_sigmas));
+  memset(temp_dz_residuals_data, 0, sizeof(temp_dz_residuals_data));
+
+  memset(temp_rotvec, 0, sizeof(temp_rotvec));
+  memset(temp_rotvec2, 0, sizeof(temp_rotvec2));
+  memset(temp_quat, 0, sizeof(temp_quat));
+  memset(temp_quat2, 0, sizeof(temp_quat2));
+
+  // Defensive: these get mutated and reused between transforms.
+  temp_residuals.numRows = UKF_NUM_SIGMAS;
+  temp_residuals.numCols = UKF_COVARIANCE_DIMENSION;
+  temp_residuals_transpose.numRows = UKF_COVARIANCE_DIMENSION;
+  temp_residuals_transpose.numCols = UKF_NUM_SIGMAS;
+  temp_weighted_residuals_transpose.numRows = UKF_COVARIANCE_DIMENSION;
+  temp_weighted_residuals_transpose.numCols = UKF_NUM_SIGMAS;
 }
 
 int ukf_predict(UKF *ukfh, const float delta_time) {
@@ -207,14 +250,14 @@ static int calculate_sigmas_f(UKF *ukfh, float dt) {
   mat_scale_f32(&Q_scaled, lambda_scaling_parameter + UKF_COVARIANCE_DIMENSION, &Q_scaled);
   if (mat_cholesky_f32(&Q_scaled, &cholesky))
     return 2; // matrix not positive definite
-  
+
   // first sigma point is just the state, X
   memcpy(sigma_points[0], X, sizeof(float) * UKF_STATE_DIMENSION);
 
   // build remaining sigma points
   for (int i = 0; i < UKF_COVARIANCE_DIMENSION; i++) {
     
-    // get indices in sigma_f data for the (i'th + 1) row and (i'th + 22'nd) row
+    // get indices in sigma_f data for the (i'th + 1) row and (i'th + 16'th) row
     float *sigma_plus = sigma_points[i + 1];
     float *sigma_minus = sigma_points[i + UKF_STATE_DIMENSION];
 
@@ -271,7 +314,9 @@ static int unscented_transform_f() {
   float mean_x[UKF_STATE_DIMENSION - 4];
   memset(mean_x, 0, sizeof(mean_x));
   float *mean_delta_rotvec = temp_rotvec;
-  memset(mean_delta_rotvec, 0, sizeof(temp_rotvec));
+  mean_delta_rotvec[0] = 0.0F;
+  mean_delta_rotvec[1] = 0.0F;
+  mean_delta_rotvec[2] = 0.0F;
   // get the current quaternion state and it's conjugate
   float *quat_state = &X[UKF_STATE_DIMENSION - 4];
 
@@ -473,15 +518,14 @@ void calculate_initial_orientation(const float *imu_accel, const float *mag_fiel
 
 void ukf_set_measurement(UKF *ukfh, const float *measurements) {
   // normalize magnetometer measurements
-  
   const float *mag_field = &measurements[UKF_MEASUREMENT_DIMENSION - 3];
   const float norm_mag = sqrtf(mag_field[0] * mag_field[0] + mag_field[1] * mag_field[1] + mag_field[2] * mag_field[2]);
-  
   // copy over the measurements, and normalize magnetometer
   memcpy(ukfh->measurement_vector, measurements, sizeof(measurements[0]) * (UKF_MEASUREMENT_DIMENSION - 3));
   ukfh->measurement_vector[UKF_MEASUREMENT_DIMENSION - 3] = mag_field[0] / norm_mag;
   ukfh->measurement_vector[UKF_MEASUREMENT_DIMENSION - 2] = mag_field[1] / norm_mag;
   ukfh->measurement_vector[UKF_MEASUREMENT_DIMENSION - 1] = mag_field[2] / norm_mag;
+  ukfh->measurement_vector[3] = measurements[3];
 }
 
 #ifdef TEST
@@ -494,4 +538,5 @@ void ukf_test_get_sigma_points(float sigmas[UKF_NUM_SIGMAS][UKF_STATE_DIMENSION]
 float* ukf_test_get_residuals(void) { return temp_residuals_data; }
 float* ukf_test_get_S(void) { return innovation_data; }
 float* ukf_test_get_pred_z(void) { return predicted_measurement; }
+float* ukf_test_get_cholesky(void) {return cholesky_data;}
 #endif
