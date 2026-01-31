@@ -208,6 +208,7 @@ int ukf_update(UKF* ukfh) {
   rotvec_to_quat(&delta_x[UKF_STATE_DIMENSION - 4], temp_quat);
   // update state vector by multiplying the delta quaternion and adding the delta x vector components
   quaternion_product_f32(temp_quat, &X[UKF_STATE_DIMENSION - 4], &X[UKF_STATE_DIMENSION - 4]);
+  vec_add_f32(X, delta_x, X, UKF_STATE_DIMENSION - 4);
   // compute next covariance matrix, P
   // new_P = P - (kalman_gain * innovation_covariance * kalman_gain^T)
   float kalman_gain_transpose_data[UKF_MEASUREMENT_DIMENSION * UKF_COVARIANCE_DIMENSION];
@@ -393,6 +394,7 @@ static int unscented_transform_h(float measurement_mean[UKF_MEASUREMENT_DIMENSIO
   // change all the temp residual matrix sizes to intended sizes (because unscented_transform_f
   // reuses them)
   temp_residuals.numCols = UKF_MEASUREMENT_DIMENSION;
+  temp_residuals.numRows = UKF_NUM_SIGMAS;
   temp_residuals_transpose.numRows = UKF_MEASUREMENT_DIMENSION;
   temp_weighted_residuals_transpose.numRows = UKF_NUM_SIGMAS;
   temp_weighted_residuals_transpose.numCols = UKF_MEASUREMENT_DIMENSION;
@@ -405,7 +407,7 @@ static int unscented_transform_h(float measurement_mean[UKF_MEASUREMENT_DIMENSIO
   for (int i = 0; i < UKF_NUM_SIGMAS; i++) {
     // scale row of measurement sigmas by weights
     vec_scale_f32(&sigmas_h[UKF_MEASUREMENT_DIMENSION * i], Wm[i], scaled_sigma_measurements, UKF_MEASUREMENT_DIMENSION);
-    // sum all 43 rows of weighted measurement sigmas to the resulting measurement mean
+    // sum all rows of weighted measurement sigmas to the resulting measurement mean
     vec_add_f32(measurement_mean, scaled_sigma_measurements, measurement_mean, UKF_MEASUREMENT_DIMENSION);
   }
 

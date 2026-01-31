@@ -28,7 +28,7 @@ void state_update(struct UKF* ukfh) {
             float* errors = ukfh->measurement_errors;
             // the sum of errors in acceleration x, y, and z axis
             float accel_error_sum = fabsf(errors[1]) + fabsf(errors[2]) + fabsf(errors[3]);
-            if (accel_error_sum > 30 && 0) {
+            if (accel_error_sum > 30) {
                 state = MOTOR_BURN;
                 set_state_matrices(ukfh);
             }
@@ -43,7 +43,7 @@ void state_update(struct UKF* ukfh) {
             // increase noise in pressure to filter transonic effects based on how fast the rocket is going
             ukfh->R[0] = ukf_measurement_noise_covariance_diag[state][0] * fmaxf(ukfh->X[5], 1.0F);
             
-            if (ukfh->X[2] > 15.0F && ukfh->X[8] < -0.1F && 0) {
+            if (ukfh->X[2] > 15.0F && ukfh->X[8] < -0.1F) {
                 state = COAST;
                 set_state_matrices(ukfh);
             }
