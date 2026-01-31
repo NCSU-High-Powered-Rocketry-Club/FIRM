@@ -33,8 +33,8 @@ def new_file( path ):
             # Checks if there is header info - skip/filler if not
             header_text = src.read( HEADER_SIZE_TEXT )
             
-            # converted files will be version 1.2
-            dst.write(b'FIRM LOG v1.2\n')
+            # converted files will be version 1.1
+            dst.write(b'FIRM LOG v1.1\n')
             if( header_text == b'FIRM LOG v1.0\n' ):
                 #adds default values for the header information
                 uid_b = b'1' * HEADER_UID_SIZE
