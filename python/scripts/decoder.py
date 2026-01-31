@@ -72,7 +72,7 @@ class Decoder:
 
             # read timestamp
             clock_count_bytes = self.f.read(3)
-            clock_count = struct.unpack('<I', b'\x00' + clock_count_bytes)[0]
+            clock_count = struct.unpack('<I', clock_count_bytes + b'\x00')[0]
             self.timestamp_seconds += (self.get_delta_timestamp(clock_count)) / 168e6
             self.last_clock_count = clock_count
 
@@ -212,7 +212,7 @@ def decode(path):
 
         # write to csv
     
-        write_to_csv(bmp581_df, "BMP581_data_copy.csv", decoder)
+        write_to_csv(bmp581_df, "BMP581_data.csv", decoder)
         write_to_csv(icm45686_df, "ICM45686_data.csv", decoder)
         write_to_csv(mmc5983ma_df, "MMC5983MA_data.csv", decoder)
 

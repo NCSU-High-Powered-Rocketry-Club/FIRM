@@ -21,7 +21,6 @@ HEADER_NUM_SCALE_FACTORS = 5 # number of scale factor floats in the header
 
 TIMESTAMP_SIZE = 3 # size of timestamp in bytes
 
-num_repeat_whitespace = 0
 
 # migrates a log file to have little-endian timestamp bytes
 def new_file( path ):
@@ -34,15 +33,17 @@ def new_file( path ):
         with open( path, 'rb' ) as src, open( dst_file, "wb" ) as dst:
             # Checks if there is header info - skip/filler if not
             header_text = src.read( HEADER_SIZE_TEXT )
-
-            if( header_text != b'FIRM LOG v1.0\n' ):
-                dst.write( header_text )
+            
+            # converted files will be version 1.2
+            dst.write(b'FIRM LOG v1.2\n')
+            if( header_text == b'FIRM LOG v1.0\n' ):
                 #adds default values for the header information
-                uid_b = b'0' * HEADER_UID_SIZE
+                uid_b = b'1' * HEADER_UID_SIZE
                 dst.write( uid_b )
-                device_name_b = b'driver0'
+                # Device name is a fixed-length field of 33 bytes
+                device_name_b = b'driver0'.ljust(HEADER_DEVICE_NAME_LEN, b'\x00')
                 dst.write( device_name_b )
-                comms_b = b'\x00' * HEADER_COMM_SIZE
+                comms_b = b'\x01\x00'
                 dst.write( comms_b )
                 padding_bytes = 8 - ( HEADER_UID_SIZE + HEADER_DEVICE_NAME_LEN + HEADER_COMM_SIZE ) % 8
                 padd = b'\x00' * padding_bytes
@@ -58,11 +59,10 @@ def new_file( path ):
                 dst.write( cal_bytes )
                 
                 # Scale factors
-                scale_factor_bytes = b'1' * HEADER_NUM_SCALE_FACTORS
-                dst.write( scale_factor_bytes )
+                scale_factor_bytes = src.read( HEADER_NUM_SCALE_FACTORS * 4 )
+                dst.write(scale_factor_bytes)
 
-            elif( header_text != b'FIRM LOG v1.1\n' ):
-                dst.write( header_text )
+            elif( header_text == b'FIRM LOG v1.1\n' ):
                 # reads and saves the header information
                 uid_b = src.read( HEADER_UID_SIZE )
                 dst.write( uid_b )
@@ -80,48 +80,49 @@ def new_file( path ):
 
                 # scale factors
                 scale_factor_bytes = src.read( HEADER_NUM_SCALE_FACTORS * 4 )
-                dst.write( scale_factor_bytes )
-            elif( header_text != b'FIRM LOG v1.2\n' ):
+                dst.write(scale_factor_bytes)
+            elif( header_text == b'FIRM LOG v1.2\n' ):
                 # Will work on version 1.2 later, hopefully.
                 return
             else:
                 return
 
             # reads each packet
+            num_repeat_whitespace = 0
             while( True ):
                 id_byte = src.read( 1 )
                 # if end of file, exit
-                if id_byte == 0:
-                    # whitespace, skip
+                if len(id_byte) == 0:
+                    break
+                if id_byte[0] == 0:
                     num_repeat_whitespace += 1
                     # end of data if whitespace repeats enough times
                     if num_repeat_whitespace > max([BMP581_SIZE, ICM45686_SIZE, MMC5983MA_SIZE]) + 4:
-                        return False
-                    return True
+                        break
+                    continue
                 num_repeat_whitespace = 0
 
                 # save id_byte to destination file
                 dst.write( id_byte )
 
-                # reads specific packet based on id byte
-                if id_byte == ord( BMP581_ID ):
-                    pk_bytes = src.read( BMP581_SIZE )
-                    dst.write( pk_bytes )
-                elif id_byte == ord( ICM45686_ID ):
-                    pk_bytes = src.read( ICM45686_SIZE )
-                    dst.write( pk_bytes )
-                elif id_byte == ord( MMC5983MA_ID ):
-                    pk_bytes = src.read( MMC5983MA_SIZE )
-                    dst.write( pk_bytes )
-
                 # read timestamp bytes
                 clock_count_bytes = src.read( TIMESTAMP_SIZE )
-
                 if len(clock_count_bytes) != TIMESTAMP_SIZE:
                     break
-
                 # write timestamp bytes in little-endian order
                 dst.write( clock_count_bytes[::-1] )
+
+                # reads specific packet based on id byte
+                if id_byte[0] == ord( BMP581_ID ):
+                    pk_bytes = src.read( BMP581_SIZE )
+                    dst.write( pk_bytes )
+                elif id_byte[0] == ord( ICM45686_ID ):
+                    pk_bytes = src.read( ICM45686_SIZE )
+                    dst.write( pk_bytes )
+                elif id_byte[0] == ord( MMC5983MA_ID ):
+                    pk_bytes = src.read( MMC5983MA_SIZE )
+                    dst.write( pk_bytes )
+                
     except Exception as e:
         print( "An error occurred: ", e )
 
