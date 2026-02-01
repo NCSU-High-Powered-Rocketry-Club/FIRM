@@ -5,8 +5,6 @@ import os
 import struct
 import sys
 
-import pandas as pd
-
 
 # identifier for each packet type
 BMP581_ID = 'B'
@@ -124,7 +122,7 @@ class Decoder:
         self.uid = struct.unpack("<Q", uid_b)[0]
         device_name_format_string = "<" + str(HEADER_DEVICE_NAME_LEN) + "s"
         name_bytes, = struct.unpack(device_name_format_string, device_name_b)
-        self.device_name = name_bytes.rstrip(b"\x00").decode("utf-8", errors='backslashreplace')
+        self.device_name = name_bytes.rstrip(b"\x00").decode("utf-8", errors='backslashreplace', errors='backslashreplace')
         self.comms = struct.unpack("????", comms_b)
         firmware_format_string = "<" + str(FIRMWARE_VERSION_LEN) + "s"
         self.firmware = struct.unpack(firmware_format_string, firmware_b)
