@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <stddef.h>
-#include "stm32_hal_stubs.h"
+#include "stm32f4xx_hal.h"
 
 // This is a mocked version of the w25q128jv.h header that doesn't have all the hal stuff
 // Then ceedling generates a mock of this, and we implement the methods in test_settings.c

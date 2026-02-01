@@ -5,9 +5,10 @@
 #include "mmc5983ma_packet.h"
 #include "icm45686_packet.h"
 
-// We need to have the mocks because settings.h includes w25q128jv.h
-#include "mock_w25q128jv_stubs.h"
-#include "mock_hal_gpio.h"
+#include "mock_w25q128jv.h"
+#include "mock_stm32f4xx_hal.h"
+#include "mock_usb_print_debug.h"
+
 
 void setUp(void) {
     for (int i = 0; i < 3; i++) {

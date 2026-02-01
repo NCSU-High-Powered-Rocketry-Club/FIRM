@@ -6,8 +6,6 @@
  */
 
 #include "logger.h"
-#include "fatfs.h"
-#include "ff.h"
 #include "settings.h"
 #include "usb_print_debug.h"
 #include <stdint.h>
