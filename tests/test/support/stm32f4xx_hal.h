@@ -41,4 +41,15 @@ void HAL_GPIO_TogglePin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
 void HAL_Delay(uint32_t Delay);
 int HAL_NVIC_SystemReset(void);
 
+typedef enum {
+  HAL_DMA_STATE_RESET = 0x00U,
+  HAL_DMA_STATE_READY = 0x01U,
+  HAL_DMA_STATE_BUSY = 0x02U,
+  HAL_DMA_STATE_TIMEOUT = 0x03U,
+  HAL_DMA_STATE_ERROR = 0x04U,
+  HAL_DMA_STATE_ABORT = 0x05U
+} HAL_DMA_StateTypeDef;
+
+HAL_DMA_StateTypeDef HAL_DMA_GetState(DMA_HandleTypeDef *hdma);
+
 #endif
