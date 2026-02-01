@@ -87,7 +87,7 @@ FRESULT logger_init(DMA_HandleTypeDef* dma_sdio_tx_handle) {
     // Find the next available log file
     do {
         file_index++;
-        sprintf(file_name, "log%i.FIRM", file_index);
+        sprintf(file_name, "log%i.frm", file_index);
         fr = f_findfirst(&dj, &fno, "/", file_name);
     } while (fr == FR_OK && fno.fname[0]);
 

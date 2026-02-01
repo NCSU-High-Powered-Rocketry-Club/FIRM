@@ -257,7 +257,7 @@ def convert_v1_1_to_v1_2(src, dst) -> None:
 # migrates a log file to have little-endian timestamp bytes
 def new_file( path ):
     # define source(s) and destination(s) files ( for testing )
-    dst_file = "migrated_log.FIRM"
+    dst_file = "migrated_log.FRM"
 
     # opens source file and destination file
     try:

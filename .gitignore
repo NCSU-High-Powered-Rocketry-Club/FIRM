@@ -77,7 +77,7 @@ cmake_install.cmake
 # log files in python/scripts folder
 python/scripts/*.TXT
 python/scripts/*.csv
-python/scripts/*.FIRM
+python/scripts/*.FRM
 python/scripts/*.bak
 
 # Python files:
