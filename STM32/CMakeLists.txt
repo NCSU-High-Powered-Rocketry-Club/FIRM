@@ -78,6 +78,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/commands.c
     Core/Src/messages.c
     Core/Src/mocking_handler.c
+    Core/Src/mock_ring_buffer.c
     Core/Src/firm_tasks.c
     Core/Src/led.c
     Core/Src/firm_fsm.c
