@@ -3,7 +3,7 @@ import sys
 import os
 import tempfile
 import shutil
-from typing import Callable, Dict
+from typing import Callable, Dict, Optional, Tuple
 from decoder import (
     BMP581_ID,
     ICM45686_ID,
@@ -39,6 +39,93 @@ V12_FREQUENCY_LEN = 2
 V12_PADDING_BYTES = 2
 V12_CAL_BYTES = 144
 V12_NUM_SCALE_FACTORS = 5
+
+
+def _mmc5983ma_bins(binary_packet: bytes) -> Tuple[int, int, int]:
+    # Keep bit extraction identical to decoder.py
+    mag_x_bin = (binary_packet[0] << 10) | (binary_packet[1] << 2) | (binary_packet[6] >> 6)
+    mag_y_bin = (binary_packet[2] << 10) | (binary_packet[3] << 2) | ((binary_packet[6] & 0x30) >> 4)
+    mag_z_bin = (binary_packet[4] << 10) | (binary_packet[5] << 2) | ((binary_packet[6] & 0x0C))
+    return mag_x_bin, mag_y_bin, mag_z_bin
+
+
+def _max_abs_diff(a: Tuple[int, int, int], b: Tuple[int, int, int]) -> int:
+    return max(abs(a[0] - b[0]), abs(a[1] - b[1]), abs(a[2] - b[2]))
+
+
+def detect_v10_magnetometer_anomaly_start(src, *, src_timestamp_bytes: int) -> Optional[int]:
+    # v1.0-specific issue: every 11th MMC5983MA reading is a spike.
+    # We detect the first spike (a single outlier that returns to normal on the next sample)
+    # and then treat every 11th MMC5983MA packet after that as anomalous.
+    #
+    # This function scans from the current file position until EOF/garbage and returns the
+    # 0-based MMC5983MA packet index of the first anomaly, or None if not detected.
+    THRESH_SPIKE = 10000
+    THRESH_RETURN = 5000
+
+    num_repeat_whitespace = 0
+    mag_count = 0
+    prev_bins: Optional[Tuple[int, int, int]] = None
+    cur_bins: Optional[Tuple[int, int, int]] = None
+
+    while True:
+        id_byte = src.read(1)
+        if len(id_byte) == 0:
+            break
+        if id_byte[0] == 0:
+            num_repeat_whitespace += 1
+            if num_repeat_whitespace > max([BMP581_SIZE, ICM45686_SIZE, MMC5983MA_SIZE]) + 4:
+                break
+            continue
+        num_repeat_whitespace = 0
+
+        clock_count_bytes = src.read(src_timestamp_bytes)
+        if len(clock_count_bytes) != src_timestamp_bytes:
+            break
+
+        if id_byte[0] == ord(BMP581_ID):
+            pk_bytes = src.read(BMP581_SIZE)
+            if len(pk_bytes) != BMP581_SIZE:
+                break
+            continue
+        if id_byte[0] == ord(ICM45686_ID):
+            pk_bytes = src.read(ICM45686_SIZE)
+            if len(pk_bytes) != ICM45686_SIZE:
+                break
+            continue
+        if id_byte[0] == ord(MMC5983MA_ID):
+            pk_bytes = src.read(MMC5983MA_SIZE)
+            if len(pk_bytes) != MMC5983MA_SIZE:
+                break
+
+            next_bins = _mmc5983ma_bins(pk_bytes)
+            if prev_bins is None:
+                prev_bins = next_bins
+                mag_count += 1
+                continue
+            if cur_bins is None:
+                cur_bins = next_bins
+                mag_count += 1
+                continue
+
+            # We now have a (prev, cur, next) window where cur is at index mag_count-1
+            spike_prev = _max_abs_diff(prev_bins, cur_bins)
+            spike_next = _max_abs_diff(cur_bins, next_bins)
+            return_prev = _max_abs_diff(prev_bins, next_bins)
+            if spike_prev >= THRESH_SPIKE and spike_next >= THRESH_SPIKE and return_prev <= THRESH_RETURN:
+                anomaly_index = (mag_count - 1)
+                if anomaly_index > 0:
+                    return anomaly_index
+
+            prev_bins = cur_bins
+            cur_bins = next_bins
+            mag_count += 1
+            continue
+
+        # garbage ID byte
+        break
+
+    return None
 
 
 def default_calibration_bytes() -> bytes:
@@ -91,11 +178,21 @@ def migrate_header_v1_1(src, dst) -> None:
     dst.write(scale_factor_bytes)
 
 
-def migrate_packets_swap_timestamp_endianness(src, dst, *, src_timestamp_bytes: int, dst_timestamp_bytes: int) -> None:
+def migrate_packets_swap_timestamp_endianness(
+    src,
+    dst,
+    *,
+    src_timestamp_bytes: int,
+    dst_timestamp_bytes: int,
+    mag_anomaly_start: Optional[int] = None,
+) -> None:
     # reads each packet
     if dst_timestamp_bytes != src_timestamp_bytes:
         return
     num_repeat_whitespace = 0
+
+    mag_count = 0
+    prev_mag_payload: Optional[bytes] = None
     while( True ):
         id_byte = src.read( 1 )
         # if end of file, exit
@@ -128,7 +225,16 @@ def migrate_packets_swap_timestamp_endianness(src, dst, *, src_timestamp_bytes: 
             dst.write( pk_bytes )
         elif id_byte[0] == ord( MMC5983MA_ID ):
             pk_bytes = src.read( MMC5983MA_SIZE )
-            dst.write( pk_bytes )
+            if mag_anomaly_start is not None and mag_count >= mag_anomaly_start and ((mag_count - mag_anomaly_start) % 11 == 0):
+                # Replace anomalous reading with the previous MMC5983MA packet's payload.
+                if prev_mag_payload is not None and len(prev_mag_payload) == MMC5983MA_SIZE:
+                    dst.write(prev_mag_payload)
+                else:
+                    dst.write(pk_bytes)
+            else:
+                dst.write(pk_bytes)
+                prev_mag_payload = pk_bytes
+            mag_count += 1
 
 
 def copy_packets_no_timestamp_swap(src, dst, *, src_timestamp_bytes: int, dst_timestamp_bytes: int) -> None:
@@ -203,11 +309,18 @@ def convert_to_v1_1(src, dst, header_text: bytes) -> None:
     if migrator is None:
         return
     migrator(src, dst)
+
+    mag_anomaly_start = None
+    if header_text == V10_TEXT:
+        packet_start = src.tell()
+        mag_anomaly_start = detect_v10_magnetometer_anomaly_start(src, src_timestamp_bytes=V10_TIMESTAMP_BYTES)
+        src.seek(packet_start)
     migrate_packets_swap_timestamp_endianness(
         src,
         dst,
         src_timestamp_bytes=V10_TIMESTAMP_BYTES,
         dst_timestamp_bytes=V11_TIMESTAMP_BYTES,
+        mag_anomaly_start=mag_anomaly_start,
     )
 
 

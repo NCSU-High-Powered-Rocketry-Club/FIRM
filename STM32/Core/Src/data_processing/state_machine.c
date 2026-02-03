@@ -17,7 +17,7 @@ static void set_state_matrices(struct UKF* ukfh) {
 
 void init_state(struct UKF* ukfh) {
     state = STANDBY;
-    memset(ukfh->Q, 0, sizeof(float) * (UKF_COVARIANCE_DIMENSION) * (UKF_COVARIANCE_DIMENSION));
+    memset(ukfh->Q, 0, sizeof(float) * UKF_COVARIANCE_DIMENSION * UKF_COVARIANCE_DIMENSION);
     memset(ukfh->R, 0, sizeof(float) * UKF_MEASUREMENT_DIMENSION * UKF_MEASUREMENT_DIMENSION);
     set_state_matrices(ukfh);
 }
@@ -29,8 +29,9 @@ void state_update(struct UKF* ukfh) {
             // the sum of errors in acceleration x, y, and z axis
             float accel_error_sum = fabsf(errors[1]) + fabsf(errors[2]) + fabsf(errors[3]);
             if (accel_error_sum > 300) {
-                state = MOTOR_BURN;
-                set_state_matrices(ukfh);
+                break;
+                //state = MOTOR_BURN;
+                //set_state_matrices(ukfh);
             }
             break;
         }

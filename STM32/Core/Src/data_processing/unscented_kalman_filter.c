@@ -524,10 +524,15 @@ void ukf_set_measurement(UKF *ukfh, const float *measurements) {
   const float norm_mag = sqrtf(mag_field[0] * mag_field[0] + mag_field[1] * mag_field[1] + mag_field[2] * mag_field[2]);
   // copy over the measurements, and normalize magnetometer
   memcpy(ukfh->measurement_vector, measurements, sizeof(measurements[0]) * (UKF_MEASUREMENT_DIMENSION - 3));
+  if (norm_mag < 1.0F)
+    return;
   ukfh->measurement_vector[UKF_MEASUREMENT_DIMENSION - 3] = mag_field[0] / norm_mag;
   ukfh->measurement_vector[UKF_MEASUREMENT_DIMENSION - 2] = mag_field[1] / norm_mag;
   ukfh->measurement_vector[UKF_MEASUREMENT_DIMENSION - 1] = mag_field[2] / norm_mag;
+  if (ukfh->measurement_vector[4] > 1000.0F)
+    led_toggle_status(FIRM_MODE_BOOT);
 }
+
 
 #ifdef TEST
 float ukf_test_get_lambda(void) { return lambda_scaling_parameter; }
