@@ -59,15 +59,18 @@ static void settings_write_defaults(void) {
                 calibrationSettings.icm45686_accel.scale_multiplier[3 * i + j] = 0.0F;
                 calibrationSettings.icm45686_gyro.scale_multiplier[3 * i + j] = 0.0F;
                 calibrationSettings.mmc5983ma_mag.scale_multiplier[3 * i + j] = 0.0F;
+                calibrationSettings.adxl371_accel.scale_multiplier[3 * i + j] = 0.0F;
                 continue;
             }
             calibrationSettings.icm45686_accel.scale_multiplier[3 * i + j] = 1.0F;
             calibrationSettings.icm45686_gyro.scale_multiplier[3 * i + j] = 1.0F;
             calibrationSettings.mmc5983ma_mag.scale_multiplier[3 * i + j] = 1.0F;
+            calibrationSettings.adxl371_accel.scale_multiplier[3 * i + j] = 1.0F;
         }
         calibrationSettings.icm45686_accel.offset_gs[i] = 0.0F;
         calibrationSettings.icm45686_gyro.offset_dps[i] = 0.0F;
         calibrationSettings.mmc5983ma_mag.offset_ut[i] = 0.0F;
+        calibrationSettings.adxl371_accel.offset_gs[i] = 0.0F;
     }
 
     // TODO: determine settings to use

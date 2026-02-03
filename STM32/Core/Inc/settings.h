@@ -20,6 +20,15 @@ typedef struct {
 } AccelCalibration_t;
 
 /**
+ * Accelerometer (ADXL371) calibration coefficients
+ */
+typedef struct {
+    float offset_gs[3];
+    float scale_multiplier[9];
+} ADXLAccelCalibration_t;
+
+
+/**
  * Gyroscope calibration coefficients
  */
 typedef struct {
@@ -42,6 +51,7 @@ typedef struct {
     AccelCalibration_t icm45686_accel;
     GyroCalibration_t icm45686_gyro;
     MagCalibration_t mmc5983ma_mag;
+    ADXLAccelCalibration_t adxl371_accel;
 } CalibrationSettings_t;
 
 /**

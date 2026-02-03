@@ -55,11 +55,12 @@ void adxl371_convert_packet(ADXL371Packet_t *packet, CalibratedDataPacket_t *res
     float accel_x_float = (float)accel_binary_x * scale;
     float accel_y_float = (float)accel_binary_y * scale;
     float accel_z_float = (float)accel_binary_z * scale;
-
-    result_packet->adxl_accel_x = accel_x_float;
-    result_packet->adxl_accel_y = accel_y_float;
-    result_packet->adxl_accel_z = accel_z_float;
-}
+    
+    //3x3 scaling matrix
+    result_packet -> adxl_accel_x = accel_x_float * calibrationSettings.adxl371_accel.scale_multiplier[0] + accel_y_float * calibrationSettings.adxl371_accel.scale_multiplier[3] + accel_z_float * calibrationSettings.adxl371_accel.scale_multiplier[6];
+    result_packet -> adxl_accel_y = accel_x_float * calibrationSettings.adxl371_accel.scale_multiplier[1] + accel_y_float * calibrationSettings.adxl371_accel.scale_multiplier[4] + accel_z_float * calibrationSettings.adxl371_accel.scale_multiplier[7];
+    result_packet -> adxl_accel_z = accel_x_float * calibrationSettings.adxl371_accel.scale_multiplier[2] + accel_y_float * calibrationSettings.adxl371_accel.scale_multiplier[5] + accel_z_float * calibrationSettings.adxl371_accel.scale_multiplier[8];
+  }
 
 void mmc5983ma_convert_packet(MMC5983MAPacket_t *packet, CalibratedDataPacket_t *result_packet) {
     // get the current timestamp of the packet in seconds using the DWT counter
