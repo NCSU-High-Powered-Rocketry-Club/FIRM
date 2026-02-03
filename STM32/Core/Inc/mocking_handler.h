@@ -66,8 +66,6 @@ uint32_t mock_timestamp_accumulate_delay_ms(uint32_t *accumulated_clock_cycles, 
 
 typedef bool (*MockSettingsWriteFn)(void *ctx, FIRMSettings_t *firm_settings, CalibrationSettings_t *calibration_settings);
 
-MockPacketID process_mock_packet(uint16_t identifier, uint32_t length, uint8_t *received_bytes, uint8_t *mock_packet);
-
 /**
  * Processes a mock header/settings packet by parsing the settings and calibration data
  * and writing them to sector 2 of the flash chip.

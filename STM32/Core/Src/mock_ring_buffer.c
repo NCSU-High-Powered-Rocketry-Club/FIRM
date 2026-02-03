@@ -69,3 +69,7 @@ bool mock_ring_peek(const MockRingBuffer *rb, MockSensorPacket *out) {
   *out = rb->storage[rb->tail];
   return true;
 }
+
+size_t mock_ring_get_length(const MockRingBuffer *rb) {
+  return rb->count;
+}

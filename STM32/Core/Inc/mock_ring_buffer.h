@@ -30,3 +30,5 @@ void mock_ring_commit_reserved(MockRingBuffer *rb);
 bool mock_ring_pop(MockRingBuffer *rb, MockSensorPacket *out);
 
 bool mock_ring_peek(const MockRingBuffer *rb, MockSensorPacket *out);
+
+size_t mock_ring_get_length(const MockRingBuffer *rb);

@@ -3,15 +3,6 @@
 static uint32_t mock_prev_ts = 0U;
 static bool mock_have_prev_ts = false;
 
-MockPacketID process_mock_packet(uint16_t identifier, uint32_t length, uint8_t *received_bytes, uint8_t *mock_packet) {
-  // if its the settings, return immediately because it has to be processed differently
-  if (identifier == MOCKID_SETTINGS) {
-    return identifier;
-  }
-  memcpy(mock_packet, received_bytes, length);
-  return identifier;
-}
-
 bool process_mock_settings_packet(uint8_t *received_bytes,
                                  uint32_t length,
                                  FIRMSettings_t* firm_settings,
@@ -19,7 +10,7 @@ bool process_mock_settings_packet(uint8_t *received_bytes,
                                  HeaderFields* header_fields,
                                  MockSettingsWriteFn write_fn,
                                  void *write_ctx) {
-  const char* expected_header = "FIRM LOG v1.1\n";
+  const char* expected_header = FIRM_LOG_HEADER_TEXT;
 
   // Expected payload layout:
   // - "FIRM LOG v1.1\n" (14 bytes)

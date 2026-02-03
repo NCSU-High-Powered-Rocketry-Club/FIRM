@@ -204,9 +204,10 @@ int main(void)
   filter_data_task_handle = osThreadNew(filter_data_task, NULL, &filterDataTask_attributes);
   transmit_task_handle = osThreadNew(transmit_data, NULL, &transmitTask_attributes);
   usb_read_task_handle = osThreadNew(usb_read_data, NULL, &usbReadTask_attributes);
+  mock_packet_handler_handle = osThreadNew(mock_packet_handler, NULL, &mockPacketTask_attributes);
   
   if (system_manager_task_handle == NULL || firm_mode_indicator_task_handle == NULL || mmc5983ma_task_handle == NULL || icm45686_task_handle == NULL || bmp581_task_handle == NULL || filter_data_task_handle == NULL ||
-      packetizer_task_handle == NULL || transmit_task_handle == NULL || usb_read_task_handle == NULL) {
+      packetizer_task_handle == NULL || transmit_task_handle == NULL || usb_read_task_handle == NULL || mock_packet_handler_handle == NULL) {
     Error_Handler();
   }
   /* USER CODE END RTOS_THREADS */
@@ -635,13 +636,13 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
   if (GPIO_Pin == BMP581_Interrupt_Pin) {
-    vTaskNotifyGiveFromISR(bmp581_task_handle, &xHigherPriorityTaskWoken);
+    (void)xTaskNotifyFromISR(bmp581_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits, &xHigherPriorityTaskWoken);
   }
   if (GPIO_Pin == ICM45686_Interrupt_Pin) {
-    vTaskNotifyGiveFromISR(icm45686_task_handle, &xHigherPriorityTaskWoken);
+    (void)xTaskNotifyFromISR(icm45686_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits, &xHigherPriorityTaskWoken);
   }
   if (GPIO_Pin == MMC5983MA_Interrupt_Pin) {
-    vTaskNotifyGiveFromISR(mmc5983ma_task_handle, &xHigherPriorityTaskWoken);
+    (void)xTaskNotifyFromISR(mmc5983ma_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits, &xHigherPriorityTaskWoken);
   }
   portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }

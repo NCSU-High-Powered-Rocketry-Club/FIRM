@@ -527,7 +527,6 @@ void ukf_set_measurement(UKF *ukfh, const float *measurements) {
   ukfh->measurement_vector[UKF_MEASUREMENT_DIMENSION - 3] = mag_field[0] / norm_mag;
   ukfh->measurement_vector[UKF_MEASUREMENT_DIMENSION - 2] = mag_field[1] / norm_mag;
   ukfh->measurement_vector[UKF_MEASUREMENT_DIMENSION - 1] = mag_field[2] / norm_mag;
-  ukfh->measurement_vector[3] = measurements[3];
 }
 
 #ifdef TEST
