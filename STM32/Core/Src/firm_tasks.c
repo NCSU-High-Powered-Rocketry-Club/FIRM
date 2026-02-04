@@ -488,10 +488,12 @@ void filter_data_task(void *argument) {
   UKF ukf;
   ukf.measurement_function = ukf_measurement_function;
   ukf.state_transition_function = ukf_state_transition_function;
-  vTaskDelay(pdMS_TO_TICKS(KALMAN_FILTER_STARTUP_DELAY_TIME_MS));
   DataPacket *packet = &data_packet.data.data_packet;
   TaskCommandOption cmd_status = TASKCMD_SETUP;
   float last_time; 
+  // set the timer based on the set packet transmission frequency
+  const TickType_t transmit_freq = MAX_WAIT_TIME(firmSettings.frequency_hz);
+  TickType_t last_wake_time = xTaskGetTickCount();
 
   for (;;) {
     xQueueReceive(data_filter_command_queue, &cmd_status, 0);
@@ -524,6 +526,7 @@ void filter_data_task(void *argument) {
         led_set_status(FIRM_MODE_BOOT);
       }
       memcpy(&packet->est_position_x_meters, ukf.X, UKF_STATE_DIMENSION * 4);
+      vTaskDelayUntil(&last_wake_time, transmit_freq);
     }
   }
 }
@@ -534,7 +537,7 @@ void packetizer_task(void *argument) {
   data_packet.identifier = 0x0000;
   data_packet.packet_len = sizeof(DataPacket);
   // set the timer based on the set packet transmission frequency
-  const TickType_t transmit_freq = MAX_WAIT_TIME(TRANSMIT_FREQUENCY_HZ);
+  const TickType_t transmit_freq = MAX_WAIT_TIME(firmSettings.frequency_hz);
   TickType_t last_wake_time = xTaskGetTickCount();
   SystemResponsePacket sys_response;
 
