@@ -92,7 +92,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
    Core/Inc
-   Drivers/CMSIS-DSP/Include
    Core/Inc/data_processing
    Libraries/ICM45686
    Libraries/BMP581
@@ -118,16 +117,4 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     m
 
     # Add user defined libraries
-)
-
-set(CMSISDSP Drivers/CMSIS-DSP)
-set(CMSISCORE "${CMAKE_CURRENT_SOURCE_DIR}/Drivers/CMSIS")
-add_subdirectory(${CMSISDSP}/Source bin_dsp)
-target_link_libraries(${CMAKE_PROJECT_NAME} CMSISDSP)
-
-target_compile_options(CMSISDSP PRIVATE
-    -mcpu=cortex-m4
-    -mfpu=fpv4-sp-d16
-    -mfloat-abi=hard
-    -Ofast
 )
