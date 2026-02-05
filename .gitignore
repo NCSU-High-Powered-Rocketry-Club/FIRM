@@ -65,7 +65,9 @@ dkms.conf
 # FIRM code
 /STM32/build
 mx.scratch
-.vscode
+.vscode/*
+!.vscode/settings.json
+!.vscode/c_cpp_properties.json
 /STM32/CMakeFiles
 /STM32/CMakeCache.txt
 /STM32/build.ninja
@@ -75,6 +77,8 @@ cmake_install.cmake
 # log files in python/scripts folder
 python/scripts/*.TXT
 python/scripts/*.csv
+python/scripts/*.FRM
+python/scripts/*.bak
 
 # Python files:
 __pycache__/
@@ -83,5 +87,15 @@ __pycache__/
 *.pyd
 .venv/
 
+# Jetbrains
+.idea/
+.idea/**/*
+cmake-build-debug
+cmake-build-release
+build/
+
 # tests
 /tests/build
+
+CMakeFiles/
+CMakeCache.txt

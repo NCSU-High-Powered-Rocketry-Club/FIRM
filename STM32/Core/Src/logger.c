@@ -6,8 +6,6 @@
  */
 
 #include "logger.h"
-#include "fatfs.h"
-#include "ff.h"
 #include "settings.h"
 #include "usb_print_debug.h"
 #include <stdint.h>
@@ -25,17 +23,6 @@
 static FRESULT logger_ensure_capacity(size_t capacity);
 
 /**
- * @brief Logs the type and clock cycle timestamp. This will be writen as 1 byte for the type
- *        and three bytes (uint24) for the clock cycle count. The clock cycle count will overflow
- *        every ~0.1 seconds.
- * @note advances the current offset variable for the buffer
- * 
- * @param type the character that signifies the type of packet being logged
- * @retval None
- */
-static void logger_log_type_timestamp(char type);
-
-/**
  * @brief writes a filled buffer to the Micro SD Card via DMA
  * 
  * @retval File Status error code, 0 on success.
@@ -51,7 +38,7 @@ static void logger_swap_buffers();
  * This is the size in bytes of the type of packet and the timestamp associated
  * with it.
  */
-static const int packet_metadata_size = 4;
+static const int packet_timestamp_size = 4;
 
 static char  buffer0[SD_SECTOR_SIZE];
 static char  buffer1[SD_SECTOR_SIZE];
@@ -98,7 +85,7 @@ FRESULT logger_init(DMA_HandleTypeDef* dma_sdio_tx_handle) {
     // Find the next available log file
     do {
         file_index++;
-        sprintf(file_name, "log%i.txt", file_index);
+        sprintf(file_name, "log%i.frm", file_index);
         fr = f_findfirst(&dj, &fno, "/", file_name);
     } while (fr == FR_OK && fno.fname[0]);
 
@@ -123,7 +110,7 @@ FRESULT logger_init(DMA_HandleTypeDef* dma_sdio_tx_handle) {
         }
 
         // 2e8 bytes = (1 hour * ((8192 bytes * 4.4hz) * 1.5))
-        fr = f_expand(&log_file, (FSIZE_t)2e8, 1);
+        fr = f_expand(&log_file, (FSIZE_t)5e6, 1);
         if (fr != FR_OK) {
             return fr;
         }
@@ -134,7 +121,7 @@ FRESULT logger_init(DMA_HandleTypeDef* dma_sdio_tx_handle) {
 }
 
 FRESULT logger_write_header(HeaderFields* sensor_scale_factors) {
-    const char* firm_log_header = "FIRM LOG v1.1\n";
+    const char* firm_log_header = FIRM_LOG_HEADER_TEXT;
     size_t header_len = strlen(firm_log_header);
     size_t scale_factor_len = sizeof(HeaderFields);
     size_t firm_settings_len = sizeof(firmSettings);
@@ -163,18 +150,20 @@ FRESULT logger_write_header(HeaderFields* sensor_scale_factors) {
 }
 
 void* logger_malloc_packet(size_t capacity) {
-    if (logger_ensure_capacity(capacity + packet_metadata_size)) {
-        return NULL;
-    }
-    return &current_buffer[current_offset + packet_metadata_size];
+  if (logger_ensure_capacity(capacity)) {
+    return NULL;
+  }
+  return &current_buffer[current_offset];
 }
 
 void logger_write_entry(char type, size_t packet_size) {
-    logger_log_type_timestamp(type);
-    // advance current offset by packet size
-    current_offset += packet_size;
+  // the packet has a 4 byte timestamp, but we want to replace the most significant byte
+  // and replace with identification letter
+  current_buffer[current_offset++] = type;
+  // advance current offset by timestamp size (fixed) and packet size (variable)
+  current_offset += packet_timestamp_size;
+  current_offset += packet_size;
 }
-
 
 static FRESULT logger_ensure_capacity(size_t capacity) {
     if (current_offset + capacity > SD_SECTOR_SIZE) {
@@ -186,18 +175,6 @@ static FRESULT logger_ensure_capacity(size_t capacity) {
     // TODO error handling
     return FR_OK;
 }
-
-static void logger_log_type_timestamp(char type) {
-    current_buffer[current_offset++] = type;
-    uint32_t current_time = DWT->CYCCNT;
-    //current_buffer[current_offset++] = (char)((current_time >> 16) & 0xFF);
-    //current_buffer[current_offset++] = (char)((current_time >> 8) & 0xFF);
-    //current_buffer[current_offset++] = (char)(current_time & 0xFF);
-    current_buffer[current_offset++] = (char)(current_time & 0xFF);
-    current_buffer[current_offset++] = (char)((current_time >> 8) & 0xFF);
-    current_buffer[current_offset++] = (char)((current_time >> 16) & 0xFF);
-}
-
 
 static FRESULT logger_write() {
     if (HAL_DMA_GetState(hdma_sdio_tx) != HAL_DMA_STATE_READY) {
@@ -239,4 +216,38 @@ static void logger_swap_buffers() {
     }
 
     current_offset = 0;
+}
+
+FRESULT logger_append_mock_header(FIRMSettings_t* firm_settings, CalibrationSettings_t* calibration_settings, HeaderFields* sensor_scale_factors) {
+    if (firm_settings == NULL || calibration_settings == NULL || sensor_scale_factors == NULL) {
+        return FR_INVALID_PARAMETER;
+    }
+
+    const char* mock_header = FIRM_LOG_HEADER_TEXT;
+    size_t header_len = strlen(mock_header);
+    size_t firm_settings_len = sizeof(FIRMSettings_t);
+    size_t calibration_settings_len = sizeof(CalibrationSettings_t);
+    size_t scale_factor_len = sizeof(HeaderFields);
+
+    FRESULT error_status = logger_ensure_capacity(header_len + firm_settings_len + 2 + calibration_settings_len + scale_factor_len);
+    if (error_status) {
+        return error_status;
+    }
+
+    // Append mock header marker
+    memcpy(current_buffer + current_offset, mock_header, header_len);
+    current_offset += header_len;
+    
+    // Append mock firmware settings
+    memcpy(current_buffer + current_offset, firm_settings, firm_settings_len);
+    current_offset += firm_settings_len;
+    // Append mock calibration settings
+    memcpy(current_buffer + current_offset, calibration_settings, calibration_settings_len);
+    current_offset += calibration_settings_len;
+    
+    // Append sensor scale factors
+    memcpy(current_buffer + current_offset, sensor_scale_factors, scale_factor_len);
+    current_offset += scale_factor_len;
+
+    return error_status;
 }

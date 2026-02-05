@@ -16,15 +16,17 @@
  ******************************************************************************
  */
 
-#include "firm.h"
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "cmsis_os.h"
 #include "fatfs.h"
 #include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "firm_tasks.h"
+
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -61,6 +63,20 @@ SPI_HandleTypeDef hspi3;
 UART_HandleTypeDef huart1;
 DMA_HandleTypeDef hdma_usart1_tx;
 
+/* Definitions for defaultTask */
+osThreadId_t defaultTaskHandle;
+const osThreadAttr_t defaultTask_attributes = {
+  .name = "defaultTask",
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for startupTask */
+osThreadId_t startupTaskHandle;
+const osThreadAttr_t startupTask_attributes = {
+  .name = "startupTask",
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -76,6 +92,9 @@ static void MX_SPI2_Init(void);
 static void MX_SPI3_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_USART1_UART_Init(void);
+void StartDefaultTask(void *argument);
+void StartupTask(void *argument);
+
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -118,49 +137,98 @@ int main(void)
   MX_I2C1_Init();
   MX_I2C2_Init();
   MX_SDIO_SD_Init();
-  MX_FATFS_Init();
   MX_SPI2_Init();
   MX_SPI3_Init();
-  MX_USB_DEVICE_Init();
   MX_SPI1_Init();
   MX_USART1_UART_Init();
+  MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
 
   SPIHandles spi_handles = {
-    .hspi1 = &hspi1,
-    .hspi2 = &hspi2,
-    .hspi3 = &hspi3,
+      .hspi1 = &hspi1,
+      .hspi2 = &hspi2,
+      .hspi3 = &hspi3,
   };
   I2CHandles i2c_handles = {
-    .hi2c1 = &hi2c1,
-    .hi2c2 = &hi2c2,
+      .hi2c1 = &hi2c1,
+      .hi2c2 = &hi2c2,
   };
   DMAHandles dma_handles = {
-    .hdma_sdio_rx = &hdma_sdio_rx,
-    .hdma_sdio_tx = &hdma_sdio_tx,
+      .hdma_sdio_rx = &hdma_sdio_rx,
+      .hdma_sdio_tx = &hdma_sdio_tx,
   };
   UARTHandles uart_handles = {
-    .huart1 = &huart1,
+      .huart1 = &huart1,
   };
 
   if (initialize_firm(&spi_handles, &i2c_handles, &dma_handles, &uart_handles)) {
-      Error_Handler();
+    Error_Handler();
   };
 
   /* USER CODE END 2 */
 
+  /* Init scheduler */
+  osKernelInitialize();
+
+  /* USER CODE BEGIN RTOS_MUTEX */
+  sensorDataMutexHandle = osMutexNew(&sensorDataMutex_attributes);
+
+  /* USER CODE END RTOS_MUTEX */
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  firm_rtos_init();
+  /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  /* creation of defaultTask */
+  defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+
+  /* creation of startupTask */
+  startupTaskHandle = osThreadNew(StartupTask, NULL, &startupTask_attributes);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  system_manager_task_handle = osThreadNew(system_manager_task, NULL, &systemManagerTask_attributes);
+  firm_mode_indicator_task_handle = osThreadNew(firm_mode_indicator_task, NULL, &modeIndicatorTask_attributes);
+  bmp581_task_handle = osThreadNew(collect_bmp581_data_task, NULL, &bmp581Task_attributes);
+  icm45686_task_handle = osThreadNew(collect_icm45686_data_task, NULL, &icm45686Task_attributes);
+  mmc5983ma_task_handle = osThreadNew(collect_mmc5983ma_data_task, NULL, &mmc5983maTask_attributes);
+  packetizer_task_handle = osThreadNew(packetizer_task, NULL, &packetizerTask_attributes);
+  filter_data_task_handle = osThreadNew(filter_data_task, NULL, &filterDataTask_attributes);
+  transmit_task_handle = osThreadNew(transmit_data, NULL, &transmitTask_attributes);
+  usb_read_task_handle = osThreadNew(usb_read_data, NULL, &usbReadTask_attributes);
+  mock_packet_handler_handle = osThreadNew(mock_packet_handler, NULL, &mockPacketTask_attributes);
+  
+  if (system_manager_task_handle == NULL || firm_mode_indicator_task_handle == NULL || mmc5983ma_task_handle == NULL || icm45686_task_handle == NULL || bmp581_task_handle == NULL || filter_data_task_handle == NULL ||
+      packetizer_task_handle == NULL || transmit_task_handle == NULL || usb_read_task_handle == NULL || mock_packet_handler_handle == NULL) {
+    Error_Handler();
+  }
+  /* USER CODE END RTOS_THREADS */
+
+  /* USER CODE BEGIN RTOS_EVENTS */
+  /* add events, ... */
+  /* USER CODE END RTOS_EVENTS */
+
+  /* Start scheduler */
+  osKernelStart();
+
+  /* We should never get here as control is now taken by the scheduler */
+
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-
-    // This is the main loop. It's constantly checking to see if any of the sensors have
-    // new data to read, and if so, logs it.
-    while (1) {
-      loop_firm();
-    }
+  Error_Handler();
+  while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-
+  }
   /* USER CODE END 3 */
 }
 
@@ -463,13 +531,13 @@ static void MX_DMA_Init(void)
 
   /* DMA interrupt init */
   /* DMA2_Stream3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
   /* DMA2_Stream6_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
   /* DMA2_Stream7_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream7_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA2_Stream7_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream7_IRQn);
 
 }
@@ -541,13 +609,13 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI2_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI2_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI2_IRQn);
 
-  HAL_NVIC_SetPriority(EXTI3_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI3_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI3_IRQn);
 
-  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
@@ -556,6 +624,7 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void blink() { HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET); }
 
 /**
  * @brief ISR for interrupt pins
@@ -564,17 +633,114 @@ static void MX_GPIO_Init(void)
  * @retval None
  */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-    if (GPIO_Pin == BMP581_Interrupt_Pin) {
-        bmp581_has_new_data  = true;
-    }
-    if (GPIO_Pin == ICM45686_Interrupt_Pin) {
-        icm45686_has_new_data  = true;
-    }
-    if (GPIO_Pin == MMC5983MA_Interrupt_Pin) {
-        mmc5983ma_has_new_data = true;
-    }
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+  if (GPIO_Pin == BMP581_Interrupt_Pin) {
+    (void)xTaskNotifyFromISR(bmp581_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits, &xHigherPriorityTaskWoken);
+  }
+  if (GPIO_Pin == ICM45686_Interrupt_Pin) {
+    (void)xTaskNotifyFromISR(icm45686_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits, &xHigherPriorityTaskWoken);
+  }
+  if (GPIO_Pin == MMC5983MA_Interrupt_Pin) {
+    (void)xTaskNotifyFromISR(mmc5983ma_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits, &xHigherPriorityTaskWoken);
+  }
+  portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 /* USER CODE END 4 */
+
+/* USER CODE BEGIN Header_StartDefaultTask */
+/**
+ * @brief  Function implementing the defaultTask thread.
+ * @param  argument: Not used
+ * @retval None
+ */
+/* USER CODE END Header_StartDefaultTask */
+void StartDefaultTask(void *argument)
+{
+  /* init code for USB_DEVICE */
+  MX_USB_DEVICE_Init();
+  /* USER CODE BEGIN 5 */
+  /* Infinite loop */
+  for (;;) {
+    osDelay(1);
+  }
+  /* USER CODE END 5 */
+}
+
+/* USER CODE BEGIN Header_StartupTask */
+/**
+ * @brief Function implementing the startupTask thread.
+ * @param argument: Not used
+ * @retval None
+ */
+/* USER CODE END Header_StartupTask */
+void StartupTask(void *argument)
+{
+  /* USER CODE BEGIN StartupTask */
+  // Setup the SD card
+  FRESULT res = logger_init(&hdma_sdio_tx);
+  if (res) {
+    serialPrintStr("Failed to initialized the logger (SD card)");
+    Error_Handler();
+  }
+
+  // get scale factor values for each sensor to put in header
+  HeaderFields header_fields = {
+      bmp581_get_temp_scale_factor(),
+      bmp581_get_pressure_scale_factor(),
+      icm45686_get_accel_scale_factor(),
+      icm45686_get_gyro_scale_factor(),
+      mmc5983ma_get_magnetic_field_scale_factor(),
+  };
+
+  logger_write_header(&header_fields);
+
+  // the IMU runs into issues when the fifo is full at the very beginning, causing the interrupt
+  // to be pulled back low too fast, and the ISR doesn't catch it for whatever reason. Doing
+  // this initial read will prevent that.
+  // ICM45686Packet_t imu_packet;
+  // icm45686_read_data(&imu_packet);
+  // MMC5983MAPacket_t mag_packet;
+  // mmc5983ma_read_data(&mag_packet, &magnetometer_flip);
+
+  // even though we call this function in settings setup, it somehow breaks settings
+  // when you try to write to it during rtos. So we have to call this again.
+  w25q128jv_set_spi_settings(&hspi1, GPIOC, GPIO_PIN_4);
+  set_spi_icm(&hspi2, GPIOB, GPIO_PIN_9);
+  set_spi_bmp(&hspi2, GPIOC, GPIO_PIN_2);
+  set_spi_mmc(&hi2c1, 0x30);
+  
+  // re-enable ISR's so that interrupts can trigger the sensor tasks to run
+  HAL_NVIC_EnableIRQ(EXTI2_IRQn);
+  HAL_NVIC_EnableIRQ(EXTI3_IRQn);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+  SystemRequest boot = SYSREQ_SETUP;
+  xQueueSend(system_request_queue, &boot, 0);
+  vTaskDelete(NULL);
+  /* USER CODE END StartupTask */
+}
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM2 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM2)
+  {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+
+  /* USER CODE END Callback 1 */
+}
 
 /**
   * @brief  This function is executed in case of error occurrence.
@@ -583,10 +749,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-    /* User can add his own implementation to report the HAL error return state */
-    __disable_irq();
-    while (1) {
-    }
+  /* User can add his own implementation to report the HAL error return state */
+  __disable_irq();
+  while (1) {
+  }
   /* USER CODE END Error_Handler_Debug */
 }
 #ifdef USE_FULL_ASSERT
@@ -600,8 +766,8 @@ void Error_Handler(void)
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
-    /* User can add his own implementation to report the file name and line number,
-       ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+  /* User can add his own implementation to report the file name and line number,
+     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */

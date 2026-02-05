@@ -59,6 +59,11 @@ static const float scale_factor = (float)data_num_lsb_bits / 800.0F;
 
 static I2CSettings i2cSettings;
 
+void set_spi_mmc(I2C_HandleTypeDef* hi2c, uint8_t device_i2c_addr) {
+  i2cSettings.hi2c = hi2c;
+  i2cSettings.dev_addr = device_i2c_addr;
+}
+
 int mmc5983ma_init(I2C_HandleTypeDef* hi2c, uint8_t device_i2c_addr) {
     if (hi2c == NULL) {
         serialPrintStr("Invalid i2c handle for MMC5983MA");

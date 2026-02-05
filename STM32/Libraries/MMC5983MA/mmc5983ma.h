@@ -9,19 +9,7 @@
 #include "usb_print_debug.h"
 #include <stdbool.h>
 #include <stdint.h>
-
-/**
- * @brief magnetometer data packet structur for the MMC5983MA.
- */
-typedef struct {
-    uint8_t mag_x_msb;
-    uint8_t mag_x_mid;
-    uint8_t mag_y_msb;
-    uint8_t mag_y_mid;
-    uint8_t mag_z_msb;
-    uint8_t mag_z_mid;
-    uint8_t mag_xyz_lsb;
-} MMC5983MAPacket_t;
+#include "mmc5983ma_packet.h"
 
 /**
  * @brief sets up the MMC5983MA magnetometer with the intended settings for flight
@@ -48,3 +36,5 @@ int mmc5983ma_read_data(MMC5983MAPacket_t* packet);
  * @retval float value to divide binary data by to get magnetic field in microteslas.
  */
 float mmc5983ma_get_magnetic_field_scale_factor(void);
+
+void set_spi_mmc(I2C_HandleTypeDef* hi2c, uint8_t device_i2c_addr);
