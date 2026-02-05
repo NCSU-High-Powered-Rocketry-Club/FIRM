@@ -577,7 +577,7 @@ void transmit_data(void *argument) {
 
 void usb_read_data(void *argument) {
   uint8_t meta_bytes[sizeof(uint16_t) + sizeof(uint16_t) + sizeof(uint32_t)];
-  uint8_t received_bytes[COMMAND_READ_CHUNK_SIZE_BYTES];
+  uint8_t received_bytes[MESSAGE_BYTE_BUFFER_SIZE];
   UsbMessageMeta meta;
 
   for (;;) {
@@ -629,8 +629,9 @@ void usb_read_data(void *argument) {
       __NOP();
     }
     xStreamBufferReceive(usb_rx_stream, received_bytes, meta.payload_length + 2, portMAX_DELAY);
-    if (!validate_message_crc16(meta.header, meta.identifier, meta.payload_length, received_bytes))
+    if (!validate_message_crc16(meta.header, meta.identifier, meta.payload_length, received_bytes)) {
       continue; // invalid crc, skip
+    }
     
     switch (type) {
       case USBMSG_MOCK_SETTINGS: {

@@ -48,6 +48,8 @@ MessageIdentifier validate_message_identifier(uint16_t header, uint16_t identifi
         case CMDID_GET_DEVICE_CONFIG:
         case CMDID_GET_DEVICE_INFO:
         case CMDID_SET_DEVICE_CONFIG:
+        case CMDID_SET_IMU_CALIBRATON:
+        case CMDID_SET_MAG_CALIBRATON:
         case CMDID_REBOOT:
           return MSGID_COMMAND_PACKET;
         default:

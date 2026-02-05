@@ -91,6 +91,8 @@ uint32_t execute_command(CommandIdentifier identifier, uint8_t *data, uint32_t d
       memcpy(&new_accel_calibration, data, sizeof(AccelCalibration_t));
       memcpy(&new_gyro_calibration, &data[sizeof(AccelCalibration_t)], sizeof(GyroCalibration_t));
       response_packet->success.b = settings_write_calibration_settings(&new_accel_calibration, &new_gyro_calibration, NULL);
+      response_packet->success.b = true;
+      
       return 1;
     }
     case CMDID_SET_MAG_CALIBRATON: {
