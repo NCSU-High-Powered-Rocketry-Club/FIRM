@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useFIRM } from "~/contexts/FIRMContext";
 import type { FIRMPacket } from "firm-client";
 
@@ -26,46 +26,39 @@ export function DeveloperPanel({ visible }: { visible: boolean }) {
   const rxRef = useRef<HTMLTextAreaElement | null>(null);
   const txRef = useRef<HTMLTextAreaElement | null>(null);
 
+  const [showPacketViewer, setShowPacketViewer] = useState<boolean>(true);
+  const [packetText, setPacketText] = useState<string>(
+    "Waiting for packets…",
+  );
+
   const latestPacketRef = useRef<FIRMPacket | null>(null);
   useEffect(() => {
     latestPacketRef.current = latestPacket;
   }, [latestPacket]);
 
-  const [uiPacket, setUiPacket] = useState<FIRMPacket | null>(null);
   useEffect(() => {
-    if (!visible) return;
+    if (!visible || !showPacketViewer) return;
+
+    const UPDATE_MS = 100; // 10 Hz
+    const MAX_CHARS = 40_000;
 
     const id = window.setInterval(() => {
-      setUiPacket(latestPacketRef.current);
-    }, 100);
+      const pkt = latestPacketRef.current;
+      if (!pkt) {
+        setPacketText("No packets received yet.");
+        return;
+      }
 
-    return () => {
-      window.clearInterval(id);
-    };
-  }, [visible]);
+      try {
+        const text = JSON.stringify(pkt, null, 2);
+        setPacketText(text.length > MAX_CHARS ? text.slice(0, MAX_CHARS) + "\n…(truncated)" : text);
+      } catch {
+        setPacketText(String(pkt));
+      }
+    }, UPDATE_MS);
 
-  useEffect(() => {
-    if (!visible) return;
-    const el = rxRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
-  }, [visible, recentRxHex]);
-
-  useEffect(() => {
-    if (!visible) return;
-    const el = txRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
-  }, [visible, recentTxHex]);
-
-  const packetText = useMemo(() => {
-    if (!uiPacket) return "No packets received yet.";
-    try {
-      return JSON.stringify(uiPacket, null, 2);
-    } catch {
-      return String(uiPacket);
-    }
-  }, [uiPacket]);
+    return () => window.clearInterval(id);
+  }, [visible, showPacketViewer]);
 
   if (!visible) return null;
 
@@ -137,12 +130,30 @@ export function DeveloperPanel({ visible }: { visible: boolean }) {
       </div>
 
       <div className="mt-3">
-        <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Latest FIRMPacket
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Latest FIRMPacket
+          </div>
+          <label className="flex items-center gap-2 text-xs text-slate-600 select-none">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-[var(--color-theme)]"
+              checked={showPacketViewer}
+              onChange={(e) => setShowPacketViewer(e.target.checked)}
+            />
+            Enable packet JSON viewer
+          </label>
         </div>
-        <pre className="max-h-[28rem] overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-800 whitespace-pre shadow-inner">
-          {packetText}
-        </pre>
+
+        {showPacketViewer ? (
+          <pre className="max-h-[28rem] overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-800 whitespace-pre shadow-inner">
+            {packetText}
+          </pre>
+        ) : (
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+            Disabled to keep the app responsive in dev. Toggle it on if you need to inspect packets.
+          </div>
+        )}
       </div>
     </section>
   );

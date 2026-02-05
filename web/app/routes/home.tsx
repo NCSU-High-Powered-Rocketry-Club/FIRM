@@ -8,6 +8,7 @@ import { ActionsPanel } from "~/components/ActionsPanel";
 import { Footer } from "~/components/Footer";
 import { ConnectionBar } from "~/components/ConnectionBar";
 import { FIRMProvider, useFIRM, isEditableTarget } from "~/contexts/FIRMContext";
+import { CalibrationPanel } from "~/components/CalibrationPanel";
 
 function getBodyContainerClasses(isConnected: boolean): string {
   let classes = "mx-auto flex max-w-5xl flex-col gap-4 px-6 py-6 transition-opacity";
@@ -29,15 +30,22 @@ function HomeContent() {
   const { isConnected } = useFIRM();
   const bodyClasses = getBodyContainerClasses(isConnected);
   const [showDev, setShowDev] = useState(false);
+  const [showCal, setShowCal] = useState(false);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (isEditableTarget(e.target)) return;
-      if (e.key !== "d" && e.key !== "D") return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
 
-      e.preventDefault();
-      setShowDev((v) => !v);
+      if (e.key === "d" || e.key === "D") {
+        e.preventDefault();
+        setShowDev((v) => !v);
+      }
+
+      if (e.key === "c" || e.key === "C") {
+        e.preventDefault();
+        setShowCal((v) => !v);
+      }
     };
 
     window.addEventListener("keydown", onKeyDown);
@@ -52,6 +60,7 @@ function HomeContent() {
         <DeviceInfoPanel />
         <GraphsPanel />
         <DeveloperPanel visible={showDev} />
+        <CalibrationPanel visible={showCal} />
         <SettingsPanel />
         <ActionsPanel />
       </main>

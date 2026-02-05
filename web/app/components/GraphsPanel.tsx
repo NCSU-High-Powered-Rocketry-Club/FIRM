@@ -29,7 +29,7 @@ interface GraphDataPoint {
   my: number;
   mz: number;
   // Baro
-  alt: number;
+  pressure: number;
 }
 
 // Reusable legend component for consistent styling
@@ -75,7 +75,7 @@ export function GraphsPanel() {
       mx: pkt.magnetic_field_x_microteslas,
       my: pkt.magnetic_field_y_microteslas,
       mz: pkt.magnetic_field_z_microteslas,
-      alt: pkt.pressure_pascals,
+      pressure: pkt.pressure_pascals,
     });
 
     if (historyBuffer.current.length > MAX_HISTORY_POINTS) {
@@ -228,7 +228,7 @@ export function GraphsPanel() {
                 <Area
                   isAnimationActive={false}
                   type="monotone"
-                  dataKey="alt"
+                  dataKey="pressure"
                   stroke={themeColor}
                   fill={themeColor}
                   fillOpacity={0.2}
