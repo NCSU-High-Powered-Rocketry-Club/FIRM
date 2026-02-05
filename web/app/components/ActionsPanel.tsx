@@ -75,10 +75,9 @@ export function ActionsPanel() {
     startTimer(TIME_CAL_IMU_SECONDS);
 
     try {
-      const success = await firm.runIMUCalibration();
-      if (!success) {
-        console.warn("IMU Calibration failed or timed out");
-      }
+      // firm-client no longer exposes a built-in IMU calibration routine from the web client.
+      // Use Developer Panel -> IMU Calibration to manually set offsets/matrix.
+      console.warn("IMU calibration routine is not available in this client build. Use manual setIMUCalibration.");
     } catch (err) {
       console.error("IMU Calibration error:", err);
     } finally {
@@ -93,9 +92,11 @@ export function ActionsPanel() {
     startTimer(TIME_CAL_MAG_SECONDS);
 
     try {
-      const success = await firm.runMagnetometerCalibration();
+      // Collect samples for TIME_CAL_MAG_SECONDS and apply automatically.
+      const collectionMs = TIME_CAL_MAG_SECONDS * 1000;
+      const success = await firm.runAndApplyMagnetometerCalibration(collectionMs);
       if (!success) {
-        console.warn("Mag Calibration failed or timed out");
+        console.warn("Mag calibration failed or timed out");
       }
     } catch (err) {
       console.error("Mag Calibration error:", err);

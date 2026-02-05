@@ -183,7 +183,7 @@ export function FIRMProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!firm) return;
 
-    const MAX_LOG_CHARS = 30000;
+    const MAX_LOG_CHARS = 1000;
 
     const unsubRx = firm.onRawBytes((bytes) => {
       setReceivedBytes((n) => n + bytes.length);
@@ -198,10 +198,14 @@ export function FIRMProvider({ children }: { children: ReactNode }) {
     return () => {
       try {
         unsubRx();
-      } catch {}
+      } catch {
+        // best-effort cleanup; ignore
+      }
       try {
         unsubTx();
-      } catch {}
+      } catch {
+        // best-effort cleanup; ignore
+      }
     };
   }, [firm]);
 
