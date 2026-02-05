@@ -11,15 +11,8 @@
 #include <string.h>
 #include "settings.h"
 
-#ifndef TEST
-  #include "fatfs.h"
-  #include "ff.h"
-#else
-  // Minimal stubs so headers compile in unit tests.
-  // We don't exercise the logger module in host tests.
-  typedef int FRESULT;
-  typedef struct { int dummy; } DMA_HandleTypeDef;
-#endif
+#include "fatfs.h"
+#include "ff.h"
 
 /** The current version of the FIRM log file */
 #define FIRM_LOG_HEADER_TEXT "FIRM LOG v1.2\n"

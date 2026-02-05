@@ -2,15 +2,14 @@
 #include "commands.h"
 #include "settings.h"
 #include "utils.h"
-#include "stm32_hal_stubs.h"
 
 #include <string.h>
 
 // `commands.c` pulls in `settings.c`, which depends on flash + GPIO.
 // Include the mocks so the unit-test link step succeeds.
-#include "mock_w25q128jv_stubs.h"
-#include "mock_hal_gpio.h"
-
+#include "mock_w25q128jv.h"
+#include "mock_stm32f4xx_hal.h"
+#include "mock_usb_print_debug.h"
 
 static int g_reset_called;
 static void *g_reset_ctx_seen;

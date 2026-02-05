@@ -5,8 +5,7 @@ static FIRMState state = FIRM_BOOT;
 FSMResponse fsm_process_request(SystemRequest sysreq, TaskCommand* task_command_queue) {
   switch (sysreq) {
     case SYSREQ_SETUP:
-      if (state != FIRM_BOOT)
-        return FSMRES_INVALID;
+      if (state != FIRM_BOOT) return FSMRES_INVALID;
       task_command_queue[0].target_task = TASK_MODE_INDICATOR;
       task_command_queue[0].command = TASKCMD_SETUP;
       task_command_queue[1].target_task = TASK_DATA_FILTER;
@@ -17,8 +16,7 @@ FSMResponse fsm_process_request(SystemRequest sysreq, TaskCommand* task_command_
 
     case SYSREQ_FINISH_SETUP:
       // switching to live mode can only be done from boot mode
-      if (state != FIRM_SETUP)
-        return FSMRES_INVALID;
+      if (state != FIRM_SETUP) return FSMRES_INVALID;
       task_command_queue[0].target_task = TASK_MODE_INDICATOR;
       task_command_queue[0].command = TASKCMD_LIVE;
       task_command_queue[1].target_task = TASK_DATA_FILTER;
