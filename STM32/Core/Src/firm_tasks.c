@@ -515,18 +515,19 @@ void filter_data_task(void *argument) {
     }
     if (cmd_status != TASKCMD_SETUP && cmd_status != TASKCMD_MOCK_SETUP) {
       float dt = (float)packet->timestamp_seconds - last_time;
-      last_time = (float)packet->timestamp_seconds;
-      if (dt > 0.1) {
-        led_toggle_status(FIRM_MODE_BOOT);
+      if (dt > 1e-6) {
+        last_time = (float)packet->timestamp_seconds;
+        if (dt > 0.1) {
+          led_toggle_status(FIRM_MODE_BOOT);
+        }
+        int err = ukf_predict(&ukf, dt);
+        ukf_set_measurement(&ukf, &packet->pressure_pascals);
+        err = ukf_update(&ukf);
+        if (err) {
+          led_set_status(FIRM_MODE_BOOT);
+        }
+        memcpy(&packet->est_position_x_meters, ukf.X, UKF_STATE_DIMENSION * 4);
       }
-      int err = ukf_predict(&ukf, dt);
-      ukf_set_measurement(&ukf, &packet->pressure_pascals);
-      err = ukf_update(&ukf);
-      if (err) {
-        led_set_status(FIRM_MODE_BOOT);
-      }
-      memcpy(&packet->est_position_x_meters, ukf.X, UKF_STATE_DIMENSION * 4);
-      vTaskDelayUntil(&last_wake_time, transmit_freq);
     }
   }
 }

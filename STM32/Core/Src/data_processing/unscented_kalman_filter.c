@@ -245,8 +245,6 @@ static int calculate_sigmas_f(UKF *ukfh, float dt) {
   mat_scale_f32(&Q, dt, &Q_scaled);
   mat_add_f32(&P, &Q_scaled, &Q_scaled);
   mat_scale_f32(&Q_scaled, lambda_scaling_parameter + UKF_COVARIANCE_DIMENSION, &Q_scaled);
-  if (mat_cholesky_f32(&P, &cholesky) < 0.0F)
-    led_toggle_status(FIRM_MODE_BOOT);
   mat_cholesky_f32(&Q_scaled, &cholesky);
 
   // first sigma point is just the state, X

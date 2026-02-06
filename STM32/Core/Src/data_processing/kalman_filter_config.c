@@ -36,8 +36,8 @@ float ukf_state_process_covariance_diag[STATE_MACHINE_NUM_STATES][UKF_COVARIANCE
         1e-1F, 1e-1F, 1e-1F // orientation (r, p, y)
     },
     { // Motor Burn
-        1e-2F, 1e-2F, 1e-2F, // position (x, y, z)
-        1e-2F, 1e-2F, 1e-2F, // velocity (x, y, z)
+        5e-2F, 5e-2F, 5e-2F, // position (x, y, z)
+        5e-2F, 5e-2F, 5e-2F, // velocity (x, y, z)
         1e1F, 1e1F, 1e1F, // acceleration (x, y, z)
         1e4F, 1e4F, 1e4F, // gyro (x, y, z)
         1e2F, 1e2F, 1e2F // orientation (r, p, y)
@@ -73,7 +73,7 @@ float ukf_measurement_noise_covariance_diag[STATE_MACHINE_NUM_STATES][UKF_MEASUR
         1e-2F, 1e-2F, 1e-2F // normalized magnetometer (x, y, z)
     },
     { // Motor Burn
-        1e1F, // pressure (pascals)
+        5.0F, // pressure (pascals)
         1e-1F, 1e-1F, 1e-1F, // acceleration (x, y, z)
         3e1F, 3e1F, 3e1F, // gyro angular rate (x, y, z)
         1e-2F, 1e-2F, 1e-2F // normalized magnetometer (x, y, z)
