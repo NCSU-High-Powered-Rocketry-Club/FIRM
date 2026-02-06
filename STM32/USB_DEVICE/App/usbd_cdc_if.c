@@ -23,6 +23,7 @@
 
 /* USER CODE BEGIN INCLUDE */
 #include "firm_tasks.h"
+#include <string.h>
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -31,6 +32,15 @@
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
+
+static USBD_CDC_LineCodingTypeDef g_line_coding = {
+  115200U,
+  0U,
+  0U,
+  8U,
+};
+
+static volatile uint16_t g_control_line_state = 0U;
 
 /* USER CODE END PV */
 
@@ -220,15 +230,35 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
   /* 6      | bDataBits  |   1   | Number Data bits (5, 6, 7, 8 or 16).          */
   /*******************************************************************************/
     case CDC_SET_LINE_CODING:
-
+      if (length >= 7U)
+      {
+        g_line_coding.bitrate = (uint32_t)pbuf[0]
+                             | ((uint32_t)pbuf[1] << 8)
+                             | ((uint32_t)pbuf[2] << 16)
+                             | ((uint32_t)pbuf[3] << 24);
+        g_line_coding.format = pbuf[4];
+        g_line_coding.paritytype = pbuf[5];
+        g_line_coding.datatype = pbuf[6];
+      }
     break;
 
     case CDC_GET_LINE_CODING:
-
+      pbuf[0] = (uint8_t)(g_line_coding.bitrate);
+      pbuf[1] = (uint8_t)(g_line_coding.bitrate >> 8);
+      pbuf[2] = (uint8_t)(g_line_coding.bitrate >> 16);
+      pbuf[3] = (uint8_t)(g_line_coding.bitrate >> 24);
+      pbuf[4] = g_line_coding.format;
+      pbuf[5] = g_line_coding.paritytype;
+      pbuf[6] = g_line_coding.datatype;
     break;
 
     case CDC_SET_CONTROL_LINE_STATE:
-
+      /* wValue bit0 = DTR, bit1 = RTS */
+      if (length == 0U)
+      {
+        USBD_SetupReqTypedef *req = (USBD_SetupReqTypedef *)pbuf;
+        g_control_line_state = req->wValue;
+      }
     break;
 
     case CDC_SEND_BREAK:
