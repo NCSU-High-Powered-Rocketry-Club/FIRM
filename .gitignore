@@ -77,6 +77,8 @@ cmake_install.cmake
 # log files in python/scripts folder
 python/scripts/*.TXT
 python/scripts/*.csv
+python/scripts/*.FRM
+python/scripts/*.bak
 
 # Python files:
 __pycache__/

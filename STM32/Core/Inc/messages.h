@@ -2,6 +2,9 @@
 #include "commands.h"
 #include "utils.h"
 #include <string.h>
+
+#define MESSAGE_BYTE_BUFFER_SIZE 256
+
 /**
  * The first two bytes of the header field of a message packet being sent or received.
  */
@@ -61,6 +64,4 @@ bool usb_parse_message_meta(const uint8_t *meta_bytes, size_t meta_len, UsbMessa
  * - For command packets and mock settings packets, CRC16 is validated.
  * - For mock sensor packets (B/I/M), CRC is ignored to match current device behavior.
  */
-UsbMessageType usb_interpret_usb_message(const UsbMessageMeta *meta,
-                                        const uint8_t *payload_and_crc,
-                                        size_t payload_and_crc_len);
+UsbMessageType usb_interpret_usb_message(const UsbMessageMeta *meta);

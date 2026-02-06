@@ -1,6 +1,16 @@
 #pragma once
-#include <arm_math.h>
+#include <stdint.h>
 #include <math.h>
+
+  /**
+   * @brief Instance structure for the floating-point matrix structure.
+   */
+  typedef struct
+  {
+    uint16_t numRows;     /**< number of rows of the matrix.     */
+    uint16_t numCols;     /**< number of columns of the matrix.  */
+    float *pData;     /**< points to the data of the matrix. */
+  } arm_matrix_instance_f32;
 
 int symmetrize(arm_matrix_instance_f32 *enter_matrix);
 
@@ -24,5 +34,3 @@ void vec_mult_f32(const float *pSrcA, const float *pSrcB, float *pDst, int lengt
 
 int mat_cholesky_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 *pDst);
 void mat_inverse_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 *pDst);
-
-int get_kalman_gain(const arm_matrix_instance_f32 *pxy, const arm_matrix_instance_f32 *s, arm_matrix_instance_f32 *k);

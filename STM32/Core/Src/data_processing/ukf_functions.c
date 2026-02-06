@@ -11,7 +11,7 @@ void ukf_state_transition_function(const float *sigmas, const float dt, const St
     // copy over states 7 - 21
     memcpy(&prediction[6], &sigmas[6], sizeof(float) * (UKF_STATE_DIMENSION - 6));
 
-    if (state == 1 || state == 2 || state == 3) {
+    if (state == MOTOR_BURN || state == COAST || state == DESCENT) {
         // calculate next quaternion
         float delta_theta[3] = {
             sigmas[9] * dt,
@@ -55,7 +55,7 @@ void ukf_state_transition_function(const float *sigmas, const float dt, const St
         return;
     }
 
-    if (state == 4) {
+    if (state == LANDED) {
         // landed state
         float grav_vec[3] = {0.0F, 0.0F, GRAVITY_METERS_PER_SECOND_SQUARED};
 
@@ -75,9 +75,14 @@ void ukf_state_transition_function(const float *sigmas, const float dt, const St
         return;
     }
 
-    if (state == 0) {
+    if (state == STANDBY) {
         // standby state, set position and velocity to 0
-        memset(&prediction[0], 0, sizeof(float) * 6);
+        prediction[0] = 0.0F;
+        prediction[1] = 0.0F;
+        prediction[2] = 0.0F;
+        prediction[3] = 0.0F;
+        prediction[4] = 0.0F;
+        prediction[5] = 0.0F;
 
         // damping the gyro prediction to drive to 0
         prediction[9] = sigmas[9] * 0.5F;
@@ -138,7 +143,7 @@ void ukf_measurement_function(const float *sigmas, const UKF *ukfh, float *measu
     for (int i = 0; i < 3; ++i) {
         vehicle_gyro[i] = sigmas[9 + i] * (180.0F / PI_F);
     }
-    // 45-degree rotation and add biases
+    // 45-degree rotation
     float gyro_gx = vehicle_gyro[0];
     float gyro_gy = vehicle_gyro[1];
     float gyro_gz = vehicle_gyro[2];

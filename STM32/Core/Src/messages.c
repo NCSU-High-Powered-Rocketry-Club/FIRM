@@ -48,6 +48,8 @@ MessageIdentifier validate_message_identifier(uint16_t header, uint16_t identifi
         case CMDID_GET_DEVICE_CONFIG:
         case CMDID_GET_DEVICE_INFO:
         case CMDID_SET_DEVICE_CONFIG:
+        case CMDID_SET_IMU_CALIBRATON:
+        case CMDID_SET_MAG_CALIBRATON:
         case CMDID_REBOOT:
           return MSGID_COMMAND_PACKET;
         default:
@@ -87,14 +89,7 @@ bool usb_parse_message_meta(const uint8_t *meta_bytes, size_t meta_len, UsbMessa
   return true;
 }
 
-UsbMessageType usb_interpret_usb_message(const UsbMessageMeta *meta,
-                                        const uint8_t *payload_and_crc,
-                                        size_t payload_and_crc_len) {
-  if (meta == NULL || payload_and_crc == NULL) {
-    return USBMSG_INVALID;
-  }
-
-  // Basic header validation
+UsbMessageType usb_interpret_usb_message(const UsbMessageMeta *meta) {
   MessageIdentifier header_type = validate_message_header(meta->header);
   if (header_type == MSGID_INVALID) {
     return USBMSG_INVALID;
@@ -105,27 +100,14 @@ UsbMessageType usb_interpret_usb_message(const UsbMessageMeta *meta,
     return USBMSG_INVALID;
   }
 
-  // Ensure buffer contains payload + CRC bytes (even if CRC is ignored for mock sensors)
-  if (payload_and_crc_len < (size_t)meta->payload_length + 2U) {
-    return USBMSG_INVALID;
-  }
-
   // Mock packet handling
   if (meta->header == MSGID_MOCK_PACKET) {
-    // Settings mock packets should be CRC validated
+    // mock settings packet
     if (meta->identifier == (uint16_t)'H') {
-      if (!validate_message_crc16(meta->header, meta->identifier, meta->payload_length, payload_and_crc)) {
-        return USBMSG_INVALID;
-      }
       return USBMSG_MOCK_SETTINGS;
     }
-    // Mock sensor packets ignore CRC (device behavior)
+    // Mock sensor packets
     return USBMSG_MOCK_SENSOR;
-  }
-
-  // Command packet handling (CRC validated)
-  if (!validate_message_crc16(meta->header, meta->identifier, meta->payload_length, payload_and_crc)) {
-    return USBMSG_INVALID;
   }
 
   switch (id_type) {

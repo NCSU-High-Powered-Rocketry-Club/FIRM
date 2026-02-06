@@ -1,9 +1,7 @@
 #pragma once
 
-#include <arm_math.h>
-#include "kalman_filter_config.h"
 #include "matrixhelper.h"
-#include "dsp/quaternion_math_functions.h"
+#include "kalman_filter_config.h"
 #include "unscented_kalman_filter.h"
 
 

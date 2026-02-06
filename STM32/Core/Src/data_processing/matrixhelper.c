@@ -1,5 +1,4 @@
 #include "matrixhelper.h"
-#include "dsp/matrix_functions.h"
 
 int symmetrize(arm_matrix_instance_f32 *enter_matrix) {
     uint16_t mat_rows = enter_matrix->numRows;
@@ -127,7 +126,7 @@ void mat_mult_f32(const arm_matrix_instance_f32 *pSrcA, const arm_matrix_instanc
 
     for (int i = 0; i < a_rows; i++) {
         for (int j = 0; j < b_cols; j++) {
-            float32_t sum = 0.0F;
+            float sum = 0.0F;
             for (int k = 0; k < a_cols; k++) {
                 sum += pSrcA->pData[i * a_cols + k] * pSrcB->pData[k * b_cols + j];
             }
@@ -203,48 +202,10 @@ int mat_cholesky_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f3
     return 0;
 }
 
-int get_kalman_gain(const arm_matrix_instance_f32 *pxy, const arm_matrix_instance_f32 *s, arm_matrix_instance_f32 *k) {
-    /*
-     * Dimensions check:
-     * pxy is (m x n), s is (n x n)
-     * We need to compute K = pxy * inv(s)
-     * Using Cholesky: s = L * L^T. Solve L * Y = pxy^T (Y is n x m),
-     * then L^T * Z = Y (Z is n x m), finally K = Z^T (m x n).
-     */
-    float chol_data[s->numRows * s->numCols];
-    float chol_upper_data[s->numRows * s->numCols];
-    float pxyT_data[pxy->numCols * pxy->numRows];
-    /* temp must be n x m (s->numRows x pxy->numRows), not n x n */
-    float temp_data[s->numRows * pxy->numRows];
-    arm_matrix_instance_f32 chol = {s->numRows, s->numCols, chol_data};
-    arm_matrix_instance_f32 chol_upper = {s->numRows, s->numCols, chol_upper_data};
-    arm_matrix_instance_f32 pxyT = {pxy->numCols, pxy->numRows, pxyT_data};
-    arm_matrix_instance_f32 temp = {s->numRows, pxy->numRows, temp_data};
-
-    if (arm_mat_cholesky_f32(s, &chol))
-        return 3;
-
-    /* Transpose chol (lower) to get upper triangular for arm_mat_solve_upper_triangular_f32 */
-    mat_trans_f32(&chol, &chol_upper);
-
-    /* forward solve: L * temp = pxyT */
-    mat_trans_f32(pxy, &pxyT);
-    if (arm_mat_solve_lower_triangular_f32(&chol, &pxyT, &temp))
-        return 1;
-
-    /* back solve: L^T * pxyT = temp using upper triangular (transpose of L) */
-    if (arm_mat_solve_upper_triangular_f32(&chol_upper, &temp, &pxyT))
-        return 2;
-
-    /* transpose result to get K (m x n) */
-    mat_trans_f32(&pxyT, k);
-    return 0;
-}
-
 void mat_inverse_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 *pDst) {
     uint32_t n = pSrc->numRows;
-    float32_t *A = pSrc->pData;
-    float32_t *inv = pDst->pData;
+    float *A = pSrc->pData;
+    float *inv = pDst->pData;
 
     uint32_t i, j, k;
 
@@ -257,7 +218,7 @@ void mat_inverse_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f3
 
     /* Copy source matrix into a local working buffer */
     /* NOTE: caller must ensure pDst != pSrc */
-    float32_t tmp[n * n];
+    float tmp[n * n];
     for (i = 0; i < n*n; i++) {
         tmp[i] = A[i];
     }
@@ -265,7 +226,7 @@ void mat_inverse_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f3
     /* Gauss–Jordan elimination */
     for (i = 0; i < n; i++) {
 
-        float32_t diag = tmp[i*n + i];
+        float diag = tmp[i*n + i];
 
         /* Normalize pivot row */
         for (j = 0; j < n; j++) {
@@ -277,7 +238,7 @@ void mat_inverse_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f3
         for (k = 0; k < n; k++) {
             if (k == i) continue;
 
-            float32_t factor = tmp[k*n + i];
+            float factor = tmp[k*n + i];
 
             for (j = 0; j < n; j++) {
                 tmp[k*n + j] -= factor * tmp[i*n + j];

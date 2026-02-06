@@ -143,11 +143,6 @@ void icm45686_convert_packet(SensorPacket *packet, DataPacket *result_packet) {
     gyro_float_y -= calibrationSettings.icm45686_gyro.offset_dps[1];
     gyro_float_z -= calibrationSettings.icm45686_gyro.offset_dps[2];
     
-    // convert gyroscope to radians per second for further processing
-    gyro_float_x = gyro_float_x * (pi / 180.0F);
-    gyro_float_y = gyro_float_y * (pi / 180.0F);
-    gyro_float_z = gyro_float_z * (pi / 180.0F);
-    
     // apply 3x3 scaling matrix to each value
     result_packet->raw_acceleration_x_gs = acc_float_x * calibrationSettings.icm45686_accel.scale_multiplier[0] + acc_float_y * calibrationSettings.icm45686_accel.scale_multiplier[3] + acc_float_z * calibrationSettings.icm45686_accel.scale_multiplier[6];
     result_packet->raw_acceleration_y_gs = acc_float_x * calibrationSettings.icm45686_accel.scale_multiplier[1] + acc_float_y * calibrationSettings.icm45686_accel.scale_multiplier[4] + acc_float_z * calibrationSettings.icm45686_accel.scale_multiplier[7];

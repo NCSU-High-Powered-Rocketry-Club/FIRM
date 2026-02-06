@@ -30,7 +30,7 @@
 
 #define MAX_WAIT_TIME(hz) (TickType_t)(pdMS_TO_TICKS(1000 / (hz)) + 1)
 
-#define USB_RX_STREAM_BUFFER_SIZE_BYTES 2048
+#define USB_RX_STREAM_BUFFER_SIZE_BYTES 6144
 #define USB_RX_STREAM_TRIGGER_LEVEL_BYTES 1
 
 #define SYSTEM_REQUEST_QUEUE_LENGTH 5
@@ -46,6 +46,13 @@ extern osThreadId_t packetizer_task_handle;
 extern osThreadId_t transmit_task_handle;
 extern osThreadId_t usb_read_task_handle;
 extern osThreadId_t filter_data_task_handle;
+extern osThreadId_t mock_packet_handler_handle;
+
+// Task-notification bits for sensor tasks.
+// We must distinguish EXTI (live) wakeups from mock dispatch wakeups so that
+// in mock mode the EXTI ISR cannot cause out-of-order ring pops.
+#define SENSOR_NOTIFY_ISR_BIT  (1UL << 0)
+#define SENSOR_NOTIFY_MOCK_BIT (1UL << 1)
 
 extern QueueHandle_t system_request_queue;
 
@@ -58,6 +65,7 @@ extern const osThreadAttr_t packetizerTask_attributes;
 extern const osThreadAttr_t transmitTask_attributes;
 extern const osThreadAttr_t usbReadTask_attributes;
 extern const osThreadAttr_t filterDataTask_attributes;
+extern const osThreadAttr_t mockPacketTask_attributes;
 
 extern osMutexId_t sensorDataMutexHandle;
 extern const osMutexAttr_t sensorDataMutex_attributes;
@@ -141,3 +149,4 @@ void packetizer_task(void *argument);
 void filter_data_task(void *argument);
 void transmit_data(void *argument);
 void usb_read_data(void *argument);
+void mock_packet_handler(void *argument);

@@ -85,7 +85,7 @@ FRESULT logger_init(DMA_HandleTypeDef* dma_sdio_tx_handle) {
     // Find the next available log file
     do {
         file_index++;
-        sprintf(file_name, "log%i.txt", file_index);
+        sprintf(file_name, "log%i.frm", file_index);
         fr = f_findfirst(&dj, &fno, "/", file_name);
     } while (fr == FR_OK && fno.fname[0]);
 
@@ -121,7 +121,7 @@ FRESULT logger_init(DMA_HandleTypeDef* dma_sdio_tx_handle) {
 }
 
 FRESULT logger_write_header(HeaderFields* sensor_scale_factors) {
-    const char* firm_log_header = "FIRM LOG v1.2\n";
+    const char* firm_log_header = FIRM_LOG_HEADER_TEXT;
     size_t header_len = strlen(firm_log_header);
     size_t scale_factor_len = sizeof(HeaderFields);
     size_t firm_settings_len = sizeof(firmSettings);
@@ -223,7 +223,7 @@ FRESULT logger_append_mock_header(FIRMSettings_t* firm_settings, CalibrationSett
         return FR_INVALID_PARAMETER;
     }
 
-    const char* mock_header = "FIRM LOG v1.2\n";
+    const char* mock_header = FIRM_LOG_HEADER_TEXT;
     size_t header_len = strlen(mock_header);
     size_t firm_settings_len = sizeof(FIRMSettings_t);
     size_t calibration_settings_len = sizeof(CalibrationSettings_t);
