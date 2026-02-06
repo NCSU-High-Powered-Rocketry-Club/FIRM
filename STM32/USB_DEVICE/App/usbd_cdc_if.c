@@ -23,115 +23,56 @@
 
 /* USER CODE BEGIN INCLUDE */
 #include "firm_tasks.h"
+
 #include <string.h>
+#include <stdint.h>
+
+#include "usbd_def.h"   // USBD_STATE_CONFIGURED
 /* USER CODE END INCLUDE */
 
-/* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
-/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PRIVATE_DEFINES */
+
+// After we see host interaction (control-line request or OUT data),
+// we will wait up to this long for DTR before allowing TX anyway.
+// Keeps Linux safe (no early TX before open), but tolerates Windows apps
+// that don't assert DTR. This should be fixed later, maybe in FIRM-client?
+#ifndef CDC_DTR_GRACE_MS
+#define CDC_DTR_GRACE_MS 500U
+#endif
+
+/* USER CODE END PRIVATE_DEFINES */
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 
-static USBD_CDC_LineCodingTypeDef g_line_coding = {
-  115200U,
-  0U,
-  0U,
-  8U,
-};
+// Control line state (wValue): bit0=DTR, bit1=RTS
+volatile uint16_t g_control_line_state = 0;
 
-static volatile uint16_t g_control_line_state = 0U;
-static volatile uint8_t g_tx_lock = 0U;
+// Did we ever receive CDC_SET_CONTROL_LINE_STATE?
+static volatile uint8_t g_seen_control_line_state = 0;
+
+// Have we received any OUT data or control line requests at all?
+static volatile uint8_t g_seen_out_data = 0;
+
+// When host interaction was first observed (ms tick)
+static uint32_t g_host_interaction_start_ms = 0;
+
+// TX lock (released on transmit complete)
+static volatile uint8_t g_tx_lock = 0;
 
 /* USER CODE END PV */
 
-/** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
-  * @brief Usb device library.
-  * @{
-  */
-
-/** @addtogroup USBD_CDC_IF
-  * @{
-  */
-
-/** @defgroup USBD_CDC_IF_Private_TypesDefinitions USBD_CDC_IF_Private_TypesDefinitions
-  * @brief Private types.
-  * @{
-  */
-
-/* USER CODE BEGIN PRIVATE_TYPES */
-
-/* USER CODE END PRIVATE_TYPES */
-
-/**
-  * @}
-  */
-
-/** @defgroup USBD_CDC_IF_Private_Defines USBD_CDC_IF_Private_Defines
-  * @brief Private defines.
-  * @{
-  */
-
-/* USER CODE BEGIN PRIVATE_DEFINES */
-/* USER CODE END PRIVATE_DEFINES */
-
-/**
-  * @}
-  */
-
-/** @defgroup USBD_CDC_IF_Private_Macros USBD_CDC_IF_Private_Macros
-  * @brief Private macros.
-  * @{
-  */
-
-/* USER CODE BEGIN PRIVATE_MACRO */
-
-/* USER CODE END PRIVATE_MACRO */
-
-/**
-  * @}
-  */
-
-/** @defgroup USBD_CDC_IF_Private_Variables USBD_CDC_IF_Private_Variables
-  * @brief Private variables.
-  * @{
-  */
-/* Create buffer for reception and transmission           */
-/* It's up to user to redefine and/or remove those define */
-/** Received data over USB are stored in this buffer      */
+/* Create buffer for reception and transmission */
+/** Received data over USB are stored in this buffer */
 uint8_t UserRxBufferFS[APP_RX_DATA_SIZE];
 
-/** Data to send over USB CDC are stored in this buffer   */
+/** Data to send over USB CDC are stored in this buffer */
 uint8_t UserTxBufferFS[APP_TX_DATA_SIZE];
-
-/* USER CODE BEGIN PRIVATE_VARIABLES */
-
-/* USER CODE END PRIVATE_VARIABLES */
-
-/**
-  * @}
-  */
-
-/** @defgroup USBD_CDC_IF_Exported_Variables USBD_CDC_IF_Exported_Variables
-  * @brief Public variables.
-  * @{
-  */
 
 extern USBD_HandleTypeDef hUsbDeviceFS;
 
-/* USER CODE BEGIN EXPORTED_VARIABLES */
-
-/* USER CODE END EXPORTED_VARIABLES */
-
-/**
-  * @}
-  */
-
-/** @defgroup USBD_CDC_IF_Private_FunctionPrototypes USBD_CDC_IF_Private_FunctionPrototypes
-  * @brief Private functions declaration.
-  * @{
-  */
-
+/* Private function prototypes -----------------------------------------------*/
 static int8_t CDC_Init_FS(void);
 static int8_t CDC_DeInit_FS(void);
 static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length);
@@ -139,12 +80,8 @@ static int8_t CDC_Receive_FS(uint8_t* pbuf, uint32_t *Len);
 static int8_t CDC_TransmitCplt_FS(uint8_t *pbuf, uint32_t *Len, uint8_t epnum);
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_DECLARATION */
-
+static uint8_t cdc_tx_allowed_now(void);
 /* USER CODE END PRIVATE_FUNCTIONS_DECLARATION */
-
-/**
-  * @}
-  */
 
 USBD_CDC_ItfTypeDef USBD_Interface_fops_FS =
 {
@@ -156,144 +93,70 @@ USBD_CDC_ItfTypeDef USBD_Interface_fops_FS =
 };
 
 /* Private functions ---------------------------------------------------------*/
-/**
-  * @brief  Initializes the CDC media low layer over the FS USB IP
-  * @retval USBD_OK if all operations are OK else USBD_FAIL
-  */
 static int8_t CDC_Init_FS(void)
 {
   /* USER CODE BEGIN 3 */
-  /* Set Application Buffers */
   USBD_CDC_SetTxBuffer(&hUsbDeviceFS, UserTxBufferFS, 0);
   USBD_CDC_SetRxBuffer(&hUsbDeviceFS, UserRxBufferFS);
-  (void)USBD_CDC_ReceivePacket(&hUsbDeviceFS);
+
+  g_control_line_state = 0;
+  g_seen_control_line_state = 0;
+  g_seen_out_data = 0;
+  g_host_interaction_start_ms = 0;
+  g_tx_lock = 0;
+
   return (USBD_OK);
   /* USER CODE END 3 */
 }
 
-/**
-  * @brief  DeInitializes the CDC media low layer
-  * @retval USBD_OK if all operations are OK else USBD_FAIL
-  */
 static int8_t CDC_DeInit_FS(void)
 {
   /* USER CODE BEGIN 4 */
-  __atomic_clear(&g_tx_lock, __ATOMIC_RELEASE);
   return (USBD_OK);
   /* USER CODE END 4 */
 }
 
-/**
-  * @brief  Manage the CDC class requests
-  * @param  cmd: Command code
-  * @param  pbuf: Buffer containing command data (request parameters)
-  * @param  length: Number of data to be sent (in bytes)
-  * @retval Result of the operation: USBD_OK if all operations are OK else USBD_FAIL
-  */
 static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
 {
   /* USER CODE BEGIN 5 */
-  switch(cmd)
+  (void)length;
+
+  switch (cmd)
   {
-    case CDC_SEND_ENCAPSULATED_COMMAND:
-
-    break;
-
-    case CDC_GET_ENCAPSULATED_RESPONSE:
-
-    break;
-
-    case CDC_SET_COMM_FEATURE:
-
-    break;
-
-    case CDC_GET_COMM_FEATURE:
-
-    break;
-
-    case CDC_CLEAR_COMM_FEATURE:
-
-    break;
-
-  /*******************************************************************************/
-  /* Line Coding Structure                                                       */
-  /*-----------------------------------------------------------------------------*/
-  /* Offset | Field       | Size | Value  | Description                          */
-  /* 0      | dwDTERate   |   4  | Number |Data terminal rate, in bits per second*/
-  /* 4      | bCharFormat |   1  | Number | Stop bits                            */
-  /*                                        0 - 1 Stop bit                       */
-  /*                                        1 - 1.5 Stop bits                    */
-  /*                                        2 - 2 Stop bits                      */
-  /* 5      | bParityType |  1   | Number | Parity                               */
-  /*                                        0 - None                             */
-  /*                                        1 - Odd                              */
-  /*                                        2 - Even                             */
-  /*                                        3 - Mark                             */
-  /*                                        4 - Space                            */
-  /* 6      | bDataBits  |   1   | Number Data bits (5, 6, 7, 8 or 16).          */
-  /*******************************************************************************/
-    case CDC_SET_LINE_CODING:
-      if (length >= 7U)
-      {
-        g_line_coding.bitrate = (uint32_t)pbuf[0]
-                             | ((uint32_t)pbuf[1] << 8)
-                             | ((uint32_t)pbuf[2] << 16)
-                             | ((uint32_t)pbuf[3] << 24);
-        g_line_coding.format = pbuf[4];
-        g_line_coding.paritytype = pbuf[5];
-        g_line_coding.datatype = pbuf[6];
-      }
-    break;
-
-    case CDC_GET_LINE_CODING:
-      pbuf[0] = (uint8_t)(g_line_coding.bitrate);
-      pbuf[1] = (uint8_t)(g_line_coding.bitrate >> 8);
-      pbuf[2] = (uint8_t)(g_line_coding.bitrate >> 16);
-      pbuf[3] = (uint8_t)(g_line_coding.bitrate >> 24);
-      pbuf[4] = g_line_coding.format;
-      pbuf[5] = g_line_coding.paritytype;
-      pbuf[6] = g_line_coding.datatype;
-    break;
-
+    // This is where DTR arrives from Linux
     case CDC_SET_CONTROL_LINE_STATE:
-      /* wValue bit0 = DTR, bit1 = RTS */
-      if (length == 0U)
-      {
-        USBD_SetupReqTypedef *req = (USBD_SetupReqTypedef *)pbuf;
-        g_control_line_state = req->wValue;
+      g_control_line_state = (uint16_t)(pbuf[0] | ((uint16_t)pbuf[1] << 8));
+      g_seen_control_line_state = 1U;
+
+      if (g_host_interaction_start_ms == 0U) {
+        g_host_interaction_start_ms = HAL_GetTick();
       }
-    break;
+      break;
 
+    case CDC_SET_LINE_CODING:
+    case CDC_GET_LINE_CODING:
+    case CDC_SEND_ENCAPSULATED_COMMAND:
+    case CDC_GET_ENCAPSULATED_RESPONSE:
+    case CDC_SET_COMM_FEATURE:
+    case CDC_GET_COMM_FEATURE:
+    case CDC_CLEAR_COMM_FEATURE:
     case CDC_SEND_BREAK:
-
-    break;
-
-  default:
-    break;
+    default:
+      break;
   }
 
   return (USBD_OK);
   /* USER CODE END 5 */
 }
 
-/**
-  * @brief  Data received over USB OUT endpoint are sent over CDC interface
-  *         through this function.
-  *
-  *         @note
-  *         This function will issue a NAK packet on any OUT packet received on
-  *         USB endpoint until exiting this function. If you exit this function
-  *         before transfer is complete on CDC interface (ie. using DMA controller)
-  *         it will result in receiving more data while previous ones are still
-  *         not sent.
-  *
-  * @param  Buf: Buffer of data to be received
-  * @param  Len: Number of data received (in bytes)
-  * @retval Result of the operation: USBD_OK if all operations are OK else USBD_FAIL
-  */
 static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
 {
   /* USER CODE BEGIN 6 */
+  g_seen_out_data = 1U;
+  if (g_host_interaction_start_ms == 0U) {
+    g_host_interaction_start_ms = HAL_GetTick();
+  }
+
   usb_receive_callback(Buf, *Len);
   USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
   USBD_CDC_ReceivePacket(&hUsbDeviceFS);
@@ -301,79 +164,85 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
   /* USER CODE END 6 */
 }
 
-/**
-  * @brief  CDC_Transmit_FS
-  *         Data to send over USB IN endpoint are sent over CDC interface
-  *         through this function.
-  *         @note
-  *
-  *
-  * @param  Buf: Buffer of data to be sent
-  * @param  Len: Number of data to be sent (in bytes)
-  * @retval USBD_OK if all operations are OK else USBD_FAIL or USBD_BUSY
-  */
+/* USER CODE BEGIN PRIVATE_FUNCTIONS_IMPLEMENTATION */
+
+static uint8_t cdc_tx_allowed_now(void)
+{
+  // Must be enumerated
+  if (hUsbDeviceFS.dev_state != USBD_STATE_CONFIGURED) {
+    return 0U;
+  }
+
+  // Best case: host asserts DTR -> allowed
+  if ((g_control_line_state & 0x0001U) != 0U) {
+    return 1U;
+  }
+
+  // CRITICAL for Linux:
+  // Do NOT allow TX before we've seen any sign the host/app actually opened/talked
+  // to the CDC interface. (Otherwise you can "hang" the first TX.)
+  if ((g_seen_out_data == 0U) && (g_seen_control_line_state == 0U)) {
+    return 0U;
+  }
+
+  // Host is interacting but DTR isn't asserted (common on some Windows apps).
+  // After a short grace window, allow TX anyway.
+  if (g_host_interaction_start_ms == 0U) {
+    g_host_interaction_start_ms = HAL_GetTick();
+    return 0U;
+  }
+
+  if ((HAL_GetTick() - g_host_interaction_start_ms) >= CDC_DTR_GRACE_MS) {
+    return 1U;
+  }
+
+  return 0U;
+}
+
+/* USER CODE END PRIVATE_FUNCTIONS_IMPLEMENTATION */
+
 uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len)
 {
   uint8_t result = USBD_OK;
   /* USER CODE BEGIN 7 */
-  if (hUsbDeviceFS.dev_state != USBD_STATE_CONFIGURED)
-  {
+
+  if (!cdc_tx_allowed_now()) {
     return USBD_BUSY;
   }
 
-  /* Many Linux userspace tools won't start IN traffic until the port is opened
-   * (DTR asserted). Avoid starting a TX transfer before that.
-   */
-  if ((g_control_line_state & 0x0001U) == 0U)
-  {
+  // Prevent multi-task collision / reentrancy
+  if (__atomic_test_and_set(&g_tx_lock, __ATOMIC_ACQUIRE)) {
     return USBD_BUSY;
   }
 
-  if (__atomic_test_and_set(&g_tx_lock, __ATOMIC_ACQUIRE))
-  {
-    return USBD_BUSY;
-  }
-
-  USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassDataCmsit[hUsbDeviceFS.classId];
-  if ((hcdc == NULL) || (hcdc->TxState != 0U))
-  {
+  USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassData;
+  if ((hcdc == NULL) || (hcdc->TxState != 0U)) {
     __atomic_clear(&g_tx_lock, __ATOMIC_RELEASE);
     return USBD_BUSY;
   }
 
-  if (Len > (uint16_t)APP_TX_DATA_SIZE)
-  {
+  if (Len > (uint16_t)APP_TX_DATA_SIZE) {
     __atomic_clear(&g_tx_lock, __ATOMIC_RELEASE);
     return USBD_FAIL;
   }
 
-  if (Len > 0U)
-  {
+  // Copy into stable buffer (caller Buf may be transient)
+  if (Len > 0U) {
     (void)memcpy(UserTxBufferFS, Buf, Len);
   }
 
   USBD_CDC_SetTxBuffer(&hUsbDeviceFS, UserTxBufferFS, Len);
   result = USBD_CDC_TransmitPacket(&hUsbDeviceFS);
-  if (result != USBD_OK)
-  {
+
+  // If we couldn't start, release immediately
+  if (result != USBD_OK) {
     __atomic_clear(&g_tx_lock, __ATOMIC_RELEASE);
   }
+
   /* USER CODE END 7 */
   return result;
 }
 
-/**
-  * @brief  CDC_TransmitCplt_FS
-  *         Data transmitted callback
-  *
-  *         @note
-  *         This function is IN transfer complete callback used to inform user that
-  *         the submitted Data is successfully sent over USB.
-  *
-  * @param  Buf: Buffer of data to be received
-  * @param  Len: Number of data received (in bytes)
-  * @retval Result of the operation: USBD_OK if all operations are OK else USBD_FAIL
-  */
 static int8_t CDC_TransmitCplt_FS(uint8_t *Buf, uint32_t *Len, uint8_t epnum)
 {
   uint8_t result = USBD_OK;
@@ -381,19 +250,10 @@ static int8_t CDC_TransmitCplt_FS(uint8_t *Buf, uint32_t *Len, uint8_t epnum)
   UNUSED(Buf);
   UNUSED(Len);
   UNUSED(epnum);
+
+  // Release TX lock on completion
   __atomic_clear(&g_tx_lock, __ATOMIC_RELEASE);
+
   /* USER CODE END 13 */
   return result;
 }
-
-/* USER CODE BEGIN PRIVATE_FUNCTIONS_IMPLEMENTATION */
-
-/* USER CODE END PRIVATE_FUNCTIONS_IMPLEMENTATION */
-
-/**
-  * @}
-  */
-
-/**
-  * @}
-  */
