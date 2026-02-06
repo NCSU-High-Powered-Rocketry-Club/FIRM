@@ -10,6 +10,7 @@
 #include "usbd_cdc_if.h"
 #include "semphr.h"
 #include "usbd_def.h"
+#include <stdint.h>
 #include <string.h>
 
 // task handles
@@ -569,7 +570,7 @@ void transmit_data(void *argument) {
 
       // If the USB is busy, we might need to try again in a tick
       for (int timeout = 0; timeout < 5; timeout++) {
-        if (CDC_Transmit_FS((uint8_t*)&packet, serialized_packet_len) == USBD_OK) {
+        if (CDC_Transmit_FS((uint8_t*)&packet, (uint16_t)serialized_packet_len) == USBD_OK) {
           break;
         }
 

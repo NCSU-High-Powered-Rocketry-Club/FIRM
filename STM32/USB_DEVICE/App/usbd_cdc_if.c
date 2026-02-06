@@ -23,6 +23,7 @@
 
 /* USER CODE BEGIN INCLUDE */
 #include "firm_tasks.h"
+#include <string.h>
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -31,6 +32,16 @@
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
+
+static USBD_CDC_LineCodingTypeDef g_line_coding = {
+  115200U,
+  0U,
+  0U,
+  8U,
+};
+
+static volatile uint16_t g_control_line_state = 0U;
+static volatile uint8_t g_tx_lock = 0U;
 
 /* USER CODE END PV */
 
@@ -155,6 +166,7 @@ static int8_t CDC_Init_FS(void)
   /* Set Application Buffers */
   USBD_CDC_SetTxBuffer(&hUsbDeviceFS, UserTxBufferFS, 0);
   USBD_CDC_SetRxBuffer(&hUsbDeviceFS, UserRxBufferFS);
+  (void)USBD_CDC_ReceivePacket(&hUsbDeviceFS);
   return (USBD_OK);
   /* USER CODE END 3 */
 }
@@ -166,6 +178,7 @@ static int8_t CDC_Init_FS(void)
 static int8_t CDC_DeInit_FS(void)
 {
   /* USER CODE BEGIN 4 */
+  __atomic_clear(&g_tx_lock, __ATOMIC_RELEASE);
   return (USBD_OK);
   /* USER CODE END 4 */
 }
@@ -220,15 +233,35 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
   /* 6      | bDataBits  |   1   | Number Data bits (5, 6, 7, 8 or 16).          */
   /*******************************************************************************/
     case CDC_SET_LINE_CODING:
-
+      if (length >= 7U)
+      {
+        g_line_coding.bitrate = (uint32_t)pbuf[0]
+                             | ((uint32_t)pbuf[1] << 8)
+                             | ((uint32_t)pbuf[2] << 16)
+                             | ((uint32_t)pbuf[3] << 24);
+        g_line_coding.format = pbuf[4];
+        g_line_coding.paritytype = pbuf[5];
+        g_line_coding.datatype = pbuf[6];
+      }
     break;
 
     case CDC_GET_LINE_CODING:
-
+      pbuf[0] = (uint8_t)(g_line_coding.bitrate);
+      pbuf[1] = (uint8_t)(g_line_coding.bitrate >> 8);
+      pbuf[2] = (uint8_t)(g_line_coding.bitrate >> 16);
+      pbuf[3] = (uint8_t)(g_line_coding.bitrate >> 24);
+      pbuf[4] = g_line_coding.format;
+      pbuf[5] = g_line_coding.paritytype;
+      pbuf[6] = g_line_coding.datatype;
     break;
 
     case CDC_SET_CONTROL_LINE_STATE:
-
+      /* wValue bit0 = DTR, bit1 = RTS */
+      if (length == 0U)
+      {
+        USBD_SetupReqTypedef *req = (USBD_SetupReqTypedef *)pbuf;
+        g_control_line_state = req->wValue;
+      }
     break;
 
     case CDC_SEND_BREAK:
@@ -283,12 +316,48 @@ uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len)
 {
   uint8_t result = USBD_OK;
   /* USER CODE BEGIN 7 */
-  USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassData;
-  if (hcdc->TxState != 0){
+  if (hUsbDeviceFS.dev_state != USBD_STATE_CONFIGURED)
+  {
     return USBD_BUSY;
   }
-  USBD_CDC_SetTxBuffer(&hUsbDeviceFS, Buf, Len);
+
+  /* Many Linux userspace tools won't start IN traffic until the port is opened
+   * (DTR asserted). Avoid starting a TX transfer before that.
+   */
+  if ((g_control_line_state & 0x0001U) == 0U)
+  {
+    return USBD_BUSY;
+  }
+
+  if (__atomic_test_and_set(&g_tx_lock, __ATOMIC_ACQUIRE))
+  {
+    return USBD_BUSY;
+  }
+
+  USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassDataCmsit[hUsbDeviceFS.classId];
+  if ((hcdc == NULL) || (hcdc->TxState != 0U))
+  {
+    __atomic_clear(&g_tx_lock, __ATOMIC_RELEASE);
+    return USBD_BUSY;
+  }
+
+  if (Len > (uint16_t)APP_TX_DATA_SIZE)
+  {
+    __atomic_clear(&g_tx_lock, __ATOMIC_RELEASE);
+    return USBD_FAIL;
+  }
+
+  if (Len > 0U)
+  {
+    (void)memcpy(UserTxBufferFS, Buf, Len);
+  }
+
+  USBD_CDC_SetTxBuffer(&hUsbDeviceFS, UserTxBufferFS, Len);
   result = USBD_CDC_TransmitPacket(&hUsbDeviceFS);
+  if (result != USBD_OK)
+  {
+    __atomic_clear(&g_tx_lock, __ATOMIC_RELEASE);
+  }
   /* USER CODE END 7 */
   return result;
 }
@@ -312,6 +381,7 @@ static int8_t CDC_TransmitCplt_FS(uint8_t *Buf, uint32_t *Len, uint8_t epnum)
   UNUSED(Buf);
   UNUSED(Len);
   UNUSED(epnum);
+  __atomic_clear(&g_tx_lock, __ATOMIC_RELEASE);
   /* USER CODE END 13 */
   return result;
 }
