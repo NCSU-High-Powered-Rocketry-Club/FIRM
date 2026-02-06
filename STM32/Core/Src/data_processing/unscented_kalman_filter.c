@@ -154,10 +154,6 @@ int ukf_predict(UKF *ukfh, const float delta_time) {
     // general error
     return 1;
   }
-  if (status == 2) {
-    // cholesky
-    return 2;
-  }
   status = unscented_transform_f();
   if (status) {
     // transform matrix multiply for P
@@ -249,8 +245,9 @@ static int calculate_sigmas_f(UKF *ukfh, float dt) {
   mat_scale_f32(&Q, dt, &Q_scaled);
   mat_add_f32(&P, &Q_scaled, &Q_scaled);
   mat_scale_f32(&Q_scaled, lambda_scaling_parameter + UKF_COVARIANCE_DIMENSION, &Q_scaled);
-  if (mat_cholesky_f32(&Q_scaled, &cholesky))
-    return 2; // matrix not positive definite
+  if (mat_cholesky_f32(&P, &cholesky) < 0.0F)
+    led_toggle_status(FIRM_MODE_BOOT);
+  mat_cholesky_f32(&Q_scaled, &cholesky);
 
   // first sigma point is just the state, X
   memcpy(sigma_points[0], X, sizeof(float) * UKF_STATE_DIMENSION);
@@ -529,8 +526,6 @@ void ukf_set_measurement(UKF *ukfh, const float *measurements) {
   ukfh->measurement_vector[UKF_MEASUREMENT_DIMENSION - 3] = mag_field[0] / norm_mag;
   ukfh->measurement_vector[UKF_MEASUREMENT_DIMENSION - 2] = mag_field[1] / norm_mag;
   ukfh->measurement_vector[UKF_MEASUREMENT_DIMENSION - 1] = mag_field[2] / norm_mag;
-  if (ukfh->measurement_vector[4] > 1000.0F)
-    led_toggle_status(FIRM_MODE_BOOT);
 }
 
 

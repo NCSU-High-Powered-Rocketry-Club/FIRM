@@ -28,7 +28,8 @@ void state_update(struct UKF* ukfh) {
             float* errors = ukfh->measurement_errors;
             // the sum of errors in acceleration x, y, and z axis
             float accel_error_sum = fabsf(errors[1]) + fabsf(errors[2]) + fabsf(errors[3]);
-            if (accel_error_sum > 300) {
+            float accel_raw_sum = fabsf(ukfh->measurement_vector[1]) + fabsf(ukfh->measurement_vector[2]) + fabsf(ukfh->measurement_vector[3]);
+            if (accel_error_sum > 100.0F && accel_raw_sum > 10.0F) {
                 state = MOTOR_BURN;
                 set_state_matrices(ukfh);
             }
@@ -68,7 +69,6 @@ void state_update(struct UKF* ukfh) {
                     ukfh->Q[i + i * (UKF_COVARIANCE_DIMENSION)] = ukf_state_process_covariance_diag[state][i] * variance_multipler;
                 }
             }
-            break;
 
             if (ukfh->X[2] <= GROUND_ALTITUDE_METERS) {
                 float* errors = ukfh->measurement_errors;

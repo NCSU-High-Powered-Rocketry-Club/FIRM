@@ -29,8 +29,8 @@ float ukf_initial_state_covariance_diag[UKF_COVARIANCE_DIMENSION] = {
 
 float ukf_state_process_covariance_diag[STATE_MACHINE_NUM_STATES][UKF_COVARIANCE_DIMENSION] = {
     { // Standby
-        1e-5F, 1e-5F, 1e-5F, // position (x, y, z)
-        1e-5F, 1e-5F, 1e-5F, // velocity (x, y, z)
+        1.0F, 1.0F, 1.0F, // position (x, y, z)
+        1.0F, 1.0F, 1.0F, // velocity (x, y, z)
         1e-3F, 1e-3F, 1e-3F, // acceleration (x, y, z)
         1.0F, 1.0F, 1.0F, // gyro (x, y, z)
         1e-1F, 1e-1F, 1e-1F // orientation (r, p, y)
@@ -73,10 +73,10 @@ float ukf_measurement_noise_covariance_diag[STATE_MACHINE_NUM_STATES][UKF_MEASUR
         1e-2F, 1e-2F, 1e-2F // normalized magnetometer (x, y, z)
     },
     { // Motor Burn
-        1e3F, // pressure (pascals)
-        1e-2F, 1e-2F, 1e-2F, // acceleration (x, y, z)
-        1e2F, 1e2F, 1e2F, // gyro angular rate (x, y, z)
-        1e-3F, 1e-3F, 1e-3F // normalized magnetometer (x, y, z)
+        1e1F, // pressure (pascals)
+        1e-1F, 1e-1F, 1e-1F, // acceleration (x, y, z)
+        3e1F, 3e1F, 3e1F, // gyro angular rate (x, y, z)
+        1e-2F, 1e-2F, 1e-2F // normalized magnetometer (x, y, z)
     },
     { // Coast
         1e3F, // pressure (pascals)
