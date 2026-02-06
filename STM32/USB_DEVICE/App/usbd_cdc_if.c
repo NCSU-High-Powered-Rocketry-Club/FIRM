@@ -41,6 +41,7 @@ static USBD_CDC_LineCodingTypeDef g_line_coding = {
 };
 
 static volatile uint16_t g_control_line_state = 0U;
+static volatile uint8_t g_tx_lock = 0U;
 
 /* USER CODE END PV */
 
@@ -165,6 +166,7 @@ static int8_t CDC_Init_FS(void)
   /* Set Application Buffers */
   USBD_CDC_SetTxBuffer(&hUsbDeviceFS, UserTxBufferFS, 0);
   USBD_CDC_SetRxBuffer(&hUsbDeviceFS, UserRxBufferFS);
+  (void)USBD_CDC_ReceivePacket(&hUsbDeviceFS);
   return (USBD_OK);
   /* USER CODE END 3 */
 }
@@ -176,6 +178,7 @@ static int8_t CDC_Init_FS(void)
 static int8_t CDC_DeInit_FS(void)
 {
   /* USER CODE BEGIN 4 */
+  __atomic_clear(&g_tx_lock, __ATOMIC_RELEASE);
   return (USBD_OK);
   /* USER CODE END 4 */
 }
@@ -313,12 +316,48 @@ uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len)
 {
   uint8_t result = USBD_OK;
   /* USER CODE BEGIN 7 */
-  USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassData;
-  if (hcdc->TxState != 0){
+  if (hUsbDeviceFS.dev_state != USBD_STATE_CONFIGURED)
+  {
     return USBD_BUSY;
   }
-  USBD_CDC_SetTxBuffer(&hUsbDeviceFS, Buf, Len);
+
+  /* Many Linux userspace tools won't start IN traffic until the port is opened
+   * (DTR asserted). Avoid starting a TX transfer before that.
+   */
+  if ((g_control_line_state & 0x0001U) == 0U)
+  {
+    return USBD_BUSY;
+  }
+
+  if (__atomic_test_and_set(&g_tx_lock, __ATOMIC_ACQUIRE))
+  {
+    return USBD_BUSY;
+  }
+
+  USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassDataCmsit[hUsbDeviceFS.classId];
+  if ((hcdc == NULL) || (hcdc->TxState != 0U))
+  {
+    __atomic_clear(&g_tx_lock, __ATOMIC_RELEASE);
+    return USBD_BUSY;
+  }
+
+  if (Len > (uint16_t)APP_TX_DATA_SIZE)
+  {
+    __atomic_clear(&g_tx_lock, __ATOMIC_RELEASE);
+    return USBD_FAIL;
+  }
+
+  if (Len > 0U)
+  {
+    (void)memcpy(UserTxBufferFS, Buf, Len);
+  }
+
+  USBD_CDC_SetTxBuffer(&hUsbDeviceFS, UserTxBufferFS, Len);
   result = USBD_CDC_TransmitPacket(&hUsbDeviceFS);
+  if (result != USBD_OK)
+  {
+    __atomic_clear(&g_tx_lock, __ATOMIC_RELEASE);
+  }
   /* USER CODE END 7 */
   return result;
 }
@@ -342,6 +381,7 @@ static int8_t CDC_TransmitCplt_FS(uint8_t *Buf, uint32_t *Len, uint8_t epnum)
   UNUSED(Buf);
   UNUSED(Len);
   UNUSED(epnum);
+  __atomic_clear(&g_tx_lock, __ATOMIC_RELEASE);
   /* USER CODE END 13 */
   return result;
 }
