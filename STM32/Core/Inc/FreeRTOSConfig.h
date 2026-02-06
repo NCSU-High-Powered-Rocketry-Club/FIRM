@@ -45,6 +45,7 @@
 
 /* USER CODE BEGIN Includes */
 /* Section where include file can be added */
+#include "freertos_trace.h"
 /* USER CODE END Includes */
 
 /* Ensure definitions are only used by the compiler, and not by the assembler. */
@@ -166,6 +167,8 @@ standard names. */
 
 /* USER CODE BEGIN Defines */
 /* Section where parameter definitions can be added (for instance, to override default ones in FreeRTOS.h) */
+#define traceTASK_SWITCHED_IN()  trace_write_task_switch(1, pxCurrentTCB->pcTaskName)
+#define traceTASK_SWITCHED_OUT() trace_write_task_switch(0, pxCurrentTCB->pcTaskName)
 /* USER CODE END Defines */
 
 #endif /* FREERTOS_CONFIG_H */
