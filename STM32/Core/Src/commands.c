@@ -60,7 +60,7 @@ uint32_t execute_command(CommandIdentifier identifier, uint8_t *data, uint32_t d
       memcpy(device_conf.name, data, DEVICE_NAME_LENGTH);
 
       // Frequency is little-endian
-      device_conf.frequency = data[1 + DEVICE_NAME_LENGTH] | ((uint16_t)data[2 + DEVICE_NAME_LENGTH] << 8);
+      device_conf.frequency = data[DEVICE_NAME_LENGTH] | ((uint16_t)data[1 + DEVICE_NAME_LENGTH] << 8);
 
       uint8_t protocol_byte = data[2 + DEVICE_NAME_LENGTH];
       if (protocol_byte >= PROTOCOL_USB && protocol_byte <= PROTOCOL_SPI) {
