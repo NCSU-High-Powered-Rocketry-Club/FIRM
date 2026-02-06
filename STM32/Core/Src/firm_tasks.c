@@ -9,6 +9,7 @@
 #include "usb_print_debug.h"
 #include "usbd_cdc_if.h"
 #include "semphr.h"
+#include <stdint.h>
 #include <string.h>
 
 // task handles
@@ -565,19 +566,8 @@ void transmit_data(void *argument) {
       packet.crc = crc16_ccitt((uint8_t *)&(packet), serialized_packet_len - 2);
       // move the location of the crc bytes directly after the payload
       memmove((uint8_t*)&packet + serialized_packet_len - 2, &packet.crc, sizeof(packet.crc));
-      {
-        const uint32_t max_retries = 200U; /* ~200ms at 1ms delay */
-        uint32_t tries = 0U;
-        uint8_t tx_ret;
-        do {
-          tx_ret = CDC_Transmit_FS((uint8_t*)&packet, (uint16_t)serialized_packet_len);
-          if (tx_ret == USBD_OK) {
-            break;
-          }
-          vTaskDelay(pdMS_TO_TICKS(1));
-          tries++;
-        } while (tries < max_retries);
-      }
+      CDC_Transmit_FS((uint8_t*)&packet, (uint16_t)serialized_packet_len);
+
       // optionally transmit over uart if the setting is enabled
       if (firmSettings.uart_transfer_enabled && uart_tx_done) {
         uart_tx_done = false;
