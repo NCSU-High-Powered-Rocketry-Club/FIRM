@@ -1,5 +1,6 @@
 #include "matrixhelper.h"
 
+
 int symmetrize(arm_matrix_instance_f32 *enter_matrix) {
     uint16_t mat_rows = enter_matrix->numRows;
     uint16_t mat_cols = enter_matrix->numCols;
@@ -169,11 +170,9 @@ void mat_trans_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 
     }
 }
 
-int mat_cholesky_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 *pDst) {
+float mat_cholesky_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 *pDst) {
     const int n = (int)pDst->numRows;
-    if (pSrc->numRows != pSrc->numCols || pDst->numRows != pDst->numCols || pSrc->numRows != pDst->numRows) {
-        return 1;
-    }
+    float min_L_diag = FLT_MAX;
 
     // computes lower triangular cholesky
     for (int row = 0; row < n; row++) {
@@ -184,10 +183,13 @@ int mat_cholesky_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f3
             }
 
             if (row == col) {
-                if (sum <= 0.0F) {
-                    return 1; // not positive definite
+                if (sum < 0.0F) {
+                  return -1.0F;
                 }
-                pDst->pData[row * n + col] = sqrtf(sum);
+                float diag = sqrtf(sum);
+                pDst->pData[row * n + col] = diag;
+                if (diag < min_L_diag)
+                  min_L_diag = diag;
             } else {
                 pDst->pData[row * n + col] = sum / pDst->pData[col * n + col];
             }
@@ -198,8 +200,8 @@ int mat_cholesky_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f3
             pDst->pData[row * n + col] = 0.0F;
         }
     }
-
-    return 0;
+    // lower bound of minimum eigenvalue
+    return min_L_diag * min_L_diag;
 }
 
 void mat_inverse_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 *pDst) {

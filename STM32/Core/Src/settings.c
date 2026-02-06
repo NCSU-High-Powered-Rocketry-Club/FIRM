@@ -86,59 +86,22 @@ bool settings_write_firm_settings(FIRMSettings_t *firm_settings) {
 }
 
 static void settings_write_defaults(void) {
-  // Previous default calibration (kept for easy rollback)
-  // for (int i = 0; i < 3; i++) {
-  //   for (int j = 0; j < 3; j++) {
-  //     if (i != j) {
-  //       calibrationSettings.icm45686_accel.scale_multiplier[3 * i + j] = 0.0F;
-  //       calibrationSettings.icm45686_gyro.scale_multiplier[3 * i + j] = 0.0F;
-  //       calibrationSettings.mmc5983ma_mag.scale_multiplier[3 * i + j] = 0.0F;
-  //       continue;
-  //     }
-  //     calibrationSettings.icm45686_accel.scale_multiplier[3 * i + j] = 1.0F;
-  //     calibrationSettings.icm45686_gyro.scale_multiplier[3 * i + j] = 1.0F;
-  //     calibrationSettings.mmc5983ma_mag.scale_multiplier[3 * i + j] = 1.0F;
-  //   }
-  //   calibrationSettings.icm45686_accel.offset_gs[i] = 0.0F;
-  //   calibrationSettings.icm45686_gyro.offset_dps[i] = 0.0F;
-  //   calibrationSettings.mmc5983ma_mag.offset_ut[i] = 0.0F;
-  // }
-
-  // Temporary calibration values (provided).
-  // Accel/Gyro scale factors: identity matrix.
-  for (int i = 0; i < 9; i++) {
-    calibrationSettings.icm45686_accel.scale_multiplier[i] = 0.0F;
-    calibrationSettings.icm45686_gyro.scale_multiplier[i] = 0.0F;
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      if (i != j) {
+        calibrationSettings.icm45686_accel.scale_multiplier[3 * i + j] = 0.0F;
+        calibrationSettings.icm45686_gyro.scale_multiplier[3 * i + j] = 0.0F;
+        calibrationSettings.mmc5983ma_mag.scale_multiplier[3 * i + j] = 0.0F;
+        continue;
+      }
+      calibrationSettings.icm45686_accel.scale_multiplier[3 * i + j] = 1.0F;
+      calibrationSettings.icm45686_gyro.scale_multiplier[3 * i + j] = 1.0F;
+      calibrationSettings.mmc5983ma_mag.scale_multiplier[3 * i + j] = 1.0F;
+    }
+    calibrationSettings.icm45686_accel.offset_gs[i] = 0.0F;
+    calibrationSettings.icm45686_gyro.offset_dps[i] = 0.0F;
+    calibrationSettings.mmc5983ma_mag.offset_ut[i] = 0.0F;
   }
-  calibrationSettings.icm45686_accel.scale_multiplier[0] = 1.0F;
-  calibrationSettings.icm45686_accel.scale_multiplier[4] = 1.0F;
-  calibrationSettings.icm45686_accel.scale_multiplier[8] = 1.0F;
-  calibrationSettings.icm45686_gyro.scale_multiplier[0] = 1.0F;
-  calibrationSettings.icm45686_gyro.scale_multiplier[4] = 1.0F;
-  calibrationSettings.icm45686_gyro.scale_multiplier[8] = 1.0F;
-
-  calibrationSettings.icm45686_accel.offset_gs[0] = 0.0231F;
-  calibrationSettings.icm45686_accel.offset_gs[1] = -0.0277F;
-  calibrationSettings.icm45686_accel.offset_gs[2] = 0.00043F;
-
-  calibrationSettings.icm45686_gyro.offset_dps[0] = 0.356F;
-  calibrationSettings.icm45686_gyro.offset_dps[1] = 0.04985F;
-  calibrationSettings.icm45686_gyro.offset_dps[2] = 0.0888F;
-
-  calibrationSettings.mmc5983ma_mag.offset_ut[0] = 9.692693349054112F;
-  calibrationSettings.mmc5983ma_mag.offset_ut[1] = 1.248260969894928F;
-  calibrationSettings.mmc5983ma_mag.offset_ut[2] = -9.411992358543154F;
-
-  // Magnetometer scale matrix (row-major)
-  calibrationSettings.mmc5983ma_mag.scale_multiplier[0] = 1.000685940805412F;
-  calibrationSettings.mmc5983ma_mag.scale_multiplier[1] = 0.018460238433189F;
-  calibrationSettings.mmc5983ma_mag.scale_multiplier[2] = 0.022421305403328F;
-  calibrationSettings.mmc5983ma_mag.scale_multiplier[3] = 0.018460238433189F;
-  calibrationSettings.mmc5983ma_mag.scale_multiplier[4] = 1.044313232820982F;
-  calibrationSettings.mmc5983ma_mag.scale_multiplier[5] = -0.041935634277478F;
-  calibrationSettings.mmc5983ma_mag.scale_multiplier[6] = 0.022421305403328F;
-  calibrationSettings.mmc5983ma_mag.scale_multiplier[7] = -0.041935634277478F;
-  calibrationSettings.mmc5983ma_mag.scale_multiplier[8] = 0.959443156862626F;
   
   // TODO: determine settings to use
   w25q128jv_read_UID((uint8_t *)&firmSettings.device_uid, 8);
@@ -211,6 +174,7 @@ bool settings_write_mock_settings(FIRMSettings_t *firm_settings, CalibrationSett
 
   // Write calibration settings at the beginning
   memcpy(buffer_to_write, calibration_settings, sizeof(CalibrationSettings_t));
+  memcpy(&calibrationSettings, calibration_settings, sizeof(CalibrationSettings_t));
 
   // Write firm settings after calibration settings
   memcpy(buffer_to_write + sizeof(CalibrationSettings_t), firm_settings, sizeof(FIRMSettings_t));

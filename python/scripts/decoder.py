@@ -228,7 +228,7 @@ def decode(path):
         decoder = Decoder(f)
         while (decoder.read_packet()):
             continue
-
+        print("decoded data, writing csv's...")
         bmp581_df = pd.DataFrame(decoder.bmp581_data, columns=['timestamp', 'temperature', 'pressure'])
         icm45686_df = pd.DataFrame(decoder.icm45686_data, columns=['timestamp', 'accel_x', 'accel_y', 'accel_z', 'gyro_x', 'gyro_y', 'gyro_z'])
         mmc5983ma_df = pd.DataFrame(decoder.mmc5983ma_data, columns=['timestamp', 'mag_x', 'mag_y', 'mag_z'])
@@ -236,8 +236,11 @@ def decode(path):
         # write to csv
     
         write_to_csv(bmp581_df, "BMP581_data.csv", decoder)
+        print("wrote BMP581_data.csv")
         write_to_csv(icm45686_df, "ICM45686_data.csv", decoder)
+        print("wrote ICM45686_data.csv")
         write_to_csv(mmc5983ma_df, "MMC5983MA_data.csv", decoder)
+        print("wrote MMC5983MA.csv")
 
 if __name__ == "__main__":
     if len(sys.argv) == 2:

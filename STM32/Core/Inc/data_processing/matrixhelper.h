@@ -1,6 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <math.h>
+#include <float.h>
 
   /**
    * @brief Instance structure for the floating-point matrix structure.
@@ -32,5 +33,5 @@ void vec_sub_f32(const float *pSrcA, const float *pSrcB, float *pDst, int length
 void vec_scale_f32(const float *pSrcA, float scale, float *pDst, int length);
 void vec_mult_f32(const float *pSrcA, const float *pSrcB, float *pDst, int length);
 
-int mat_cholesky_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 *pDst);
+float mat_cholesky_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 *pDst);
 void mat_inverse_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 *pDst);
