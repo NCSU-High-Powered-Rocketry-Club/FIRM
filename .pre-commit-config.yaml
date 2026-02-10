@@ -1,6 +1,7 @@
 ci:
   autofix_prs: true
   autoupdate_schedule: "monthly"
+  skip: ["clang-tidy"]
 
 repos:
   - repo: https://github.com/pre-commit/mirrors-clang-format
