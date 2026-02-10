@@ -490,12 +490,10 @@ void filter_data_task(void *argument) {
   UKF ukf;
   ukf.measurement_function = ukf_measurement_function;
   ukf.state_transition_function = ukf_state_transition_function;
-  DataPacket *packet = &data_packet.data.data_packet;
+  DataPacket packet = data_packet.data.data_packet;
   TaskCommandOption cmd_status = TASKCMD_SETUP;
   float last_time; 
   // set the timer based on the set packet transmission frequency
-  const TickType_t transmit_freq = MAX_WAIT_TIME(firmSettings.frequency_hz);
-  TickType_t last_wake_time = xTaskGetTickCount();
 
   for (;;) {
     xQueueReceive(data_filter_command_queue, &cmd_status, 0);
@@ -503,7 +501,8 @@ void filter_data_task(void *argument) {
       // time that FIRM should be running for (collecting sensor data) before starting the kalman filter
       vTaskDelay(pdMS_TO_TICKS(KALMAN_FILTER_STARTUP_DELAY_TIME_MS));
       // filter can initialize, and FIRM can go into live mode
-      ukf_init(&ukf, packet->pressure_pascals, &packet->raw_acceleration_x_gs, &packet->magnetic_field_x_microteslas);
+      memcpy(&packet, &data_packet.data.data_packet, 13 * 4);
+      ukf_init(&ukf, packet.pressure_pascals, &packet.raw_acceleration_x_gs, &packet.magnetic_field_x_microteslas);
       
       if (cmd_status == TASKCMD_SETUP) {
         xQueueSend(system_request_queue, &(SystemRequest){SYSREQ_FINISH_SETUP}, portMAX_DELAY);
@@ -513,22 +512,20 @@ void filter_data_task(void *argument) {
       }
       // set the last time to calculate the delta timestamp, minus some initial offset so that the
       // first iteration of the filter doesn't have an extremely small dt.
-      last_time = (float)packet->timestamp_seconds - 0.005F;
+      last_time = (float)packet.timestamp_seconds - 0.005F;
     }
     if (cmd_status != TASKCMD_SETUP && cmd_status != TASKCMD_MOCK_SETUP) {
-      float dt = (float)packet->timestamp_seconds - last_time;
+      memcpy(&packet, &data_packet.data.data_packet, 13 * 4);
+      float dt = (float)packet.timestamp_seconds - last_time;
       if (dt > 1e-6) {
-        last_time = (float)packet->timestamp_seconds;
-        if (dt > 0.1) {
-          led_toggle_status(FIRM_MODE_BOOT);
-        }
+        last_time = (float)packet.timestamp_seconds;
         int err = ukf_predict(&ukf, dt);
-        ukf_set_measurement(&ukf, &packet->pressure_pascals);
+        ukf_set_measurement(&ukf, &packet.pressure_pascals);
         err = ukf_update(&ukf);
         if (err) {
           led_set_status(FIRM_MODE_BOOT);
         }
-        memcpy(&packet->est_position_x_meters, ukf.X, UKF_STATE_DIMENSION * 4);
+        memcpy(&data_packet.data.data_packet.est_position_x_meters, ukf.X, UKF_STATE_DIMENSION * 4);
       }
     }
   }
