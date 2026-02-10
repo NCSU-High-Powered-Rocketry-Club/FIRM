@@ -6,9 +6,7 @@
 
 TraceData trace_data;
 
-uint16_t trace_read_timestamp(void) {
-  return (uint16_t)(DWT->CYCCNT >> 8);
-}
+uint16_t trace_read_timestamp(void) { return (uint16_t)(DWT->CYCCNT >> 8); }
 
 void trace_write_task_switch(int switched_in, const char *task_name) {
   static uint16_t trace_t0 = 0;

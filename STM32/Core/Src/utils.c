@@ -1,15 +1,16 @@
 #include "utils.h"
 
 uint16_t clamp_u16(uint16_t value, uint16_t min_value, uint16_t max_value) {
-    if (value < min_value) {
-        return min_value;
-    }
-    if (value > max_value) {
-        return max_value;
-    }
-    return value;
+  if (value < min_value) {
+    return min_value;
+  }
+  if (value > max_value) {
+    return max_value;
+  }
+  return value;
 }
 
+// clang-format off
 static const uint16_t crc16_table[256] = {
     0x0000, 0x1189, 0x2312, 0x329B, 0x4624, 0x57AD, 0x6536, 0x74BF,
     0x8C48, 0x9DC1, 0xAF5A, 0xBED3, 0xCA6C, 0xDBE5, 0xE97E, 0xF8F7,
@@ -44,12 +45,13 @@ static const uint16_t crc16_table[256] = {
     0xF78F, 0xE606, 0xD49D, 0xC514, 0xB1AB, 0xA022, 0x92B9, 0x8330,
     0x7BC7, 0x6A4E, 0x58D5, 0x495C, 0x3DE3, 0x2C6A, 0x1EF1, 0x0F78
 };
+// clang-format on
 
 uint16_t crc16_ccitt(const uint8_t *data, size_t len) {
-    uint16_t crc = 0x0000;  // KERMIT initial value
-    for (size_t i = 0; i < len; ++i) {
-        uint8_t idx = (uint8_t)((crc ^ data[i]) & 0xFF);
-        crc = (crc16_table[idx] ^ (crc >> 8)) & 0xFFFF;
-    }
-    return crc;
+  uint16_t crc = 0x0000; // KERMIT initial value
+  for (size_t i = 0; i < len; ++i) {
+    uint8_t idx = (uint8_t)((crc ^ data[i]) & 0xFF);
+    crc = (crc16_table[idx] ^ (crc >> 8)) & 0xFFFF;
+  }
+  return crc;
 }

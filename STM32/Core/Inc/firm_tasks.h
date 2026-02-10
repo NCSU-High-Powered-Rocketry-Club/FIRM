@@ -138,7 +138,7 @@ void firm_rtos_init(void);
  * @param buffer Pointer to the received data buffer
  * @param data_length Length of the received data
  */
-void usb_receive_callback(uint8_t *buffer, uint32_t data_length);
+void usb_receive_callback(const uint8_t *buffer, uint32_t data_length);
 
 void system_manager_task(void *argument);
 void firm_mode_indicator_task(void *argument);
