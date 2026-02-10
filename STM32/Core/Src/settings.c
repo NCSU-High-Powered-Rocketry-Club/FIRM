@@ -11,7 +11,8 @@ static bool settings_write_flash_block(uint8_t *block_to_write);
 
 static bool settings_write_flash_block_to_sector(uint8_t *block_to_write, uint8_t sector);
 
-int settings_init(SPI_HandleTypeDef *flash_hspi, GPIO_TypeDef *flash_cs_channel, uint16_t flash_cs_pin) {
+int settings_init(SPI_HandleTypeDef *flash_hspi, GPIO_TypeDef *flash_cs_channel,
+                  uint16_t flash_cs_pin) {
   // set up flash chip porting layer
   w25q128jv_set_spi_settings(flash_hspi, flash_cs_channel, flash_cs_pin);
 
@@ -42,7 +43,9 @@ int settings_init(SPI_HandleTypeDef *flash_hspi, GPIO_TypeDef *flash_cs_channel,
   return 0;
 }
 
-bool settings_write_calibration_settings(AccelCalibration_t *accel_cal_settings, GyroCalibration_t *gyro_cal_settings, MagCalibration_t *mag_cal_settings) {
+bool settings_write_calibration_settings(AccelCalibration_t *accel_cal_settings,
+                                         GyroCalibration_t *gyro_cal_settings,
+                                         MagCalibration_t *mag_cal_settings) {
   if (accel_cal_settings == NULL && gyro_cal_settings == NULL && mag_cal_settings == NULL) {
     return false;
   }
@@ -52,17 +55,25 @@ bool settings_write_calibration_settings(AccelCalibration_t *accel_cal_settings,
   w25q128jv_read_sector(buffer_to_write, 0, 0, SETTINGS_FLASH_BLOCK_SIZE_BYTES);
 
   // Writes over just the calibration settings portion
-  if (accel_cal_settings != NULL)
+  if (accel_cal_settings != NULL) {
     memcpy(buffer_to_write, accel_cal_settings, sizeof(AccelCalibration_t));
-  if (gyro_cal_settings != NULL)
-    memcpy(buffer_to_write + sizeof(AccelCalibration_t), gyro_cal_settings, sizeof(GyroCalibration_t));
-  if (mag_cal_settings != NULL)
-    memcpy(buffer_to_write + sizeof(AccelCalibration_t) + sizeof(GyroCalibration_t), mag_cal_settings, sizeof(MagCalibration_t));
+  }
+  if (gyro_cal_settings != NULL) {
+    memcpy(buffer_to_write + sizeof(AccelCalibration_t), gyro_cal_settings,
+           sizeof(GyroCalibration_t));
+  }
+  if (mag_cal_settings != NULL) {
+    memcpy(buffer_to_write + sizeof(AccelCalibration_t) + sizeof(GyroCalibration_t),
+           mag_cal_settings, sizeof(MagCalibration_t));
+  }
   bool ok = settings_write_flash_block(buffer_to_write);
   if (ok) {
     memcpy(&calibrationSettings.icm45686_accel, buffer_to_write, sizeof(AccelCalibration_t));
-    memcpy(&calibrationSettings, buffer_to_write + sizeof(AccelCalibration_t), sizeof(GyroCalibration_t));
-    memcpy(&calibrationSettings, buffer_to_write + sizeof(AccelCalibration_t) + sizeof(GyroCalibration_t), sizeof(MagCalibration_t));
+    memcpy(&calibrationSettings, buffer_to_write + sizeof(AccelCalibration_t),
+           sizeof(GyroCalibration_t));
+    memcpy(&calibrationSettings,
+           buffer_to_write + sizeof(AccelCalibration_t) + sizeof(GyroCalibration_t),
+           sizeof(MagCalibration_t));
   }
   return 1;
 }
@@ -102,7 +113,7 @@ static void settings_write_defaults(void) {
     calibrationSettings.icm45686_gyro.offset_dps[i] = 0.0F;
     calibrationSettings.mmc5983ma_mag.offset_ut[i] = 0.0F;
   }
-  
+
   // TODO: determine settings to use
   w25q128jv_read_UID((uint8_t *)&firmSettings.device_uid, 8);
   firmSettings.usb_transfer_enabled = true;
@@ -113,7 +124,9 @@ static void settings_write_defaults(void) {
   strcpy(firmSettings.firmware_version, "v1.0.0");
   firmSettings.frequency_hz = 100;
 
-  (void)settings_write_calibration_settings(&calibrationSettings.icm45686_accel, &calibrationSettings.icm45686_gyro, &calibrationSettings.mmc5983ma_mag);
+  (void)settings_write_calibration_settings(&calibrationSettings.icm45686_accel,
+                                            &calibrationSettings.icm45686_gyro,
+                                            &calibrationSettings.mmc5983ma_mag);
   (void)settings_write_firm_settings(&firmSettings);
 }
 
@@ -129,7 +142,8 @@ static bool settings_write_flash_block(uint8_t *block_to_write) {
   // verify
   // Read back in small chunks to avoid large stack allocations.
   uint8_t verify[64];
-  for (uint32_t offset = 0; offset < SETTINGS_FLASH_BLOCK_SIZE_BYTES; offset += (uint32_t)sizeof(verify)) {
+  for (uint32_t offset = 0; offset < SETTINGS_FLASH_BLOCK_SIZE_BYTES;
+       offset += (uint32_t)sizeof(verify)) {
     uint32_t remaining = SETTINGS_FLASH_BLOCK_SIZE_BYTES - offset;
     uint32_t to_read = remaining < (uint32_t)sizeof(verify) ? remaining : (uint32_t)sizeof(verify);
 
@@ -153,7 +167,8 @@ static bool settings_write_flash_block_to_sector(uint8_t *block_to_write, uint8_
   // verify
   // Read back in small chunks to avoid large stack allocations.
   uint8_t verify[64];
-  for (uint32_t offset = 0; offset < SETTINGS_FLASH_BLOCK_SIZE_BYTES; offset += (uint32_t)sizeof(verify)) {
+  for (uint32_t offset = 0; offset < SETTINGS_FLASH_BLOCK_SIZE_BYTES;
+       offset += (uint32_t)sizeof(verify)) {
     uint32_t remaining = SETTINGS_FLASH_BLOCK_SIZE_BYTES - offset;
     uint32_t to_read = remaining < (uint32_t)sizeof(verify) ? remaining : (uint32_t)sizeof(verify);
 
@@ -165,7 +180,8 @@ static bool settings_write_flash_block_to_sector(uint8_t *block_to_write, uint8_
   return true;
 }
 
-bool settings_write_mock_settings(FIRMSettings_t *firm_settings, CalibrationSettings_t *calibration_settings) {
+bool settings_write_mock_settings(FIRMSettings_t *firm_settings,
+                                  CalibrationSettings_t *calibration_settings) {
   if (firm_settings == NULL || calibration_settings == NULL) {
     return false;
   }

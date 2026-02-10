@@ -1,11 +1,11 @@
 #pragma once
 
 typedef enum {
-    STANDBY = 0,
-    MOTOR_BURN = 1,
-    COAST = 2,
-    DESCENT = 3,
-    LANDED = 4,
+  STANDBY = 0,
+  MOTOR_BURN = 1,
+  COAST = 2,
+  DESCENT = 3,
+  LANDED = 4,
 } State;
 
 /**
@@ -43,16 +43,16 @@ extern float ukf_state_process_covariance_diag[STATE_MACHINE_NUM_STATES][UKF_COV
 /**
  * @brief Diagonal elements for the measurement noise covariance matrices of each flight state
  */
-extern float ukf_measurement_noise_covariance_diag[STATE_MACHINE_NUM_STATES][UKF_MEASUREMENT_DIMENSION];
+extern float ukf_measurement_noise_covariance_diag[STATE_MACHINE_NUM_STATES]
+                                                  [UKF_MEASUREMENT_DIMENSION];
 
 #define GRAVITY_METERS_PER_SECOND_SQUARED 9.798F
 #define UKF_MIN_VEL_FOR_DRAG 25.0F
 #define DRAG_PARAM (-2.5e-4F)
 
-
 /**
  * @brief UKF sigma point constants
- * 
+ *
  * From page 21 Merwe et al. (2004)
  * doi: 10.2514/6.2004-5120
  */
@@ -61,4 +61,3 @@ extern float ukf_measurement_noise_covariance_diag[STATE_MACHINE_NUM_STATES][UKF
 #define UKF_SIGMA_TERTIARY_KAPPA 0.0F
 
 #define GROUND_ALTITUDE_METERS 20.0F
-

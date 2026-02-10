@@ -43,13 +43,14 @@ MessageIdentifier validate_message_identifier(uint16_t header, uint16_t identifi
 
 /**
  * Validates CRC16 across separate header, length, and payload buffers without copying.
- * 
+ *
  * @param header_bytes Pointer to 4-byte header identifier
  * @param payload_length Length of the payload
  * @param payload_and_crc Pointer to payload + 2 CRC bytes
  * @return true if CRC is valid, false otherwise
  */
-bool validate_message_crc16(uint16_t header, uint16_t identifier, uint32_t payload_length, const uint8_t* payload_and_crc);
+bool validate_message_crc16(uint16_t header, uint16_t identifier, uint32_t payload_length,
+                            const uint8_t *payload_and_crc);
 
 /**
  * Parses the 8-byte USB meta header:
