@@ -95,6 +95,10 @@ void mmc5983ma_convert_packet(SensorPacket *packet, DataPacket *result_packet) {
     result_packet -> magnetic_field_x_microteslas = mag_float_x * calibrationSettings.mmc5983ma_mag.scale_multiplier[0] + mag_float_y * calibrationSettings.mmc5983ma_mag.scale_multiplier[3] + mag_float_z * calibrationSettings.mmc5983ma_mag.scale_multiplier[6];
     result_packet -> magnetic_field_y_microteslas = mag_float_x * calibrationSettings.mmc5983ma_mag.scale_multiplier[1] + mag_float_y * calibrationSettings.mmc5983ma_mag.scale_multiplier[4] + mag_float_z * calibrationSettings.mmc5983ma_mag.scale_multiplier[7];
     result_packet -> magnetic_field_z_microteslas = mag_float_x * calibrationSettings.mmc5983ma_mag.scale_multiplier[2] + mag_float_y * calibrationSettings.mmc5983ma_mag.scale_multiplier[5] + mag_float_z * calibrationSettings.mmc5983ma_mag.scale_multiplier[8];
+    // result_packet->magnetic_field_x_microteslas = mag_float_x;
+    // result_packet->magnetic_field_y_microteslas = mag_float_y;
+    // result_packet->magnetic_field_z_microteslas = mag_float_z;
+
 }
 
 void icm45686_convert_packet(SensorPacket *packet, DataPacket *result_packet) {
