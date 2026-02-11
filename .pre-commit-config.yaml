@@ -1,13 +1,14 @@
 ci:
   autofix_prs: true
   autoupdate_schedule: "monthly"
+  skip: ["clang-tidy"]
 
 repos:
   - repo: https://github.com/pre-commit/mirrors-clang-format
     rev: v21.1.8
     hooks:
       - id: clang-format
-        files: ^Core/.*\.(c|h)$   # Only run on C source and header files
+        files: ^Core/.*\.(c|h)$ # Only run on C source and header files
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
@@ -22,30 +23,39 @@ repos:
     rev: v1.1.11
     hooks:
       - id: clang-tidy
-        args: [
-          "--warnings-as-errors=*",
-          "--extra-arg=-ISTM32/Core/Inc",
-          "--extra-arg=-ISTM32/Core/Inc/data_processing",
-          "--extra-arg=-ISTM32/Drivers/STM32F4xx_HAL_Driver/Inc",
-          "--extra-arg=-ISTM32/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy",
-          "--extra-arg=-ISTM32/Drivers/CMSIS/Device/ST/STM32F4xx/Include",
-          "--extra-arg=-ISTM32/Drivers/CMSIS/Include",
-          "--extra-arg=-ISTM32/Middlewares/ST/STM32_USB_Device_Library/Core/Inc",
-          "--extra-arg=-ISTM32/Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc",
-          "--extra-arg=-ISTM32/Middlewares/Third_Party/FatFs/src",
-          "--extra-arg=-ISTM32/FATFS/Target",
-          "--extra-arg=-ISTM32/FATFS/App",
-          "--extra-arg=-ISTM32/USB_DEVICE/App",
-          "--extra-arg=-ISTM32/USB_DEVICE/Target",
-          "--extra-arg=-ISTM32/Libraries/BMP581",
-          "--extra-arg=-ISTM32/Libraries/ICM45686",
-          "--extra-arg=-ISTM32/Libraries/MMC5983MA",
-          "--extra-arg=-ISTM32/Libraries/SPIUtils",
-          "--extra-arg=-ISTM32/Libraries/W25Q128JV",
-          "--extra-arg=-DSTM32F405xx",
-          "--extra-arg=-DUSE_HAL_DRIVER"
-        ]
-        additional_dependencies: ['clang-tidy']
+        args:
+          [
+            "-p=STM32/build/FIRM-Configure-Debug",
+            "--warnings-as-errors=*",
+            "--checks=-readability-redundant-declaration",
+            "--extra-arg=-ISTM32/Core/Inc",
+            "--extra-arg=-ISTM32/Core/Inc/data_processing",
+            "--extra-arg=-ISTM32/Drivers/STM32F4xx_HAL_Driver/Inc",
+            "--extra-arg=-ISTM32/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy",
+            "--extra-arg=-ISTM32/Drivers/CMSIS/Device/ST/STM32F4xx/Include",
+            "--extra-arg=-ISTM32/Drivers/CMSIS/Include",
+            "--extra-arg=-ISTM32/Middlewares/ST/STM32_USB_Device_Library/Core/Inc",
+            "--extra-arg=-ISTM32/Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc",
+            "--extra-arg=-ISTM32/Middlewares/Third_Party/FatFs/src",
+            "--extra-arg=-ISTM32/FATFS/Target",
+            "--extra-arg=-ISTM32/FATFS/App",
+            "--extra-arg=-ISTM32/USB_DEVICE/App",
+            "--extra-arg=-ISTM32/USB_DEVICE/Target",
+            "--extra-arg=-ISTM32/Middlewares/Third_Party/FreeRTOS/Source/include",
+            "--extra-arg=-ISTM32/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F",
+            "--extra-arg=-ISTM32/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2",
+            "--extra-arg=-ISTM32/Libraries/BMP581",
+            "--extra-arg=-ISTM32/Libraries/ICM45686",
+            "--extra-arg=-ISTM32/Libraries/MMC5983MA",
+            "--extra-arg=-ISTM32/Libraries/SPIUtils",
+            "--extra-arg=-ISTM32/Libraries/W25Q128JV",
+            "--extra-arg=-DSTM32F405xx",
+            "--extra-arg=-DUSE_HAL_DRIVER",
+            "--extra-arg=-D__GNUC__=11",
+            "--extra-arg=-D__GNUC_MINOR__=3",
+            "--extra-arg=-D__GNUC_PATCHLEVEL__=0",
+          ]
+        additional_dependencies: ["clang-tidy"]
         files: ^STM32/.*\.(c|h)$
         exclude: |
           (?x)^(
@@ -57,5 +67,6 @@ repos:
               STM32/Core/Src/system_stm32f4xx\.c|
               STM32/Core/Src/sysmem\.c|
               STM32/Core/Src/syscalls\.c|
-              STM32/Core/Inc/stm32f4xx_hal_conf\.h
+              STM32/Core/Inc/stm32f4xx_hal_conf\.h|
+              STM32/Core/Inc/FreeRTOSConfig\.h
           )

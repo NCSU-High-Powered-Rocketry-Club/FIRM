@@ -5,9 +5,9 @@
  *      Author: Wlsan
  */
 #pragma once
+#include "bmp581_packet.h"
 #include "usb_print_debug.h"
 #include <stdbool.h>
-#include "bmp581_packet.h"
 
 /**
  * @brief ensures SPI read/write is working to the BMP581, and configures register settings
@@ -17,7 +17,7 @@
  * @param cs_pin specifies the GPIO pin that the chip select pin is connected to.
  * @retval 0 upon success
  */
-int bmp581_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin);
+int bmp581_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin);
 
 /**
  * @brief reads the pressure and temperature measurements from the BMP581
@@ -25,20 +25,20 @@ int bmp581_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_p
  * @param packet pointer to the Barometer packet where the data will be stored
  * @retval 0 upon success, 1 if no new data is ready yet
  */
-int bmp581_read_data(BMP581Packet_t* packet);
+int bmp581_read_data(BMP581Packet_t *packet);
 
 /**
  * @brief gets the scale factor of the temperature readings to convert to celcius.
- * 
+ *
  * @retval float value to divide binary data by to get temperature in celcius
  */
 float bmp581_get_temp_scale_factor(void);
 
 /**
  * @brief gets the scale factor of the pressure readings to convert to pascals.
- * 
+ *
  * @retval float value to divide binary data by to get pressure in pascals
  */
 float bmp581_get_pressure_scale_factor(void);
 
-void set_spi_bmp(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin);
+void set_spi_bmp(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin);

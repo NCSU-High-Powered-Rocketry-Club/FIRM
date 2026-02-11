@@ -12,8 +12,8 @@
 
 #include <string.h>
 
-void serialPrintStr(const char* s);
-void serialPrintStrInline(const char* s);
+void serialPrintStr(const char *s);
+void serialPrintStrInline(const char *s);
 void serialPrintInt(int d);
 void serialPrintlnInt(int d);
 void serialPrintFloat(float f);

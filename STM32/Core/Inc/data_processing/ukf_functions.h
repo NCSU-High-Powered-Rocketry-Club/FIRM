@@ -1,9 +1,8 @@
 #pragma once
 
-#include "matrixhelper.h"
 #include "kalman_filter_config.h"
+#include "matrixhelper.h"
 #include "unscented_kalman_filter.h"
-
 
 #include <string.h>
 
