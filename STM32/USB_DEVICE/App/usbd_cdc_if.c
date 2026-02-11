@@ -212,8 +212,7 @@ static int8_t CDC_DeInit_FS(void)
 }
 
 /**
-  * @brief  Manage the CDC class requests. Basically handles control requests from the host
-  * that aren't data related.
+  * @brief  Manage the CDC class requests
   * @param  cmd: Command code
   * @param  pbuf: Buffer containing command data (request parameters)
   * @param  length: Number of data to be sent (in bytes)
@@ -349,7 +348,7 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
   * @brief  CDC_Transmit_FS
   *         Data to send over USB IN endpoint are sent over CDC interface
   *         through this function.
-  * @note
+  *         @note
   *
   *
   * @param  Buf: Buffer of data to be sent
