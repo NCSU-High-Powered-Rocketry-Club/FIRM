@@ -6,6 +6,12 @@
 // #define TRACE_EVENT_COUNT 1024U
 #define TRACE_EVENT_COUNT 800U
 
+void trace_begin_region();
+void trace_end_region(const char id[2]);
+
+#define TRACE_BEGIN_REGION() trace_begin_region();
+#define TRACE_END_REGION(id, name) trace_end_region(id);
+
 typedef struct {
   char name[TRACE_TASK_NAME_LEN];
   uint16_t t0;

@@ -1,9 +1,12 @@
 #include "matrixhelper.h"
+#include "freertos_trace.h"
 
 int symmetrize(arm_matrix_instance_f32 *enter_matrix) {
+  TRACE_BEGIN_REGION();
   uint16_t mat_rows = enter_matrix->numRows;
   uint16_t mat_cols = enter_matrix->numCols;
   if (mat_rows != mat_cols) {
+    TRACE_END_REGION("sy", "symmetrize");
     return 1;
   }
 
@@ -17,10 +20,12 @@ int symmetrize(arm_matrix_instance_f32 *enter_matrix) {
     }
   }
 
+  TRACE_END_REGION("sy", "symmetrize");
   return 0;
 }
 
 void rotvec_to_quat(const float rotvec[3], float quat[4]) {
+  TRACE_BEGIN_REGION();
   float theta;
   theta = sqrtf(rotvec[0] * rotvec[0] + rotvec[1] * rotvec[1] + rotvec[2] * rotvec[2]);
   theta *= 0.5F;
@@ -29,6 +34,7 @@ void rotvec_to_quat(const float rotvec[3], float quat[4]) {
     quat[1] = 0.0F;
     quat[2] = 0.0F;
     quat[3] = 0.0F;
+    TRACE_END_REGION("rv", "rotvec_to_quat");
     return;
   }
 
@@ -37,9 +43,11 @@ void rotvec_to_quat(const float rotvec[3], float quat[4]) {
   quat[1] = (rotvec[0] * 0.5F) * s;
   quat[2] = (rotvec[1] * 0.5F) * s;
   quat[3] = (rotvec[2] * 0.5F) * s;
+  TRACE_END_REGION("rv", "rotvec_to_quat");
 }
 
 void quat_to_rotvec(const float quat[4], float rotvec[3]) {
+  TRACE_BEGIN_REGION();
   // Normalize quaternion manually (no arm_quaternion_norm_f32 available)
   float quat_norm =
       sqrtf(quat[0] * quat[0] + quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
@@ -56,6 +64,7 @@ void quat_to_rotvec(const float quat[4], float rotvec[3]) {
     rotvec[0] = 0.0F;
     rotvec[1] = 0.0F;
     rotvec[2] = 0.0F;
+    TRACE_END_REGION("qr", "quat_to_rotvec");
     return;
   }
 
@@ -63,36 +72,44 @@ void quat_to_rotvec(const float quat[4], float rotvec[3]) {
   rotvec[0] = x * scale;
   rotvec[1] = y * scale;
   rotvec[2] = z * scale;
+  TRACE_END_REGION("qr", "quat_to_rotvec");
 }
 
 // cmsis-dsp doesnt have f32 matrix scale
 void mat_scale_f32(const arm_matrix_instance_f32 *pSrc, float scale,
                    arm_matrix_instance_f32 *pDst) {
+  TRACE_BEGIN_REGION();
   int numElements = pSrc->numRows * pSrc->numCols;
   for (int i = 0; i < numElements; i++) {
     pDst->pData[i] = pSrc->pData[i] * scale;
   }
+  TRACE_END_REGION("ms", "mat_scale_f32");
 }
 
 // cmsis-dsp doesnt have f32 matrix add
 void mat_add_f32(const arm_matrix_instance_f32 *pSrcA, const arm_matrix_instance_f32 *pSrcB,
                  arm_matrix_instance_f32 *pDst) {
+  TRACE_BEGIN_REGION();
   int numElements = pSrcA->numRows * pSrcA->numCols;
   for (int i = 0; i < numElements; i++) {
     pDst->pData[i] = pSrcA->pData[i] + pSrcB->pData[i];
   }
+  TRACE_END_REGION("ma", "mat_add_f32");
 }
 
 void mat_sub_f32(const arm_matrix_instance_f32 *pSrcA, const arm_matrix_instance_f32 *pSrcB,
                  arm_matrix_instance_f32 *pDst) {
+  TRACE_BEGIN_REGION();
   int numElements = pSrcA->numRows * pSrcA->numCols;
   for (int i = 0; i < numElements; i++) {
     pDst->pData[i] = pSrcA->pData[i] - pSrcB->pData[i];
   }
+  TRACE_END_REGION("mb", "mat_sub_f32");
 }
 
 // cmsis-dsp doesnt have f32 matrix/vector multiply
 void mat_vec_mult_f32(const arm_matrix_instance_f32 *pSrcA, const float *pVec, float *pDst) {
+  TRACE_BEGIN_REGION();
   uint16_t rows = pSrcA->numRows;
   uint16_t cols = pSrcA->numCols;
   for (int i = 0; i < rows; i++) {
@@ -101,6 +118,7 @@ void mat_vec_mult_f32(const arm_matrix_instance_f32 *pSrcA, const float *pVec, f
       pDst[i] += pSrcA->pData[i * cols + j] * pVec[j];
     }
   }
+  TRACE_END_REGION("mv", "mat_vec_mult_f32");
 }
 
 // Quaternion norm
@@ -125,6 +143,7 @@ void quaternion_product_f32(const float *q1, const float *q2, float *out) {
 
 void mat_mult_f32(const arm_matrix_instance_f32 *pSrcA, const arm_matrix_instance_f32 *pSrcB,
                   arm_matrix_instance_f32 *pDst) {
+  TRACE_BEGIN_REGION();
   int a_rows = pSrcA->numRows;
   int a_cols = pSrcA->numCols;
   int b_cols = pSrcB->numCols;
@@ -138,6 +157,7 @@ void mat_mult_f32(const arm_matrix_instance_f32 *pSrcA, const arm_matrix_instanc
       pDst->pData[i * b_cols + j] = sum;
     }
   }
+  TRACE_END_REGION("mm", "mat_mult_f32");
 }
 
 void vec_sub_f32(const float *pSrcA, const float *pSrcB, float *pDst, int length) {
@@ -159,12 +179,15 @@ void vec_scale_f32(const float *pSrcA, const float scale, float *pDst, int lengt
 }
 
 void vec_mult_f32(const float *pSrcA, const float *pSrcB, float *pDst, int length) {
+  TRACE_BEGIN_REGION();
   for (int i = 0; i < length; i++) {
     pDst[i] = pSrcA[i] * pSrcB[i];
   }
+  TRACE_END_REGION("vp", "vec_mult_f32");
 }
 
 void mat_trans_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 *pDst) {
+  TRACE_BEGIN_REGION();
   uint16_t rows = pSrc->numRows;
   uint16_t cols = pSrc->numCols;
   for (uint16_t j = 0; j < cols; j++) {
@@ -172,9 +195,11 @@ void mat_trans_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 
       pDst->pData[j * rows + i] = pSrc->pData[i * cols + j];
     }
   }
+  TRACE_END_REGION("tr", "mat_trans_f32");
 }
 
 float mat_cholesky_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 *pDst) {
+  TRACE_BEGIN_REGION();
   const int n = (int)pDst->numRows;
   float min_L_diag = FLT_MAX;
 
@@ -188,6 +213,7 @@ float mat_cholesky_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_
 
       if (row == col) {
         if (sum < 0.0F) {
+          TRACE_END_REGION("ch", "mat_cholesky_f32");
           return -1.0F;
         }
         float diag = sqrtf(sum);
@@ -205,12 +231,15 @@ float mat_cholesky_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_
     }
   }
   // lower bound of minimum eigenvalue
+  TRACE_END_REGION("ch", "mat_cholesky_f32");
   return min_L_diag * min_L_diag;
 }
 
 void mat_inverse_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 *pDst) {
+  TRACE_BEGIN_REGION();
   uint32_t n = pSrc->numRows;
   if (n == 0U) {
+    TRACE_END_REGION("mi", "mat_inverse_f32");
     return;
   }
   float *A = pSrc->pData;
@@ -256,4 +285,5 @@ void mat_inverse_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f3
       }
     }
   }
+  TRACE_END_REGION("mi", "mat_inverse_f32");
 }

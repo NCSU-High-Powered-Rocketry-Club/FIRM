@@ -1,6 +1,7 @@
 #include "firm_tasks.h"
 #include "bmp581_packet.h"
 #include "firm_fsm.h"
+#include "freertos_trace.h"
 #include "icm45686_packet.h"
 #include "led.h"
 #include "mmc5983ma_packet.h"
@@ -525,12 +526,23 @@ void filter_data_task(void *argument) {
       float dt = (float)packet.timestamp_seconds - last_time;
       if (dt > 1e-6) {
         last_time = (float)packet.timestamp_seconds;
+
+        TRACE_BEGIN_REGION();
         int err = ukf_predict(&ukf, dt);
+        TRACE_END_REGION("pd", "ukf_predict");
+
         if (err) {
           led_set_status(FIRM_MODE_BOOT);
         }
+
+        TRACE_BEGIN_REGION();
         ukf_set_measurement(&ukf, &packet.pressure_pascals);
+        TRACE_END_REGION("sm", "ukf_set_measurement");
+
+        TRACE_BEGIN_REGION();
         err = ukf_update(&ukf);
+        TRACE_END_REGION("ud", "ukf_update");
+
         if (err) {
           led_set_status(FIRM_MODE_BOOT);
         }

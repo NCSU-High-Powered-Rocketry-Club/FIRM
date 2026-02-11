@@ -11,6 +11,7 @@ license = "MIT"
 dependencies = [
     "msgspec>=0.19.0",
     "pyserial>=3.5",
+    "ripgrepy>=2.2.0",
 ]
 keywords = [
     "firm",
