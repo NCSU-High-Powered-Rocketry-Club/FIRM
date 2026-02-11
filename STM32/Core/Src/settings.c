@@ -11,6 +11,11 @@ static bool settings_write_flash_block(uint8_t *block_to_write);
 
 static bool settings_write_flash_block_to_sector(uint8_t *block_to_write, uint8_t sector);
 
+/*
+  So the way the settings are stored in the flash chip is:
+    Sector 0 (4 KB): [CalibrationSettings (512 bytes)][FIRMSettings (512 bytes)]
+*/
+
 int settings_init(SPI_HandleTypeDef *flash_hspi, GPIO_TypeDef *flash_cs_channel,
                   uint16_t flash_cs_pin) {
   // set up flash chip porting layer
@@ -68,12 +73,7 @@ bool settings_write_calibration_settings(AccelCalibration_t *accel_cal_settings,
   }
   bool ok = settings_write_flash_block(buffer_to_write);
   if (ok) {
-    memcpy(&calibrationSettings.icm45686_accel, buffer_to_write, sizeof(AccelCalibration_t));
-    memcpy(&calibrationSettings, buffer_to_write + sizeof(AccelCalibration_t),
-           sizeof(GyroCalibration_t));
-    memcpy(&calibrationSettings,
-           buffer_to_write + sizeof(AccelCalibration_t) + sizeof(GyroCalibration_t),
-           sizeof(MagCalibration_t));
+    memcpy(&calibrationSettings, buffer_to_write, sizeof(CalibrationSettings_t));
   }
   return 1;
 }

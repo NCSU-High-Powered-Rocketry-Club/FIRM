@@ -49,6 +49,28 @@ uint32_t execute_command(CommandIdentifier identifier, uint8_t *data, uint32_t d
     if (g_system_reset_fn != NULL) {
       g_system_reset_fn(g_system_reset_ctx);
     }
+    return 0;
+  
+  case CMDID_SET_DEVICE_CONFIG: {
+    // Payload format: [NAME (32 bytes)][FREQUENCY (2 bytes)][PROTOCOL (1 byte)]
+    DeviceConfig device_conf;
+    memcpy(device_conf.name, data, DEVICE_NAME_LENGTH);
+
+    // Frequency is little-endian
+    device_conf.frequency =
+        data[DEVICE_NAME_LENGTH] | ((uint16_t)data[1 + DEVICE_NAME_LENGTH] << 8);
+
+    uint8_t protocol_byte = data[2 + DEVICE_NAME_LENGTH];
+    if (protocol_byte >= PROTOCOL_USB && protocol_byte <= PROTOCOL_SPI) {
+      device_conf.protocol = (DeviceProtocol)protocol_byte;
+    } else {
+      // Defaults to USB if invalid
+      device_conf.protocol = PROTOCOL_USB;
+    }
+    // set settings, and set response packet to sucess or failure
+    response_packet->success.b = set_device_config(&device_conf);
+    return 1;
+  }
   case CMDID_GET_DEVICE_INFO:
     // Response payload format: [ID (8 LE bytes)][FIRMWARE_VERSION (8 bytes)]
     response_packet->device_info.id = firmSettings.device_uid;
@@ -77,9 +99,8 @@ uint32_t execute_command(CommandIdentifier identifier, uint8_t *data, uint32_t d
     GyroCalibration_t new_gyro_calibration;
     memcpy(&new_accel_calibration, data, sizeof(AccelCalibration_t));
     memcpy(&new_gyro_calibration, &data[sizeof(AccelCalibration_t)], sizeof(GyroCalibration_t));
-    // response_packet->success.b = settings_write_calibration_settings(&new_accel_calibration,
-    // &new_gyro_calibration, NULL);
-    response_packet->success.b = true;
+    response_packet->success.b = settings_write_calibration_settings(&new_accel_calibration,
+    &new_gyro_calibration, NULL);
     return 1;
   }
   case CMDID_GET_CALIBRATION: {
