@@ -49,43 +49,48 @@ uint32_t execute_command(CommandIdentifier identifier, uint8_t *data, uint32_t d
     if (g_system_reset_fn != NULL) {
       g_system_reset_fn(g_system_reset_ctx);
     }
-    case CMDID_GET_DEVICE_INFO:
-      // Response payload format: [ID (8 LE bytes)][FIRMWARE_VERSION (8 bytes)]
-      response_packet->device_info.id = firmSettings.device_uid;
-      strncpy(response_packet->device_info.firmware_version, firmSettings.firmware_version, FIRMWARE_VERSION_LENGTH);
-      return sizeof(response_packet->device_info);
-    case CMDID_GET_DEVICE_CONFIG:
-      // Response payload format: [NAME (32 bytes)][FREQUENCY (2 bytes)][PROTOCOL (1 byte)]
-      strncpy(response_packet->device_config.name, firmSettings.device_name, DEVICE_NAME_LENGTH);
-      response_packet->device_config.frequency = clamp_u16(firmSettings.frequency_hz, (uint16_t)FIRM_SETTINGS_FREQUENCY_MIN_HZ, (uint16_t)FIRM_SETTINGS_FREQUENCY_MAX_HZ);
-      response_packet->device_config.protocol = select_protocol_from_settings();
-      return sizeof(response_packet->device_config);
-    case CMDID_SET_MAG_CALIBRATON: {
-      // Payload format: CalibrationSettings struct
-      MagCalibration_t new_mag_calibration;
-      memcpy(&new_mag_calibration, data, sizeof(MagCalibration_t));
-      response_packet->success.b = settings_write_calibration_settings(NULL, NULL, &new_mag_calibration);
-      return 1;
-    }
-    case CMDID_SET_IMU_CALIBRATON: {
-      // Payload format: [AccelCalibration_t][GyroCalibration_t]
-      AccelCalibration_t new_accel_calibration;
-      GyroCalibration_t new_gyro_calibration;
-      memcpy(&new_accel_calibration, data, sizeof(AccelCalibration_t));
-      memcpy(&new_gyro_calibration, &data[sizeof(AccelCalibration_t)], sizeof(GyroCalibration_t));
-      // response_packet->success.b = settings_write_calibration_settings(&new_accel_calibration, &new_gyro_calibration, NULL);      
-      response_packet->success.b = true;
-      return 1;
-    }
-    case CMDID_GET_CALIBRATION: {
-      // Payload format: [AccelCalibration_t][GyroCalibration_t][MagCalibration_t] (in row-major)
-      response_packet->calibration_settings = calibrationSettings;
-      return sizeof(response_packet->calibration_settings);
-    }
-    case CMDID_MOCK_REQUEST:
-    case CMDID_CANCEL_REQUEST:
-    default:
-      return 0;
+  case CMDID_GET_DEVICE_INFO:
+    // Response payload format: [ID (8 LE bytes)][FIRMWARE_VERSION (8 bytes)]
+    response_packet->device_info.id = firmSettings.device_uid;
+    strncpy(response_packet->device_info.firmware_version, firmSettings.firmware_version,
+            FIRMWARE_VERSION_LENGTH);
+    return sizeof(response_packet->device_info);
+  case CMDID_GET_DEVICE_CONFIG:
+    // Response payload format: [NAME (32 bytes)][FREQUENCY (2 bytes)][PROTOCOL (1 byte)]
+    strncpy(response_packet->device_config.name, firmSettings.device_name, DEVICE_NAME_LENGTH);
+    response_packet->device_config.frequency =
+        clamp_u16(firmSettings.frequency_hz, (uint16_t)FIRM_SETTINGS_FREQUENCY_MIN_HZ,
+                  (uint16_t)FIRM_SETTINGS_FREQUENCY_MAX_HZ);
+    response_packet->device_config.protocol = select_protocol_from_settings();
+    return sizeof(response_packet->device_config);
+  case CMDID_SET_MAG_CALIBRATON: {
+    // Payload format: CalibrationSettings struct
+    MagCalibration_t new_mag_calibration;
+    memcpy(&new_mag_calibration, data, sizeof(MagCalibration_t));
+    response_packet->success.b =
+        settings_write_calibration_settings(NULL, NULL, &new_mag_calibration);
+    return 1;
+  }
+  case CMDID_SET_IMU_CALIBRATON: {
+    // Payload format: [AccelCalibration_t][GyroCalibration_t]
+    AccelCalibration_t new_accel_calibration;
+    GyroCalibration_t new_gyro_calibration;
+    memcpy(&new_accel_calibration, data, sizeof(AccelCalibration_t));
+    memcpy(&new_gyro_calibration, &data[sizeof(AccelCalibration_t)], sizeof(GyroCalibration_t));
+    // response_packet->success.b = settings_write_calibration_settings(&new_accel_calibration,
+    // &new_gyro_calibration, NULL);
+    response_packet->success.b = true;
+    return 1;
+  }
+  case CMDID_GET_CALIBRATION: {
+    // Payload format: [AccelCalibration_t][GyroCalibration_t][MagCalibration_t] (in row-major)
+    response_packet->calibration_settings = calibrationSettings;
+    return sizeof(response_packet->calibration_settings);
+  }
+  case CMDID_MOCK_REQUEST:
+  case CMDID_CANCEL_REQUEST:
+  default:
+    return 0;
   }
 }
 
