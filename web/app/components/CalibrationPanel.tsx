@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { Loader2, Save } from "lucide-react";
 import { useFIRM } from "~/contexts/FIRMContext";
+import type {CalibrationValues} from "firm-client";
 
 type CalibrationDraft = {
   offsets: [string, string, string];
@@ -59,6 +60,54 @@ function draftToNumbers(
   return { offsets, scaleMatrix };
 }
 
+function formatNumberForInput(n: number): string {
+  return String(n);
+}
+
+function offsetsToDraft(offsets: [number, number, number]): CalibrationDraft["offsets"] {
+  return [
+    formatNumberForInput(offsets[0]),
+    formatNumberForInput(offsets[1]),
+    formatNumberForInput(offsets[2]),
+  ];
+}
+
+function matrix9ToDraftScale(
+  m: [number, number, number, number, number, number, number, number, number],
+): CalibrationDraft["scale"] {
+  // Row-major 3x3:
+  // [ m0 m1 m2
+  //   m3 m4 m5
+  //   m6 m7 m8 ]
+  return [
+    [formatNumberForInput(m[0]), formatNumberForInput(m[1]), formatNumberForInput(m[2])],
+    [formatNumberForInput(m[3]), formatNumberForInput(m[4]), formatNumberForInput(m[5])],
+    [formatNumberForInput(m[6]), formatNumberForInput(m[7]), formatNumberForInput(m[8])],
+  ];
+}
+
+function calibrationValuesToDrafts(cal: CalibrationValues): {
+  imu: IMUCalibrationDraft;
+  mag: CalibrationDraft;
+} {
+  return {
+    imu: {
+      accelerometer: {
+        offsets: offsetsToDraft(cal.imu_accelerometer_offsets),
+        scale: matrix9ToDraftScale(cal.imu_accelerometer_scale_matrix),
+      },
+      gyroscope: {
+        offsets: offsetsToDraft(cal.imu_gyroscope_offsets),
+        scale: matrix9ToDraftScale(cal.imu_gyroscope_scale_matrix),
+      },
+    },
+    mag: {
+      offsets: offsetsToDraft(cal.magnetometer_offsets),
+      scale: matrix9ToDraftScale(cal.magnetometer_scale_matrix),
+    },
+  };
+}
+
 export function CalibrationPanel({ visible }: { visible: boolean }) {
   const { firm, isConnected } = useFIRM();
 
@@ -91,7 +140,11 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
       value: string,
     ) => {
       setDraft((prev) => ({
-        offsets: [...prev.offsets.slice(0, idx), value, ...prev.offsets.slice(idx + 1)] as CalibrationDraft["offsets"],
+        offsets: [
+          ...prev.offsets.slice(0, idx),
+          value,
+          ...prev.offsets.slice(idx + 1),
+        ] as CalibrationDraft["offsets"],
         scale: prev.scale.map((r) => [...r]) as CalibrationDraft["scale"],
       }));
     },
@@ -113,6 +166,30 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
     },
     [],
   );
+
+  const refreshCalibrationFromDevice = useCallback(async () => {
+    if (!firm || !isConnected) return;
+
+    try {
+      const cal = await firm.getCalibration();
+      if (!cal) return;
+
+      const { imu, mag } = calibrationValuesToDrafts(cal);
+      setImuDraft(imu);
+      setMagDraft(mag);
+    } catch (e) {
+      console.warn("Failed to refresh calibration from device:", e);
+    }
+  }, [firm, isConnected]);
+
+  React.useEffect(() => {
+    if (!visible) return;
+    if (!firm || !isConnected) return;
+
+    refreshCalibrationFromDevice().catch(() => {
+      /* ignore initial load errors */
+    });
+  }, [visible, firm, isConnected, refreshCalibrationFromDevice]);
 
   const applyImu = useCallback(async () => {
     setImuError(null);
@@ -140,6 +217,7 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
       );
       if (ok) {
         setImuStatus("IMU calibration applied.");
+        await refreshCalibrationFromDevice();
       } else {
         setImuError("IMU calibration not acknowledged (timeout).");
       }
@@ -150,7 +228,7 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
       setIsApplyingImu(false);
       window.setTimeout(() => setImuStatus(null), 3000);
     }
-  }, [firm, isConnected, imuDraft]);
+  }, [firm, isConnected, imuDraft, refreshCalibrationFromDevice]);
 
   const applyMag = useCallback(async () => {
     setMagError(null);
@@ -172,6 +250,7 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
       const ok = await firm.setMagnetometerCalibration(mag.offsets, mag.scaleMatrix);
       if (ok) {
         setMagStatus("Magnetometer calibration applied.");
+        await refreshCalibrationFromDevice();
       } else {
         setMagError("Magnetometer calibration not acknowledged (timeout).");
       }
@@ -182,18 +261,18 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
       setIsApplyingMag(false);
       window.setTimeout(() => setMagStatus(null), 3000);
     }
-  }, [firm, isConnected, magDraft]);
+  }, [firm, isConnected, magDraft, refreshCalibrationFromDevice]);
 
   const CalibrationBlock = useMemo(() => {
     const Comp = ({
-      title,
-      draft,
-      setDraft,
-      onApply,
-      isApplying,
-      status,
-      error,
-    }: {
+                    title,
+                    draft,
+                    setDraft,
+                    onApply,
+                    isApplying,
+                    status,
+                    error,
+                  }: {
       title: string;
       draft: CalibrationDraft;
       setDraft: React.Dispatch<React.SetStateAction<CalibrationDraft>>;
@@ -285,7 +364,14 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
 
     Comp.displayName = "CalibrationBlock";
     return Comp;
-  }, [canSend, inputClassName, primaryBtnClassName, setDraftOffset, setDraftScale, smallBtnClassName]);
+  }, [
+    canSend,
+    inputClassName,
+    primaryBtnClassName,
+    setDraftOffset,
+    setDraftScale,
+    smallBtnClassName,
+  ]);
 
   if (!visible) return null;
 
