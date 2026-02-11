@@ -1,5 +1,6 @@
 #pragma once
 
+#include "settings.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -20,6 +21,7 @@ typedef enum {
   CMDID_MOCK_REQUEST = 0x0005,
   CMDID_SET_MAG_CALIBRATON = 0x0006,
   CMDID_SET_IMU_CALIBRATON = 0x0007,
+  CMDID_GET_CALIBRATION = 0x0009,
   CMDID_CANCEL_REQUEST = 0x00FF,
 } CommandIdentifier;
 
@@ -48,6 +50,7 @@ typedef struct {
 typedef union {
   DeviceConfig device_config;
   DeviceInfo device_info;
+  CalibrationSettings_t calibration_settings;
   CommandSuccess success;
 } ResponsePacket;
 
