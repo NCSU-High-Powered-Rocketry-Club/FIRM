@@ -6,10 +6,10 @@
  */
 
 #pragma once
-#include "usb_print_debug.h"
-#include <stdbool.h>
-#include <math.h>
 #include "icm45686_packet.h"
+#include "usb_print_debug.h"
+#include <math.h>
+#include <stdbool.h>
 
 /**
  * @brief Indirect Register type enumeration
@@ -29,7 +29,7 @@ typedef enum IREGMap { IMEM_SRAM, IPREG_BAR, IPREG_SYS1, IPREG_SYS2, IPREG_TOP1 
  * @retval 0 if successful, 1 if unsuccessful due to a register being written to incorrectly
  *         or if a register did not output the expected value when read.
  */
-int icm45686_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin);
+int icm45686_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin);
 
 /**
  * @brief reads acceleration and gyroscope data from the ICM45686, if the data is ready.
@@ -40,11 +40,11 @@ int icm45686_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs
  * @retval 0 if successful, 1 if unsuccessful due to the data not being ready. In this case, the
  *         interrupt pin will still be reset to the inactive state, but no data will be collected.
  */
-int icm45686_read_data(ICM45686Packet_t* packet);
+int icm45686_read_data(ICM45686Packet_t *packet);
 
 /**
  * @brief gets the scale factor of the acceleration readings to convert to g's.
- * 
+ *
  * @retval float value to divide binary data by to get acceleration in g's. Returns -1 if sensor
  *         is not initialized yet.
  */
@@ -52,10 +52,10 @@ float icm45686_get_accel_scale_factor(void);
 
 /**
  * @brief gets the scale factor of the gyroscope readings to convert to radians per second.
- * 
+ *
  * @retval float value to divide binary data by to get angular rate in radians per second.
  *         Returns -1 if sensor is not initialized yet.
  */
 float icm45686_get_gyro_scale_factor(void);
 
-void set_spi_icm(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin);
+void set_spi_icm(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin);

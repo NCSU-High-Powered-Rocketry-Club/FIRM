@@ -1,8 +1,8 @@
 #pragma once
 
-#include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #define COMMAND_READ_CHUNK_SIZE_BYTES 256
 #define COMMAND_PAYLOAD_MAX_LEN_BYTES 248
@@ -55,7 +55,8 @@ typedef void (*CommandSystemResetFn)(void *ctx);
 
 void commands_register_system_reset(CommandSystemResetFn fn, void *ctx);
 
-uint32_t execute_command(CommandIdentifier identifier, uint8_t *data, uint32_t data_len, ResponsePacket* response_packet);
+uint32_t execute_command(CommandIdentifier identifier, uint8_t *data, uint32_t data_len,
+                         ResponsePacket *response_packet);
 
 /**
  * Convenience wrapper for USB command handling:
@@ -64,9 +65,7 @@ uint32_t execute_command(CommandIdentifier identifier, uint8_t *data, uint32_t d
  *
  * Pure logic (no RTOS/HAL).
  */
-uint32_t commands_execute_to_response(uint16_t request_identifier,
-                                     uint8_t *payload_bytes,
-                                     uint32_t payload_len,
-                                     uint16_t *out_response_header,
-                                     uint16_t *out_response_identifier,
-                                     ResponsePacket *out_response_payload);
+uint32_t commands_execute_to_response(uint16_t request_identifier, uint8_t *payload_bytes,
+                                      uint32_t payload_len, uint16_t *out_response_header,
+                                      uint16_t *out_response_identifier,
+                                      ResponsePacket *out_response_payload);
