@@ -17,7 +17,7 @@
     "@headlessui/react": "^2.2.9",
     "@react-router/node": "^7.9.2",
     "@react-router/serve": "^7.9.2",
-    "firm-client": "^1.1.1",
+    "firm-client": "^1.1.2",
     "isbot": "^5.1.31",
     "lucide-react": "^0.552.0",
     "react": "^19.1.1",
