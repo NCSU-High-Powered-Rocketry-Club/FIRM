@@ -7,6 +7,7 @@
 
 #pragma once
 #include "adxl371_packet.h"
+#include "usb_print_debug.h"
 #include <math.h>
 #include <stdbool.h>
 

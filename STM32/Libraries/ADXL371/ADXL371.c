@@ -1,13 +1,12 @@
 #include "adxl371.h"
 #include "spi_utils.h"
-#include "usb_print_debug.h"
 
 /**
  * @brief the SPI settings for the ADXL372 to use when accessing device registers
  */
 
 typedef struct {
-  SPI_TypeDef *hspi;
+  SPI_HandleTypeDef *hspi;
   GPIO_TypeDef *cs_channel;
   uint16_t cs_pin;
 } SPISettings;
