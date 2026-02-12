@@ -30,6 +30,15 @@ typedef enum {
     FIRM_MODE_MOCK = 0b001,
 } LED_Mode_Indicator_Status;
 
+// LED status array for each of the 3 LEDs bits
+#define LED_STATUS_ARRAY_SIZE 3
+
+/**
+ * @brief Array to hold the current status of each LED bit. Used for debugging.
+ * 
+ */
+extern uint8_t led_array_status[ LED_STATUS_ARRAY_SIZE ];
+
 /**
  * @brief Sets all 3 LEDs based on the given status byte.
  *
