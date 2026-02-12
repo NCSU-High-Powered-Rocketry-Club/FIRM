@@ -179,3 +179,35 @@ void icm45686_convert_packet(SensorPacket *packet, DataPacket *result_packet) {
       gyro_float_y * calibrationSettings.icm45686_gyro.scale_multiplier[5] +
       gyro_float_z * calibrationSettings.icm45686_gyro.scale_multiplier[8];
 }
+
+void adxl371_convert_packet(ADXL371Packet_t *packet, CalibratedDataPacket_t *result_packet) {
+  // get the current timestamp of the packet in seconds using the DWT counter
+  result_packet->timestamp_sec = update_dwt_timestamp(packet->timestamp);
+  int32_t accel_binary_x, accel_binary_y, accel_binary_z;
+  float scale = 0.0976F;
+  // extract pressure and temp bytes as a 32 bit int, preserving sign
+  accel_binary_x = ((int32_t)(int8_t)packet->accX_H << 8 | (int32_t)packet->accX_L);
+
+  accel_binary_y = ((int32_t)(int8_t)packet->accY_H << 8 | (int32_t)packet->accY_L);
+
+  accel_binary_z = ((int32_t)(int8_t)packet->accZ_H << 8 | (int32_t)packet->accZ_L);
+
+  // convert acceleration to g's
+  float accel_x_float = (float)accel_binary_x * scale;
+  float accel_y_float = (float)accel_binary_y * scale;
+  float accel_z_float = (float)accel_binary_z * scale;
+
+  // 3x3 scaling matrix
+  result_packet->adxl_accel_x =
+      accel_x_float * calibrationSettings.adxl371_accel.scale_multiplier[0] +
+      accel_y_float * calibrationSettings.adxl371_accel.scale_multiplier[3] +
+      accel_z_float * calibrationSettings.adxl371_accel.scale_multiplier[6];
+  result_packet->adxl_accel_y =
+      accel_x_float * calibrationSettings.adxl371_accel.scale_multiplier[1] +
+      accel_y_float * calibrationSettings.adxl371_accel.scale_multiplier[4] +
+      accel_z_float * calibrationSettings.adxl371_accel.scale_multiplier[7];
+  result_packet->adxl_accel_z =
+      accel_x_float * calibrationSettings.adxl371_accel.scale_multiplier[2] +
+      accel_y_float * calibrationSettings.adxl371_accel.scale_multiplier[5] +
+      accel_z_float * calibrationSettings.adxl371_accel.scale_multiplier[8];
+}

@@ -77,3 +77,5 @@ void mmc5983ma_convert_packet(SensorPacket *packet, DataPacket *result_packet);
  *                      will be stored
  */
 void icm45686_convert_packet(SensorPacket *packet, DataPacket *result_packet);
+
+void adxl371_convert_packet(ADXL371Packet_t *packet, CalibratedDataPacket_t *result_packet);
