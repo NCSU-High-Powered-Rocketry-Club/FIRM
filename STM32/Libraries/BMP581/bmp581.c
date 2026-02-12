@@ -66,6 +66,12 @@ static const float scale_factor_pascal = 64.0F;
 // BMP581 SPI config settings
 static SPISettings spiSettings;
 
+void set_spi_bmp(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin) {
+    spiSettings.hspi = hspi;
+    spiSettings.cs_channel = cs_channel;
+    spiSettings.cs_pin = cs_pin;
+}
+
 int bmp581_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin) {
     if (hspi == NULL || cs_channel == NULL) {
         serialPrintStr("Invalid spi handle or chip select pin for BMP581");

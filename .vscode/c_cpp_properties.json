@@ -1,0 +1,33 @@
+{
+    "version": 4,
+    "configurations": [
+        {
+            "name": "Ceedling Tests (host)",
+            "compilerPath": "C:/msys64/mingw64/bin/gcc.exe",
+            "cStandard": "c11",
+            "intelliSenseMode": "windows-gcc-x64",
+            "defines": [
+                "TEST",
+                "UNITY_INCLUDE_FLOAT"
+            ],
+            "includePath": [
+                "${workspaceFolder}/tests/test/support",
+                "${workspaceFolder}/tests/test",
+                "${workspaceFolder}/STM32/Core/Inc",
+                "${workspaceFolder}/STM32/Core/Inc/data_processing",
+                "${workspaceFolder}/STM32/Libraries/BMP581",
+                "${workspaceFolder}/STM32/Libraries/MMC5983MA",
+                "${workspaceFolder}/STM32/Libraries/ICM45686",
+                "${workspaceFolder}/STM32/Libraries/W25Q128JV",
+                "${workspaceFolder}/STM32/Libraries/SPIUtils",
+                "${workspaceFolder}/tests/build/test/mocks"
+            ],
+            "browse": {
+                "path": [
+                    "${workspaceFolder}"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
+        }
+    ]
+}

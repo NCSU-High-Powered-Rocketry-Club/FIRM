@@ -59,7 +59,7 @@
     #- gcov                           # test coverage using gcov. Requires gcc, gcov, and a coverage analyzer like gcovr
     #- bullseye                       # test coverage using bullseye. Requires bullseye for your platform
     #- command_hooks                  # write custom actions to be called at different points during the build process
-    #- compile_commands_json_db       # generate a compile_commands.json file
+    - compile_commands_json_db       # generate a compile_commands.json file
     #- dependencies                   # automatically fetch 3rd party libraries, etc.
     #- subprojects                    # managing builds and test for static libraries
     #- fake_function_framework        # use FFF instead of CMock
@@ -95,17 +95,27 @@
 
 # This is where Ceedling should look for your source and test files.
 # see documentation for the many options for specifying this.
+
+# Make sure you only do dirs here, files don't work
 :paths:
   :test:
     - +:test/**
     - -:test/support
   :source:
-    - src/**
-    - ../STM32/Core/Src/**
+    - ../STM32/Core/Src/data_processing
+    - ../STM32/Core/Src
   :include:
     - test/support
-    - src/** # In simple projects, this entry often duplicates :source
+    - ../STM32/Core/Inc
+    - ../STM32/Core/Inc/data_processing
+    - ../STM32/Libraries/BMP581
+    - ../STM32/Libraries/MMC5983MA
+    - ../STM32/Libraries/ICM45686
+    - ../STM32/Libraries/W25Q128JV
     - ../STM32/Core/Inc/**
+    - ../STM32/Drivers/CMSIS/Include/**
+    - ../STM32/Drivers/CMSIS-DSP/Include/**
+    
   :support:
     - test/support
   :libraries: []
@@ -117,38 +127,42 @@
   :test: []
   :source: []
 
-# Compilation symbols to be injected into builds
-# See documentation for advanced options:
-#  - Test name matchers for different symbols per test executable build
-#  - Referencing symbols in multiple lists using advanced YAML
-#  - Specifiying symbols used during test preprocessing
 :defines:
   :test:
     - TEST # Simple list option to add symbol 'TEST' to compilation of all files in all test executables
+    - UNITY_INCLUDE_64
+    - UNITY_SUPPORT_64
   :release: []
 
   # Enable to inject name of a test as a unique compilation symbol into its respective executable build. 
   :use_test_definition: FALSE 
 
 # Configure additional command line flags provided to tools used in each build step
-# :flags:
-#   :release:
-#     :compile:         # Add '-Wall' and '--02' to compilation of all files in release target
-#       - -Wall
-#       - --O2
-#   :test:
-#     :compile:
-#       '(_|-)special': # Add '-pedantic' to compilation of all files in all test executables with '_special' or '-special' in their names
-#         - -pedantic
-#       '*':            # Add '-foo' to compilation of all files in all test executables
-#         - -foo
+# CMSIS-DSP functions are pre-compiled and linked here
+:flags:
+  :test:
+    :link:
+      - cmsis_objs/arm_mat_cholesky_f32.o
+      - cmsis_objs/arm_mat_mult_f64.o
+      - cmsis_objs/arm_mat_inverse_f32.o
+      - cmsis_objs/arm_mat_sub_f64.o
+      - cmsis_objs/arm_mat_trans_f64.o
+      - cmsis_objs/arm_scale_f64.o
+      - cmsis_objs/arm_sub_f64.o
+      - cmsis_objs/arm_add_f64.o
+      - cmsis_objs/arm_mult_f64.o
+      - cmsis_objs/arm_dot_prod_f64.o
+      - cmsis_objs/arm_mat_solve_lower_triangular_f32.o
+      - cmsis_objs/arm_mat_solve_upper_triangular_f32.o
 
 # Configuration Options specific to CMock. See CMock docs for details
 :cmock:
   # Core conffiguration
   :plugins:                        # What plugins should be used by CMock?
-    - :ignore
     - :callback
+    - :ignore
+    - :ignore_arg 
+    - :expect
   :verbosity:  2                   # the options being 0 errors only, 1 warnings and errors, 2 normal info, 3 verbose
   :when_no_prototypes:  :warn      # the options being :ignore, :warn, or :erro
 
@@ -204,6 +218,8 @@
 :unity:
   :defines:
     - UNITY_INCLUDE_FLOAT
+    - UNITY_INCLUDE_DOUBLE
+    - UNITY_INCLUDE_64
 
 # You can optionally have ceedling create environment variables for you before
 # performing the rest of its tasks.
@@ -314,29 +330,6 @@
 #        - ./subprojectA/include
 #      :build_root: ./subprojectA/build
 #      :defines: []
-
-# :command_hooks:
-#   :pre_mock_preprocess:
-#   :post_mock_preprocess:
-#   :pre_test_preprocess:
-#   :post_test_preprocess:
-#   :pre_mock_generate:
-#   :post_mock_generate:
-#   :pre_runner_generate:
-#   :post_runner_generate:
-#   :pre_compile_execute:
-#   :post_compile_execute:
-#   :pre_link_execute:
-#   :post_link_execute:
-#   :pre_test_fixture_execute:
-#   :post_test_fixture_execute:
-#   :pre_test:
-#   :post_test:
-#   :pre_release:
-#   :post_release:
-#   :pre_build:
-#   :post_build:
-#   :post_error:
 
 ################################################################
 # TOOLCHAIN CONFIGURATION

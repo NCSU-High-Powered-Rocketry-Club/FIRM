@@ -22,7 +22,8 @@
 #include "usbd_cdc_if.h"
 
 /* USER CODE BEGIN INCLUDE */
-
+#include "firm_tasks.h"
+#include <string.h>
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -31,6 +32,32 @@
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
+
+/* READ THIS:
+    Windows/Linux interact with USB slightly differently. When the host opens the 
+    COM port, Windows will assert DTR immediately, while Linux usually waits to
+    read/write until DTR is asserted. This means that on Windows, you can just
+    connect to the COM port and start sending data, while on Linux, you need to  
+    wait for the COM port to be opened before sending data. 
+    
+    To make this work on both platforms, firm-client will assert DTR before
+    sending data.
+ */
+
+/** Stores info about the usb connection. */
+static USBD_CDC_LineCodingTypeDef g_line_coding = {
+  115200U,
+  0U,
+  0U,
+  8U,
+};
+
+/** Stores the last DTR/RTS bitfield from the host */
+static volatile uint16_t g_control_line_state = 0U;
+/** This is set to 1 when the port is open (DTR asserted) */
+static volatile uint8_t g_port_open = 0U;
+/** If this is 1, something is currently transmitting */
+static volatile uint8_t g_tx_lock = 0U;
 
 /* USER CODE END PV */
 
@@ -152,9 +179,19 @@ USBD_CDC_ItfTypeDef USBD_Interface_fops_FS =
 static int8_t CDC_Init_FS(void)
 {
   /* USER CODE BEGIN 3 */
-  /* Set Application Buffers */
+  /* Sets the Application Buffers */
   USBD_CDC_SetTxBuffer(&hUsbDeviceFS, UserTxBufferFS, 0);
   USBD_CDC_SetRxBuffer(&hUsbDeviceFS, UserRxBufferFS);
+
+  // Tells the CDC driver where to place received data
+  (void)USBD_CDC_ReceivePacket(&hUsbDeviceFS);
+
+  // Arms the endpoint, basically tells the host that the device is ready to receive data.
+  g_control_line_state = 0U; // resets DTR/RTS tracking
+  g_port_open = 0U; // resets the open flag
+  // Reset the TX lock
+  __atomic_clear(&g_tx_lock, __ATOMIC_RELEASE);
+
   return (USBD_OK);
   /* USER CODE END 3 */
 }
@@ -166,6 +203,10 @@ static int8_t CDC_Init_FS(void)
 static int8_t CDC_DeInit_FS(void)
 {
   /* USER CODE BEGIN 4 */
+  // Just handles the USB disconnecting
+  g_control_line_state = 0U;
+  g_port_open = 0U;
+  __atomic_clear(&g_tx_lock, __ATOMIC_RELEASE);
   return (USBD_OK);
   /* USER CODE END 4 */
 }
@@ -219,16 +260,39 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
   /*                                        4 - Space                            */
   /* 6      | bDataBits  |   1   | Number Data bits (5, 6, 7, 8 or 16).          */
   /*******************************************************************************/
+    // Handles setting the serial settings that the host wants, but these settings aren't actually 
+    // used for anything since this is a virtual com port and not a real UART
     case CDC_SET_LINE_CODING:
-
+      if (length >= 7U)
+      {
+        g_line_coding.bitrate = (uint32_t)pbuf[0]
+                             | ((uint32_t)pbuf[1] << 8)
+                             | ((uint32_t)pbuf[2] << 16)
+                             | ((uint32_t)pbuf[3] << 24);
+        g_line_coding.format = pbuf[4];
+        g_line_coding.paritytype = pbuf[5];
+        g_line_coding.datatype = pbuf[6];
+      }
     break;
-
+    // Tells the host the current serial settings, but again these aren't actually used for anything
     case CDC_GET_LINE_CODING:
-
+      pbuf[0] = (uint8_t)(g_line_coding.bitrate);
+      pbuf[1] = (uint8_t)(g_line_coding.bitrate >> 8);
+      pbuf[2] = (uint8_t)(g_line_coding.bitrate >> 16);
+      pbuf[3] = (uint8_t)(g_line_coding.bitrate >> 24);
+      pbuf[4] = g_line_coding.format;
+      pbuf[5] = g_line_coding.paritytype;
+      pbuf[6] = g_line_coding.datatype;
     break;
 
+    // Handles the host opening and closing the COM port by tracking the DTR bit
     case CDC_SET_CONTROL_LINE_STATE:
-
+    {
+      /* wValue bit0 = DTR, bit1 = RTS */
+      g_control_line_state = hUsbDeviceFS.request.wValue;
+      // Update the port open flag based on the DTR bit
+      g_port_open = ((g_control_line_state & 0x0001U) != 0U) ? 1U : 0U;
+    }
     break;
 
     case CDC_SEND_BREAK:
@@ -261,8 +325,21 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
 static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
 {
   /* USER CODE BEGIN 6 */
+  // If the port isn't open, just drop the received data and return
+  if (!g_port_open)
+  {
+    // Says to put the next packet the host sends into the same buffer
+    USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
+    // Re-Arms the endpoint to receive the next packet
+    (void)USBD_CDC_ReceivePacket(&hUsbDeviceFS);
+    return (USBD_OK);
+  }
+
+  // This is the point we give data to firm_tasks
+  usb_receive_callback(Buf, *Len);
+
   USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
-  USBD_CDC_ReceivePacket(&hUsbDeviceFS);
+  (void)USBD_CDC_ReceivePacket(&hUsbDeviceFS);
   return (USBD_OK);
   /* USER CODE END 6 */
 }
@@ -282,12 +359,48 @@ uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len)
 {
   uint8_t result = USBD_OK;
   /* USER CODE BEGIN 7 */
-  USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassData;
-  if (hcdc->TxState != 0){
+  // If the port isn't configured or open yet, don't send anything
+  if (hUsbDeviceFS.dev_state != USBD_STATE_CONFIGURED || !g_port_open)
+  {
     return USBD_BUSY;
   }
-  USBD_CDC_SetTxBuffer(&hUsbDeviceFS, Buf, Len);
+
+  // Check for buffer overflow
+  if (Len > (uint16_t)APP_TX_DATA_SIZE)
+  {
+    return USBD_FAIL;
+  }
+
+  // Check if we can take the TX lock, if we can then lock it and proceed with transmission
+  if (__atomic_test_and_set(&g_tx_lock, __ATOMIC_ACQUIRE))
+  {
+    return USBD_BUSY;
+  }
+
+  // Get the CDC handle
+  USBD_CDC_HandleTypeDef *hcdc =
+    (USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassDataCmsit[hUsbDeviceFS.classId];
+
+  // If the CDC handle isn't valid or a transmission is already in progress, release the lock and return busy
+  if ((hcdc == NULL) || (hcdc->TxState != 0U))
+  {
+    __atomic_clear(&g_tx_lock, __ATOMIC_RELEASE);
+    return USBD_BUSY;
+  }
+
+  if (Len > 0U)
+  {
+    (void)memcpy(UserTxBufferFS, Buf, Len);
+  }
+
+  // Set the buffer and length, then start the transmission
+  USBD_CDC_SetTxBuffer(&hUsbDeviceFS, UserTxBufferFS, Len);
   result = USBD_CDC_TransmitPacket(&hUsbDeviceFS);
+
+  if (result != USBD_OK)
+  {
+    __atomic_clear(&g_tx_lock, __ATOMIC_RELEASE);
+  }
   /* USER CODE END 7 */
   return result;
 }
@@ -311,6 +424,7 @@ static int8_t CDC_TransmitCplt_FS(uint8_t *Buf, uint32_t *Len, uint8_t epnum)
   UNUSED(Buf);
   UNUSED(Len);
   UNUSED(epnum);
+  __atomic_clear(&g_tx_lock, __ATOMIC_RELEASE);
   /* USER CODE END 13 */
   return result;
 }

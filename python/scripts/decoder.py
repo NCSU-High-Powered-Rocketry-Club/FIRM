@@ -5,8 +5,6 @@ import os
 import struct
 import sys
 
-import pandas as pd
-
 
 # identifier for each packet type
 BMP581_ID = 'B'
@@ -17,12 +15,18 @@ MMC5983MA_ID = 'M'
 BMP581_SIZE = 6
 ICM45686_SIZE = 15
 MMC5983MA_SIZE = 7
+
+# header order
 HEADER_SIZE_TEXT = 14 # size of the "FIRM LOG vx.x" text
 HEADER_UID_SIZE = 8
-HEADER_DEVICE_NAME_LEN = 33
-HEADER_COMM_SIZE = 2 # 1 byte for usb, 1 for uart
+HEADER_DEVICE_NAME_LEN = 32
+HEADER_COMM_SIZE = 4
+FIRMWARE_VERSION_LEN = 8
+FREQUENCY_LEN = 2
+PADDING_BYTES = 2
 HEADER_CAL_SIZE = (3 + 9) * 3 * 4 # 3 offsets, 3x3 scale factor matrix, 3 sensors, 4 bytes per float
-HEADER_NUM_SCALE_FACTORS = 5 # number of scale factor floats in the header
+HEADER_NUM_SCALE_FACTORS = 5
+TIMESTAMP_BYTES = 4
 
 def twos_complement(val, bits):
     if (val & (1 << (bits - 1))) != 0:
@@ -56,7 +60,7 @@ class Decoder:
         # if the clock cycle count loops around due to unsigned int overflow, the difference
         # is found by adding the size of the integer used to store the count
         if (next_clock_count < self.last_clock_count):
-            next_clock_count += (2**24)
+            next_clock_count += (2**32)
         return next_clock_count - self.last_clock_count
 
     def read_packet(self):
@@ -73,8 +77,8 @@ class Decoder:
             self.num_repeat_whitespace = 0
 
             # read timestamp
-            clock_count_bytes = self.f.read(3)
-            clock_count = struct.unpack('>I', b'\x00' + clock_count_bytes)[0]
+            clock_count_bytes = self.f.read(TIMESTAMP_BYTES)
+            clock_count = struct.unpack('<I', clock_count_bytes)[0]
             self.timestamp_seconds += (self.get_delta_timestamp(clock_count)) / 168e6
             self.last_clock_count = clock_count
 
@@ -97,25 +101,38 @@ class Decoder:
             # if not an ID byte, most likely garbage data at end of file
             return False
         except:
-            print("error")
+
             # hit end of file
             return False
 
     def read_header(self, file):
+        # header text is FIRM LOG v1.x
         file.read(HEADER_SIZE_TEXT)
+        # flash chip unique ID. We use this to identify the FIRM device
         uid_b = file.read(HEADER_UID_SIZE)
-        
+        # user-set device name
         device_name_b = file.read(HEADER_DEVICE_NAME_LEN)
+        # 4 bools that signify which communication protocols are enabled
         comms_b = file.read(HEADER_COMM_SIZE)
-        padding_bytes = 8 - (HEADER_UID_SIZE + HEADER_DEVICE_NAME_LEN + HEADER_COMM_SIZE) % 8
-        file.read(padding_bytes)
+        # the current firmware version of FIRM. This is different than the FIRM LOG version
+        firmware_b = file.read(FIRMWARE_VERSION_LEN)
+        # the frequency that data is being transmitted
+        frequency_b = file.read(FREQUENCY_LEN)
+        # Calculate padding needed to align to 8-byte boundary
+        header_before_padding = HEADER_UID_SIZE + HEADER_DEVICE_NAME_LEN + HEADER_COMM_SIZE + FIRMWARE_VERSION_LEN + FREQUENCY_LEN
+        padding_bytes = (8 - (header_before_padding % 8)) % 8
+        if padding_bytes > 0:
+            file.read(padding_bytes)
         calibration_b = file.read(HEADER_CAL_SIZE)
 
         self.uid = struct.unpack("<Q", uid_b)[0]
         device_name_format_string = "<" + str(HEADER_DEVICE_NAME_LEN) + "s"
         name_bytes, = struct.unpack(device_name_format_string, device_name_b)
-        self.device_name = name_bytes.rstrip(b"\x00").decode("utf-8")
-        self.comms = struct.unpack("??", comms_b)
+        self.device_name = name_bytes.rstrip(b"\x00").decode("utf-8", errors='backslashreplace')
+        self.comms = struct.unpack("????", comms_b)
+        firmware_format_string = "<" + str(FIRMWARE_VERSION_LEN) + "s"
+        self.firmware = struct.unpack(firmware_format_string, firmware_b)[0].rstrip(b"\x00").decode("utf-8", errors='backslashreplace')
+        self.frequency = struct.unpack("<H", frequency_b)
 
         cal_format_string = "<" + ("f" * int(HEADER_CAL_SIZE / 4))
         calibrations = struct.unpack(cal_format_string, calibration_b)
@@ -181,8 +198,12 @@ class Decoder:
 def write_to_csv(data: pd.DataFrame, filename, decoder: Decoder):
     with open(filename, "w") as f:
         f.write(f"{decoder.device_name},{str(decoder.uid)}\n")
+        f.write(f"FIRM version:,{str(decoder.firmware)}\n")
         f.write(f"usb enabled:,{str(decoder.comms[0])}\n")
         f.write(f"uart enabled:,{str(decoder.comms[1])}\n")
+        f.write(f"i2c enabled:,{str(decoder.comms[2])}\n")
+        f.write(f"spi enabled:,{str(decoder.comms[3])}\n")
+        f.write(f"Transmit Frequency:,{str(decoder.frequency[0])}\n")
         f.write("ICM45686 Acceleration Calibration,")
         for cal in decoder.accel_cal:
             f.write(f"{cal},")
@@ -207,7 +228,7 @@ def decode(path):
         decoder = Decoder(f)
         while (decoder.read_packet()):
             continue
-
+        print("decoded data, writing csv's...")
         bmp581_df = pd.DataFrame(decoder.bmp581_data, columns=['timestamp', 'temperature', 'pressure'])
         icm45686_df = pd.DataFrame(decoder.icm45686_data, columns=['timestamp', 'accel_x', 'accel_y', 'accel_z', 'gyro_x', 'gyro_y', 'gyro_z'])
         mmc5983ma_df = pd.DataFrame(decoder.mmc5983ma_data, columns=['timestamp', 'mag_x', 'mag_y', 'mag_z'])
@@ -215,8 +236,11 @@ def decode(path):
         # write to csv
     
         write_to_csv(bmp581_df, "BMP581_data.csv", decoder)
+        print("wrote BMP581_data.csv")
         write_to_csv(icm45686_df, "ICM45686_data.csv", decoder)
+        print("wrote ICM45686_data.csv")
         write_to_csv(mmc5983ma_df, "MMC5983MA_data.csv", decoder)
+        print("wrote MMC5983MA.csv")
 
 if __name__ == "__main__":
     if len(sys.argv) == 2:

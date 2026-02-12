@@ -68,6 +68,21 @@ Make sure you still have the ST-Link hooked onto FIRM, and then go to the Run an
 
 Then simply click the green play button at the top of the sidebar to start a debugging session.
 
+## Tracing
+
+Tracing can be used to show how long each thread is running for.
+
+To get a trace, debug the board with a ST-LINK. Pause execution, open up the `Debug Console`, and run
+
+```
+>dump binary value trace.bin trace_data
+```
+
+The `>` is required for the command to be interpreted as a GDB command. This will save the trace to `STM32/trace.bin`.
+
+To format the trace, run `uv run .\python\scripts\convert_trace.py -i .\STM32\trace.bin -o trace.json` from the root of the repository.
+
+This will produce a json trace that can be visualized in [spall](https://gravitymoth.com/spall/spall.html) or [perfetto](https://ui.perfetto.dev)
 
 ## Third party licenses
 
