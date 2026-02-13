@@ -20,7 +20,11 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+#include "commands.h"
 #include "fatfs.h"
+#include "led.h"
+#include "stm32f405xx.h"
+#include "stm32f4xx_hal.h"
 #include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -28,6 +32,7 @@
 #include "firm_tasks.h"
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -100,6 +105,7 @@ void StartupTask(void *argument);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
+
 /* USER CODE BEGIN 0 */
 
 /* USER CODE END 0 */
@@ -110,7 +116,6 @@ void StartupTask(void *argument);
   */
 int main(void)
 {
-
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -143,6 +148,10 @@ int main(void)
   MX_USART1_UART_Init();
   MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
+
+ led_toggle_status(0b001);
+ HAL_Delay(500);
+ 
 
   SPIHandles spi_handles = {
       .hspi1 = &hspi1,

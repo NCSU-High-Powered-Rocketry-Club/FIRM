@@ -1,12 +1,73 @@
 #include "commands.h"
+#include "led.h"
 #include "messages.h"
 #include "settings.h"
 #include "utils.h"
 #include <stdbool.h>
 #include <string.h>
+#include "FreeRTOS.h"
+#include "stm32f4xx.h"
+#include "cmsis_os.h"
+
 
 static CommandSystemResetFn g_system_reset_fn = NULL;
 static void *g_system_reset_ctx = NULL;
+
+
+struct bootloader_vectable__t {
+    uint32_t stack_pointer;
+    void (*reset_handler)(void);
+};
+#define BOOTLOADER_VECTOR_TABLE	((struct bootloader_vectable__t *)BOOTLOADER_ADDR)
+
+void JumpToBootloader(void) {
+    // Deinit HAL and Clocks
+    HAL_DeInit();
+    HAL_RCC_DeInit();
+    
+    // Disable all interrupts
+    __disable_irq();
+
+    // Disable Systick
+    SysTick->CTRL = 0;
+    SysTick->LOAD = 0;
+    SysTick->VAL = 0;
+
+    // Disable interrupts and clear pending ones
+    for (size_t i = 0; i < sizeof(NVIC->ICER)/sizeof(NVIC->ICER[0]); i++) {
+        NVIC->ICER[i]=0xFFFFFFFF;
+        NVIC->ICPR[i]=0xFFFFFFFF;
+    }
+
+    // Re-enable interrupts
+    __enable_irq();
+
+    // Map Bootloader (system flash) memory to 0x00000000. This is STM32 family dependant.
+    __HAL_SYSCFG_REMAPMEMORY_SYSTEMFLASH();
+    
+    // Set embedded bootloader vector table base offset
+    WRITE_REG(SCB->VTOR, SCB_VTOR_TBLOFF_Msk & 0x00000000);
+
+    // Switch to Main Stack Pointer (in case it was using the Process Stack Pointer)
+    __set_CONTROL(0);
+    
+    // Instruction synchronization barrier
+    __ISB();
+
+    // Set Main Stack Pointer to the Bootloader defined value.
+    __set_MSP(BOOTLOADER_VECTOR_TABLE->stack_pointer);
+
+    __DSB(); // Data synchronization barrier
+    __ISB(); // Instruction synchronization barrier
+
+    // Jump to Bootloader Reset Handler
+    BOOTLOADER_VECTOR_TABLE->reset_handler();
+    
+    // The next instructions will not be reached
+    while (1){}
+}
+
+
 
 void commands_register_system_reset(CommandSystemResetFn fn, void *ctx) {
   g_system_reset_fn = fn;
@@ -107,6 +168,12 @@ uint32_t execute_command(CommandIdentifier identifier, uint8_t *data, uint32_t d
     // Payload format: [AccelCalibration_t][GyroCalibration_t][MagCalibration_t] (in row-major)
     response_packet->calibration_settings = calibrationSettings;
     return sizeof(response_packet->calibration_settings);
+  }
+  case CMDID_START_BOOTLOADER: {
+    led_set_status(0b100);
+    vTaskDelay(500);
+
+    JumpToBootloader();
   }
   case CMDID_MOCK_REQUEST:
   case CMDID_CANCEL_REQUEST:

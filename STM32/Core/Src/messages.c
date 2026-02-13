@@ -57,6 +57,7 @@ MessageIdentifier validate_message_identifier(uint16_t header, uint16_t identifi
     case CMDID_SET_IMU_CALIBRATON:
     case CMDID_SET_MAG_CALIBRATON:
     case CMDID_GET_CALIBRATION:
+    case CMDID_START_BOOTLOADER:
     case CMDID_REBOOT:
       return MSGID_COMMAND_PACKET;
     default:

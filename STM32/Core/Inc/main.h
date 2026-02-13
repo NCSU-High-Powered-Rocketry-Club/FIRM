@@ -86,6 +86,8 @@ void Error_Handler(void);
 #define ICM45686_CS_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
+// void JumpToBootloader(void);
+
 void blink();
 /* USER CODE END Private defines */
 
