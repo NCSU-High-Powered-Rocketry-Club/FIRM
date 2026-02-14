@@ -41,4 +41,9 @@ float bmp581_get_temp_scale_factor(void);
  */
 float bmp581_get_pressure_scale_factor(void);
 
+/**
+ * @brief sets the SPI settings for the BMP581
+ * 
+ * @retval None
+ */
 void set_spi_bmp(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin);

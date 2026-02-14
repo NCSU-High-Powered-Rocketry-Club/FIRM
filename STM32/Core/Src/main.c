@@ -562,26 +562,29 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0|Feather_LED_Pin|BMP581_CS_Pin|FLASH_CS_Pin
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0|DEBUG0_Pin|BMP581_CS_Pin|FLASH_CS_Pin
                           |DEBUG2_Pin|MMC5983MA_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, DEBUG0_Pin|DEBUG1_Pin|ICM45686_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(ADXL371_CS_GPIO_Port, ADXL371_CS_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : PC0 Feather_LED_Pin BMP581_CS_Pin FLASH_CS_Pin
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, DEBUG1_Pin|ICM45686_CS_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : PC0 DEBUG0_Pin BMP581_CS_Pin FLASH_CS_Pin
                            DEBUG2_Pin MMC5983MA_CS_Pin */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|Feather_LED_Pin|BMP581_CS_Pin|FLASH_CS_Pin
+  GPIO_InitStruct.Pin = GPIO_PIN_0|DEBUG0_Pin|BMP581_CS_Pin|FLASH_CS_Pin
                           |DEBUG2_Pin|MMC5983MA_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : BMP581_Interrupt_Pin ICM45686_Interrupt_Pin */
-  GPIO_InitStruct.Pin = BMP581_Interrupt_Pin|ICM45686_Interrupt_Pin;
+  /*Configure GPIO pin : BMP581_Interrupt_Pin */
+  GPIO_InitStruct.Pin = BMP581_Interrupt_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+  HAL_GPIO_Init(BMP581_Interrupt_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : CONF_CHECK_Pin */
   GPIO_InitStruct.Pin = CONF_CHECK_Pin;
@@ -589,11 +592,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(CONF_CHECK_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : DEBUG0_Pin DEBUG1_Pin ICM45686_CS_Pin */
-  GPIO_InitStruct.Pin = DEBUG0_Pin|DEBUG1_Pin|ICM45686_CS_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  /*Configure GPIO pins : ICM45686_Interrupt_Pin ADXL371_Interrupt_Pin */
+  GPIO_InitStruct.Pin = ICM45686_Interrupt_Pin|ADXL371_Interrupt_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pin : MMC5983MA_Interrupt_Pin */
@@ -608,15 +610,32 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : ADXL371_CS_Pin */
+  GPIO_InitStruct.Pin = ADXL371_CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(ADXL371_CS_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : DEBUG1_Pin ICM45686_CS_Pin */
+  GPIO_InitStruct.Pin = DEBUG1_Pin|ICM45686_CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
   /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI1_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI1_IRQn);
+
   HAL_NVIC_SetPriority(EXTI2_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI2_IRQn);
 
   HAL_NVIC_SetPriority(EXTI3_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI3_IRQn);
-
-  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 5, 0);
-  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
@@ -708,12 +727,13 @@ void StartupTask(void *argument)
   w25q128jv_set_spi_settings(&hspi1, GPIOC, GPIO_PIN_4);
   set_spi_icm(&hspi2, GPIOB, GPIO_PIN_9);
   set_spi_bmp(&hspi2, GPIOC, GPIO_PIN_2);
-  set_spi_mmc(&hi2c1, 0x30);
+  set_spi_mmc(&hspi2, GPIOC, GPIO_PIN_7);
   
   // re-enable ISR's so that interrupts can trigger the sensor tasks to run
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+  HAL_NVIC_EnableIRQ(EXTI1_IRQn);
   HAL_NVIC_EnableIRQ(EXTI2_IRQn);
   HAL_NVIC_EnableIRQ(EXTI3_IRQn);
-  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
   SystemRequest boot = SYSREQ_SETUP;
   xQueueSend(system_request_queue, &boot, 0);
   vTaskDelete(NULL);

@@ -153,9 +153,10 @@ int initialize_firm(SPIHandles *spi_handles_ptr, I2CHandles *i2c_handles_ptr,
   // disable the ISR so that the interrupts cannot be triggered before the scheduler initializes.
   // The ISR notifies the sensor tasks to collect data, but calling this before the scheduler is
   // initialized will suspend the program.
+  HAL_NVIC_DisableIRQ(EXTI0_IRQn);
+  HAL_NVIC_DisableIRQ(EXTI1_IRQn);
   HAL_NVIC_DisableIRQ(EXTI2_IRQn);
   HAL_NVIC_DisableIRQ(EXTI3_IRQn);
-  HAL_NVIC_DisableIRQ(EXTI9_5_IRQn);
 
   if (icm45686_init(spi_handles_ptr->hspi2, GPIOB, GPIO_PIN_9)) {
     led_set_status(IMU_FAIL);
@@ -167,10 +168,10 @@ int initialize_firm(SPIHandles *spi_handles_ptr, I2CHandles *i2c_handles_ptr,
     return 1;
   }
 
-  if (mmc5983ma_init(i2c_handles_ptr->hi2c1, 0x30)) {
-    led_set_status(MMC5983MA_FAIL);
-    return 1;
-  }
+  // if (mmc5983ma_init(spi_handles_ptr->hspi2, GPIOC, GPIO_PIN_7)) {
+  //   led_set_status(MMC5983MA_FAIL);
+  //   return 1;
+  // }
 
   // set up settings module with flash chip
   if (settings_init(spi_handles_ptr->hspi1, GPIOC, GPIO_PIN_4)) {

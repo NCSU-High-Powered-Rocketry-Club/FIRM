@@ -28,7 +28,7 @@ int settings_init(SPI_HandleTypeDef *flash_hspi, GPIO_TypeDef *flash_cs_channel,
   GPIO_TypeDef *write_check_pin_channel = GPIOA;
   uint16_t write_check_pin = GPIO_PIN_4;
 
-  if (HAL_GPIO_ReadPin(write_check_pin_channel, write_check_pin) == GPIO_PIN_RESET) {
+  if (HAL_GPIO_ReadPin(write_check_pin_channel, write_check_pin) == GPIO_PIN_RESET || true) {
     settings_write_defaults();
   }
 
