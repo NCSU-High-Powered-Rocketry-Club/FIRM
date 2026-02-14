@@ -65,6 +65,7 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
+    Libraries/INA219/ina219.c
     Libraries/BMP581/bmp581.c
     Libraries/W25Q128JV/w25q128jv.c
     Libraries/MMC5983MA/mmc5983ma.c
@@ -94,6 +95,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
    Core/Inc
    Core/Inc/data_processing
+   Libraries/INA219
    Libraries/ICM45686
    Libraries/BMP581
    Libraries/MMC5983MA
