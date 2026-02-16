@@ -19,6 +19,7 @@ osThreadId_t firm_mode_indicator_task_handle;
 osThreadId_t bmp581_task_handle;
 osThreadId_t icm45686_task_handle;
 osThreadId_t mmc5983ma_task_handle;
+osThreadId_t adxl371_task_handle;
 osThreadId_t filter_data_task_handle;
 osThreadId_t packetizer_task_handle;
 osThreadId_t transmit_task_handle;
@@ -33,6 +34,7 @@ QueueHandle_t mode_indicator_command_queue;
 QueueHandle_t bmp581_command_queue;
 QueueHandle_t icm45686_command_queue;
 QueueHandle_t mmc5983ma_command_queue;
+QueueHandle_t adxl371_command_queue;
 QueueHandle_t data_filter_command_queue;
 QueueHandle_t packetizer_command_queue;
 QueueHandle_t mock_packet_handler_command_queue;
@@ -68,6 +70,11 @@ const osThreadAttr_t mmc5983maTask_attributes = {
     .name = "mmc5983maTask",
     .stack_size = 256 * 4,
     .priority = (osPriority_t)osPriorityHigh,
+};
+const osThreadAttr_t adxl371Task_attributes = {
+  .name = "adxl371Task",
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t)osPriorityHigh,
 };
 const osThreadAttr_t filterDataTask_attributes = {
     .name = "filterDataTask",
@@ -144,6 +151,7 @@ int initialize_firm(SPIHandles *spi_handles_ptr, I2CHandles *i2c_handles_ptr,
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // icm45686 cs pin
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET); // flash chip cs pin
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET); // mmc5983ma CS pin
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET); // adxl371 cs pin
 
   // Indicate that initialization is in progress:
   led_set_status(FIRM_UNINITIALIZED);
@@ -165,6 +173,11 @@ int initialize_firm(SPIHandles *spi_handles_ptr, I2CHandles *i2c_handles_ptr,
 
   if (bmp581_init(spi_handles_ptr->hspi2, GPIOC, GPIO_PIN_2)) {
     led_set_status(BMP581_FAIL);
+    return 1;
+  }
+
+  if (adxl371_init(spi_handles_ptr->hspi3, GPIOA, GPIO_PIN_8)) {
+    led_set_status(IMU_FAIL);
     return 1;
   }
 
@@ -195,6 +208,7 @@ void firm_rtos_init(void) {
   bmp581_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
   icm45686_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
   mmc5983ma_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
+  adxl371_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
   data_filter_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
   mode_indicator_command_queue =
       xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
@@ -235,6 +249,9 @@ void system_manager_task(void *argument) {
             break;
           case TASK_MMC5983MA:
             xQueueSend(mmc5983ma_command_queue, &cmd.command, 0);
+            break;
+          case TASK_ADXL371:
+            xQueueSend(adxl371_command_queue, &cmd.command, 0);
             break;
           case TASK_DATA_FILTER:
             xQueueSend(data_filter_command_queue, &cmd.command, 0);
@@ -486,6 +503,43 @@ void collect_mmc5983ma_data_task(void *argument) {
       if (do_mock) {
         xTaskNotifyGive(mock_packet_handler_handle);
       }
+    }
+  }
+}
+
+void collect_adxl371_data_task(void *argument) {
+  const TickType_t max_wait = MAX_WAIT_TIME(ADXL371_POLL_RATE_HZ);
+  TaskCommandOption cmd_status = TASKCMD_LIVE;
+
+  for (;;) {
+    (void)xQueueReceive(adxl371_command_queue, &cmd_status, 0);
+
+    uint32_t notify_value = 0U;
+    if (xTaskNotifyWait(0U, 0xFFFFFFFFUL, &notify_value, max_wait) == pdTRUE) {
+      bool do_live = (cmd_status != TASKCMD_MOCK) && ((notify_value & SENSOR_NOTIFY_ISR_BIT) != 0U);
+      // todo: add mock stuff eventually
+      if (!do_live) {
+        continue;
+      }
+
+      osMutexAcquire(sensorDataMutexHandle, osWaitForever);
+      void *adxl371_storage = logger_malloc_packet(sizeof(ADXL371Packet_t) + 5); // + 4 for the timestamp, +1 for the sensor letter
+      if (adxl371_storage == NULL) {
+        osMutexRelease(sensorDataMutexHandle);
+        continue;
+      }
+      SensorPacket *adxl371_packet = (SensorPacket *)((uint8_t *)adxl371_storage + 1);
+
+      // TODO: add mock here
+
+      int err = adxl371_read_data(&adxl371_packet->packet.adxl371_packet);
+      uint32_t clock_cycle_count = DWT->CYCCNT;
+      memcpy(adxl371_packet->timestamp, &clock_cycle_count, sizeof(adxl371_packet->timestamp));
+
+      if (!err) {
+        logger_write_entry('A', sizeof(ADXL371Packet_t));
+      }
+      osMutexRelease(sensorDataMutexHandle);
     }
   }
 }
