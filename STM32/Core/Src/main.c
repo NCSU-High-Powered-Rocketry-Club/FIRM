@@ -434,7 +434,7 @@ static void MX_SPI2_Init(void)
   hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi2.Init.NSS = SPI_NSS_SOFT;
-  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
   hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -571,14 +571,21 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, DEBUG1_Pin|ICM45686_CS_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : PC0 DEBUG0_Pin BMP581_CS_Pin FLASH_CS_Pin
-                           DEBUG2_Pin MMC5983MA_CS_Pin */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|DEBUG0_Pin|BMP581_CS_Pin|FLASH_CS_Pin
-                          |DEBUG2_Pin|MMC5983MA_CS_Pin;
+  /*Configure GPIO pins : PC0 DEBUG0_Pin FLASH_CS_Pin DEBUG2_Pin
+                           MMC5983MA_CS_Pin */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|DEBUG0_Pin|FLASH_CS_Pin|DEBUG2_Pin
+                          |MMC5983MA_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : BMP581_CS_Pin */
+  GPIO_InitStruct.Pin = BMP581_CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(BMP581_CS_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : BMP581_Interrupt_Pin */
   GPIO_InitStruct.Pin = BMP581_Interrupt_Pin;
@@ -698,10 +705,10 @@ void StartupTask(void *argument)
   /* USER CODE BEGIN StartupTask */
   // Setup the SD card
   FRESULT res = logger_init(&hdma_sdio_tx);
-  if (res) {
-    serialPrintStr("Failed to initialized the logger (SD card)");
-    Error_Handler();
-  }
+  // if (res) {
+  //   serialPrintStr("Failed to initialized the logger (SD card)");
+  //   Error_Handler();
+  // }
 
   // get scale factor values for each sensor to put in header
   HeaderFields header_fields = {

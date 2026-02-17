@@ -166,16 +166,18 @@ int initialize_firm(SPIHandles *spi_handles_ptr, I2CHandles *i2c_handles_ptr,
   HAL_NVIC_DisableIRQ(EXTI2_IRQn);
   HAL_NVIC_DisableIRQ(EXTI3_IRQn);
 
+  
   if (icm45686_init(spi_handles_ptr->hspi2, GPIOB, GPIO_PIN_9)) {
     led_set_status(IMU_FAIL);
     return 1;
   }
 
-  if (bmp581_init(spi_handles_ptr->hspi2, GPIOC, GPIO_PIN_2)) {
-    led_set_status(BMP581_FAIL);
+  if (mmc5983ma_init(spi_handles_ptr->hspi2, GPIOC, GPIO_PIN_7)) {
+    led_set_status(MMC5983MA_FAIL);
     return 1;
   }
 
+<<<<<<< Updated upstream
   if (adxl371_init(spi_handles_ptr->hspi3, GPIOA, GPIO_PIN_8)) {
     led_set_status(IMU_FAIL);
     return 1;
@@ -183,14 +185,20 @@ int initialize_firm(SPIHandles *spi_handles_ptr, I2CHandles *i2c_handles_ptr,
 
   // if (mmc5983ma_init(spi_handles_ptr->hspi2, GPIOC, GPIO_PIN_7)) {
   //   led_set_status(MMC5983MA_FAIL);
+=======
+
+  // if (bmp581_init(spi_handles_ptr->hspi2, GPIOC, GPIO_PIN_2)) {
+  //   led_set_status(BMP581_FAIL);
+>>>>>>> Stashed changes
   //   return 1;
   // }
 
+
   // set up settings module with flash chip
-  if (settings_init(spi_handles_ptr->hspi1, GPIOC, GPIO_PIN_4)) {
-    led_set_status(FLASH_CHIP_FAIL);
-    return 1;
-  }
+  // if (settings_init(spi_handles_ptr->hspi1, GPIOC, GPIO_PIN_4)) {
+  //   led_set_status(FLASH_CHIP_FAIL);
+  //   return 1;
+  // }
   return 0;
 };
 
