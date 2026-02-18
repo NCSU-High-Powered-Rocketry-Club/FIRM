@@ -57,6 +57,12 @@ static const uint8_t zdata_l = 0x0D;
 
 static SPISettings spiSettings;
 
+void set_spi_adxl(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin) {
+  spiSettings.hspi = hspi;
+  spiSettings.cs_channel = cs_channel;
+  spiSettings.cs_pin = cs_pin;
+}
+
 int adxl371_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin) {
 
   if (hspi == NULL || cs_channel == NULL) {
@@ -64,9 +70,7 @@ int adxl371_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_
     return 1;
   }
   // set up the SPI settings
-  spiSettings.hspi = hspi;
-  spiSettings.cs_channel = cs_channel;
-  spiSettings.cs_pin = cs_pin;
+  set_spi_adxl(hspi, cs_channel, cs_pin);
 
   serialPrintStr("Beginning ADXL371 initialization");
   // sets up the IMU in SPI mode and ensures SPI is working
@@ -118,7 +122,7 @@ int adxl371_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_
 
   // set adxl to measure more
   read_registers(power_ctl, &value, 1);
-  value = value & 0b1111100;
+  value = value & 0b01111100;
   value = value | 0b00000011;
   write_register(power_ctl, value);
 
@@ -205,6 +209,7 @@ int adxl371_read_data(ADXL371Packet_t *packet) {
 }
 
 static HAL_StatusTypeDef read_registers(uint8_t addr, uint8_t *buffer, size_t len) {
+  addr |= 0x40;
   return spi_read(spiSettings.hspi, spiSettings.cs_channel, spiSettings.cs_pin, addr, buffer, len);
 }
 

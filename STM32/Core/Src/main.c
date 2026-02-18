@@ -396,7 +396,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -571,21 +571,19 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, DEBUG1_Pin|ICM45686_CS_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : PC0 DEBUG0_Pin FLASH_CS_Pin DEBUG2_Pin
-                           MMC5983MA_CS_Pin */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|DEBUG0_Pin|FLASH_CS_Pin|DEBUG2_Pin
-                          |MMC5983MA_CS_Pin;
+  /*Configure GPIO pins : PC0 DEBUG0_Pin FLASH_CS_Pin DEBUG2_Pin */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|DEBUG0_Pin|FLASH_CS_Pin|DEBUG2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : BMP581_CS_Pin */
-  GPIO_InitStruct.Pin = BMP581_CS_Pin;
+  /*Configure GPIO pins : BMP581_CS_Pin MMC5983MA_CS_Pin */
+  GPIO_InitStruct.Pin = BMP581_CS_Pin|MMC5983MA_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(BMP581_CS_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pin : BMP581_Interrupt_Pin */
   GPIO_InitStruct.Pin = BMP581_Interrupt_Pin;
@@ -735,6 +733,7 @@ void StartupTask(void *argument)
   set_spi_icm(&hspi2, GPIOB, GPIO_PIN_9);
   set_spi_bmp(&hspi2, GPIOC, GPIO_PIN_2);
   set_spi_mmc(&hspi2, GPIOC, GPIO_PIN_7);
+  set_spi_adxl(&hspi2, GPIOA, GPIO_PIN_8);
   
   // re-enable ISR's so that interrupts can trigger the sensor tasks to run
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);
