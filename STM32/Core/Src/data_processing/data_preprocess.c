@@ -58,7 +58,8 @@ void bmp581_convert_packet(SensorPacket *packet, DataPacket *result_packet) {
   result_packet->pressure_pascals = pressure_float;
 }
 
-void mmc5983ma_convert_packet(SensorPacket *packet, DataPacket *result_packet) {
+void __attribute__((noinline)) mmc5983ma_convert_packet(SensorPacket *packet,
+                                                        DataPacket *result_packet) {
   // get the current timestamp of the packet in seconds using the DWT counter
   result_packet->timestamp_seconds = update_dwt_timestamp(packet->timestamp);
   int32_t mag_binary_x, mag_binary_y, mag_binary_z;

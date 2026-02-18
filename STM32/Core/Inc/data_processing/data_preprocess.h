@@ -66,7 +66,8 @@ void bmp581_convert_packet(SensorPacket *packet, DataPacket *result_packet);
  * @param result_packet Pointer to a DataPacket where the result of the preprocessor
  *                      will be stored
  */
-void mmc5983ma_convert_packet(SensorPacket *packet, DataPacket *result_packet);
+void __attribute__((noinline)) mmc5983ma_convert_packet(SensorPacket *packet,
+                                                        DataPacket *result_packet);
 
 /**
  * @brief Converts raw ICM45686 data to SI units

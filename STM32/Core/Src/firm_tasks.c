@@ -160,22 +160,26 @@ int initialize_firm(SPIHandles *spi_handles_ptr, I2CHandles *i2c_handles_ptr,
 
   if (icm45686_init(spi_handles_ptr->hspi2, GPIOB, GPIO_PIN_9)) {
     led_set_status(IMU_FAIL);
+    Error_Handler();
+    return 1;
+  }
+
+  if (mmc5983ma_init(spi_handles_ptr->hspi2, GPIOC, GPIO_PIN_7)) {
+    led_set_status(MMC5983MA_FAIL);
+    Error_Handler();
     return 1;
   }
 
   if (bmp581_init(spi_handles_ptr->hspi2, GPIOC, GPIO_PIN_2)) {
     led_set_status(BMP581_FAIL);
+    Error_Handler();
     return 1;
   }
-
-  // if (mmc5983ma_init(spi_handles_ptr->hspi2, GPIOC, GPIO_PIN_7)) {
-  //   led_set_status(MMC5983MA_FAIL);
-  //   return 1;
-  // }
 
   // set up settings module with flash chip
   if (settings_init(spi_handles_ptr->hspi1, GPIOC, GPIO_PIN_4)) {
     led_set_status(FLASH_CHIP_FAIL);
+    Error_Handler();
     return 1;
   }
   return 0;
