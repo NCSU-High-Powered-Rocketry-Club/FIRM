@@ -177,19 +177,13 @@ int initialize_firm(SPIHandles *spi_handles_ptr, I2CHandles *i2c_handles_ptr,
     return 1;
   }
 
-<<<<<<< Updated upstream
-  if (adxl371_init(spi_handles_ptr->hspi3, GPIOA, GPIO_PIN_8)) {
-    led_set_status(IMU_FAIL);
-    return 1;
-  }
+  // if (adxl371_init(spi_handles_ptr->hspi3, GPIOA, GPIO_PIN_8)) {
+  //   led_set_status(IMU_FAIL);
+  //   return 1;
+  // }
 
   // if (mmc5983ma_init(spi_handles_ptr->hspi2, GPIOC, GPIO_PIN_7)) {
   //   led_set_status(MMC5983MA_FAIL);
-=======
-
-  // if (bmp581_init(spi_handles_ptr->hspi2, GPIOC, GPIO_PIN_2)) {
-  //   led_set_status(BMP581_FAIL);
->>>>>>> Stashed changes
   //   return 1;
   // }
 

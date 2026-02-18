@@ -158,14 +158,14 @@ int setup_device(bool soft_reset_complete) {
   // write test cannot be done, because the value of the written register cannot be verified
   // with a read
 
-  if (soft_reset_complete) {
-    // check that bit 7 (sw_rst) is back to 0
-    read_registers(internal_control1, &result, 1);
-    if (result & 0x80) {
-      serialPrintStr("\tMMC5983MA did not complete software reset");
-      return 1;
-    }
+  // if (soft_reset_complete) {
+  // check that bit 7 (sw_rst) is back to 0
+  read_registers(internal_control1, &result, 1);
+  if (soft_reset_complete && result & 0x80) {
+    serialPrintStr("\tMMC5983MA did not complete software reset");
+    return 1;
   }
+  // }
   return 0;
 }
 
