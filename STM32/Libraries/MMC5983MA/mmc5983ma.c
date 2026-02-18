@@ -5,6 +5,7 @@
  *      Author: Wlsan
  */
 #include "mmc5983ma.h"
+#include "stm32f4xx_hal.h"
 #include <stdint.h>
 
 /**
@@ -87,6 +88,11 @@ int mmc5983ma_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t c
   // verify correct setup again
   if (setup_device(true))
     return 1;
+
+  write_register(internal_control0, 0b00001000);
+  HAL_Delay(10);
+  write_register(internal_control0, 0b00010000);
+  HAL_Delay(10);
 
   // enable interrupt pin
   write_register(internal_control0, 0b00000100);
