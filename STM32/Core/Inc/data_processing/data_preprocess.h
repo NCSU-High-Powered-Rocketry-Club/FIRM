@@ -1,5 +1,6 @@
 #pragma once
 #include "settings.h"
+#include <adxl371_packet.h>
 #include <bmp581_packet.h>
 #include <icm45686_packet.h>
 #include <mmc5983ma_packet.h>
@@ -10,6 +11,7 @@ typedef struct {
     BMP581Packet_t bmp581_packet;
     ICM45686Packet_t icm45686_packet;
     MMC5983MAPacket_t mmc5983ma_packet;
+    ADXL371Packet_t adxl371_packet;
   } packet;
 } SensorPacket;
 
@@ -77,3 +79,5 @@ void mmc5983ma_convert_packet(SensorPacket *packet, DataPacket *result_packet);
  *                      will be stored
  */
 void icm45686_convert_packet(SensorPacket *packet, DataPacket *result_packet);
+
+void adxl371_convert_packet(SensorPacket *packet, DataPacket *result_packet);

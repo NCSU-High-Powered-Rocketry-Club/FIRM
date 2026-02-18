@@ -1,30 +1,32 @@
 #pragma once
 
+#include "data_preprocess.h"
 #include "firm_fsm.h"
+#include "led.h"
+#include "logger.h"
+#include "messages.h"
+#include "mocking_handler.h"
+#include "settings.h"
+#include "ukf_functions.h"
+#include "unscented_kalman_filter.h"
+#include "utils.h"
+#include <adxl371.h>
 #include <bmp581.h>
 #include <icm45686.h>
 #include <mmc5983ma.h>
-#include "data_preprocess.h"
-#include "logger.h"
-#include "utils.h"
-#include "led.h"
-#include "settings.h"
-#include "unscented_kalman_filter.h"
-#include "ukf_functions.h"
-#include "messages.h"
-#include "mocking_handler.h"
 
-
-#include "cmsis_os.h"
 #include "FreeRTOS.h"
-#include "stream_buffer.h"
-#include "queue.h"
-#include "task.h"
+#include "cmsis_os.h"
 #include "commands.h"
+#include "queue.h"
+#include "stream_buffer.h"
+#include "task.h"
 
+// TODO: prolly set these to 100 eventually
 #define BMP581_POLL_RATE_HZ 500
 #define ICM45686_POLL_RATE_HZ 800
 #define MMC5983MA_POLL_RATE_HZ 225
+#define ADXL371_POLL_RATE_HZ 100
 #define TRANSMIT_FREQUENCY_HZ 100
 #define KALMAN_FILTER_STARTUP_DELAY_TIME_MS 1000
 
@@ -42,6 +44,7 @@ extern osThreadId_t firm_mode_indicator_task_handle;
 extern osThreadId_t bmp581_task_handle;
 extern osThreadId_t icm45686_task_handle;
 extern osThreadId_t mmc5983ma_task_handle;
+extern osThreadId_t adxl371_task_handle;
 extern osThreadId_t packetizer_task_handle;
 extern osThreadId_t transmit_task_handle;
 extern osThreadId_t usb_read_task_handle;
@@ -51,7 +54,7 @@ extern osThreadId_t mock_packet_handler_handle;
 // Task-notification bits for sensor tasks.
 // We must distinguish EXTI (live) wakeups from mock dispatch wakeups so that
 // in mock mode the EXTI ISR cannot cause out-of-order ring pops.
-#define SENSOR_NOTIFY_ISR_BIT  (1UL << 0)
+#define SENSOR_NOTIFY_ISR_BIT (1UL << 0)
 #define SENSOR_NOTIFY_MOCK_BIT (1UL << 1)
 
 extern QueueHandle_t system_request_queue;
@@ -61,6 +64,7 @@ extern const osThreadAttr_t modeIndicatorTask_attributes;
 extern const osThreadAttr_t bmp581Task_attributes;
 extern const osThreadAttr_t icm45686Task_attributes;
 extern const osThreadAttr_t mmc5983maTask_attributes;
+extern const osThreadAttr_t adxl371Task_attributes;
 extern const osThreadAttr_t packetizerTask_attributes;
 extern const osThreadAttr_t transmitTask_attributes;
 extern const osThreadAttr_t usbReadTask_attributes;
@@ -134,7 +138,7 @@ void firm_rtos_init(void);
 
 /**
  * Callback function to handle received USB data. It is called from the USB ISR.
- * 
+ *
  * @param buffer Pointer to the received data buffer
  * @param data_length Length of the received data
  */
