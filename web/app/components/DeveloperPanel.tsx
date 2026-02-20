@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useFIRM } from "~/contexts/FIRMContext";
 import type { FIRMPacket } from "firm-client";
 
@@ -13,6 +13,44 @@ function prettyBytes(n: number): string {
   return `${i === 0 ? value : value.toFixed(2)} ${units[i]}`;
 }
 
+function renderHexWithHeaderHighlight(hex: string) {
+  // Highlight header bytes for Data (5a a5) and Response (a5 5a) appearing in the raw hex stream.
+  // Note: hex is formatted as "aa bb cc" with optional newlines between chunks.
+  const tokens = hex.split(/\s+/).filter(Boolean);
+  const nodes: React.ReactNode[] = [];
+
+  const isHeaderPair = (a?: string, b?: string) => {
+    if (!a || !b) return false;
+    const aa = a.toLowerCase();
+    const bb = b.toLowerCase();
+    return (aa === "5a" && bb === "a5") || (aa === "a5" && bb === "5a");
+  };
+
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    const next = tokens[i + 1];
+
+    if (isHeaderPair(t, next)) {
+      nodes.push(
+        <span
+          key={`h-${i}`}
+          style={{ backgroundColor: "color-mix(in srgb, var(--color-theme) 12%, transparent)" }}
+          className="rounded px-0.5"
+        >
+          {t} {next}
+        </span>,
+      );
+      i += 1;
+    } else {
+      nodes.push(<span key={`b-${i}`}>{t}</span>);
+    }
+
+    if (i < tokens.length - 1) nodes.push(" ");
+  }
+
+  return nodes;
+}
+
 export function DeveloperPanel({ visible }: { visible: boolean }) {
   const {
     receivedBytes,
@@ -21,15 +59,38 @@ export function DeveloperPanel({ visible }: { visible: boolean }) {
     recentTxHex,
     latestPacket,
     packetsPerSecond,
+    hideDataPackets,
+    setHideDataPackets,
   } = useFIRM();
 
   const rxRef = useRef<HTMLTextAreaElement | null>(null);
   const txRef = useRef<HTMLTextAreaElement | null>(null);
 
   const [showPacketViewer, setShowPacketViewer] = useState<boolean>(true);
-  const [packetText, setPacketText] = useState<string>(
-    "Waiting for packets…",
-  );
+  const [packetText, setPacketText] = useState<string>("Waiting for packets…");
+
+  const didInitialScrollRef = useRef(false);
+  const rxFilledRef = useRef(false);
+
+  const rxHighlighted = useMemo(() => renderHexWithHeaderHighlight(recentRxHex), [recentRxHex]);
+
+  // Scroll RX/TX logs to bottom once when the panel is opened.
+  useEffect(() => {
+    if (!visible) {
+      didInitialScrollRef.current = false;
+      return;
+    }
+
+    if (didInitialScrollRef.current) return;
+
+    const id = window.setTimeout(() => {
+      if (rxRef.current) rxRef.current.scrollTop = rxRef.current.scrollHeight;
+      if (txRef.current) txRef.current.scrollTop = txRef.current.scrollHeight;
+      didInitialScrollRef.current = true;
+    }, 0);
+
+    return () => window.clearTimeout(id);
+  }, [visible]);
 
   const latestPacketRef = useRef<FIRMPacket | null>(null);
   useEffect(() => {
@@ -39,8 +100,8 @@ export function DeveloperPanel({ visible }: { visible: boolean }) {
   useEffect(() => {
     if (!visible || !showPacketViewer) return;
 
-    const UPDATE_MS = 100; // 10 Hz
-    const MAX_CHARS = 40_000;
+    const UPDATE_MS = 100;
+    const MAX_CHARS = 2000;
 
     const id = window.setInterval(() => {
       const pkt = latestPacketRef.current;
@@ -91,17 +152,26 @@ export function DeveloperPanel({ visible }: { visible: boolean }) {
             <span className="text-slate-500">({prettyBytes(receivedBytes)})</span>
           </div>
 
+          <label className="mt-2 flex items-center gap-2 text-xs text-slate-600 select-none">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-[var(--color-theme)]"
+              checked={hideDataPackets}
+              onChange={(e) => setHideDataPackets(e.target.checked)}
+            />
+            Hide Data Packets
+          </label>
+
           <div className="mt-2">
             <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
               Recent received bytes (hex)
             </div>
-            <textarea
-              ref={rxRef}
-              readOnly
-              value={recentRxHex}
-              className={hexBoxClassName}
-              spellCheck={false}
-            />
+            <pre
+              ref={rxRef as unknown as React.RefObject<HTMLPreElement>}
+              className={hexBoxClassName + " whitespace-pre-wrap"}
+            >
+              {rxHighlighted}
+            </pre>
           </div>
         </div>
 
