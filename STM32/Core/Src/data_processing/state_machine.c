@@ -46,7 +46,7 @@ void state_update(struct UKF *ukfh) {
       }
     }
     // increase noise in pressure to filter transonic effects based on how fast the rocket is going
-    // ukfh->R[0] = ukf_measurement_noise_covariance_diag[state][0] * fmaxf(ukfh->X[5], 1.0F);
+    ukfh->R[0] = ukf_measurement_noise_covariance_diag[state][0] * fmaxf(ukfh->X[5], 1.0F);
 
     if (ukfh->X[2] > 15.0F && ukfh->X[8] < -0.1F) {
       state = COAST;
@@ -55,7 +55,7 @@ void state_update(struct UKF *ukfh) {
     break;
   }
   case COAST: {
-    // increase noise in pressure based on velocity to filter out transonic effects or airbrakes
+    // increase noise in pressure to filter transonic effects based on how fast the rocket is going
     ukfh->R[0] = ukf_measurement_noise_covariance_diag[state][0] * fmaxf(ukfh->X[5], 1.0F);
 
     if (ukfh->X[5] < 0.0F) {
