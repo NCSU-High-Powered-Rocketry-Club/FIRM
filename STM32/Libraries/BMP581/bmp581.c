@@ -83,14 +83,10 @@ int bmp581_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_p
 
   serialPrintStr("Beginning BMP581 initialization");
   // sets up the BMP581 in SPI mode and ensures SPI is working
-  if (bmp581_setup_device(false)) {
-    return 1;
-  }
+  bmp581_setup_device(false);
   serialPrintStr("\tIssuing BMP581 software reset...");
   write_register(cmd, 0b10110110); // do a soft-reset of the sensor's settings
-  if (bmp581_setup_device(true)) { // verify correct setup again
-    return 1;
-  }
+  bmp581_setup_device(true); // verify correct setup ag
 
   // enable pressure measurements, sets 1x over-sampling (no OSR) for pressure and temperature.
   write_register(osr_config, 0b01000000);
@@ -146,7 +142,7 @@ static int bmp581_setup_device(bool soft_reset_complete) {
     default:
       break;
     }
-    return 1;
+    
   }
   // give device enough time to switch to correct mode
   HAL_Delay(0);
@@ -161,41 +157,41 @@ static int bmp581_setup_device(bool soft_reset_complete) {
       serialPrintStr("\tBMP581 chip ID read failed, device is most likely not wired correctly");
     }
 
-    return 1;
+    
   }
   if (result == 0x01) {
     serialPrintStr("\tBMP581 wrongly initialized in SPI Mode 1/2");
-    return 1;
+    
   }
   if (result & 0x0C) {
     serialPrintStr("\tI3C error, check datasheet register 0x11 for more info");
-    return 1;
+    
   }
 
   // verify chip ID and asic rev ID read works
   read_registers(chip_id, &result, 1);
   if (result != 0x50) {
     serialPrintStr("\tBMP581 could not read chip ID");
-    return 1;
+    
   }
   read_registers(asic_rev_id, &result, 1);
   if (result != 0x32) {
     serialPrintStr("\tBMP581 could not read ASIC revision ID");
-    return 1;
+    
   }
 
   // verify that writes work
   read_registers(fifo_sel, &result, 1);
   if (result) {
     serialPrintStr("\tCould not start write test: wrong expected value for FIFO_SEL");
-    return 1;
+    
   }
   write_register(fifo_sel, 0b00000100);
   read_registers(fifo_sel, &result, 1);
   if (result != 0x04) {
     serialPrintStr(
         "\tBMP581 SPI Write test failed, wrote to register and did not read expected value back!");
-    return 1;
+    
   }
   write_register(fifo_sel, 0b00000000); // set back to default
 
@@ -203,11 +199,11 @@ static int bmp581_setup_device(bool soft_reset_complete) {
   read_registers(status, &result, 1);
   if (result & 0x04) {
     serialPrintStr("\tNVM error, refer to datasheet for source of error");
-    return 1;
+    
   }
   if (result & 0x08) {
     serialPrintStr("\tNVM command error, refer to datasheet for source of error");
-    return 1;
+    
   }
 
   if (soft_reset_complete) {
@@ -217,7 +213,7 @@ static int bmp581_setup_device(bool soft_reset_complete) {
     read_registers(int_status, &result, 1);
     if (!(result & 0x10)) { // check that bit 4 (POR) is 1
       serialPrintStr("\tSoftware reset interrupt signal not generated!");
-      return 1;
+      
     }
   }
   return 0;

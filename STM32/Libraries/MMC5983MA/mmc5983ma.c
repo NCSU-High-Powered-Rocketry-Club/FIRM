@@ -78,16 +78,16 @@ int mmc5983ma_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t c
   serialPrintStr("Beginning MMC5983MA initialization");
 
   // sets up the magnetometer in spi mode and ensures spi is working
-  if (setup_device(false))
-    return 1;
+  setup_device(false);
+     
 
   // initiating a software reset
   serialPrintStr("\tIssuing MMC5983MA software reset...");
   write_register(internal_control1, 0b10000000);
 
   // verify correct setup again
-  if (setup_device(true))
-    return 1;
+  setup_device(true);
+     
 
   write_register(internal_control0, 0b00001000);
   HAL_Delay(10);
@@ -149,7 +149,7 @@ int setup_device(bool soft_reset_complete) {
     default:
       break;
     }
-    return 1;
+     
   }
   // give device enough time to switch to correct mode
   // this is a 1ms delay
@@ -159,7 +159,7 @@ int setup_device(bool soft_reset_complete) {
   read_registers(product_id1, &result2, 1);
   if (result2 != product_id_val) {
     serialPrintStr("\tMMC5983MA could not read Product ID");
-    return 1;
+     
   }
 
   // unlike the other sensors, the registers are read-only or write-only, so the startup
@@ -172,7 +172,7 @@ int setup_device(bool soft_reset_complete) {
   read_registers(internal_control1, &result3, 1);
   if (soft_reset_complete && result3 & 0x80) {
     serialPrintStr("\tMMC5983MA did not complete software reset");
-    return 1;
+     
   }
   // }
   return 0;
