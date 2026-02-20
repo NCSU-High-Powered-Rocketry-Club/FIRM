@@ -213,6 +213,7 @@ static int bmp581_setup_device(bool soft_reset_complete) {
   if (soft_reset_complete) {
 
     // verify software reset is recognized as complete by the interrupt status register
+    HAL_Delay(5);
     read_registers(int_status, &result, 1);
     if (!(result & 0x10)) { // check that bit 4 (POR) is 1
       serialPrintStr("\tSoftware reset interrupt signal not generated!");

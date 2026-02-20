@@ -30,7 +30,6 @@ int settings_init(SPI_HandleTypeDef *flash_hspi, GPIO_TypeDef *flash_cs_channel,
 
   if (HAL_GPIO_ReadPin(write_check_pin_channel, write_check_pin) == GPIO_PIN_RESET || true) {
     settings_write_defaults();
-    return 0; // TODO: hack
   }
 
   // read settings block

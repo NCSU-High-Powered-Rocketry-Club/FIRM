@@ -148,7 +148,7 @@ int initialize_firm(SPIHandles *spi_handles_ptr, I2CHandles *i2c_handles_ptr,
   // Indicate that initialization is in progress:
   led_set_status(FIRM_UNINITIALIZED);
 
-  HAL_Delay(500); // purely for debug purposes, allows time to connect to USB serial terminal
+  HAL_Delay(100); // purely for debug purposes, allows time to connect to USB serial terminal
 
   // disable the ISR so that the interrupts cannot be triggered before the scheduler initializes.
   // The ISR notifies the sensor tasks to collect data, but calling this before the scheduler is
@@ -163,15 +163,15 @@ int initialize_firm(SPIHandles *spi_handles_ptr, I2CHandles *i2c_handles_ptr,
     Error_Handler();
     return 1;
   }
-
-  if (mmc5983ma_init(spi_handles_ptr->hspi2, GPIOC, GPIO_PIN_7)) {
-    led_set_status(MMC5983MA_FAIL);
+  HAL_Delay(100);
+  if (bmp581_init(spi_handles_ptr->hspi2, GPIOC, GPIO_PIN_2)) {
+    led_set_status(BMP581_FAIL);
     Error_Handler();
     return 1;
   }
 
-  if (bmp581_init(spi_handles_ptr->hspi2, GPIOC, GPIO_PIN_2)) {
-    led_set_status(BMP581_FAIL);
+  if (mmc5983ma_init(spi_handles_ptr->hspi2, GPIOC, GPIO_PIN_7)) {
+    led_set_status(MMC5983MA_FAIL);
     Error_Handler();
     return 1;
   }
