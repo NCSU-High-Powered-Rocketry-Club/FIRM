@@ -32,6 +32,9 @@ type FIRMContextValue = {
 
   hideDataPackets: boolean;
   setHideDataPackets: (value: boolean) => void;
+
+  pauseByteStream: boolean;
+  setPauseByteStream: (value: boolean) => void;
 };
 
 const FIRMContext = createContext<FIRMContextValue | undefined>(undefined);
@@ -78,6 +81,7 @@ export function FIRMProvider({ children }: { children: ReactNode }) {
   const [packetsPerSecond, setPacketsPerSecond] = useState(0);
 
   const [hideDataPackets, setHideDataPackets] = useState(false);
+  const [pauseByteStream, setPauseByteStream] = useState(false);
 
   const disconnect = useCallback(async () => {
     if (firm) {
@@ -153,6 +157,7 @@ export function FIRMProvider({ children }: { children: ReactNode }) {
       setRecentTxHex("");
       setPacketsPerSecond(0);
       setHideDataPackets(false);
+      setPauseByteStream(false);
 
       const instance = await FIRMClient.connect({ baudRate: 115200 });
       setFIRM(instance);
@@ -273,17 +278,17 @@ export function FIRMProvider({ children }: { children: ReactNode }) {
     };
 
     const unsubRx = firm.onRawBytes((bytes) => {
-      const { forwarded, strippedBytes } = stripDataFrames(bytes);
+      // Allow connection-level bytes counter to keep increasing even while paused.
+      setReceivedBytes((n) => n + bytes.length);
 
-      // Count only the bytes we actually show if hideDataPackets is enabled.
-      setReceivedBytes((n) => n + (hideDataPackets ? forwarded.length : bytes.length));
+      // Pause affects RX display only.
+      if (pauseByteStream) return;
+
+      const { forwarded } = stripDataFrames(bytes);
 
       if (forwarded.length > 0) {
         setRecentRxHex((prev) => appendHexLog(prev, bytesToHex(forwarded), MAX_LOG_CHARS));
       }
-
-      // suppressed-bytes are intentionally not shown
-      void strippedBytes;
     });
 
     const unsubTx = firm.onOutgoingBytes((bytes) => {
@@ -303,7 +308,7 @@ export function FIRMProvider({ children }: { children: ReactNode }) {
         // best-effort cleanup; ignore
       }
     };
-  }, [firm, hideDataPackets]);
+  }, [firm, hideDataPackets, pauseByteStream]);
 
   // Own the packet stream: update latestPacket on each parsed packet.
   useEffect(() => {
@@ -365,6 +370,8 @@ export function FIRMProvider({ children }: { children: ReactNode }) {
 
     hideDataPackets,
     setHideDataPackets,
+    pauseByteStream,
+    setPauseByteStream,
   };
 
   return <FIRMContext.Provider value={value}>{children}</FIRMContext.Provider>;

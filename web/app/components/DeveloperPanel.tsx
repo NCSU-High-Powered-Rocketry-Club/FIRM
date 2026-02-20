@@ -13,9 +13,9 @@ function prettyBytes(n: number): string {
   return `${i === 0 ? value : value.toFixed(2)} ${units[i]}`;
 }
 
-function renderHexWithHeaderHighlight(hex: string) {
-  // Highlight header bytes for Data (5a a5) and Response (a5 5a) appearing in the raw hex stream.
-  // Note: hex is formatted as "aa bb cc" with optional newlines between chunks.
+function renderHexWithHeaderHighlight(hex: string, pairs: Array<[string, string]>) {
+  // Highlights matching 2-byte header pairs (in the displayed byte order).
+  // hex is formatted as "aa bb cc" with optional newlines between chunks.
   const tokens = hex.split(/\s+/).filter(Boolean);
   const nodes: React.ReactNode[] = [];
 
@@ -23,7 +23,7 @@ function renderHexWithHeaderHighlight(hex: string) {
     if (!a || !b) return false;
     const aa = a.toLowerCase();
     const bb = b.toLowerCase();
-    return (aa === "5a" && bb === "a5") || (aa === "a5" && bb === "5a");
+    return pairs.some(([p0, p1]) => aa === p0 && bb === p1);
   };
 
   for (let i = 0; i < tokens.length; i++) {
@@ -51,6 +51,22 @@ function renderHexWithHeaderHighlight(hex: string) {
   return nodes;
 }
 
+function highlightRx(hex: string) {
+  // RX highlights Data (0xA55A => 5a a5 LE) and Response (0x5AA5 => a5 5a LE)
+  return renderHexWithHeaderHighlight(hex, [
+    ["5a", "a5"],
+    ["a5", "5a"],
+  ]);
+}
+
+function highlightTx(hex: string) {
+  // TX highlights LogSensor (0x6BB6 => b6 6b LE) and Command (0xB66B => 6b b6 LE)
+  return renderHexWithHeaderHighlight(hex, [
+    ["b6", "6b"],
+    ["6b", "b6"],
+  ]);
+}
+
 export function DeveloperPanel({ visible }: { visible: boolean }) {
   const {
     receivedBytes,
@@ -61,6 +77,8 @@ export function DeveloperPanel({ visible }: { visible: boolean }) {
     packetsPerSecond,
     hideDataPackets,
     setHideDataPackets,
+    pauseByteStream,
+    setPauseByteStream,
   } = useFIRM();
 
   const rxRef = useRef<HTMLTextAreaElement | null>(null);
@@ -70,9 +88,9 @@ export function DeveloperPanel({ visible }: { visible: boolean }) {
   const [packetText, setPacketText] = useState<string>("Waiting for packets…");
 
   const didInitialScrollRef = useRef(false);
-  const rxFilledRef = useRef(false);
 
-  const rxHighlighted = useMemo(() => renderHexWithHeaderHighlight(recentRxHex), [recentRxHex]);
+  const rxHighlighted = useMemo(() => highlightRx(recentRxHex), [recentRxHex]);
+  const txHighlighted = useMemo(() => highlightTx(recentTxHex), [recentTxHex]);
 
   // Scroll RX/TX logs to bottom once when the panel is opened.
   useEffect(() => {
@@ -152,15 +170,25 @@ export function DeveloperPanel({ visible }: { visible: boolean }) {
             <span className="text-slate-500">({prettyBytes(receivedBytes)})</span>
           </div>
 
-          <label className="mt-2 flex items-center gap-2 text-xs text-slate-600 select-none">
-            <input
-              type="checkbox"
-              className="h-4 w-4 accent-[var(--color-theme)]"
-              checked={hideDataPackets}
-              onChange={(e) => setHideDataPackets(e.target.checked)}
-            />
-            Hide Data Packets
-          </label>
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 text-xs text-slate-600 select-none">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-[var(--color-theme)]"
+                checked={hideDataPackets}
+                onChange={(e) => setHideDataPackets(e.target.checked)}
+              />
+              Hide Data Packets
+            </label>
+
+            <button
+              type="button"
+              className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-700 shadow-sm hover:bg-slate-50"
+              onClick={() => setPauseByteStream(!pauseByteStream)}
+            >
+              {pauseByteStream ? "Play" : "Pause"}
+            </button>
+          </div>
 
           <div className="mt-2">
             <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
@@ -188,13 +216,12 @@ export function DeveloperPanel({ visible }: { visible: boolean }) {
             <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
               Recent transmitted bytes (hex)
             </div>
-            <textarea
-              ref={txRef}
-              readOnly
-              value={recentTxHex}
-              className={hexBoxClassName}
-              spellCheck={false}
-            />
+            <pre
+              ref={txRef as unknown as React.RefObject<HTMLPreElement>}
+              className={hexBoxClassName + " whitespace-pre-wrap"}
+            >
+              {txHighlighted}
+            </pre>
           </div>
         </div>
       </div>
