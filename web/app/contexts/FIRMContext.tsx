@@ -29,6 +29,12 @@ type FIRMContextValue = {
   recentRxHex: string;
   recentTxHex: string;
   packetsPerSecond: number;
+
+  hideDataPackets: boolean;
+  setHideDataPackets: (value: boolean) => void;
+
+  pauseByteStream: boolean;
+  setPauseByteStream: (value: boolean) => void;
 };
 
 const FIRMContext = createContext<FIRMContextValue | undefined>(undefined);
@@ -73,6 +79,9 @@ export function FIRMProvider({ children }: { children: ReactNode }) {
   const [recentRxHex, setRecentRxHex] = useState("");
   const [recentTxHex, setRecentTxHex] = useState("");
   const [packetsPerSecond, setPacketsPerSecond] = useState(0);
+
+  const [hideDataPackets, setHideDataPackets] = useState(false);
+  const [pauseByteStream, setPauseByteStream] = useState(false);
 
   const disconnect = useCallback(async () => {
     if (firm) {
@@ -147,6 +156,8 @@ export function FIRMProvider({ children }: { children: ReactNode }) {
       setRecentRxHex("");
       setRecentTxHex("");
       setPacketsPerSecond(0);
+      setHideDataPackets(false);
+      setPauseByteStream(false);
 
       const instance = await FIRMClient.connect({ baudRate: 115200 });
       setFIRM(instance);
@@ -183,11 +194,101 @@ export function FIRMProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!firm) return;
 
-    const MAX_LOG_CHARS = 1000;
+    const MAX_LOG_CHARS = 2000;
+
+    // Streaming filter state (kept in closure for chunk-boundary safety)
+    const DATA_HEADER = 0xa55a;
+    const RESPONSE_HEADER = 0x5aa5;
+    const HEADER_LEN = 2 + 2 + 4; // header + identifier + length
+    const CRC_LEN = 2;
+
+    let buffer = new Uint8Array(0);
+
+    const readU16LE = (b: Uint8Array, off: number) => b[off] | (b[off + 1] << 8);
+    const readU32LE = (b: Uint8Array, off: number) =>
+      (b[off] | (b[off + 1] << 8) | (b[off + 2] << 16) | (b[off + 3] << 24)) >>> 0;
+
+    const concat = (a: Uint8Array, b: Uint8Array) => {
+      if (a.length === 0) return b;
+      if (b.length === 0) return a;
+      const out = new Uint8Array(a.length + b.length);
+      out.set(a, 0);
+      out.set(b, a.length);
+      return out;
+    };
+
+    const stripDataFrames = (chunk: Uint8Array): { forwarded: Uint8Array; strippedBytes: number } => {
+      // Fast path: filter disabled
+      if (!hideDataPackets) {
+        buffer = new Uint8Array(0);
+        return { forwarded: chunk, strippedBytes: 0 };
+      }
+
+      buffer = concat(buffer, chunk);
+
+      const out: number[] = [];
+      let stripped = 0;
+
+      // We scan for known headers; when we don't have enough bytes to decide, we keep remainder in buffer
+      let i = 0;
+      while (i < buffer.length) {
+        // Need at least 2 bytes to check a header
+        if (i + 2 > buffer.length) break;
+
+        const hdr = readU16LE(buffer, i);
+
+        // If this looks like a frame header, make sure we have full frame before acting
+        if (hdr === DATA_HEADER || hdr === RESPONSE_HEADER) {
+          if (i + HEADER_LEN > buffer.length) break; // wait for more
+
+          const payloadLen = readU32LE(buffer, i + 4);
+          const frameLen = HEADER_LEN + payloadLen + CRC_LEN;
+
+          if (payloadLen > 10_000_000) {
+            // Probably a false-positive header in random data; treat as plain bytes.
+            out.push(buffer[i]);
+            i += 1;
+            continue;
+          }
+
+          if (i + frameLen > buffer.length) break; // wait for more
+
+          if (hdr === DATA_HEADER) {
+            // Drop full data frame
+            stripped += frameLen;
+            i += frameLen;
+            continue;
+          }
+
+          // Response frame: keep
+          for (let j = 0; j < frameLen; j++) out.push(buffer[i + j]);
+          i += frameLen;
+          continue;
+        }
+
+        // Not a recognized header => keep byte
+        out.push(buffer[i]);
+        i += 1;
+      }
+
+      // Keep remainder for next chunk
+      buffer = buffer.slice(i);
+
+      return { forwarded: new Uint8Array(out), strippedBytes: stripped };
+    };
 
     const unsubRx = firm.onRawBytes((bytes) => {
+      // Allow connection-level bytes counter to keep increasing even while paused.
       setReceivedBytes((n) => n + bytes.length);
-      setRecentRxHex((prev) => appendHexLog(prev, bytesToHex(bytes), MAX_LOG_CHARS));
+
+      // Pause affects RX display only.
+      if (pauseByteStream) return;
+
+      const { forwarded } = stripDataFrames(bytes);
+
+      if (forwarded.length > 0) {
+        setRecentRxHex((prev) => appendHexLog(prev, bytesToHex(forwarded), MAX_LOG_CHARS));
+      }
     });
 
     const unsubTx = firm.onOutgoingBytes((bytes) => {
@@ -207,7 +308,7 @@ export function FIRMProvider({ children }: { children: ReactNode }) {
         // best-effort cleanup; ignore
       }
     };
-  }, [firm]);
+  }, [firm, hideDataPackets, pauseByteStream]);
 
   // Own the packet stream: update latestPacket on each parsed packet.
   useEffect(() => {
@@ -266,6 +367,11 @@ export function FIRMProvider({ children }: { children: ReactNode }) {
     recentRxHex,
     recentTxHex,
     packetsPerSecond,
+
+    hideDataPackets,
+    setHideDataPackets,
+    pauseByteStream,
+    setPauseByteStream,
   };
 
   return <FIRMContext.Provider value={value}>{children}</FIRMContext.Provider>;
