@@ -80,7 +80,7 @@ float ukf_measurement_noise_covariance_diag[STATE_MACHINE_NUM_STATES][UKF_MEASUR
         1e-2F, 1e-2F, 1e-2F // normalized magnetometer (x, y, z)
     },
     { // Coast
-        5e3F, // pressure (pascals)
+        5e2F, // pressure (pascals)
         1e-2F, 1e-2F, 1e-2F, // acceleration (x, y, z)
         1e-1F, 1e-1F, 1e-1F, // gyro angular rate (x, y, z)
         1e-3F, 1e-3F, 1e-3F // normalized magnetometer (x, y, z)
