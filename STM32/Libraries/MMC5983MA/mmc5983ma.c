@@ -5,8 +5,6 @@
  *      Author: Wlsan
  */
 #include "mmc5983ma.h"
-#include "stm32f4xx_hal.h"
-#include <stdint.h>
 
 /**
  * @brief the SPI settings for the MMC5983MA to use when accessing device registers
@@ -78,16 +76,16 @@ int mmc5983ma_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t c
   serialPrintStr("Beginning MMC5983MA initialization");
 
   // sets up the magnetometer in spi mode and ensures spi is working
-  setup_device(false);
-     
+  if (setup_device(false))
+    return 1;
 
   // initiating a software reset
   serialPrintStr("\tIssuing MMC5983MA software reset...");
   write_register(internal_control1, 0b10000000);
 
   // verify correct setup again
-  setup_device(true);
-     
+  if (setup_device(true))
+    return 1;
 
   write_register(internal_control0, 0b00001000);
   HAL_Delay(10);
@@ -149,32 +147,30 @@ int setup_device(bool soft_reset_complete) {
     default:
       break;
     }
-     
+    return 1;
   }
   // give device enough time to switch to correct mode
   // this is a 1ms delay
   HAL_Delay(0);
 
-  uint8_t result2 = 0;
-  read_registers(product_id1, &result2, 1);
-  if (result2 != product_id_val) {
+  read_registers(product_id1, &result, 1);
+  if (result != product_id_val) {
     serialPrintStr("\tMMC5983MA could not read Product ID");
-     
+    return 1;
   }
 
   // unlike the other sensors, the registers are read-only or write-only, so the startup
   // write test cannot be done, because the value of the written register cannot be verified
   // with a read
 
-  // if (soft_reset_complete) {
-  // check that bit 7 (sw_rst) is back to 0
-  uint8_t result3 = 0;
-  read_registers(internal_control1, &result3, 1);
-  if (soft_reset_complete && result3 & 0x80) {
-    serialPrintStr("\tMMC5983MA did not complete software reset");
-     
+  if (soft_reset_complete) {
+    // check that bit 7 (sw_rst) is back to 0
+    read_registers(internal_control1, &result, 1);
+    if (result & 0x80) {
+      serialPrintStr("\tMMC5983MA did not complete software reset");
+      return 1;
+    }
   }
-  // }
   return 0;
 }
 
