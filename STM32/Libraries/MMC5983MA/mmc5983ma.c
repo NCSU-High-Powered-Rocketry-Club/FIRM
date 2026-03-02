@@ -87,6 +87,11 @@ int mmc5983ma_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t c
   if (setup_device(true))
     return 1;
 
+  write_register(internal_control0, 0b00001000);
+  HAL_Delay(10);
+  write_register(internal_control0, 0b00010000);
+  HAL_Delay(10);
+
   // enable interrupt pin
   write_register(internal_control0, 0b00000100);
   // set bandwidth to 200hz (4ms measurement time)

@@ -147,16 +147,16 @@ int initialize_firm(SPIHandles *spi_handles_ptr, I2CHandles *i2c_handles_ptr,
   // Set the chip select pins to high, this means that they're not selected.
   // Note: We can't have these in the bmp581/imu/flash chip init functions, because those somehow
   // mess up with the initialization.
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // bmp581 cs pin
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // icm45686 cs pin
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET); // flash chip cs pin
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET); // mmc5983ma CS pin
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET); // adxl371 cs pin
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // BMP581 CS pin
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // ICM45686 CS pin
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET); // flash chip CS pin
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET); // MMC5983MA CS pin
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET); // ADXL371 CS pin
 
   // Indicate that initialization is in progress:
   led_set_status(FIRM_UNINITIALIZED);
 
-  HAL_Delay(500); // purely for debug purposes, allows time to connect to USB serial terminal
+  HAL_Delay(100); // purely for debug purposes, allows time to connect to USB serial terminal
 
   // disable the ISR so that the interrupts cannot be triggered before the scheduler initializes.
   // The ISR notifies the sensor tasks to collect data, but calling this before the scheduler is
@@ -169,31 +169,28 @@ int initialize_firm(SPIHandles *spi_handles_ptr, I2CHandles *i2c_handles_ptr,
   
   if (icm45686_init(spi_handles_ptr->hspi2, GPIOB, GPIO_PIN_9)) {
     led_set_status(IMU_FAIL);
+    Error_Handler();
     return 1;
   }
 
   if (bmp581_init(spi_handles_ptr->hspi2, GPIOC, GPIO_PIN_2)) {
     led_set_status(BMP581_FAIL);
+    Error_Handler();
     return 1;
   }
 
   if (mmc5983ma_init(spi_handles_ptr->hspi2, GPIOC, GPIO_PIN_7)) {
     led_set_status(MMC5983MA_FAIL);
+    Error_Handler();
     return 1;
   }
-
-  if (adxl371_init(spi_handles_ptr->hspi2, GPIOA, GPIO_PIN_8)) {
-    led_set_status(UKF_FAIL);
-    return 1;
-  }
-
-
 
   // set up settings module with flash chip
-  // if (settings_init(spi_handles_ptr->hspi1, GPIOC, GPIO_PIN_4)) {
-  //   led_set_status(FLASH_CHIP_FAIL);
-  //   return 1;
-  // }
+  if (settings_init(spi_handles_ptr->hspi1, GPIOC, GPIO_PIN_4)) {
+    led_set_status(FLASH_CHIP_FAIL);
+    Error_Handler();
+    return 1;
+  }
   return 0;
 };
 

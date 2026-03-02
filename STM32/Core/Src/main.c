@@ -195,8 +195,10 @@ int main(void)
   startupTaskHandle = osThreadNew(StartupTask, NULL, &startupTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  system_manager_task_handle = osThreadNew(system_manager_task, NULL, &systemManagerTask_attributes);
-  firm_mode_indicator_task_handle = osThreadNew(firm_mode_indicator_task, NULL, &modeIndicatorTask_attributes);
+  system_manager_task_handle =
+      osThreadNew(system_manager_task, NULL, &systemManagerTask_attributes);
+  firm_mode_indicator_task_handle =
+      osThreadNew(firm_mode_indicator_task, NULL, &modeIndicatorTask_attributes);
   bmp581_task_handle = osThreadNew(collect_bmp581_data_task, NULL, &bmp581Task_attributes);
   icm45686_task_handle = osThreadNew(collect_icm45686_data_task, NULL, &icm45686Task_attributes);
   mmc5983ma_task_handle = osThreadNew(collect_mmc5983ma_data_task, NULL, &mmc5983maTask_attributes);
@@ -205,9 +207,12 @@ int main(void)
   transmit_task_handle = osThreadNew(transmit_data, NULL, &transmitTask_attributes);
   usb_read_task_handle = osThreadNew(usb_read_data, NULL, &usbReadTask_attributes);
   mock_packet_handler_handle = osThreadNew(mock_packet_handler, NULL, &mockPacketTask_attributes);
-  
-  if (system_manager_task_handle == NULL || firm_mode_indicator_task_handle == NULL || mmc5983ma_task_handle == NULL || icm45686_task_handle == NULL || bmp581_task_handle == NULL || filter_data_task_handle == NULL ||
-      packetizer_task_handle == NULL || transmit_task_handle == NULL || usb_read_task_handle == NULL || mock_packet_handler_handle == NULL) {
+
+  if (system_manager_task_handle == NULL || firm_mode_indicator_task_handle == NULL ||
+      mmc5983ma_task_handle == NULL || icm45686_task_handle == NULL || bmp581_task_handle == NULL ||
+      filter_data_task_handle == NULL || packetizer_task_handle == NULL ||
+      transmit_task_handle == NULL || usb_read_task_handle == NULL ||
+      mock_packet_handler_handle == NULL) {
     Error_Handler();
   }
   /* USER CODE END RTOS_THREADS */
@@ -396,7 +401,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -660,13 +665,16 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
   if (GPIO_Pin == BMP581_Interrupt_Pin) {
-    (void)xTaskNotifyFromISR(bmp581_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits, &xHigherPriorityTaskWoken);
+    (void)xTaskNotifyFromISR(bmp581_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits,
+                             &xHigherPriorityTaskWoken);
   }
   if (GPIO_Pin == ICM45686_Interrupt_Pin) {
-    (void)xTaskNotifyFromISR(icm45686_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits, &xHigherPriorityTaskWoken);
+    (void)xTaskNotifyFromISR(icm45686_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits,
+                             &xHigherPriorityTaskWoken);
   }
   if (GPIO_Pin == MMC5983MA_Interrupt_Pin) {
-    (void)xTaskNotifyFromISR(mmc5983ma_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits, &xHigherPriorityTaskWoken);
+    (void)xTaskNotifyFromISR(mmc5983ma_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits,
+                             &xHigherPriorityTaskWoken);
   }
   portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
@@ -733,8 +741,7 @@ void StartupTask(void *argument)
   set_spi_icm(&hspi2, GPIOB, GPIO_PIN_9);
   set_spi_bmp(&hspi2, GPIOC, GPIO_PIN_2);
   set_spi_mmc(&hspi2, GPIOC, GPIO_PIN_7);
-  set_spi_adxl(&hspi2, GPIOA, GPIO_PIN_8);
-  
+
   // re-enable ISR's so that interrupts can trigger the sensor tasks to run
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);
   HAL_NVIC_EnableIRQ(EXTI1_IRQn);
