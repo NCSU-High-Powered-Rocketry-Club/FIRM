@@ -1,4 +1,5 @@
 #include "ina219.h"
+#include <stdint.h>
 
 
 /**
@@ -39,9 +40,48 @@ static HAL_StatusTypeDef write_register(uint16_t reg_addr, uint16_t data);
 
 static const uint16_t configuration = 0x00; //config defaults to 399F
 
+static I2CSettings i2cSettings;
+
+void set_spi_ina(I2C_HandleTypeDef *hi2c, uint8_t device_i2c_addr) {
+  i2cSettings.hi2c = hi2c;
+  i2cSettings.dev_addr = device_i2c_addr;
+}
+
+
+int ina219_init(I2C_HandleTypeDef *hi2c, uint8_t device_i2c_addr) {
+  if (hi2c == NULL) {
+    serialPrintStr("Invalid i2c handle for INA219");
+    return 1;
+  }
+
+  // configure i2c settings
+  i2cSettings.hi2c = hi2c;
+  i2cSettings.dev_addr = device_i2c_addr;
+  serialPrintStr("Beginning INA219 initialization");
+
+  // sets up the magnetometer in I2C mode and ensures I2C is working
+  if (setup_device(false))
+    return 1;
+
+  // initiating a software reset
+  serialPrintStr("\tIssuing INA219 software reset...");
+  write_register(configuration, 0b1011100110011111);
+
+  // verify correct setup again
+  if (setup_device(true))
+    return 1;
+  // Sets the voltage range to 32FSR, PGA to +-320 with a gain of /8
+ 
+
+  serialPrintStr("\tINA219 startup successful!");
+  return 0;
+}
+
+
 int setup_device(bool soft_reset_complete) {
   HAL_Delay(14); // 15ms power-on time
   uint16_t result = 0;
+
   // perform dummy read as required by datasheet
   HAL_StatusTypeDef hal_status = read_registers(configuration, &result, 1);
   if (hal_status) {
@@ -61,39 +101,47 @@ int setup_device(bool soft_reset_complete) {
   // this is a 1ms delay
   HAL_Delay(0);
 
+  if (soft_reset_complete) {
+
+    read_registers(configuration, &result, 1);
+    if (result & 0b1011100110011111) { //the lsb of config should flip to low after reset
+      serialPrintStr("\tINA219 did not complete software reset");
+      return 1;
+    }
+  }
+
+
+  //read cehck
   read_registers(configuration, &result, 1);
-  if (result != 0x339F) {
+  if (result != 0x399F) {
     serialPrintStr("\t INA219 could not read");
     return 1;
   }
 
   //write check
   //writting to a bit which is not in use
-    write_register(configuration, 0x733F);
+    write_register(configuration, 0x799F);
     read_registers(configuration, &result, 1);
-    if (result != 0x733F ){
+    if (result != 0x799F ){
       serialPrintStr("\t INA219 could not write");
       return 1;
     }
+    //reset config to default
+    write_register(configuration, 0x399F);
 
-  if (soft_reset_complete) {
-    // check that bit 7 (sw_rst) is back to 0
-    read_registers(internal_control1, &result, 1);
-    if (result & 0x80) {
-      serialPrintStr("\tMMC5983MA did not complete software reset");
-      return 1;
-    }
-  }
+  
   return 0;
 }
 
 
 static HAL_StatusTypeDef read_registers(uint16_t reg_addr, uint16_t *buffer, size_t len) {
+
   return HAL_I2C_Mem_Read(i2cSettings.hi2c, (uint16_t)(i2cSettings.dev_addr << 1),
                           (uint16_t)reg_addr, I2C_MEMADD_SIZE_16BIT, buffer, len, 100);
 }
 
 static HAL_StatusTypeDef write_register(uint16_t reg_addr, uint16_t data) {
+
   return HAL_I2C_Mem_Write(i2cSettings.hi2c, (uint16_t)(i2cSettings.dev_addr << 1),
                            (uint16_t)reg_addr, I2C_MEMADD_SIZE_16BIT, &data, 1, 100);
 }
