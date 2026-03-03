@@ -185,6 +185,12 @@ int initialize_firm(SPIHandles *spi_handles_ptr, I2CHandles *i2c_handles_ptr,
     return 1;
   }
 
+  if (adxl371_init(spi_handles_ptr->hspi2, GPIOA, GPIO_PIN_8)) {
+    led_set_status(IMU_FAIL);
+    Error_Handler();
+    return 1;
+  }
+
   // set up settings module with flash chip
   if (settings_init(spi_handles_ptr->hspi1, GPIOC, GPIO_PIN_4)) {
     led_set_status(FLASH_CHIP_FAIL);
@@ -509,16 +515,17 @@ void collect_mmc5983ma_data_task(void *argument) {
 
 void collect_adxl371_data_task(void *argument) {
   const TickType_t max_wait = MAX_WAIT_TIME(ADXL371_POLL_RATE_HZ);
-  TaskCommandOption cmd_status = TASKCMD_LIVE;
+  TaskCommandOption cmd_status;
 
   for (;;) {
     (void)xQueueReceive(adxl371_command_queue, &cmd_status, 0);
 
     uint32_t notify_value = 0U;
     if (xTaskNotifyWait(0U, 0xFFFFFFFFUL, &notify_value, max_wait) == pdTRUE) {
+      bool do_mock =
+          (cmd_status == TASKCMD_MOCK) && ((notify_value & SENSOR_NOTIFY_MOCK_BIT) != 0U);
       bool do_live = (cmd_status != TASKCMD_MOCK) && ((notify_value & SENSOR_NOTIFY_ISR_BIT) != 0U);
-      // todo: add mock stuff eventually
-      if (!do_live) {
+      if (!do_mock && !do_live) {
         continue;
       }
 
@@ -529,13 +536,14 @@ void collect_adxl371_data_task(void *argument) {
         continue;
       }
       SensorPacket *adxl371_packet = (SensorPacket *)((uint8_t *)adxl371_storage + 1);
+      int err = 0;
 
       // TODO: add mock here
-
-      int err = adxl371_read_data(&adxl371_packet->packet.adxl371_packet);
-      uint32_t clock_cycle_count = DWT->CYCCNT;
-      memcpy(adxl371_packet->timestamp, &clock_cycle_count, sizeof(adxl371_packet->timestamp));
-
+      if (do_live) {
+        err = adxl371_read_data(&adxl371_packet->packet.adxl371_packet);
+        uint32_t clock_cycle_count = DWT->CYCCNT;
+        memcpy(adxl371_packet->timestamp, &clock_cycle_count, sizeof(adxl371_packet->timestamp));
+      }
       if (!err) {
         logger_write_entry('A', sizeof(ADXL371Packet_t));
       }

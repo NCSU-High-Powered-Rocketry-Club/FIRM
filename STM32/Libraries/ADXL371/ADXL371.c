@@ -14,10 +14,9 @@ typedef struct {
 /**
  * @brief Starts up and resets the ADXL372, confirms the SPI read/write functionality is working
  *
- * @param soft_reset_complete if this is a setup after a soft reset is complete
  * @retval 0 if successful
  */
-static int setup_device(bool soft_reset_complete);
+static int setup_device();
 
 /**
  * @brief Reads data from the ADXL372 with SPI
@@ -39,21 +38,15 @@ static HAL_StatusTypeDef read_registers(uint8_t addr, uint8_t *buffer, size_t le
 static HAL_StatusTypeDef write_register(uint8_t addr, uint8_t data);
 
 static const uint8_t who_am_i = 0x00;
-static const uint8_t fifo_samples = 0x39;
 static const uint8_t reset = 0x41;
-static const uint8_t status = 0x41;
+static const uint8_t status = 0x04;
 static const uint8_t timing = 0x3D;
 static const uint8_t int1_map = 0x3B;
 static const uint8_t power_ctl = 0x3F;
 static const uint8_t measure = 0x3E;
-static const uint8_t fifo_clt = 0x3A;
+static const uint8_t fifo_ctl = 0x3A;
 
 static const uint8_t xdata_h = 0x08;
-static const uint8_t xdata_l = 0x09;
-static const uint8_t ydata_h = 0x0A;
-static const uint8_t ydata_l = 0x0B;
-static const uint8_t zdata_h = 0x0C;
-static const uint8_t zdata_l = 0x0D;
 
 static SPISettings spiSettings;
 
@@ -73,19 +66,19 @@ int adxl371_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_
   set_spi_adxl(hspi, cs_channel, cs_pin);
 
   serialPrintStr("Beginning ADXL371 initialization");
-  // sets up the IMU in SPI mode and ensures SPI is working
-  if (setup_device(false))
+  // sets up the accelerometer in SPI mode and ensures SPI is working
+  if (setup_device())
     return 1;
 
   // do a soft-reset of the sensor's settings
   serialPrintStr("\tIssuing ADXL371 software reset...");
   write_register(reset, 0x52);
   // verify correct setup again
-  if (setup_device(true))
+  if (setup_device())
     return 1;
 
   // sets ODR to 1280
-  write_register(timing, 0b01000000);
+  write_register(timing, 0b00000000);
 
   // Accelerometer is fixed to +-200g
 
@@ -102,10 +95,10 @@ int adxl371_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_
   write_register(int1_map, value);
 
   // Disable FIFO
-  read_registers(fifo_clt, &value, 1);
+  read_registers(fifo_ctl, &value, 1);
   value = value & 0b11111001;
   value = value | 0b00000000;
-  write_register(fifo_clt, value);
+  write_register(fifo_ctl, value);
 
   // Turning off High Pass Filter and Low Pass Filter
   read_registers(power_ctl, &value, 1);
@@ -115,7 +108,7 @@ int adxl371_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_
 
   // Configures measurement settings (Antialiasing 640), low noise operation
   // Turn off autosleep, link loop. Set low noise operation
-  write_register(measure, 0b00001010);
+  write_register(measure, 0b00001000);
 
   // delay for accel to get ready
   HAL_Delay(12);
@@ -131,7 +124,7 @@ int adxl371_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_
   return 0;
 }
 
-static int setup_device(bool soft_reset_complete) {
+static int setup_device() {
   uint8_t result = 0;
 
   // datasheet says 6ms to powerup, include some factor of safety (so we using 18!)
@@ -161,37 +154,25 @@ static int setup_device(bool soft_reset_complete) {
 
   // verify chip ID read works
   read_registers(who_am_i, &result, 1);
-  if (result != 0xFA) {
+  if (result != 0xAD) {
     serialPrintStr("\n could not read chip ID");
     return 1;
   }
 
-  if (soft_reset_complete) {
-    // Check bit 1 (soft reset bit) is set back to 0
-    read_registers(status, &result, 1); // Status MSB flips to zero after the first register write
-    if ((result & 0x80) != 0) {         // Might need to rework this?
-      serialPrintStr("\tSoftware reset failed!");
-      return 1;
-    }
-  }
-
   // write check
-
-  read_registers(fifo_samples, &result, 1); // FIFO_SAMPLES is default to 0x80
-
-  if (result != 0x80) {
-    serialPrintStr("\t could not read fifo samples");
-    return 1;
-  }
-
-  write_register(fifo_samples, 0x00);
+  read_registers(fifo_ctl, &result, 1); // fifo_ctl is default to 0x00
 
   if (result != 0x00) {
-    serialPrintStr("\t could not write fifo samples");
+    serialPrintStr("\t could not read fifo ctl register");
     return 1;
   }
 
-  write_register(fifo_samples, 0x80); // Set it back to default (0x80)
+  write_register(fifo_ctl, 0x38);
+  read_registers(fifo_ctl, &result, 1);
+  if (result != 0x38) {
+    serialPrintStr("\t ADXL SPI Write test failed, wrote to register and did not read expected value back!");
+  }
+  write_register(fifo_ctl, 0x00); // Set it back to default (0x80)
 
   return 0;
 }
@@ -200,7 +181,7 @@ int adxl371_read_data(ADXL371Packet_t *packet) {
   // clear interrupt (pulls interrupt back up high) and verify new data is ready
   uint8_t data_ready = 0;
   read_registers(status, &data_ready, 1);
-  if (data_ready & 0b00000001) { // bit 0 (LSB) will be 1 if new data is ready
+  if (data_ready & 0x01) { // bit 0 (LSB) will be 1 if new data is ready
     // Burst read xdata_h to zdata_l (0x08 to 0x0D) into packet
     read_registers(xdata_h, (uint8_t *)packet, 6);
     return 0;
@@ -209,10 +190,11 @@ int adxl371_read_data(ADXL371Packet_t *packet) {
 }
 
 static HAL_StatusTypeDef read_registers(uint8_t addr, uint8_t *buffer, size_t len) {
-  addr |= 0x40;
+  addr = (addr << 1) | 0x01;
   return spi_read(spiSettings.hspi, spiSettings.cs_channel, spiSettings.cs_pin, addr, buffer, len);
 }
 
 static HAL_StatusTypeDef write_register(uint8_t addr, uint8_t data) {
+  addr <<= 1;
   return spi_write(spiSettings.hspi, spiSettings.cs_channel, spiSettings.cs_pin, addr, data);
 }

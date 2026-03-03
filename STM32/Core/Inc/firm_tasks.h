@@ -149,6 +149,7 @@ void firm_mode_indicator_task(void *argument);
 void collect_bmp581_data_task(void *argument);
 void collect_icm45686_data_task(void *argument);
 void collect_mmc5983ma_data_task(void *argument);
+void collect_adxl371_data_task(void *argument);
 void packetizer_task(void *argument);
 void filter_data_task(void *argument);
 void transmit_data(void *argument);

@@ -202,6 +202,7 @@ int main(void)
   bmp581_task_handle = osThreadNew(collect_bmp581_data_task, NULL, &bmp581Task_attributes);
   icm45686_task_handle = osThreadNew(collect_icm45686_data_task, NULL, &icm45686Task_attributes);
   mmc5983ma_task_handle = osThreadNew(collect_mmc5983ma_data_task, NULL, &mmc5983maTask_attributes);
+  adxl371_task_handle = osThreadNew(collect_adxl371_data_task, NULL, &adxl371Task_attributes);
   packetizer_task_handle = osThreadNew(packetizer_task, NULL, &packetizerTask_attributes);
   filter_data_task_handle = osThreadNew(filter_data_task, NULL, &filterDataTask_attributes);
   transmit_task_handle = osThreadNew(transmit_data, NULL, &transmitTask_attributes);
@@ -210,6 +211,7 @@ int main(void)
 
   if (system_manager_task_handle == NULL || firm_mode_indicator_task_handle == NULL ||
       mmc5983ma_task_handle == NULL || icm45686_task_handle == NULL || bmp581_task_handle == NULL ||
+      adxl371_task_handle == NULL ||
       filter_data_task_handle == NULL || packetizer_task_handle == NULL ||
       transmit_task_handle == NULL || usb_read_task_handle == NULL ||
       mock_packet_handler_handle == NULL) {
@@ -676,6 +678,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
     (void)xTaskNotifyFromISR(mmc5983ma_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits,
                              &xHigherPriorityTaskWoken);
   }
+  if (GPIO_Pin == ADXL371_Interrupt_Pin && adxl371_task_handle != NULL) {
+    (void)xTaskNotifyFromISR(adxl371_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits,
+                             &xHigherPriorityTaskWoken);
+  }
   portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 /* USER CODE END 4 */
@@ -711,10 +717,10 @@ void StartupTask(void *argument)
   /* USER CODE BEGIN StartupTask */
   // Setup the SD card
   FRESULT res = logger_init(&hdma_sdio_tx);
-  // if (res) {
-  //   serialPrintStr("Failed to initialized the logger (SD card)");
-  //   Error_Handler();
-  // }
+  if (res) {
+    serialPrintStr("Failed to initialized the logger (SD card)");
+    Error_Handler();
+  }
 
   // get scale factor values for each sensor to put in header
   HeaderFields header_fields = {
@@ -741,6 +747,7 @@ void StartupTask(void *argument)
   set_spi_icm(&hspi2, GPIOB, GPIO_PIN_9);
   set_spi_bmp(&hspi2, GPIOC, GPIO_PIN_2);
   set_spi_mmc(&hspi2, GPIOC, GPIO_PIN_7);
+  set_spi_adxl(&hspi2, GPIOA, GPIO_PIN_8);
 
   // re-enable ISR's so that interrupts can trigger the sensor tasks to run
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);

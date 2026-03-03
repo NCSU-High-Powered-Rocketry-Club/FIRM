@@ -10,11 +10,13 @@ import sys
 BMP581_ID = 'B'
 ICM45686_ID = 'I'
 MMC5983MA_ID = 'M'
+ADXL371_ID = 'A'
 
 # struct sizes in bytes (not counting timestamp and id bytes)
 BMP581_SIZE = 6
 ICM45686_SIZE = 15
 MMC5983MA_SIZE = 7
+ADXL371_SIZE = 6
 
 # header order
 HEADER_SIZE_TEXT = 14 # size of the "FIRM LOG vx.x" text
@@ -27,6 +29,9 @@ PADDING_BYTES = 2
 HEADER_CAL_SIZE = (3 + 9) * 3 * 4 # 3 offsets, 3x3 scale factor matrix, 3 sensors, 4 bytes per float
 HEADER_NUM_SCALE_FACTORS = 5
 TIMESTAMP_BYTES = 4
+
+# TODO: move ADXL371 scale factor to header once firmware adds it
+ADXL371_SCALE_FACTOR = 10.24  # 100 mg/LSB
 
 def twos_complement(val, bits):
     if (val & (1 << (bits - 1))) != 0:
@@ -42,6 +47,7 @@ class Decoder:
     bmp581_data = []
     icm45686_data = []
     mmc5983ma_data = []
+    adxl371_data = []
 
     # because we use clock cycle count for timestamp, and we expect the cycle count to
     # overflow every ~0.1 seconds, we handle the overflow in this file to make the timestamp
@@ -96,6 +102,11 @@ class Decoder:
                 bytes = self.f.read(MMC5983MA_SIZE)
                 data = self.convert_mmc5983ma(bytes)
                 self.mmc5983ma_data.append(data)
+                return True
+            if id_byte == ord(ADXL371_ID):
+                bytes = self.f.read(ADXL371_SIZE)
+                data = self.convert_adxl371(bytes)
+                self.adxl371_data.append(data)
                 return True
 
             # if not an ID byte, most likely garbage data at end of file
@@ -195,6 +206,24 @@ class Decoder:
         ]
         return data
 
+    def convert_adxl371(self, binary_packet):
+        # 3x 12-bit signed integers: byte[0] = bits 11:4, byte[1] upper nibble = bits 3:0
+        accel_x_bin = (binary_packet[0] << 4) | (binary_packet[1] >> 4)
+        accel_y_bin = (binary_packet[2] << 4) | (binary_packet[3] >> 4)
+        accel_z_bin = (binary_packet[4] << 4) | (binary_packet[5] >> 4)
+
+        accel_x_bin = twos_complement(accel_x_bin, 12)
+        accel_y_bin = twos_complement(accel_y_bin, 12)
+        accel_z_bin = twos_complement(accel_z_bin, 12)
+
+        data = [
+            self.timestamp_seconds,
+            accel_x_bin / ADXL371_SCALE_FACTOR,
+            accel_y_bin / ADXL371_SCALE_FACTOR,
+            accel_z_bin / ADXL371_SCALE_FACTOR,
+        ]
+        return data
+
 def write_to_csv(data: pd.DataFrame, filename, decoder: Decoder):
     with open(filename, "w") as f:
         f.write(f"{decoder.device_name},{str(decoder.uid)}\n")
@@ -232,6 +261,7 @@ def decode(path):
         bmp581_df = pd.DataFrame(decoder.bmp581_data, columns=['timestamp', 'temperature', 'pressure'])
         icm45686_df = pd.DataFrame(decoder.icm45686_data, columns=['timestamp', 'accel_x', 'accel_y', 'accel_z', 'gyro_x', 'gyro_y', 'gyro_z'])
         mmc5983ma_df = pd.DataFrame(decoder.mmc5983ma_data, columns=['timestamp', 'mag_x', 'mag_y', 'mag_z'])
+        adxl371_df = pd.DataFrame(decoder.adxl371_data, columns=['timestamp', 'accel_x', 'accel_y', 'accel_z'])
 
         # write to csv
     
@@ -240,7 +270,9 @@ def decode(path):
         write_to_csv(icm45686_df, "ICM45686_data.csv", decoder)
         print("wrote ICM45686_data.csv")
         write_to_csv(mmc5983ma_df, "MMC5983MA_data.csv", decoder)
-        print("wrote MMC5983MA.csv")
+        print("wrote MMC5983MA_data.csv")
+        write_to_csv(adxl371_df, "ADXL371_data.csv", decoder)
+        print("wrote ADXL371_data.csv")
 
 if __name__ == "__main__":
     if len(sys.argv) == 2:

@@ -25,6 +25,15 @@
 int adxl371_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin);
 
 /**
+ * @brief sets the SPI settings for the ADXL371 without re-initializing the device
+ *
+ * @param hspi pointer to the SPI channel that the ADXL371 is connected to
+ * @param cs_channel specifies the GPIO channel that the chip select pin is connected to.
+ * @param cs_pin specifies the GPIO pin that the chip select pin is connected to.
+ */
+void set_spi_adxl(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin);
+
+/**
  * @brief reads the acceleration measurements from the ADXL371
  *
  * @note used a single read statement to batch read from xdata_h to zdata_l (0x08 to 0x0D)

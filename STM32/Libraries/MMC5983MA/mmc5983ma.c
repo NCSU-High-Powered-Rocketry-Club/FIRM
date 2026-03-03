@@ -175,6 +175,7 @@ int setup_device(bool soft_reset_complete) {
 }
 
 static HAL_StatusTypeDef read_registers(uint8_t addr, uint8_t *buffer, size_t len) {
+  addr |= 0x80;
   return spi_read(spiSettings.hspi, spiSettings.cs_channel, spiSettings.cs_pin, addr, buffer, len);
 }
 
