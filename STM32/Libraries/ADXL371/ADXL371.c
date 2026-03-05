@@ -198,3 +198,7 @@ static HAL_StatusTypeDef write_register(uint8_t addr, uint8_t data) {
   addr <<= 1;
   return spi_write(spiSettings.hspi, spiSettings.cs_channel, spiSettings.cs_pin, addr, data);
 }
+
+static const float accel_scale_factor = 4096.0F / 400.0F;
+
+float adxl371_get_accel_scale_factor(void) { return accel_scale_factor; }

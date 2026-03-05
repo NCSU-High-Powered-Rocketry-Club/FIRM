@@ -8,9 +8,11 @@ from decoder import (
     BMP581_ID,
     ICM45686_ID,
     MMC5983MA_ID,
+    ADXL371_ID,
     BMP581_SIZE,
     ICM45686_SIZE,
     MMC5983MA_SIZE,
+    ADXL371_SIZE,
 )
 
 
@@ -19,6 +21,7 @@ LOG_HEADER_TEXT_SIZE = 14
 V10_TEXT = b'FIRM LOG v1.0\n'
 V11_TEXT = b'FIRM LOG v1.1\n'
 V12_TEXT = b'FIRM LOG v1.2\n'
+V13_TEXT = b'FIRM LOG v1.3\n'
 
 V10_TIMESTAMP_BYTES = 3  # big endian
 V11_TIMESTAMP_BYTES = 3  # little endian
@@ -39,6 +42,16 @@ V12_FREQUENCY_LEN = 2
 V12_PADDING_BYTES = 2
 V12_CAL_BYTES = 144
 V12_NUM_SCALE_FACTORS = 5
+
+V13_UID_SIZE = 8
+V13_DEVICE_NAME_LEN = 32
+V13_PROTOCOL_BOOL_BYTES = 4
+V13_FIRMWARE_VERSION_LEN = 8
+V13_FREQUENCY_LEN = 2
+V13_PADDING_BYTES = 2
+V13_CAL_BYTES = 192
+V13_NUM_SCALE_FACTORS = 6
+V13_TIMESTAMP_BYTES = 4
 
 
 def _mmc5983ma_bins(binary_packet: bytes) -> Tuple[int, int, int]:
@@ -93,6 +106,11 @@ def detect_v10_magnetometer_anomaly_start(src, *, src_timestamp_bytes: int) -> O
             if len(pk_bytes) != ICM45686_SIZE:
                 break
             continue
+        if id_byte[0] == ord(ADXL371_ID):
+            pk_bytes = src.read(ADXL371_SIZE)
+            if len(pk_bytes) != ADXL371_SIZE:
+                break
+            continue
         if id_byte[0] == ord(MMC5983MA_ID):
             pk_bytes = src.read(MMC5983MA_SIZE)
             if len(pk_bytes) != MMC5983MA_SIZE:
@@ -128,11 +146,10 @@ def detect_v10_magnetometer_anomaly_start(src, *, src_timestamp_bytes: int) -> O
     return None
 
 
-def default_calibration_bytes() -> bytes:
-    # calibration data
-    cal_grid = [ 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1,
-                 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1,
-                 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1 ]
+def default_calibration_bytes(num_sensors: int = 3) -> bytes:
+    # calibration data: identity matrix + zero offsets per sensor
+    cal_per_sensor = [ 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1 ]
+    cal_grid = cal_per_sensor * num_sensors
     num_cal_grid = len( cal_grid )
     format_str = f'<{num_cal_grid}f'
     return struct.pack( format_str, *cal_grid )
@@ -235,6 +252,9 @@ def migrate_packets_swap_timestamp_endianness(
                 dst.write(pk_bytes)
                 prev_mag_payload = pk_bytes
             mag_count += 1
+        elif id_byte[0] == ord( ADXL371_ID ):
+            pk_bytes = src.read( ADXL371_SIZE )
+            dst.write( pk_bytes )
 
 
 def copy_packets_no_timestamp_swap(src, dst, *, src_timestamp_bytes: int, dst_timestamp_bytes: int) -> None:
@@ -294,6 +314,9 @@ def copy_packets_no_timestamp_swap(src, dst, *, src_timestamp_bytes: int, dst_ti
             dst.write( pk_bytes )
         elif id_byte[0] == ord( MMC5983MA_ID ):
             pk_bytes = src.read( MMC5983MA_SIZE )
+            dst.write( pk_bytes )
+        elif id_byte[0] == ord( ADXL371_ID ):
+            pk_bytes = src.read( ADXL371_SIZE )
             dst.write( pk_bytes )
 
 
@@ -367,6 +390,47 @@ def convert_v1_1_to_v1_2(src, dst) -> None:
     )
 
 
+def convert_v1_2_to_v1_3(src, dst) -> None:
+    """Convert a v1.2 log to v1.3 by appending ADXL371 calibration and scale factor."""
+    src_header_text = src.read(LOG_HEADER_TEXT_SIZE)
+    if src_header_text != V12_TEXT:
+        return
+
+    dst.write(V13_TEXT)
+
+    # Copy header fields unchanged through padding
+    uid_b = src.read(V12_UID_SIZE)
+    dst.write(uid_b)
+    device_name_b = src.read(V12_DEVICE_NAME_LEN)
+    dst.write(device_name_b)
+    comms_b = src.read(V12_PROTOCOL_BOOL_BYTES)
+    dst.write(comms_b)
+    firmware_b = src.read(V12_FIRMWARE_VERSION_LEN)
+    dst.write(firmware_b)
+    frequency_b = src.read(V12_FREQUENCY_LEN)
+    dst.write(frequency_b)
+    dst.write(b'\x00' * V12_PADDING_BYTES)
+    src.read(V12_PADDING_BYTES)  # consume padding
+
+    # Copy existing 3-sensor calibration, then append ADXL371 defaults
+    cal_bytes = src.read(V12_CAL_BYTES)
+    dst.write(cal_bytes)
+    dst.write(default_calibration_bytes(num_sensors=1))  # ADXL371 identity cal
+
+    # Copy existing 5 scale factors, then append ADXL371 scale factor (10.24)
+    scale_factor_bytes = src.read(V12_NUM_SCALE_FACTORS * 4)
+    dst.write(scale_factor_bytes)
+    dst.write(struct.pack('<f', 10.24))
+
+    # Copy packets verbatim (timestamp format unchanged between v1.2 and v1.3)
+    copy_packets_no_timestamp_swap(
+        src,
+        dst,
+        src_timestamp_bytes=V12_TIMESTAMP_BYTES,
+        dst_timestamp_bytes=V13_TIMESTAMP_BYTES,
+    )
+
+
 # migrates a log file to have little-endian timestamp bytes
 def new_file( path ):
     # define source(s) and destination(s) files ( for testing )
@@ -379,24 +443,35 @@ def new_file( path ):
             # read header version
             header_text = src.read( LOG_HEADER_TEXT_SIZE )
 
-            if( header_text == V12_TEXT ):
-                # v1.2 stays as-is
+            if( header_text == V13_TEXT ):
+                # v1.3 stays as-is
                 src.seek(0)
                 shutil.copyfileobj(src, dst)
                 return
 
-            if( header_text == V11_TEXT ):
-                # Incremental: v1.1 -> v1.2
+            if( header_text == V12_TEXT ):
+                # Incremental: v1.2 -> v1.3
                 src.seek(0)
-                convert_v1_1_to_v1_2(src, dst)
+                convert_v1_2_to_v1_3(src, dst)
+                return
+
+            if( header_text == V11_TEXT ):
+                # Incremental: v1.1 -> v1.2 -> v1.3
+                with tempfile.TemporaryFile(mode="w+b") as tmp:
+                    src.seek(0)
+                    convert_v1_1_to_v1_2(src, tmp)
+                    tmp.seek(0)
+                    convert_v1_2_to_v1_3(tmp, dst)
                 return
 
             if( header_text == V10_TEXT ):
-                # Incremental: v1.0 -> v1.1, then v1.1 -> v1.2
-                with tempfile.TemporaryFile(mode="w+b") as tmp:
-                    convert_to_v1_1(src, tmp, header_text)
-                    tmp.seek(0)
-                    convert_v1_1_to_v1_2(tmp, dst)
+                # Incremental: v1.0 -> v1.1 -> v1.2 -> v1.3
+                with tempfile.TemporaryFile(mode="w+b") as tmp1, tempfile.TemporaryFile(mode="w+b") as tmp2:
+                    convert_to_v1_1(src, tmp1, header_text)
+                    tmp1.seek(0)
+                    convert_v1_1_to_v1_2(tmp1, tmp2)
+                    tmp2.seek(0)
+                    convert_v1_2_to_v1_3(tmp2, dst)
                 return
 
             return

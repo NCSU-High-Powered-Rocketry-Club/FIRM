@@ -42,3 +42,12 @@ void set_spi_adxl(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs
  * @retval 0 upon success, 1 if no new data is ready yet
  */
 int adxl371_read_data(ADXL371Packet_t *packet);
+
+/**
+ * @brief returns the scale factor for the ADXL371 accelerometer
+ *
+ * @note the ADXL371 is fixed at +-200g, scale factor is 4096/400 = 10.24
+ *
+ * @retval scale factor as a float
+ */
+float adxl371_get_accel_scale_factor(void);

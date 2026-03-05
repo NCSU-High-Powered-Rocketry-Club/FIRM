@@ -61,7 +61,7 @@ typedef struct {
   AccelCalibration_t icm45686_accel;
   GyroCalibration_t icm45686_gyro;
   MagCalibration_t mmc5983ma_mag;
-  // ADXLAccelCalibration_t adxl371_accel;
+  ADXLAccelCalibration_t adxl371_accel;
 } CalibrationSettings_t;
 
 /**
@@ -107,7 +107,8 @@ int settings_init(SPI_HandleTypeDef *flash_hspi, GPIO_TypeDef *flash_cs_channel,
  */
 bool settings_write_calibration_settings(AccelCalibration_t *accel_cal_settings,
                                          GyroCalibration_t *gyro_cal_settings,
-                                         MagCalibration_t *mag_cal_settings);
+                                         MagCalibration_t *mag_cal_settings,
+                                         ADXLAccelCalibration_t *adxl371_accel_cal_settings);
 
 /**
  * Writes the firm settings to the flash chip.
