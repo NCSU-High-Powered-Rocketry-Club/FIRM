@@ -46,7 +46,7 @@ void set_spi_ina(I2C_HandleTypeDef *hi2c, uint8_t device_i2c_addr) {
   i2cSettings.hi2c = hi2c;
   i2cSettings.dev_addr = device_i2c_addr;
 }
-
+s
 
 int ina219_init(I2C_HandleTypeDef *hi2c, uint8_t device_i2c_addr) {
   if (hi2c == NULL) {
@@ -71,7 +71,9 @@ int ina219_init(I2C_HandleTypeDef *hi2c, uint8_t device_i2c_addr) {
   if (setup_device(true))
     return 1;
   // Sets the voltage range to 32FSR, PGA to +-320 with a gain of /8
- 
+  //BADC (Voltage Bus) SADC(shunt voltage)  is set to a voltage resolution to 12 bits and a sample size to 16 samples
+  //  sets Shunt and voltage bus, continuous
+  write_register(configuration, 0b0011111001100111);
 
   serialPrintStr("\tINA219 startup successful!");
   return 0;
