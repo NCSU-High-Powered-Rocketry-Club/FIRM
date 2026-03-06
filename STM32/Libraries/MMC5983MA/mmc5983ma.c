@@ -86,6 +86,14 @@ int mmc5983ma_init(I2C_HandleTypeDef *hi2c, uint8_t device_i2c_addr) {
   if (setup_device(true))
     return 1;
 
+  // Perform SET and RESET to get rid of magnet build up
+  // Perform SET
+  write_register(internal_control0, 0b00001000);
+  HAL_Delay(10);
+  // Perform RESET
+  write_register(internal_control0, 0b00010000);
+  HAL_Delay(10);
+
   // enable interrupt pin
   write_register(internal_control0, 0b00000100);
   // set bandwidth to 200hz (4ms measurement time)
