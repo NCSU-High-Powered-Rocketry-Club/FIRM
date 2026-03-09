@@ -112,7 +112,7 @@ void ukf_measurement_function(const float *sigmas, const UKF *ukfh, float *measu
   float acc_vehicle[4];
   quaternion_product_f32(temp_acc, quat_state, acc_vehicle);
 
-  // rotate vehicle frame accel 45 degrees ccw to align with how imu is mounted on FIRM board
+  // rotate vehicle frame accel 135 degrees ccw to align with how imu is mounted on FIRM board
   float acc_vx = acc_vehicle[1];
   float acc_vy = acc_vehicle[2];
   float acc_vz = acc_vehicle[3];
@@ -136,7 +136,7 @@ void ukf_measurement_function(const float *sigmas, const UKF *ukfh, float *measu
   for (int i = 0; i < 3; ++i) {
     vehicle_gyro[i] = sigmas[9 + i] * (180.0F / PI_F);
   }
-  // 45-degree rotation
+  // 135-degree rotation ccw (same as accel)
   float gyro_gx = vehicle_gyro[0];
   float gyro_gy = vehicle_gyro[1];
   float gyro_gz = vehicle_gyro[2];
@@ -154,10 +154,13 @@ void ukf_measurement_function(const float *sigmas, const UKF *ukfh, float *measu
   quaternion_product_f32(temp_mag, quat_state, mag_vehicle);
 
   // Apply R_vehicle_to_mag: [y, -x, -z]
+  // due to the orientation of the sensor on the board, the x axis (up) is the magnetometer's
+  // y axis. The board y axis (left) is the sensor's negative x axis, and the board's z axis (up)
+  // is the sensor's negtaive z axis
   float mag_vx = mag_vehicle[2];
   float mag_vy = -mag_vehicle[1];
   float mag_vz = -mag_vehicle[3];
   measurement_sigmas[7] = mag_vx;  // mag_sensor x
   measurement_sigmas[8] = mag_vy;  // y
-  measurement_sigmas[9] = mag_vz; // z (flipped)
+  measurement_sigmas[9] = mag_vz; // z
 }
