@@ -13,14 +13,7 @@
  * We store our settings in sector 0, on the first 1024-byte block.
  */
 #define SETTINGS_FLASH_BLOCK_SIZE_BYTES 512
-
-/**
- * Type Def used for SettingsType used in write_settings function.
- */
-typedef enum { //
-  init = 0,
-  mock = 1
-} SettingsType;
+s
 
 /**
  * Accelerometer calibration coefficients
