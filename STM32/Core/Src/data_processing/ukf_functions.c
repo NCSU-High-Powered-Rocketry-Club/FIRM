@@ -1,4 +1,10 @@
 #include "ukf_functions.h"
+/**
+ * The sensor orientations on the board dictate how the measurement function should convert the
+ * state to the recorded measurement. This is typically done with a rotation matrix, but the 
+ * calculations are streamlined in this file.
+ */
+
 
 void ukf_state_transition_function(const float *sigmas, const float dt, const State state,
                                    float *prediction) {
