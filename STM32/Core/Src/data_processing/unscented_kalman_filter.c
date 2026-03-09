@@ -525,14 +525,14 @@ void calculate_initial_orientation(const float *imu_accel, const float *mag_fiel
   float norm_mag = sqrtf(mag_field[0] * mag_field[0] + mag_field[1] * mag_field[1] +
                          mag_field[2] * mag_field[2]);
   float acc_vehicle[3] = {
-      (imu_accel[0] / SQRT2_F - imu_accel[1] / SQRT2_F) / norm_acc,
-      (imu_accel[0] / SQRT2_F + imu_accel[1] / SQRT2_F) / norm_acc,
+    (imu_accel[0] / SQRT2_F + imu_accel[1] / SQRT2_F) / norm_acc,
+    (-imu_accel[0] / SQRT2_F + imu_accel[1] / SQRT2_F) / norm_acc,
       imu_accel[2] / norm_acc,
   };
   float *mag_vehicle_quat = temp_quat;
   mag_vehicle_quat[0] = 0.0F;
-  mag_vehicle_quat[1] = mag_field[0] / norm_mag;
-  mag_vehicle_quat[2] = mag_field[1] / norm_mag;
+  mag_vehicle_quat[1] = -mag_field[1] / norm_mag;
+  mag_vehicle_quat[2] = mag_field[0] / norm_mag;
   mag_vehicle_quat[3] = -mag_field[2] / norm_mag;
 
   float roll = atan2f(acc_vehicle[1], acc_vehicle[2]);

@@ -55,7 +55,7 @@ static const uint8_t temp_data_xlsb = 0x1D;
 static const uint8_t int_status = 0x27;
 static const uint8_t status = 0x28;
 static const uint8_t osr_config = 0x36;
-static const uint8_t ord_config = 0x37;
+static const uint8_t odr_config = 0x37;
 static const uint8_t cmd = 0x7E;
 
 // device scale factor
@@ -92,16 +92,16 @@ int bmp581_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_p
     return 1;
   }
 
-  // enable pressure measurements, sets 1x over-sampling (no OSR) for pressure and temperature.
-  write_register(osr_config, 0b01000000);
+  // enable pressure measurements, sets 4x OSR for pressure and 1x OSR for temperature.
+  write_register(osr_config, 0b01010000);
   // enable interrupt pin, set to active-low, open-drain, latched mode
   write_register(int_config, 0b00111001);
   // set the source of the interrupt signal to be on data-ready
   write_register(int_source, 0b00000001);
   // disable deep-sleep, set to max ODR, set to continuous mode
-  write_register(ord_config, 0b10000011);
+  write_register(odr_config, 0b10000011);
   // continuous mode actually ignores the ODR bits that were set, and uses the OSR to determine
-  // the ODR (498hz with 1x OSR)
+  // the ODR (255hz with 4x pressure OSR)
   serialPrintStr("\tBMP581 startup successful!");
   return 0;
 }
