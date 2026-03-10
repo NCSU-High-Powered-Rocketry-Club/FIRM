@@ -87,8 +87,11 @@ int mmc5983ma_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t c
   if (setup_device(true))
     return 1;
 
+  // Perform SET and RESET to get rid of magnet build up
+  // Perform SET
   write_register(internal_control0, 0b00001000);
   HAL_Delay(10);
+  // Perform RESET
   write_register(internal_control0, 0b00010000);
   HAL_Delay(10);
 
