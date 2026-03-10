@@ -13,7 +13,6 @@
  * We store our settings in sector 0, on the first 1024-byte block.
  */
 #define SETTINGS_FLASH_BLOCK_SIZE_BYTES 512
-s
 
 /**
  * Accelerometer calibration coefficients
