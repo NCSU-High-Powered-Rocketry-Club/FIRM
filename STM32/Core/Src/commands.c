@@ -90,7 +90,7 @@ uint32_t execute_command(CommandIdentifier identifier, uint8_t *data, uint32_t d
     MagCalibration_t new_mag_calibration;
     memcpy(&new_mag_calibration, data, sizeof(MagCalibration_t));
     response_packet->success.b =
-        settings_write_calibration_settings(NULL, NULL, &new_mag_calibration);
+        settings_write_calibration_settings(NULL, NULL, &new_mag_calibration, NULL);
     return 1;
   }
   case CMDID_SET_IMU_CALIBRATON: {
@@ -100,7 +100,7 @@ uint32_t execute_command(CommandIdentifier identifier, uint8_t *data, uint32_t d
     memcpy(&new_accel_calibration, data, sizeof(AccelCalibration_t));
     memcpy(&new_gyro_calibration, &data[sizeof(AccelCalibration_t)], sizeof(GyroCalibration_t));
     response_packet->success.b = settings_write_calibration_settings(&new_accel_calibration,
-    &new_gyro_calibration, NULL);
+    &new_gyro_calibration, NULL, NULL);
     return 1;
   }
   case CMDID_GET_CALIBRATION: {

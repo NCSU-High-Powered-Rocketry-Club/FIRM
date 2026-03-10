@@ -3,22 +3,22 @@ import struct
 import sys
 
 
-# Trims a v1.2 binary log file to only include packets between two timestamps (seconds).
+# Trims a v1.3 binary log file to only include packets between two timestamps (seconds).
 # Output keeps the entire header and only the packet section within the requested range.
 
 
-# v1.2 header layout (matches current decoder.py logic)
+# v1.3 header layout (matches current decoder.py logic)
 HEADER_TEXT_SIZE = 14
 UID_SIZE = 8
 DEVICE_NAME_LEN = 32
 COMM_SIZE = 4
 FIRMWARE_VERSION_LEN = 8
 FREQUENCY_LEN = 2
-CAL_BYTES = 144
-NUM_SCALE_FACTORS = 5
+CAL_BYTES = 192
+NUM_SCALE_FACTORS = 6
 SCALE_FACTOR_BYTES = NUM_SCALE_FACTORS * 4
 
-V12_TEXT = b"FIRM LOG v1.2\n"
+V13_TEXT = b"FIRM LOG v1.3\n"
 CPU_HZ = 168e6
 
 
@@ -26,9 +26,11 @@ CPU_HZ = 168e6
 BMP581_ID = ord("B")
 ICM45686_ID = ord("I")
 MMC5983MA_ID = ord("M")
+ADXL371_ID = ord("A")
 BMP581_SIZE = 6
 ICM45686_SIZE = 15
 MMC5983MA_SIZE = 7
+ADXL371_SIZE = 6
 TIMESTAMP_BYTES = 4
 
 
@@ -39,10 +41,10 @@ def _read_exact(f, n: int) -> bytes:
     return b
 
 
-def _read_v12_header_bytes(f) -> bytes:
+def _read_v13_header_bytes(f) -> bytes:
     header_text = _read_exact(f, HEADER_TEXT_SIZE)
-    if header_text != V12_TEXT:
-        raise ValueError("Input file is not v1.2 (expected 'FIRM LOG v1.2\\n')")
+    if header_text != V13_TEXT:
+        raise ValueError("Input file is not v1.3 (expected 'FIRM LOG v1.3\\n')")
 
     uid_b = _read_exact(f, UID_SIZE)
     device_name_b = _read_exact(f, DEVICE_NAME_LEN)
@@ -77,7 +79,7 @@ def trim_file(path: str, start_seconds: int, end_seconds: int) -> str:
     out_path = os.path.join(os.path.dirname(path), f"trimmed_{os.path.basename(path)}")
 
     with open(path, "rb") as src, open(out_path, "wb") as dst:
-        header_bytes = _read_v12_header_bytes(src)
+        header_bytes = _read_v13_header_bytes(src)
         dst.write(header_bytes)
 
         timestamp_seconds = 0.0
@@ -113,6 +115,8 @@ def trim_file(path: str, start_seconds: int, end_seconds: int) -> str:
                 payload_len = ICM45686_SIZE
             elif id_b[0] == MMC5983MA_ID:
                 payload_len = MMC5983MA_SIZE
+            elif id_b[0] == ADXL371_ID:
+                payload_len = ADXL371_SIZE
             else:
                 # if not an ID byte, most likely garbage data at end of file
                 break

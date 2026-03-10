@@ -1,4 +1,10 @@
 #include "ukf_functions.h"
+/**
+ * The sensor orientations on the board dictate how the measurement function should convert the
+ * state to the recorded measurement. This is typically done with a rotation matrix, but the 
+ * calculations are streamlined in this file.
+ */
+
 
 void ukf_state_transition_function(const float *sigmas, const float dt, const State state,
                                    float *prediction) {
@@ -112,12 +118,12 @@ void ukf_measurement_function(const float *sigmas, const UKF *ukfh, float *measu
   float acc_vehicle[4];
   quaternion_product_f32(temp_acc, quat_state, acc_vehicle);
 
-  // rotate vehicle frame accel 45 degrees ccw to align with how imu is mounted on FIRM board
+  // rotate vehicle frame accel 135 degrees ccw to align with how imu is mounted on FIRM board
   float acc_vx = acc_vehicle[1];
   float acc_vy = acc_vehicle[2];
   float acc_vz = acc_vehicle[3];
-  measurement_sigmas[1] = (acc_vx / SQRT2_F + acc_vy / SQRT2_F);  // accel X
-  measurement_sigmas[2] = (-acc_vx / SQRT2_F + acc_vy / SQRT2_F); // accel Y
+  measurement_sigmas[1] = (acc_vx / SQRT2_F - acc_vy / SQRT2_F);  // accel X
+  measurement_sigmas[2] = (acc_vx / SQRT2_F + acc_vy / SQRT2_F); // accel Y
   measurement_sigmas[3] = acc_vz;                                 // accel Z
 
   // clip accel X and accel Y
@@ -136,12 +142,12 @@ void ukf_measurement_function(const float *sigmas, const UKF *ukfh, float *measu
   for (int i = 0; i < 3; ++i) {
     vehicle_gyro[i] = sigmas[9 + i] * (180.0F / PI_F);
   }
-  // 45-degree rotation
+  // 135-degree rotation ccw (same as accel)
   float gyro_gx = vehicle_gyro[0];
   float gyro_gy = vehicle_gyro[1];
   float gyro_gz = vehicle_gyro[2];
-  measurement_sigmas[4] = (gyro_gx / SQRT2_F + gyro_gy / SQRT2_F);  // gyro x
-  measurement_sigmas[5] = (-gyro_gx / SQRT2_F + gyro_gy / SQRT2_F); // gyro y
+  measurement_sigmas[4] = (gyro_gx / SQRT2_F - gyro_gy / SQRT2_F);  // gyro x
+  measurement_sigmas[5] = (gyro_gx / SQRT2_F + gyro_gy / SQRT2_F); // gyro y
   measurement_sigmas[6] = gyro_gz;                                  // gyro z
 
   // Magnetometer
@@ -153,11 +159,14 @@ void ukf_measurement_function(const float *sigmas, const UKF *ukfh, float *measu
   float mag_vehicle[4];
   quaternion_product_f32(temp_mag, quat_state, mag_vehicle);
 
-  // Apply R_vehicle_to_mag: [x, y, -z]
-  float mag_vx = mag_vehicle[1];
-  float mag_vy = mag_vehicle[2];
-  float mag_vz = mag_vehicle[3];
+  // Apply R_vehicle_to_mag: [y, -x, -z]
+  // due to the orientation of the sensor on the board, the x axis (up) is the magnetometer's
+  // y axis. The board y axis (left) is the sensor's negative x axis, and the board's z axis (up)
+  // is the sensor's negtaive z axis
+  float mag_vx = mag_vehicle[2];
+  float mag_vy = -mag_vehicle[1];
+  float mag_vz = -mag_vehicle[3];
   measurement_sigmas[7] = mag_vx;  // mag_sensor x
   measurement_sigmas[8] = mag_vy;  // y
-  measurement_sigmas[9] = -mag_vz; // z (flipped)
+  measurement_sigmas[9] = mag_vz; // z
 }

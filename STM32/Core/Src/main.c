@@ -195,19 +195,26 @@ int main(void)
   startupTaskHandle = osThreadNew(StartupTask, NULL, &startupTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  system_manager_task_handle = osThreadNew(system_manager_task, NULL, &systemManagerTask_attributes);
-  firm_mode_indicator_task_handle = osThreadNew(firm_mode_indicator_task, NULL, &modeIndicatorTask_attributes);
+  system_manager_task_handle =
+      osThreadNew(system_manager_task, NULL, &systemManagerTask_attributes);
+  firm_mode_indicator_task_handle =
+      osThreadNew(firm_mode_indicator_task, NULL, &modeIndicatorTask_attributes);
   bmp581_task_handle = osThreadNew(collect_bmp581_data_task, NULL, &bmp581Task_attributes);
   icm45686_task_handle = osThreadNew(collect_icm45686_data_task, NULL, &icm45686Task_attributes);
   mmc5983ma_task_handle = osThreadNew(collect_mmc5983ma_data_task, NULL, &mmc5983maTask_attributes);
+  adxl371_task_handle = osThreadNew(collect_adxl371_data_task, NULL, &adxl371Task_attributes);
   packetizer_task_handle = osThreadNew(packetizer_task, NULL, &packetizerTask_attributes);
   filter_data_task_handle = osThreadNew(filter_data_task, NULL, &filterDataTask_attributes);
   transmit_task_handle = osThreadNew(transmit_data, NULL, &transmitTask_attributes);
   usb_read_task_handle = osThreadNew(usb_read_data, NULL, &usbReadTask_attributes);
   mock_packet_handler_handle = osThreadNew(mock_packet_handler, NULL, &mockPacketTask_attributes);
-  
-  if (system_manager_task_handle == NULL || firm_mode_indicator_task_handle == NULL || mmc5983ma_task_handle == NULL || icm45686_task_handle == NULL || bmp581_task_handle == NULL || filter_data_task_handle == NULL ||
-      packetizer_task_handle == NULL || transmit_task_handle == NULL || usb_read_task_handle == NULL || mock_packet_handler_handle == NULL) {
+
+  if (system_manager_task_handle == NULL || firm_mode_indicator_task_handle == NULL ||
+      mmc5983ma_task_handle == NULL || icm45686_task_handle == NULL || bmp581_task_handle == NULL ||
+      adxl371_task_handle == NULL ||
+      filter_data_task_handle == NULL || packetizer_task_handle == NULL ||
+      transmit_task_handle == NULL || usb_read_task_handle == NULL ||
+      mock_packet_handler_handle == NULL) {
     Error_Handler();
   }
   /* USER CODE END RTOS_THREADS */
@@ -396,7 +403,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -434,7 +441,7 @@ static void MX_SPI2_Init(void)
   hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi2.Init.NSS = SPI_NSS_SOFT;
-  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
   hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -562,26 +569,34 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0|Feather_LED_Pin|BMP581_CS_Pin|FLASH_CS_Pin
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0|DEBUG0_Pin|BMP581_CS_Pin|FLASH_CS_Pin
                           |DEBUG2_Pin|MMC5983MA_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, DEBUG0_Pin|DEBUG1_Pin|ICM45686_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(ADXL371_CS_GPIO_Port, ADXL371_CS_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : PC0 Feather_LED_Pin BMP581_CS_Pin FLASH_CS_Pin
-                           DEBUG2_Pin MMC5983MA_CS_Pin */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|Feather_LED_Pin|BMP581_CS_Pin|FLASH_CS_Pin
-                          |DEBUG2_Pin|MMC5983MA_CS_Pin;
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, DEBUG1_Pin|ICM45686_CS_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : PC0 DEBUG0_Pin FLASH_CS_Pin DEBUG2_Pin */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|DEBUG0_Pin|FLASH_CS_Pin|DEBUG2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : BMP581_Interrupt_Pin ICM45686_Interrupt_Pin */
-  GPIO_InitStruct.Pin = BMP581_Interrupt_Pin|ICM45686_Interrupt_Pin;
+  /*Configure GPIO pins : BMP581_CS_Pin MMC5983MA_CS_Pin */
+  GPIO_InitStruct.Pin = BMP581_CS_Pin|MMC5983MA_CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : BMP581_Interrupt_Pin */
+  GPIO_InitStruct.Pin = BMP581_Interrupt_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+  HAL_GPIO_Init(BMP581_Interrupt_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : CONF_CHECK_Pin */
   GPIO_InitStruct.Pin = CONF_CHECK_Pin;
@@ -589,11 +604,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(CONF_CHECK_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : DEBUG0_Pin DEBUG1_Pin ICM45686_CS_Pin */
-  GPIO_InitStruct.Pin = DEBUG0_Pin|DEBUG1_Pin|ICM45686_CS_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  /*Configure GPIO pins : ICM45686_Interrupt_Pin ADXL371_Interrupt_Pin */
+  GPIO_InitStruct.Pin = ICM45686_Interrupt_Pin|ADXL371_Interrupt_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pin : MMC5983MA_Interrupt_Pin */
@@ -608,15 +622,32 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : ADXL371_CS_Pin */
+  GPIO_InitStruct.Pin = ADXL371_CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(ADXL371_CS_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : DEBUG1_Pin ICM45686_CS_Pin */
+  GPIO_InitStruct.Pin = DEBUG1_Pin|ICM45686_CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
   /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI1_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI1_IRQn);
+
   HAL_NVIC_SetPriority(EXTI2_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI2_IRQn);
 
   HAL_NVIC_SetPriority(EXTI3_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI3_IRQn);
-
-  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 5, 0);
-  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
@@ -636,13 +667,20 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
   if (GPIO_Pin == BMP581_Interrupt_Pin) {
-    (void)xTaskNotifyFromISR(bmp581_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits, &xHigherPriorityTaskWoken);
+    (void)xTaskNotifyFromISR(bmp581_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits,
+                             &xHigherPriorityTaskWoken);
   }
   if (GPIO_Pin == ICM45686_Interrupt_Pin) {
-    (void)xTaskNotifyFromISR(icm45686_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits, &xHigherPriorityTaskWoken);
+    (void)xTaskNotifyFromISR(icm45686_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits,
+                             &xHigherPriorityTaskWoken);
   }
   if (GPIO_Pin == MMC5983MA_Interrupt_Pin) {
-    (void)xTaskNotifyFromISR(mmc5983ma_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits, &xHigherPriorityTaskWoken);
+    (void)xTaskNotifyFromISR(mmc5983ma_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits,
+                             &xHigherPriorityTaskWoken);
+  }
+  if (GPIO_Pin == ADXL371_Interrupt_Pin && adxl371_task_handle != NULL) {
+    (void)xTaskNotifyFromISR(adxl371_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits,
+                             &xHigherPriorityTaskWoken);
   }
   portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
@@ -708,12 +746,14 @@ void StartupTask(void *argument)
   w25q128jv_set_spi_settings(&hspi1, GPIOC, GPIO_PIN_4);
   set_spi_icm(&hspi2, GPIOB, GPIO_PIN_9);
   set_spi_bmp(&hspi2, GPIOC, GPIO_PIN_2);
-  set_spi_mmc(&hi2c1, 0x30);
-  
+  set_spi_mmc(&hspi2, GPIOC, GPIO_PIN_7);
+  set_spi_adxl(&hspi2, GPIOA, GPIO_PIN_8);
+
   // re-enable ISR's so that interrupts can trigger the sensor tasks to run
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+  HAL_NVIC_EnableIRQ(EXTI1_IRQn);
   HAL_NVIC_EnableIRQ(EXTI2_IRQn);
   HAL_NVIC_EnableIRQ(EXTI3_IRQn);
-  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
   SystemRequest boot = SYSREQ_SETUP;
   xQueueSend(system_request_queue, &boot, 0);
   vTaskDelete(NULL);

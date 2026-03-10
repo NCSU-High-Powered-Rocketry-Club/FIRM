@@ -10,11 +10,13 @@ import sys
 BMP581_ID = 'B'
 ICM45686_ID = 'I'
 MMC5983MA_ID = 'M'
+ADXL371_ID = 'A'
 
 # struct sizes in bytes (not counting timestamp and id bytes)
 BMP581_SIZE = 6
 ICM45686_SIZE = 15
 MMC5983MA_SIZE = 7
+ADXL371_SIZE = 6
 
 # header order
 HEADER_SIZE_TEXT = 14 # size of the "FIRM LOG vx.x" text
@@ -24,8 +26,8 @@ HEADER_COMM_SIZE = 4
 FIRMWARE_VERSION_LEN = 8
 FREQUENCY_LEN = 2
 PADDING_BYTES = 2
-HEADER_CAL_SIZE = (3 + 9) * 3 * 4 # 3 offsets, 3x3 scale factor matrix, 3 sensors, 4 bytes per float
-HEADER_NUM_SCALE_FACTORS = 5
+HEADER_CAL_SIZE = (3 + 9) * 4 * 4 # 3 offsets, 3x3 scale factor matrix, 4 sensors, 4 bytes per float
+HEADER_NUM_SCALE_FACTORS = 6
 TIMESTAMP_BYTES = 4
 
 def twos_complement(val, bits):
@@ -37,11 +39,13 @@ class Decoder:
     bmp581_scale_factors = [0, 0] # temp, pressure
     icm45686_scale_factors = [0, 0] # acc, gyro
     mmc5983ma_scale_factor = 0 # magnetic field
+    adxl371_scale_factor = 0 # high-g accel
 
     # the data for each sensor
     bmp581_data = []
     icm45686_data = []
     mmc5983ma_data = []
+    adxl371_data = []
 
     # because we use clock cycle count for timestamp, and we expect the cycle count to
     # overflow every ~0.1 seconds, we handle the overflow in this file to make the timestamp
@@ -97,6 +101,11 @@ class Decoder:
                 data = self.convert_mmc5983ma(bytes)
                 self.mmc5983ma_data.append(data)
                 return True
+            if id_byte == ord(ADXL371_ID):
+                bytes = self.f.read(ADXL371_SIZE)
+                data = self.convert_adxl371(bytes)
+                self.adxl371_data.append(data)
+                return True
 
             # if not an ID byte, most likely garbage data at end of file
             return False
@@ -139,12 +148,15 @@ class Decoder:
         self.accel_cal = calibrations[0 : 12]
         self.gyro_cal = calibrations[12 : 24]
         self.mag_cal = calibrations[24 : 36]
+        self.adxl371_cal = calibrations[36 : 48]
 
+        scale_factor_format = '<' + ('f' * HEADER_NUM_SCALE_FACTORS)
         scale_factor_bytes = file.read(HEADER_NUM_SCALE_FACTORS * 4)
-        scale_factors = struct.unpack('<fffff', scale_factor_bytes)
+        scale_factors = struct.unpack(scale_factor_format, scale_factor_bytes)
         self.bmp581_scale_factors = scale_factors[0 : 2]
         self.icm45686_scale_factors = scale_factors[2 : 4]
         self.mmc5983ma_scale_factor = scale_factors[4]
+        self.adxl371_scale_factor = scale_factors[5]
 
     def convert_bmp581(self, binary_packet):
         temp_pressure = struct.unpack('<II', binary_packet[0 : 3] + b'\00' + binary_packet[3 : 6] + b'\00')
@@ -195,6 +207,24 @@ class Decoder:
         ]
         return data
 
+    def convert_adxl371(self, binary_packet):
+        # 3x 12-bit signed integers: byte[0] = bits 11:4, byte[1] upper nibble = bits 3:0
+        accel_x_bin = (binary_packet[0] << 4) | (binary_packet[1] >> 4)
+        accel_y_bin = (binary_packet[2] << 4) | (binary_packet[3] >> 4)
+        accel_z_bin = (binary_packet[4] << 4) | (binary_packet[5] >> 4)
+
+        accel_x_bin = twos_complement(accel_x_bin, 12)
+        accel_y_bin = twos_complement(accel_y_bin, 12)
+        accel_z_bin = twos_complement(accel_z_bin, 12)
+
+        data = [
+            self.timestamp_seconds,
+            accel_x_bin / self.adxl371_scale_factor,
+            accel_y_bin / self.adxl371_scale_factor,
+            accel_z_bin / self.adxl371_scale_factor,
+        ]
+        return data
+
 def write_to_csv(data: pd.DataFrame, filename, decoder: Decoder):
     with open(filename, "w") as f:
         f.write(f"{decoder.device_name},{str(decoder.uid)}\n")
@@ -213,8 +243,11 @@ def write_to_csv(data: pd.DataFrame, filename, decoder: Decoder):
         f.write("\nMMC5983MA Magnetometer Calibration,")
         for cal in decoder.mag_cal:
             f.write(f"{cal},")
-        f.write(f"\n\nScale Factors\nAccel,Gyro,Mag,Pressure,Temp\n")
-        scale_factors_full = [decoder.icm45686_scale_factors, decoder.mmc5983ma_scale_factor, decoder.bmp581_scale_factors]
+        f.write("\nADXL371 Acceleration Calibration,")
+        for cal in decoder.adxl371_cal:
+            f.write(f"{cal},")
+        f.write(f"\n\nScale Factors\nAccel,Gyro,Mag,Pressure,Temp,HighG_Accel\n")
+        scale_factors_full = [decoder.icm45686_scale_factors, decoder.mmc5983ma_scale_factor, decoder.bmp581_scale_factors, decoder.adxl371_scale_factor]
         
         # this flattens the array
         scale_factors = [sf for sensor in scale_factors_full for sf in (sensor if isinstance(sensor, (list, tuple)) else [sensor])]
@@ -232,6 +265,7 @@ def decode(path):
         bmp581_df = pd.DataFrame(decoder.bmp581_data, columns=['timestamp', 'temperature', 'pressure'])
         icm45686_df = pd.DataFrame(decoder.icm45686_data, columns=['timestamp', 'accel_x', 'accel_y', 'accel_z', 'gyro_x', 'gyro_y', 'gyro_z'])
         mmc5983ma_df = pd.DataFrame(decoder.mmc5983ma_data, columns=['timestamp', 'mag_x', 'mag_y', 'mag_z'])
+        adxl371_df = pd.DataFrame(decoder.adxl371_data, columns=['timestamp', 'accel_x', 'accel_y', 'accel_z'])
 
         # write to csv
     
@@ -240,7 +274,9 @@ def decode(path):
         write_to_csv(icm45686_df, "ICM45686_data.csv", decoder)
         print("wrote ICM45686_data.csv")
         write_to_csv(mmc5983ma_df, "MMC5983MA_data.csv", decoder)
-        print("wrote MMC5983MA.csv")
+        print("wrote MMC5983MA_data.csv")
+        write_to_csv(adxl371_df, "ADXL371_data.csv", decoder)
+        print("wrote ADXL371_data.csv")
 
 if __name__ == "__main__":
     if len(sys.argv) == 2:
