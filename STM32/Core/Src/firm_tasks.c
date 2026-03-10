@@ -554,13 +554,10 @@ void collect_adxl371_data_task(void *argument) {
 
 void filter_data_task(void *argument) {
 
-  UKF ukf;
-  ukf.measurement_function = ukf_measurement_function;
-  ukf.state_transition_function = ukf_state_transition_function;
+  ESKF eskf;
   DataPacket packet = data_packet.data.data_packet;
   TaskCommandOption cmd_status = TASKCMD_SETUP;
   float last_time = 0.0F;
-  // set the timer based on the set packet transmission frequency
 
   for (;;) {
     xQueueReceive(data_filter_command_queue, &cmd_status, 0);
@@ -570,8 +567,8 @@ void filter_data_task(void *argument) {
       vTaskDelay(pdMS_TO_TICKS(KALMAN_FILTER_STARTUP_DELAY_TIME_MS));
       // filter can initialize, and FIRM can go into live mode
       memcpy(&packet, &data_packet.data.data_packet, 13 * 4);
-      ukf_init(&ukf, packet.pressure_pascals, &packet.raw_acceleration_x_gs,
-               &packet.magnetic_field_x_microteslas);
+      eskf_init(&eskf, packet.pressure_pascals, &packet.raw_acceleration_x_gs,
+                &packet.magnetic_field_x_microteslas);
 
       if (cmd_status == TASKCMD_SETUP) {
         xQueueSend(system_request_queue, &(SystemRequest){SYSREQ_FINISH_SETUP}, portMAX_DELAY);
@@ -588,20 +585,56 @@ void filter_data_task(void *argument) {
       float dt = (float)packet.timestamp_seconds - last_time;
       if (dt > 1e-6) {
         last_time = (float)packet.timestamp_seconds;
-        int err = ukf_predict(&ukf, dt);
-        if (err) {
-          led_set_status(FIRM_MODE_BOOT);
+
+        /* ---- Build raw IMU readings (sensor frame) ---- */
+        float accel_raw[3] = {packet.raw_acceleration_x_gs,
+                              packet.raw_acceleration_y_gs,
+                              packet.raw_acceleration_z_gs};
+        float gyro_raw[3]  = {packet.raw_angular_rate_x_deg_per_s,
+                              packet.raw_angular_rate_y_deg_per_s,
+                              packet.raw_angular_rate_z_deg_per_s};
+
+        /* ---- During INIT: accumulate raw IMU for bias estimation ---- */
+        if (eskf.flight_state == ESKF_STATE_INIT) {
+          eskf_accumulate(&eskf, accel_raw, gyro_raw);
         }
-        ukf_set_measurement(&ukf, &packet.pressure_pascals);
-        err = ukf_update(&ukf);
-        if (err) {
-          led_set_status(FIRM_MODE_BOOT);
-        }
-        memcpy(&data_packet.data.data_packet.est_position_x_meters, ukf.X, UKF_STATE_DIMENSION * 4);
+
+        /* ---- Build control input: bias-subtracted IMU ---- */
+        float u[ESKF_CONTROL_DIM] = {
+            accel_raw[0] - eskf.accel_bias[0],
+            accel_raw[1] - eskf.accel_bias[1],
+            accel_raw[2] - eskf.accel_bias[2],
+            gyro_raw[0]  - eskf.gyro_bias[0],
+            gyro_raw[1]  - eskf.gyro_bias[1],
+            gyro_raw[2]  - eskf.gyro_bias[2],
+        };
+
+        /* ---- Predict ---- */
+        eskf_predict(&eskf, u, dt);
+
+        /* ---- Build measurement: pressure + normalised mag ---- */
+        float z_raw[ESKF_MEASUREMENT_DIM] = {
+            packet.pressure_pascals,
+            packet.magnetic_field_x_microteslas,
+            packet.magnetic_field_y_microteslas,
+            packet.magnetic_field_z_microteslas,
+        };
+        eskf_set_measurement(&eskf, z_raw);
+
+        /* ---- Update ---- */
+        eskf_update(&eskf, eskf.z);
+
+        /* ---- State machine transition ---- */
+        eskf_state_update(&eskf);
+
+        /* ---- Copy estimates back to data packet ---- */
+        memcpy(&data_packet.data.data_packet.est_position_x_meters,
+               eskf.x_nom, ESKF_NOMINAL_DIM * sizeof(float));
       }
     }
   }
 }
+
 
 void packetizer_task(void *argument) {
   // initialize the persistent data packet with the length and identifier fields

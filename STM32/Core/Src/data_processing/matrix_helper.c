@@ -1,4 +1,4 @@
-#include "matrixhelper.h"
+#include "matrix_helper.h"
 
 int symmetrize(arm_matrix_instance_f32 *enter_matrix) {
   uint16_t mat_rows = enter_matrix->numRows;
@@ -256,4 +256,55 @@ void mat_inverse_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f3
       }
     }
   }
+}
+
+void mat_set_identity_f32(arm_matrix_instance_f32 *M) {
+  uint16_t n = M->numRows;
+  for (uint16_t i = 0; i < n; i++) {
+    for (uint16_t j = 0; j < n; j++) {
+      M->pData[i * n + j] = (i == j) ? 1.0F : 0.0F;
+    }
+  }
+}
+
+void mat_set_diagonal_f32(arm_matrix_instance_f32 *M, const float *diag, uint16_t n) {
+  for (uint16_t i = 0; i < n * n; i++) {
+    M->pData[i] = 0.0F;
+  }
+  for (uint16_t i = 0; i < n; i++) {
+    M->pData[i * n + i] = diag[i];
+  }
+}
+
+void skew_f32(const float v[3], arm_matrix_instance_f32 *out) {
+  float *d = out->pData;
+  d[0] =  0.0F;  d[1] = -v[2];  d[2] =  v[1];
+  d[3] =  v[2];  d[4] =  0.0F;  d[5] = -v[0];
+  d[6] = -v[1];  d[7] =  v[0];  d[8] =  0.0F;
+}
+
+void quat_to_rotation_matrix_f32(const float q[4], arm_matrix_instance_f32 *R) {
+  float w = q[0], x = q[1], y = q[2], z = q[3];
+  float *d = R->pData;
+  d[0] = 1.0F - 2.0F * (y * y + z * z);
+  d[1] = 2.0F * (x * y - w * z);
+  d[2] = 2.0F * (x * z + w * y);
+  d[3] = 2.0F * (x * y + w * z);
+  d[4] = 1.0F - 2.0F * (x * x + z * z);
+  d[5] = 2.0F * (y * z - w * x);
+  d[6] = 2.0F * (x * z - w * y);
+  d[7] = 2.0F * (y * z + w * x);
+  d[8] = 1.0F - 2.0F * (x * x + y * y);
+}
+
+float vec_dot_f32(const float *a, const float *b, uint32_t n) {
+  float sum = 0.0F;
+  for (uint32_t i = 0; i < n; i++) {
+    sum += a[i] * b[i];
+  }
+  return sum;
+}
+
+float vec_norm_f32(const float *v, uint32_t n) {
+  return sqrtf(vec_dot_f32(v, v, n));
 }

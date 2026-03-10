@@ -1,11 +1,17 @@
 #pragma once
-#include "unscented_kalman_filter.h"
+#include "eskf_config.h"
 #include <string.h>
 
-extern State state;
+struct ESKF;
 
-struct UKF;
+/**
+ * @brief Initialise the ESKF flight state to INIT and load the init Q/R diags.
+ */
+void eskf_state_init(struct ESKF *eskf);
 
-void init_state(struct UKF *ukfh);
-
-void state_update(struct UKF *ukfh);
+/**
+ * @brief Check for INIT → RUNNING transition (time-based).
+ *
+ * When transitioning, computes fixed IMU biases from accumulated samples.
+ */
+void eskf_state_update(struct ESKF *eskf);

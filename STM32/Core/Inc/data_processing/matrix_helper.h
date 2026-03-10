@@ -35,3 +35,10 @@ void vec_mult_f32(const float *pSrcA, const float *pSrcB, float *pDst, int lengt
 
 float mat_cholesky_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 *pDst);
 void mat_inverse_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 *pDst);
+
+void mat_set_identity_f32(arm_matrix_instance_f32 *M);
+void mat_set_diagonal_f32(arm_matrix_instance_f32 *M, const float *diag, uint16_t n);
+void skew_f32(const float v[3], arm_matrix_instance_f32 *out);
+void quat_to_rotation_matrix_f32(const float q[4], arm_matrix_instance_f32 *R);
+float vec_dot_f32(const float *a, const float *b, uint32_t n);
+float vec_norm_f32(const float *v, uint32_t n);

@@ -84,11 +84,11 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/firm_tasks.c
     Core/Src/led.c
     Core/Src/firm_fsm.c
-    Core/Src/data_processing/matrixhelper.c
-    Core/Src/data_processing/unscented_kalman_filter.c
-    Core/Src/data_processing/ukf_functions.c
+    Core/Src/data_processing/matrix_helper.c
+    Core/Src/data_processing/error_state_kalman_filter.c
+    Core/Src/data_processing/eskf_functions.c
     Core/Src/data_processing/state_machine.c
-    Core/Src/data_processing/kalman_filter_config.c
+    Core/Src/data_processing/eskf_config.c
 )
 
 # Add include paths
