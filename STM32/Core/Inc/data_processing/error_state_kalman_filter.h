@@ -1,7 +1,6 @@
 #pragma once
 #include "eskf_config.h"
 #include "matrix_helper.h"
-#include "state_machine.h"
 
 #ifndef PI_F
 #define PI_F 3.141592653589793F
@@ -9,62 +8,69 @@
 
 /* ====================================================================
  * Error-State Extended Kalman Filter (ESKF)
- *
- * Ported from Python UKF/eskf.py
  * ==================================================================== */
 
 typedef struct ESKF {
-  /* ---- nominal state (10) ---- */
+  // nominal state (10)
   float x_nom[ESKF_NOMINAL_DIM];
 
-  /* ---- error-state covariance P (9×9 row-major) ---- */
+  // error-state covariance P (9×9 row-major)
   float P[ESKF_ERROR_DIM * ESKF_ERROR_DIM];
 
-  /* ---- process & measurement noise (diag stored as full matrices) -- */
+  // process & measurement noise (diag stored as full matrices)
   float Q[ESKF_ERROR_DIM * ESKF_ERROR_DIM];
   float R[ESKF_MEASUREMENT_DIM * ESKF_MEASUREMENT_DIM];
 
-  /* ---- sensor calibration ---- */
+  // initial values/states
   float initial_pressure;
   float mag_world[3];
 
-  /* ---- IMU biases (estimated during INIT, then fixed) ---- */
-  float accel_bias[3];   /* in sensor frame, g-units */
-  float gyro_bias[3];    /* in sensor frame, deg/s   */
+  // sensor rotation matrices (set per hardware version in eskf_init)
+  float R_imu_to_vehicle[9]; /* 3×3 row-major: IMU sensor frame → vehicle body frame */
+  float R_vehicle_to_mag[9]; /* 3×3 row-major: vehicle body frame → mag sensor frame */
 
-  /* ---- accumulator for INIT phase bias estimation ---- */
+  // accumulator for INIT phase bias estimation
   float accel_accum[3];
-  float gyro_accum[3];
+  float mag_accum[3];
+  float pressure_accum;
   uint32_t accum_count;
 
-  /* ---- flight state ---- */
-  ESKFFlightState flight_state;
-  float elapsed_time;
-
-  /* ---- measurement vector (set before calling update) ---- */
+  // measurement vector (set before calling update)
   float z[ESKF_MEASUREMENT_DIM];
-
-  /* ---- debug / diagnostics ---- */
-  float pred_z[ESKF_MEASUREMENT_DIM];
-  float mahalanobis_dist;
 } ESKF;
+
+typedef struct {
+  double timestamp_seconds;
+  float pressure_pascals;
+  float raw_acceleration_x_gs;
+  float raw_acceleration_y_gs;
+  float raw_acceleration_z_gs;
+  float raw_angular_rate_x_deg_per_s;
+  float raw_angular_rate_y_deg_per_s;
+  float raw_angular_rate_z_deg_per_s;
+  float magnetic_field_x_microteslas;
+  float magnetic_field_y_microteslas;
+  float magnetic_field_z_microteslas;
+} ESKFRawData;
 
 /**
  * @brief Initialise the ESKF struct: state, covariance, calibration.
  *
- * @param eskf              Pointer to ESKF struct
- * @param initial_pressure  Sea-level-ish pressure for barometric altitude
- * @param initial_accel     First accelerometer reading (sensor frame, g)
- * @param initial_mag       First magnetometer reading (sensor frame, normalised)
+ * @param eskf Pointer to ESKF struct
  * @return 0 on success
  */
-int eskf_init(ESKF *eskf, float initial_pressure,
-              const float *initial_accel, const float *initial_mag);
+int eskf_init(ESKF *eskf);
 
 /**
- * @brief Accumulate a raw IMU sample during INIT phase (for bias estimation).
+ * @brief Accumulates raw pressure, acceleration, and magnetic field during intialization. Used
+ * during init to calculate initial orientation and initial reference altitude.
+ *
+ * @param eskf pointer to ESKF struct
+ * @param pressure_raw a data point with the current raw pressure
+ * @param accel_raw a data point with the current raw acceleration (x, y, z)
+ * @param mag_raw data point with the current raw magnetic fields (x, y, z)
  */
-void eskf_accumulate(ESKF *eskf, const float accel_raw[3], const float gyro_raw[3]);
+void eskf_accumulate(ESKF *eskf, float pressure_raw, const float *accel_raw, const float *mag_raw);
 
 /**
  * @brief ESKF prediction step (nominal propagation + covariance).
@@ -90,6 +96,14 @@ void eskf_set_measurement(ESKF *eskf, const float *measurements);
 
 /**
  * @brief Compute initial orientation from accel + mag and set mag_world.
+ *
+ * @param imu_accel       Raw accelerometer reading (sensor frame)
+ * @param mag_field       Raw magnetometer reading (sensor frame)
+ * @param R_imu           3×3 row-major: IMU sensor → vehicle rotation
+ * @param R_mag           3×3 row-major: vehicle → mag sensor rotation
+ * @param init_quaternion Output quaternion [w,x,y,z]
+ * @param mag_world_frame Output world-frame magnetic field vector
  */
 void calculate_initial_orientation(const float *imu_accel, const float *mag_field,
+                                   const float R_imu[9], const float R_mag[9],
                                    float *init_quaternion, float *mag_world_frame);

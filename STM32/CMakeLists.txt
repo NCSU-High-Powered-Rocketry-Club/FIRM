@@ -87,7 +87,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/data_processing/matrix_helper.c
     Core/Src/data_processing/error_state_kalman_filter.c
     Core/Src/data_processing/eskf_functions.c
-    Core/Src/data_processing/state_machine.c
     Core/Src/data_processing/eskf_config.c
 )
 

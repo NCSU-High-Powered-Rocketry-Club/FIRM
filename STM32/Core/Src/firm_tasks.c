@@ -72,9 +72,9 @@ const osThreadAttr_t mmc5983maTask_attributes = {
     .priority = (osPriority_t)osPriorityHigh,
 };
 const osThreadAttr_t adxl371Task_attributes = {
-  .name = "adxl371Task",
-  .stack_size = 256 * 4,
-  .priority = (osPriority_t)osPriorityHigh,
+    .name = "adxl371Task",
+    .stack_size = 256 * 4,
+    .priority = (osPriority_t)osPriorityHigh,
 };
 const osThreadAttr_t filterDataTask_attributes = {
     .name = "filterDataTask",
@@ -166,7 +166,6 @@ int initialize_firm(SPIHandles *spi_handles_ptr, I2CHandles *i2c_handles_ptr,
   HAL_NVIC_DisableIRQ(EXTI2_IRQn);
   HAL_NVIC_DisableIRQ(EXTI3_IRQn);
 
-  
   if (icm45686_init(spi_handles_ptr->hspi2, GPIOB, GPIO_PIN_9)) {
     led_set_status(IMU_FAIL);
     Error_Handler();
@@ -530,7 +529,8 @@ void collect_adxl371_data_task(void *argument) {
       }
 
       osMutexAcquire(sensorDataMutexHandle, osWaitForever);
-      void *adxl371_storage = logger_malloc_packet(sizeof(ADXL371Packet_t) + 5); // + 4 for the timestamp, +1 for the sensor letter
+      void *adxl371_storage = logger_malloc_packet(
+          sizeof(ADXL371Packet_t) + 5); // + 4 for the timestamp, +1 for the sensor letter
       if (adxl371_storage == NULL) {
         osMutexRelease(sensorDataMutexHandle);
         continue;
@@ -555,86 +555,91 @@ void collect_adxl371_data_task(void *argument) {
 void filter_data_task(void *argument) {
 
   ESKF eskf;
-  DataPacket packet = data_packet.data.data_packet;
+  ESKFRawData raw_data_instance;
   TaskCommandOption cmd_status = TASKCMD_SETUP;
   float last_time = 0.0F;
+  TickType_t start_time = xTaskGetTickCount();
 
   for (;;) {
     xQueueReceive(data_filter_command_queue, &cmd_status, 0);
     if (cmd_status == TASKCMD_SETUP || cmd_status == TASKCMD_MOCK_SETUP) {
-      // time that FIRM should be running for (collecting sensor data) before starting the kalman
-      // filter
-      vTaskDelay(pdMS_TO_TICKS(KALMAN_FILTER_STARTUP_DELAY_TIME_MS));
-      // filter can initialize, and FIRM can go into live mode
-      memcpy(&packet, &data_packet.data.data_packet, 13 * 4);
-      eskf_init(&eskf, packet.pressure_pascals, &packet.raw_acceleration_x_gs,
-                &packet.magnetic_field_x_microteslas);
+      // making sure data has been collected
+      if (data_packet.data.data_packet.magnetic_field_x_microteslas == 0) {
+        continue;
+      }
 
+      // loop collecting data until enough is collected to get starting rotation and initial
+      // altitude
+      while ((xTaskGetTickCount() - start_time) >
+             pdMS_TO_TICKS(KALMAN_FILTER_STARTUP_DELAY_TIME_MS)) {
+        // orientation initialization relies on acceleration and magnetic field, initial altitude
+        // uses raw pressure
+
+        eskf_accumulate(&eskf, data_packet.data.data_packet.pressure_pascals,
+                        &data_packet.data.data_packet.raw_acceleration_x_gs,
+                        &data_packet.data.data_packet.magnetic_field_x_microteslas);
+      }
+
+      // filter can initialize, and FIRM can go into live mode
+      eskf_init(&eskf);
       if (cmd_status == TASKCMD_SETUP) {
         xQueueSend(system_request_queue, &(SystemRequest){SYSREQ_FINISH_SETUP}, portMAX_DELAY);
       }
       if (cmd_status == TASKCMD_MOCK_SETUP) {
         xQueueSend(system_request_queue, &(SystemRequest){SYSREQ_FINISH_MOCK_SETUP}, portMAX_DELAY);
       }
+
       // set the last time to calculate the delta timestamp, minus some initial offset so that the
       // first iteration of the filter doesn't have an extremely small dt.
-      last_time = (float)packet.timestamp_seconds - 0.005F;
+      last_time = (float)data_packet.data.data_packet.timestamp_seconds - 0.005F;
     }
+
     if (cmd_status != TASKCMD_SETUP && cmd_status != TASKCMD_MOCK_SETUP) {
-      memcpy(&packet, &data_packet.data.data_packet, 13 * 4);
-      float dt = (float)packet.timestamp_seconds - last_time;
+      // setting the current data packet to the instance of data to be used in this next filter
+      // update
+      raw_data_instance.timestamp_seconds = data_packet.data.data_packet.timestamp_seconds;
+      memcpy(&raw_data_instance, &data_packet.data.data_packet.pressure_pascals,
+             sizeof(raw_data_instance) - sizeof(raw_data_instance.timestamp_seconds));
+      float dt = (float)raw_data_instance.timestamp_seconds - last_time;
+
       if (dt > 1e-6) {
-        last_time = (float)packet.timestamp_seconds;
+        last_time = (float)raw_data_instance.timestamp_seconds;
 
         /* ---- Build raw IMU readings (sensor frame) ---- */
-        float accel_raw[3] = {packet.raw_acceleration_x_gs,
-                              packet.raw_acceleration_y_gs,
-                              packet.raw_acceleration_z_gs};
-        float gyro_raw[3]  = {packet.raw_angular_rate_x_deg_per_s,
-                              packet.raw_angular_rate_y_deg_per_s,
-                              packet.raw_angular_rate_z_deg_per_s};
+        float accel_raw[3] = {raw_data_instance.raw_acceleration_x_gs,
+                              raw_data_instance.raw_acceleration_y_gs,
+                              raw_data_instance.raw_acceleration_z_gs};
+        float gyro_raw[3] = {raw_data_instance.raw_angular_rate_x_deg_per_s,
+                             raw_data_instance.raw_angular_rate_y_deg_per_s,
+                             raw_data_instance.raw_angular_rate_z_deg_per_s};
 
-        /* ---- During INIT: accumulate raw IMU for bias estimation ---- */
-        if (eskf.flight_state == ESKF_STATE_INIT) {
-          eskf_accumulate(&eskf, accel_raw, gyro_raw);
-        }
-
-        /* ---- Build control input: bias-subtracted IMU ---- */
+        /* ---- Build control input: IMU ---- */
         float u[ESKF_CONTROL_DIM] = {
-            accel_raw[0] - eskf.accel_bias[0],
-            accel_raw[1] - eskf.accel_bias[1],
-            accel_raw[2] - eskf.accel_bias[2],
-            gyro_raw[0]  - eskf.gyro_bias[0],
-            gyro_raw[1]  - eskf.gyro_bias[1],
-            gyro_raw[2]  - eskf.gyro_bias[2],
+            accel_raw[0], accel_raw[1], accel_raw[2], gyro_raw[0], gyro_raw[1], gyro_raw[2],
         };
 
         /* ---- Predict ---- */
         eskf_predict(&eskf, u, dt);
 
-        /* ---- Build measurement: pressure + normalised mag ---- */
+        /* ---- Build measurement: pressure + mag ---- */
         float z_raw[ESKF_MEASUREMENT_DIM] = {
-            packet.pressure_pascals,
-            packet.magnetic_field_x_microteslas,
-            packet.magnetic_field_y_microteslas,
-            packet.magnetic_field_z_microteslas,
+            raw_data_instance.pressure_pascals,
+            raw_data_instance.magnetic_field_x_microteslas,
+            raw_data_instance.magnetic_field_y_microteslas,
+            raw_data_instance.magnetic_field_z_microteslas,
         };
         eskf_set_measurement(&eskf, z_raw);
 
         /* ---- Update ---- */
         eskf_update(&eskf, eskf.z);
 
-        /* ---- State machine transition ---- */
-        eskf_state_update(&eskf);
-
         /* ---- Copy estimates back to data packet ---- */
-        memcpy(&data_packet.data.data_packet.est_position_x_meters,
-               eskf.x_nom, ESKF_NOMINAL_DIM * sizeof(float));
+        memcpy(&data_packet.data.data_packet.est_position_x_meters, eskf.x_nom,
+               ESKF_NOMINAL_DIM * sizeof(float));
       }
     }
   }
 }
-
 
 void packetizer_task(void *argument) {
   // initialize the persistent data packet with the length and identifier fields
