@@ -1,4 +1,5 @@
 #include "unscented_kalman_filter.h"
+#include "freertos_trace.h"
 #include "kalman_filter_config.h"
 #include "usb_print_debug.h"
 
@@ -242,6 +243,7 @@ int ukf_update(UKF *ukfh) {
 }
 
 static void calculate_sigma_weights(void) {
+  TRACE_BEGIN_REGION();
   lambda_scaling_parameter = UKF_SIGMA_SPREAD_ALPHA * UKF_SIGMA_SPREAD_ALPHA *
                                  (UKF_STATE_DIMENSION - 1.0F + UKF_SIGMA_TERTIARY_KAPPA) -
                              (UKF_STATE_DIMENSION - 1.0F);
@@ -253,6 +255,7 @@ static void calculate_sigma_weights(void) {
   Wm[0] = lambda_scaling_parameter / (UKF_STATE_DIMENSION - 1.0F + lambda_scaling_parameter);
   Wc[0] = lambda_scaling_parameter / (UKF_STATE_DIMENSION - 1.0F + lambda_scaling_parameter) +
           (1.0F - UKF_SIGMA_SPREAD_ALPHA * UKF_SIGMA_SPREAD_ALPHA + UKF_SIGMA_WEIGHT_BETA);
+  TRACE_END_REGION("sw", "calculate_sigma_weights");
 }
 
 static int calculate_sigmas_f(UKF *ukfh, float dt) {
@@ -260,6 +263,7 @@ static int calculate_sigmas_f(UKF *ukfh, float dt) {
   if (symmetrize(&P)) {
     return 1;
   }
+  TRACE_BEGIN_REGION();
   float Q_scaled_data[UKF_COVARIANCE_DIMENSION * UKF_COVARIANCE_DIMENSION];
   arm_matrix_instance_f32 Q_scaled = {UKF_COVARIANCE_DIMENSION, UKF_COVARIANCE_DIMENSION,
                                       Q_scaled_data};
@@ -318,10 +322,12 @@ static int calculate_sigmas_f(UKF *ukfh, float dt) {
     float *output_row = &sigmas_f[i * UKF_STATE_DIMENSION];
     ukfh->state_transition_function(sigma_points[i], dt, *(ukfh->flight_state), output_row);
   }
+  TRACE_END_REGION("sf", "calculate_sigmas_f");
   return 0;
 }
 
 static int unscented_transform_f() {
+  TRACE_BEGIN_REGION();
   // set the temp residual matrices to intended sizes (unscented_transform_h reuses them and
   // changes sizes)
   temp_residuals.numCols = UKF_COVARIANCE_DIMENSION;
@@ -409,12 +415,13 @@ static int unscented_transform_f() {
   }
 
   mat_mult_f32(&temp_weighted_residuals_transpose, &temp_residuals, &P);
-
+  TRACE_END_REGION("ut", "unscented_transform_f");
   return 0;
 }
 
 static int unscented_transform_h(float measurement_mean[UKF_MEASUREMENT_DIMENSION],
                                  arm_matrix_instance_f32 *innovation_cov) {
+  TRACE_BEGIN_REGION();
   // change all the temp residual matrix sizes to intended sizes (because unscented_transform_f
   // reuses them)
   temp_residuals.numCols = UKF_MEASUREMENT_DIMENSION;
@@ -454,11 +461,13 @@ static int unscented_transform_h(float measurement_mean[UKF_MEASUREMENT_DIMENSIO
 
   // Add noise covariance R to P
   mat_add_f32(innovation_cov, &R, innovation_cov);
+  TRACE_END_REGION("uh", "unscented_transform_h");
   return 0;
 }
 
 static int calculate_cross_covariance(const float *measurement_mean,
                                       arm_matrix_instance_f32 *P_cross_covariance) {
+  TRACE_BEGIN_REGION();
   // Reuse temp residual matrices
   temp_residuals.numRows = UKF_NUM_SIGMAS;
   temp_residuals.numCols = UKF_COVARIANCE_DIMENSION;
@@ -515,11 +524,13 @@ static int calculate_cross_covariance(const float *measurement_mean,
 
   // Compute P_cross = dx_t @ weighted_dz (21x43 @ 43x10 = 21x10)
   mat_mult_f32(&temp_residuals_transpose, weighted_dz, P_cross_covariance);
+  TRACE_END_REGION("cc", "calculate_cross_covariance");
   return 0;
 }
 
 void calculate_initial_orientation(const float *imu_accel, const float *mag_field,
                                    float *init_quaternion, float *mag_world_frame) {
+  TRACE_BEGIN_REGION();
   float norm_acc = sqrtf(imu_accel[0] * imu_accel[0] + imu_accel[1] * imu_accel[1] +
                          imu_accel[2] * imu_accel[2]);
   float norm_mag = sqrtf(mag_field[0] * mag_field[0] + mag_field[1] * mag_field[1] +
@@ -561,6 +572,7 @@ void calculate_initial_orientation(const float *imu_accel, const float *mag_fiel
   mag_world_frame[0] = mag_world[1];
   mag_world_frame[1] = mag_world[2];
   mag_world_frame[2] = mag_world[3];
+  TRACE_END_REGION("co", "calculate_initial_orientation");
 }
 
 void ukf_set_measurement(UKF *ukfh, const float *measurements) {
