@@ -7,8 +7,8 @@
 #include "messages.h"
 #include "mocking_handler.h"
 #include "settings.h"
-#include "ukf_functions.h"
-#include "unscented_kalman_filter.h"
+#include "eskf_functions.h"
+#include "error_state_kalman_filter.h"
 #include "utils.h"
 #include <adxl371.h>
 #include <bmp581.h>
@@ -28,7 +28,7 @@
 #define MMC5983MA_POLL_RATE_HZ 225
 #define ADXL371_POLL_RATE_HZ 160
 #define TRANSMIT_FREQUENCY_HZ 100
-#define KALMAN_FILTER_STARTUP_DELAY_TIME_MS 1000
+#define KALMAN_FILTER_STARTUP_DELAY_TIME_MS 2000
 
 #define MAX_WAIT_TIME(hz) (TickType_t)(pdMS_TO_TICKS(1000 / (hz)) + 1)
 

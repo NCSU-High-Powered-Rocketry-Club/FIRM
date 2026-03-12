@@ -3,7 +3,7 @@
 #include "utils.h"
 #include <string.h>
 
-#define MESSAGE_BYTE_BUFFER_SIZE 256
+#define MESSAGE_BYTE_BUFFER_SIZE 512
 
 /**
  * The first two bytes of the header field of a message packet being sent or received.
