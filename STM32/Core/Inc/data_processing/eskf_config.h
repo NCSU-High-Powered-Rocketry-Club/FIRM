@@ -49,15 +49,12 @@ typedef enum {
 #define PRESSURE_ALTITUDE_CONST 44330.0F
 #define PRESSURE_EXPONENT 5.255876F
 
-/* ---- IMU sensor-to-vehicle rotation (45° CCW about Z) ------------- */
+/* ---- √2/2 constant for sensor rotation matrices ------------------ */
 #define SQRT2_INV 0.70710678118F
 
 /* ---- pressure→velocity decoupling sigmoid ------------------------- */
 #define ESKF_PV_COUPLING_SPEED 20.0F
 #define ESKF_PV_COUPLING_SHARPNESS 1.0F
-
-/* ---- init phase --------------------------------------------------- */
-#define ESKF_INIT_DURATION_S 0.5F
 
 /* ---- tuning arrays (defined in eskf_config.c) ------------ */
 extern const float eskf_initial_state[ESKF_NOMINAL_DIM];
@@ -65,15 +62,20 @@ extern const float eskf_initial_cov_diag[ESKF_ERROR_DIM];
 extern const float eskf_q_diag[ESKF_ERROR_DIM];
 extern const float eskf_r_diag[ESKF_MEASUREMENT_DIM];
 
-/* ---- sensor rotation matrices (defined in eskf_config.c) ---------- */
-/* Each hardware version has its own pair of 3×3 row-major rotation     */
-/* matrices describing how the IMU and magnetometer are oriented on the */
-/* PCB relative to the vehicle body frame.                              */
+/* ---- sensor-to-board rotation matrices (defined in eskf_config.c) - */
+/*                                                                     */
+/* Three reference frames:                                             */
+/*   sensor frame  – each sensor IC's own coordinate axes              */
+/*   board frame   – PCB body frame: +X forward, +Y left, +Z up       */
+/*   world frame   – inertial frame (board→world via quaternion state) */
+/*                                                                     */
+/* These matrices handle sensor → board only.  Board → world is        */
+/* determined by the ESKF quaternion state.                            */
 
 /* v2 hardware (current) */
-extern const float eskf_v2_R_imu_to_vehicle[9]; /* 3×3 row-major */
-extern const float eskf_v2_R_vehicle_to_mag[9]; /* 3×3 row-major */
+extern const float eskf_v2_R_imu_to_board[9]; /* 3×3 row-major */
+extern const float eskf_v2_R_board_to_mag[9]; /* 3×3 row-major */
 
 /* v1 hardware (legacy) */
-extern const float eskf_v1_R_imu_to_vehicle[9]; /* 3×3 row-major */
-extern const float eskf_v1_R_vehicle_to_mag[9]; /* 3×3 row-major */
+extern const float eskf_v1_R_imu_to_board[9]; /* 3×3 row-major */
+extern const float eskf_v1_R_board_to_mag[9]; /* 3×3 row-major */

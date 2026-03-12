@@ -81,12 +81,12 @@ int eskf_init(ESKF *eskf) {
   /* ---- Select rotation matrices based on hardware version ---- */
   if (firmSettings.firmware_version[0] == 'v' && firmSettings.firmware_version[1] == '1' &&
       firmSettings.firmware_version[2] == '.') {
-    memcpy(eskf->R_imu_to_vehicle, eskf_v1_R_imu_to_vehicle, sizeof(eskf->R_imu_to_vehicle));
-    memcpy(eskf->R_vehicle_to_mag, eskf_v1_R_vehicle_to_mag, sizeof(eskf->R_vehicle_to_mag));
+    memcpy(eskf->R_imu_to_board, eskf_v1_R_imu_to_board, sizeof(eskf->R_imu_to_board));
+    memcpy(eskf->R_board_to_mag, eskf_v1_R_board_to_mag, sizeof(eskf->R_board_to_mag));
   } else {
     /* Default: v2 (current hardware) */
-    memcpy(eskf->R_imu_to_vehicle, eskf_v2_R_imu_to_vehicle, sizeof(eskf->R_imu_to_vehicle));
-    memcpy(eskf->R_vehicle_to_mag, eskf_v2_R_vehicle_to_mag, sizeof(eskf->R_vehicle_to_mag));
+    memcpy(eskf->R_imu_to_board, eskf_v2_R_imu_to_board, sizeof(eskf->R_imu_to_board));
+    memcpy(eskf->R_board_to_mag, eskf_v2_R_board_to_mag, sizeof(eskf->R_board_to_mag));
   }
 
   /* Copy initial nominal state (pos=0, vel=0, quat=identity) */
@@ -103,8 +103,8 @@ int eskf_init(ESKF *eskf) {
   float initial_mag[3] = {saved_mag[0] / (float)saved_count,
                           saved_mag[1] / (float)saved_count,
                           saved_mag[2] / (float)saved_count};
-  calculate_initial_orientation(initial_accel, initial_mag, eskf->R_imu_to_vehicle,
-                                eskf->R_vehicle_to_mag, &eskf->x_nom[ESKF_QUAT_W],
+  calculate_initial_orientation(initial_accel, initial_mag, eskf->R_imu_to_board,
+                                eskf->R_board_to_mag, &eskf->x_nom[ESKF_QUAT_W],
                                 eskf->mag_world);
 
   /* Initialise flight state to INIT + load Q/R diags */
@@ -134,10 +134,10 @@ void eskf_predict(ESKF *eskf, const float u[ESKF_CONTROL_DIM], float dt) {
   quaternion_normalize_f32(&eskf->x_nom[ESKF_QUAT_W]);
 
   /* ---- Propagate nominal state ---- */
-  eskf_nominal_predict(eskf->x_nom, u, dt, eskf->R_imu_to_vehicle);
+  eskf_nominal_predict(eskf->x_nom, u, dt, eskf->R_imu_to_board);
 
   /* ---- Build discrete error Jacobian F_d ---- */
-  eskf_error_jacobian(eskf->x_nom, u, dt, eskf->R_imu_to_vehicle, F_d_data);
+  eskf_error_jacobian(eskf->x_nom, u, dt, eskf->R_imu_to_board, F_d_data);
 
   /* ---- Build discrete process noise Q_d = diag(qvar * dt) ---- */
   memset(Q_d_data, 0, sizeof(Q_d_data));
@@ -161,13 +161,13 @@ void eskf_update(ESKF *eskf, const float z[ESKF_MEASUREMENT_DIM]) {
   /* ---- Predicted measurement ---- */
   float z_pred[M];
   eskf_measurement_function(eskf->x_nom, eskf->initial_pressure, eskf->mag_world,
-                            eskf->R_vehicle_to_mag, z_pred);
+                            eskf->R_board_to_mag, z_pred);
 
   /* ---- Measurement Jacobian H (4×9) ---- */
   float H_data[M * N];
   matrix_instance_f32 H = {M, N, H_data};
   eskf_measurement_jacobian(eskf->x_nom, eskf->initial_pressure, eskf->mag_world,
-                            eskf->R_vehicle_to_mag, H_data);
+                            eskf->R_board_to_mag, H_data);
 
   /* ---- Innovation y = z − z_pred ---- */
   float y[M];
@@ -303,23 +303,23 @@ void calculate_initial_orientation(const float *imu_accel, const float *mag_fiel
   float mag_sensor_norm[3] = {mag_field[0] / norm_mag, mag_field[1] / norm_mag,
                               mag_field[2] / norm_mag};
 
-  /* Rotate accel from sensor → vehicle frame */
-  float acc_vehicle[3];
-  mat3_vec3_mult(R_imu, acc_sensor_norm, acc_vehicle);
+  /* Rotate accel from sensor → board frame */
+  float acc_board[3];
+  mat3_vec3_mult(R_imu, acc_sensor_norm, acc_board);
 
-  /* Rotate mag from sensor → vehicle frame using R_mag^T (inverse of vehicle→sensor) */
-  float mag_vehicle_vec[3];
-  mat3T_vec3_mult(R_mag, mag_sensor_norm, mag_vehicle_vec);
-  float mag_vehicle[4] = {0.0F, mag_vehicle_vec[0], mag_vehicle_vec[1], mag_vehicle_vec[2]};
+  /* Rotate mag from sensor → board frame using R_mag^T (inverse of board→sensor) */
+  float mag_board_vec[3];
+  mat3T_vec3_mult(R_mag, mag_sensor_norm, mag_board_vec);
+  float mag_board[4] = {0.0F, mag_board_vec[0], mag_board_vec[1], mag_board_vec[2]};
 
-  float roll = atan2f(acc_vehicle[1], acc_vehicle[2]);
-  float pitch = atan2f(-acc_vehicle[0],
-                       sqrtf(acc_vehicle[1] * acc_vehicle[1] + acc_vehicle[2] * acc_vehicle[2]));
+  float roll = atan2f(acc_board[1], acc_board[2]);
+  float pitch = atan2f(-acc_board[0],
+                       sqrtf(acc_board[1] * acc_board[1] + acc_board[2] * acc_board[2]));
 
   float cp = cosf(pitch), sp = sinf(pitch);
   float cr = cosf(roll), sr = sinf(roll);
-  float mx2 = mag_vehicle[1] * cp + mag_vehicle[3] * sp;
-  float my2 = mag_vehicle[1] * sr * sp + mag_vehicle[2] * cr - mag_vehicle[3] * sr * cp;
+  float mx2 = mag_board[1] * cp + mag_board[3] * sp;
+  float my2 = mag_board[1] * sr * sp + mag_board[2] * cr - mag_board[3] * sr * cp;
   float yaw = atan2f(-my2, mx2);
 
   /* Euler → quaternion (ZYX convention) */
@@ -332,11 +332,11 @@ void calculate_initial_orientation(const float *imu_accel, const float *mag_fiel
   init_quaternion[2] = cr2 * sp2 * cy2 + sr2 * cp2 * sy2;
   init_quaternion[3] = cr2 * cp2 * sy2 - sr2 * sp2 * cy2;
 
-  /* Rotate mag to world frame: q @ mag_vehicle @ q_conj */
+  /* Rotate mag to world frame: q @ mag_board @ q_conj */
   float quat_conj[4] = {init_quaternion[0], -init_quaternion[1], -init_quaternion[2],
                         -init_quaternion[3]};
   float temp[4], mag_world[4];
-  quaternion_product_f32(init_quaternion, mag_vehicle, temp);
+  quaternion_product_f32(init_quaternion, mag_board, temp);
   quaternion_product_f32(temp, quat_conj, mag_world);
   mag_world_frame[0] = mag_world[1];
   mag_world_frame[1] = mag_world[2];

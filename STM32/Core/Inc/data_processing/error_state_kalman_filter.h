@@ -25,9 +25,9 @@ typedef struct ESKF {
   float initial_pressure;
   float mag_world[3];
 
-  // sensor rotation matrices (set per hardware version in eskf_init)
-  float R_imu_to_vehicle[9]; /* 3×3 row-major: IMU sensor frame → vehicle body frame */
-  float R_vehicle_to_mag[9]; /* 3×3 row-major: vehicle body frame → mag sensor frame */
+  // sensor-to-board rotation matrices (set per hardware version in eskf_init)
+  float R_imu_to_board[9]; /* 3×3 row-major: IMU sensor frame → board frame */
+  float R_board_to_mag[9]; /* 3×3 row-major: board frame → mag sensor frame */
 
   // accumulator for INIT phase bias estimation
   float accel_accum[3];
@@ -99,8 +99,8 @@ void eskf_set_measurement(ESKF *eskf, const float *measurements);
  *
  * @param imu_accel       Raw accelerometer reading (sensor frame)
  * @param mag_field       Raw magnetometer reading (sensor frame)
- * @param R_imu           3×3 row-major: IMU sensor → vehicle rotation
- * @param R_mag           3×3 row-major: vehicle → mag sensor rotation
+ * @param R_imu           3×3 row-major: IMU sensor → board frame rotation
+ * @param R_mag           3×3 row-major: board frame → mag sensor rotation
  * @param init_quaternion Output quaternion [w,x,y,z]
  * @param mag_world_frame Output world-frame magnetic field vector
  */

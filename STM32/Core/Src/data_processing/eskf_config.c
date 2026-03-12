@@ -31,69 +31,94 @@ const float eskf_r_diag[ESKF_MEASUREMENT_DIM] = {
 };
 
 /* ====================================================================
- * Sensor Rotation Matrices — v2 Hardware (current PCB revision)
+ * Sensor-to-Board Rotation Matrices — v2 Hardware (current PCB)
  * ====================================================================
  *
- * IMU (ICM-45686) is mounted rotated 45° clockwise from the vehicle
- * X-axis when viewed from above.  To convert sensor readings into the
- * vehicle body frame we apply a 45° counter-clockwise rotation about Z:
+ * Board frame: +X forward, +Y left, +Z up  (right-handed)
  *
- *        Vehicle +Y                Sensor +Y
- *            ^                        ^  /
- *            |                        | /  45°
- *            |                        |/
- *   Vehicle +X ---->        Sensor +X ---->
+ * IMU (ICM-45686):
+ *   The IMU sensor axes are rotated -45° about the board +Z axis
+ *   (right-hand rule: sensor +X points between board +X and board -Y).
+ *   To transform sensor readings into the board frame, apply Rz(+45°):
  *
- *   R_imu_to_vehicle = Rz(+45°) =
+ *       Board +Y              Sensor +Y
+ *           ^                    ^
+ *           |                     \ 45°
+ *           |                      \
+ *   Board +X ---->        Sensor +X ---->
+ *
+ *   R_imu_to_board = Rz(+45°):
  *       [ cos45  -sin45   0 ]     [ √2/2  -√2/2   0 ]
  *       [ sin45   cos45   0 ]  =  [ √2/2   √2/2   0 ]
  *       [   0       0     1 ]     [   0      0     1 ]
  *
- * Magnetometer (MMC5983MA) is mounted with its Z-axis pointing
- * opposite to the vehicle Z-axis.  X and Y are aligned:
+ *   board_x =  √2/2 · sensor_x  −  √2/2 · sensor_y
+ *   board_y =  √2/2 · sensor_x  +  √2/2 · sensor_y
+ *   board_z =  sensor_z
  *
- *   R_vehicle_to_mag =
- *       [ 1   0   0 ]
+ * Magnetometer (MMC5983MA):
+ *   The mag sensor Z-axis points opposite to the board Z-axis, and
+ *   the mag X/Y axes are rotated 90° CW (about the board +Z axis)
+ *   relative to the board axes.
+ *
+ *   Sensor-to-board transform: first flip Z, then Rz(+90°)
+ *     R_mag_to_board = Rz(90°) @ Fz
+ *       = [0 -1  0]   [1  0  0]   [0 -1  0]
+ *         [1  0  0] @ [0  1  0] = [1  0  0]
+ *         [0  0  1]   [0  0 -1]   [0  0 -1]
+ *
+ *   Board-to-sensor (stored as R_board_to_mag) = transpose:
  *       [ 0   1   0 ]
+ *       [-1   0   0 ]
  *       [ 0   0  -1 ]
  *
  * ==================================================================== */
 
-const float eskf_v2_R_imu_to_vehicle[9] = {
+const float eskf_v2_R_imu_to_board[9] = {
      SQRT2_INV, -SQRT2_INV, 0.0F,
      SQRT2_INV,  SQRT2_INV, 0.0F,
      0.0F,       0.0F,      1.0F,
 };
 
-const float eskf_v2_R_vehicle_to_mag[9] = {
-  1.0F, 0.0F,  0.0F,
-  0.0F, 1.0F,  0.0F,
-  0.0F, 0.0F, -1.0F,
+const float eskf_v2_R_board_to_mag[9] = {
+   0.0F,  1.0F,  0.0F,
+  -1.0F,  0.0F,  0.0F,
+   0.0F,  0.0F, -1.0F,
 };
 
 /* ====================================================================
- * Sensor Rotation Matrices — v1 Hardware (legacy PCB revision)
+ * Sensor-to-Board Rotation Matrices — v1 Hardware (legacy PCB)
  * ====================================================================
  *
- * TODO: Fill in the actual sensor orientations for v1 hardware.
- *       Use the same convention as v2 above:
- *       - R_imu_to_vehicle: rotation from IMU sensor frame → vehicle body frame
- *       - R_vehicle_to_mag: rotation from vehicle body frame → magnetometer sensor frame
+ * IMU:
+ *   The v1 IMU sensor axes are rotated +45° about the board +Z axis
+ *   (sensor +X points between board +X and board +Y).
+ *   To transform sensor readings into the board frame, apply Rz(-45°):
+ *
+ *   R_imu_to_board = Rz(-45°):
+ *       [ cos(-45)  -sin(-45)  0 ]     [ √2/2   √2/2   0 ]
+ *       [ sin(-45)   cos(-45)  0 ]  =  [-√2/2   √2/2   0 ]
+ *       [    0          0      1 ]     [   0      0     1 ]
+ *
+ *   board_x =  √2/2 · sensor_x  +  √2/2 · sensor_y
+ *   board_y = -√2/2 · sensor_x  +  √2/2 · sensor_y
+ *   board_z =  sensor_z
+ *
+ * Magnetometer:
+ *   Same orientation as v2 hardware (flip Z, then Rz(+90°)).
  *
  * ==================================================================== */
 
-const float eskf_v1_R_imu_to_vehicle[9] = {
-  /* TODO: fill in v1 IMU orientation */
-  1.0F, 0.0F, 0.0F,
-  0.0F, 1.0F, 0.0F,
-  0.0F, 0.0F, 1.0F,
+const float eskf_v1_R_imu_to_board[9] = {
+   SQRT2_INV,  SQRT2_INV, 0.0F,
+  -SQRT2_INV,  SQRT2_INV, 0.0F,
+   0.0F,       0.0F,      1.0F,
 };
 
-const float eskf_v1_R_vehicle_to_mag[9] = {
-  /* TODO: fill in v1 magnetometer orientation */
-  1.0F, 0.0F, 0.0F,
-  0.0F, 1.0F, 0.0F,
-  0.0F, 0.0F, 1.0F,
+const float eskf_v1_R_board_to_mag[9] = {
+   0.0F,  1.0F,  0.0F,
+  -1.0F,  0.0F,  0.0F,
+   0.0F,  0.0F, -1.0F,
 };
 
 // clang-format on

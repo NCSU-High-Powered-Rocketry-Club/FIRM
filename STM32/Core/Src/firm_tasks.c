@@ -555,10 +555,12 @@ void collect_adxl371_data_task(void *argument) {
 void filter_data_task(void *argument) {
 
   ESKF eskf;
+  memset(&eskf, 0, sizeof(ESKF));
   ESKFRawData raw_data_instance;
   TaskCommandOption cmd_status = TASKCMD_SETUP;
   float last_time = 0.0F;
   TickType_t start_time = xTaskGetTickCount();
+  const TickType_t kalman_frequency = MAX_WAIT_TIME(firmSettings.frequency_hz);
 
   for (;;) {
     xQueueReceive(data_filter_command_queue, &cmd_status, 0);
@@ -569,9 +571,11 @@ void filter_data_task(void *argument) {
       }
 
       // loop collecting data until enough is collected to get starting rotation and initial
-      // altitude
-      while ((xTaskGetTickCount() - start_time) >
+      // altitude. 100ms delay allows sensors to collect intitial data
+      vTaskDelay(pdMS_TO_TICKS(100));
+      while ((xTaskGetTickCount() - start_time) <
              pdMS_TO_TICKS(KALMAN_FILTER_STARTUP_DELAY_TIME_MS)) {
+        vTaskDelay(kalman_frequency);
         // orientation initialization relies on acceleration and magnetic field, initial altitude
         // uses raw pressure
 
@@ -598,13 +602,12 @@ void filter_data_task(void *argument) {
       // setting the current data packet to the instance of data to be used in this next filter
       // update
       raw_data_instance.timestamp_seconds = data_packet.data.data_packet.timestamp_seconds;
-      memcpy(&raw_data_instance, &data_packet.data.data_packet.pressure_pascals,
+      memcpy(&raw_data_instance.pressure_pascals, &data_packet.data.data_packet.pressure_pascals,
              sizeof(raw_data_instance) - sizeof(raw_data_instance.timestamp_seconds));
       float dt = (float)raw_data_instance.timestamp_seconds - last_time;
-
+      
       if (dt > 1e-6) {
         last_time = (float)raw_data_instance.timestamp_seconds;
-
         /* ---- Build raw IMU readings (sensor frame) ---- */
         float accel_raw[3] = {raw_data_instance.raw_acceleration_x_gs,
                               raw_data_instance.raw_acceleration_y_gs,
@@ -636,6 +639,8 @@ void filter_data_task(void *argument) {
         /* ---- Copy estimates back to data packet ---- */
         memcpy(&data_packet.data.data_packet.est_position_x_meters, eskf.x_nom,
                ESKF_NOMINAL_DIM * sizeof(float));
+        
+        vTaskDelayUntil(&start_time, kalman_frequency);
       }
     }
   }

@@ -11,9 +11,9 @@
  * ==================================================================== */
 
 /**
- * @brief Transform raw IMU (sensor frame) to vehicle frame + convert units.
+ * @brief Transform raw IMU (sensor frame) to board frame + convert units.
  *
- * @param R_imu  3×3 row-major: IMU sensor → vehicle rotation matrix
+ * @param R_imu  3×3 row-major: IMU sensor → board frame rotation matrix
  * accel: g-units → m/s²     gyro: deg/s → rad/s
  */
 void eskf_imu_to_vehicle(const float R_imu[9], const float accel_sensor[3],
@@ -23,7 +23,7 @@ void eskf_imu_to_vehicle(const float R_imu[9], const float accel_sensor[3],
 /**
  * @brief Propagate the 10-dim nominal state (full strapdown).
  *
- * @param R_imu  3×3 row-major: IMU sensor → vehicle rotation matrix
+ * @param R_imu  3×3 row-major: IMU sensor → board frame rotation matrix
  */
 void eskf_nominal_predict(float x_nom[ESKF_NOMINAL_DIM], const float u[ESKF_CONTROL_DIM],
                           float dt, const float R_imu[9]);
@@ -31,7 +31,7 @@ void eskf_nominal_predict(float x_nom[ESKF_NOMINAL_DIM], const float u[ESKF_CONT
 /**
  * @brief Build the 9×9 discrete error-state Jacobian F_d.
  *
- * @param R_imu    3×3 row-major: IMU sensor → vehicle rotation matrix
+ * @param R_imu    3×3 row-major: IMU sensor → board frame rotation matrix
  * @param F_d_data output 81-element row-major array
  */
 void eskf_error_jacobian(const float x_nom[ESKF_NOMINAL_DIM], const float u[ESKF_CONTROL_DIM],
@@ -41,7 +41,7 @@ void eskf_error_jacobian(const float x_nom[ESKF_NOMINAL_DIM], const float u[ESKF
 /**
  * @brief Predicted measurement z_pred = [pressure, mag_sensor(3)].
  *
- * @param R_mag  3×3 row-major: vehicle → magnetometer sensor rotation matrix
+ * @param R_mag  3×3 row-major: board frame → mag sensor rotation matrix
  */
 void eskf_measurement_function(const float x_nom[ESKF_NOMINAL_DIM], float init_pressure,
                                const float mag_world[3], const float R_mag[9],
@@ -50,7 +50,7 @@ void eskf_measurement_function(const float x_nom[ESKF_NOMINAL_DIM], float init_p
 /**
  * @brief Measurement Jacobian H (4×9).
  *
- * @param R_mag  3×3 row-major: vehicle → magnetometer sensor rotation matrix
+ * @param R_mag  3×3 row-major: board frame → mag sensor rotation matrix
  * @param H_data output 36-element row-major array
  */
 void eskf_measurement_jacobian(const float x_nom[ESKF_NOMINAL_DIM], float init_pressure,
