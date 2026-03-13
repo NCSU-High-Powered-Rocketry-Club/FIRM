@@ -1,5 +1,6 @@
 #include "unscented_kalman_filter.h"
 #include "kalman_filter_config.h"
+#include "led.h"
 #include "settings.h"
 #include "usb_print_debug.h"
 #include <string.h>
@@ -103,10 +104,11 @@ int ukf_init(UKF *ukfh, float initial_pressure, float *initial_acceleration,
       firmSettings.firmware_version[2] == '.') {
     memcpy(ukfh->R_imu_to_board, ukf_v1_R_imu_to_board, sizeof(ukfh->R_imu_to_board));
     memcpy(ukfh->R_mag_to_board, ukf_v1_R_mag_to_board, sizeof(ukfh->R_mag_to_board));
+    led_set_status(FIRM_UNINITIALIZED);
   } else {
     /* Default: v2 (current hardware) */
-    memcpy(ukfh->R_imu_to_board, ukf_v2_R_imu_to_board, sizeof(ukfh->R_imu_to_board));
-    memcpy(ukfh->R_mag_to_board, ukf_v2_R_mag_to_board, sizeof(ukfh->R_mag_to_board));
+    memcpy(ukfh->R_imu_to_board, ukf_v1_R_imu_to_board, sizeof(ukfh->R_imu_to_board));
+    memcpy(ukfh->R_mag_to_board, ukf_v1_R_mag_to_board, sizeof(ukfh->R_mag_to_board));
   }
 
   // initialize state machine (also initializes Q/R diagonals)
