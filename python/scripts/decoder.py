@@ -18,6 +18,9 @@ ICM45686_SIZE = 15
 MMC5983MA_SIZE = 7
 ADXL371_SIZE = 6
 
+# fallback scale factor when header value is missing or zero
+DEFAULT_ADXL371_SCALE_FACTOR = 10.24
+
 # header order
 HEADER_SIZE_TEXT = 14 # size of the "FIRM LOG vx.x" text
 HEADER_UID_SIZE = 8
@@ -158,6 +161,12 @@ class Decoder:
         self.mmc5983ma_scale_factor = scale_factors[4]
         self.adxl371_scale_factor = scale_factors[5]
 
+        if self.adxl371_scale_factor == 0:
+            self.adxl371_scale_factor = DEFAULT_ADXL371_SCALE_FACTOR
+            self.adxl371_scale_factor_defaulted = True
+        else:
+            self.adxl371_scale_factor_defaulted = False
+
     def convert_bmp581(self, binary_packet):
         temp_pressure = struct.unpack('<II', binary_packet[0 : 3] + b'\00' + binary_packet[3 : 6] + b'\00')
         data = [
@@ -259,6 +268,10 @@ def write_to_csv(data: pd.DataFrame, filename, decoder: Decoder):
 def decode(path):
     with open(path, 'rb') as f:
         decoder = Decoder(f)
+        if getattr(decoder, "adxl371_scale_factor_defaulted", False):
+            print(
+                f"Warning: ADXL371 scale factor is 0 in header; defaulting to {DEFAULT_ADXL371_SCALE_FACTOR}"
+            )
         while (decoder.read_packet()):
             continue
         print("decoded data, writing csv's...")
