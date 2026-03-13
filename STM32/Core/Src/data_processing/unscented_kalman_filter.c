@@ -107,8 +107,8 @@ int ukf_init(UKF *ukfh, float initial_pressure, float *initial_acceleration,
     led_set_status(FIRM_UNINITIALIZED);
   } else {
     /* Default: v2 (current hardware) */
-    memcpy(ukfh->R_imu_to_board, ukf_v1_R_imu_to_board, sizeof(ukfh->R_imu_to_board));
-    memcpy(ukfh->R_mag_to_board, ukf_v1_R_mag_to_board, sizeof(ukfh->R_mag_to_board));
+    memcpy(ukfh->R_imu_to_board, ukf_v2_R_imu_to_board, sizeof(ukfh->R_imu_to_board));
+    memcpy(ukfh->R_mag_to_board, ukf_v2_R_mag_to_board, sizeof(ukfh->R_mag_to_board));
   }
 
   // initialize state machine (also initializes Q/R diagonals)
