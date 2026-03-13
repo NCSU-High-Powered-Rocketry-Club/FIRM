@@ -173,8 +173,6 @@ int initialize_firm(SPIHandles *spi_handles_ptr, I2CHandles *i2c_handles_ptr,
     return 1;
   }
 
-  
-
   if (mmc5983ma_init(spi_handles_ptr->hspi2, GPIOC, GPIO_PIN_7)) {
     led_set_status(MMC5983MA_FAIL);
     Error_Handler();
