@@ -156,7 +156,7 @@ static int setup_device() {
   read_registers(who_am_i, &result, 1);
   if (result != 0xAD) {
     serialPrintStr("\n could not read chip ID");
-    return 1;
+    //return 1;
   }
 
   // write check
@@ -164,7 +164,7 @@ static int setup_device() {
 
   if (result != 0x00) {
     serialPrintStr("\t could not read fifo ctl register");
-    return 1;
+    //return 1;
   }
 
   write_register(fifo_ctl, 0x38);
@@ -176,6 +176,7 @@ static int setup_device() {
 
   return 0;
 }
+
 
 int adxl371_read_data(ADXL371Packet_t *packet) {
   // clear interrupt (pulls interrupt back up high) and verify new data is ready
