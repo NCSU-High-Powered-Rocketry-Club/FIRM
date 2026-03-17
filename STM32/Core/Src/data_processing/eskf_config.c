@@ -41,36 +41,28 @@ const float eskf_r_diag[ESKF_MEASUREMENT_DIM] = {
  *   (right-hand rule: sensor +X points between board +X and board -Y).
  *   To transform sensor readings into the board frame, apply Rz(+45°):
  *
- *       Board +Y              Sensor +Y
- *           ^                    ^
- *           |                     \ 45°
- *           |                      \
- *   Board +X ---->        Sensor +X ---->
- *
+ *               Board +X         Sensor +X
+ *                   ^               ^
+ *                   |                \ 
+ *                   |                 \
+ *  Board +Y   <-----                  /
+ *                                    /
+ *                                   v 
+ *                               Sensor +Y
+ * 
  *   R_imu_to_board = Rz(+45°):
  *       [ cos45  -sin45   0 ]     [ √2/2  -√2/2   0 ]
  *       [ sin45   cos45   0 ]  =  [ √2/2   √2/2   0 ]
  *       [   0       0     1 ]     [   0      0     1 ]
  *
- *   board_x =  √2/2 · sensor_x  −  √2/2 · sensor_y
- *   board_y =  √2/2 · sensor_x  +  √2/2 · sensor_y
- *   board_z =  sensor_z
- *
  * Magnetometer (MMC5983MA):
  *   The mag sensor Z-axis points opposite to the board Z-axis, and
- *   the mag X/Y axes are rotated 90° CW (about the board +Z axis)
- *   relative to the board axes.
+ *   the mag X/Y axes are rotated 90° CW (relative to board Z axis)
  *
- *   Sensor-to-board transform: first flip Z, then Rz(+90°)
- *     R_mag_to_board = Rz(90°) @ Fz
- *       = [0 -1  0]   [1  0  0]   [0 -1  0]
- *         [1  0  0] @ [0  1  0] = [1  0  0]
- *         [0  0  1]   [0  0 -1]   [0  0 -1]
- *
- *   Board-to-sensor (stored as R_board_to_mag) = transpose:
- *       [ 0   1   0 ]
- *       [-1   0   0 ]
- *       [ 0   0  -1 ]
+ *     R_mag_to_board
+ *       = [0  1  0]
+ *         [-1 0  0]
+ *         [0  0 -1]
  *
  * ==================================================================== */
 
@@ -80,7 +72,7 @@ const float eskf_v2_R_imu_to_board[9] = {
      0.0F,       0.0F,      1.0F,
 };
 
-const float eskf_v2_R_board_to_mag[9] = {
+const float eskf_v2_R_mag_to_bard[9] = {
    0.0F,  1.0F,  0.0F,
   -1.0F,  0.0F,  0.0F,
    0.0F,  0.0F, -1.0F,
@@ -100,12 +92,9 @@ const float eskf_v2_R_board_to_mag[9] = {
  *       [ sin(-45)   cos(-45)  0 ]  =  [-√2/2   √2/2   0 ]
  *       [    0          0      1 ]     [   0      0     1 ]
  *
- *   board_x =  √2/2 · sensor_x  +  √2/2 · sensor_y
- *   board_y = -√2/2 · sensor_x  +  √2/2 · sensor_y
- *   board_z =  sensor_z
  *
  * Magnetometer:
- *   Same orientation as v2 hardware (flip Z, then Rz(+90°)).
+ *   Same orientation as v2 hardware.
  *
  * ==================================================================== */
 
@@ -115,7 +104,7 @@ const float eskf_v1_R_imu_to_board[9] = {
    0.0F,       0.0F,      1.0F,
 };
 
-const float eskf_v1_R_board_to_mag[9] = {
+const float eskf_v1_R_mag_to_board[9] = {
    0.0F,  1.0F,  0.0F,
   -1.0F,  0.0F,  0.0F,
    0.0F,  0.0F, -1.0F,
