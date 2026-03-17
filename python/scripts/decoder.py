@@ -255,13 +255,6 @@ def write_to_csv(data: pd.DataFrame, filename, decoder: Decoder):
         f.write("\nADXL371 Acceleration Calibration,")
         for cal in decoder.adxl371_cal:
             f.write(f"{cal},")
-        f.write(f"\n\nScale Factors\nAccel,Gyro,Mag,Pressure,Temp,HighG_Accel\n")
-        scale_factors_full = [decoder.icm45686_scale_factors, decoder.mmc5983ma_scale_factor, decoder.bmp581_scale_factors, decoder.adxl371_scale_factor]
-        
-        # this flattens the array
-        scale_factors = [sf for sensor in scale_factors_full for sf in (sensor if isinstance(sensor, (list, tuple)) else [sensor])]
-        for sf in scale_factors:
-            f.write(f"{sf},")
         f.write("\n\n")
     data.to_csv(filename, mode="a", index=False)
 
