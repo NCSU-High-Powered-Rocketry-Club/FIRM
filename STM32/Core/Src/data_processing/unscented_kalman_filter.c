@@ -1,6 +1,9 @@
 #include "unscented_kalman_filter.h"
 #include "kalman_filter_config.h"
+#include "led.h"
+#include "settings.h"
 #include "usb_print_debug.h"
+#include <string.h>
 
 // static array allocation
 static float X[UKF_STATE_DIMENSION];                                      // state vector
@@ -58,6 +61,13 @@ static arm_matrix_instance_f32 temp_weighted_residuals_transpose = {
  */
 static void calculate_sigma_weights(void);
 
+/* ---- helper: 3×3 row-major matrix-vector multiply (R @ v) ---------- */
+static void mat3_vec3_mult(const float R[9], const float v[3], float out[3]) {
+  out[0] = R[0] * v[0] + R[1] * v[1] + R[2] * v[2];
+  out[1] = R[3] * v[0] + R[4] * v[1] + R[5] * v[2];
+  out[2] = R[6] * v[0] + R[7] * v[1] + R[8] * v[2];
+}
+
 /**
  * @brief calculates the sigma points to be used in the state transition function
  *
@@ -89,6 +99,18 @@ int ukf_init(UKF *ukfh, float initial_pressure, float *initial_acceleration,
   ukfh->measurement_errors = measurement_errors;
   ukfh->measurement_vector = measurement_vector;
 
+  // ---- Select rotation matrices based on hardware version ----
+  if (firmSettings.firmware_version[0] == 'v' && firmSettings.firmware_version[1] == '1' &&
+      firmSettings.firmware_version[2] == '.') {
+    memcpy(ukfh->R_imu_to_board, ukf_v1_R_imu_to_board, sizeof(ukfh->R_imu_to_board));
+    memcpy(ukfh->R_mag_to_board, ukf_v1_R_mag_to_board, sizeof(ukfh->R_mag_to_board));
+    led_set_status(FIRM_UNINITIALIZED);
+  } else {
+    /* Default: v2 (current hardware) */
+    memcpy(ukfh->R_imu_to_board, ukf_v2_R_imu_to_board, sizeof(ukfh->R_imu_to_board));
+    memcpy(ukfh->R_mag_to_board, ukf_v2_R_mag_to_board, sizeof(ukfh->R_mag_to_board));
+  }
+
   // initialize state machine (also initializes Q/R diagonals)
   init_state(ukfh);
 
@@ -101,6 +123,7 @@ int ukf_init(UKF *ukfh, float initial_pressure, float *initial_acceleration,
   X[UKF_STATE_DIMENSION - 1] = ukf_initial_state_estimate[UKF_STATE_DIMENSION - 1];
   // set initial quaternion, magnetometer, and pressure
   calculate_initial_orientation(initial_acceleration, initial_magnetic_field,
+                                ukfh->R_imu_to_board, ukfh->R_mag_to_board,
                                 &X[UKF_STATE_DIMENSION - 4], ukfh->mag_world);
   ukfh->initial_pressure = initial_pressure;
   // calculate ukf constants that are needed before running first predict and update
@@ -195,9 +218,15 @@ int ukf_update(UKF *ukfh) {
   arm_matrix_instance_f32 innovation_covariance_inverse = {
       UKF_MEASUREMENT_DIMENSION, UKF_MEASUREMENT_DIMENSION, innovation_inverse_data};
   mat_inverse_f32(&innovation_covariance, &innovation_covariance_inverse);
+
   // calculate the kalman gain, which defines how much to weigh the prediction by compared
   // to the sensor measurements
   mat_mult_f32(&P_cross_covariance, &innovation_covariance_inverse, &kalman_gain);
+
+  /* Disable pressure coupling for all non-position states: K[3:, 0] = 0 */
+  for (int i = 3; i < UKF_COVARIANCE_DIMENSION; i++) {
+    kalman_gain_data[i * UKF_MEASUREMENT_DIMENSION] = 0.0F;
+  }
 
   // calculate measurement error metric for debug and state change purposes. These values can
   // be used to determine when a measurement is outside of the expected range and can help tune
@@ -220,21 +249,49 @@ int ukf_update(UKF *ukfh) {
   // components
   quaternion_product_f32(temp_quat, &X[UKF_STATE_DIMENSION - 4], &X[UKF_STATE_DIMENSION - 4]);
   vec_add_f32(X, delta_x, X, UKF_STATE_DIMENSION - 4);
-  // compute next covariance matrix, P
-  // new_P = P - (kalman_gain * innovation_covariance * kalman_gain^T)
+
+    // compute next covariance matrix, P, using the Joseph form adapted for UKF cross covariance:
+    // P_new = P - K @ Pxz^T - Pxz @ K^T + K @ S @ K^T
   float kalman_gain_transpose_data[UKF_MEASUREMENT_DIMENSION * UKF_COVARIANCE_DIMENSION];
   arm_matrix_instance_f32 kalman_gain_transpose = {
       UKF_MEASUREMENT_DIMENSION, UKF_COVARIANCE_DIMENSION, kalman_gain_transpose_data};
   mat_trans_f32(&kalman_gain, &kalman_gain_transpose);
-  float temp_matrix_data[UKF_MEASUREMENT_DIMENSION * UKF_COVARIANCE_DIMENSION];
-  arm_matrix_instance_f32 temp_matrix = {UKF_MEASUREMENT_DIMENSION, UKF_COVARIANCE_DIMENSION,
-                                         temp_matrix_data};
-  mat_mult_f32(&innovation_covariance, &kalman_gain_transpose, &temp_matrix);
-  float negative_delta_P_data[UKF_COVARIANCE_DIMENSION * UKF_COVARIANCE_DIMENSION];
-  arm_matrix_instance_f32 negative_delta_P = {UKF_COVARIANCE_DIMENSION, UKF_COVARIANCE_DIMENSION,
-                                              negative_delta_P_data};
-  mat_mult_f32(&kalman_gain, &temp_matrix, &negative_delta_P);
-  mat_sub_f32(&P, &negative_delta_P, &P);
+
+    float P_cross_covariance_transpose_data[UKF_MEASUREMENT_DIMENSION * UKF_COVARIANCE_DIMENSION];
+    arm_matrix_instance_f32 P_cross_covariance_transpose = {
+      UKF_MEASUREMENT_DIMENSION, UKF_COVARIANCE_DIMENSION, P_cross_covariance_transpose_data};
+    mat_trans_f32(&P_cross_covariance, &P_cross_covariance_transpose);
+
+    float K_PxzT_data[UKF_COVARIANCE_DIMENSION * UKF_COVARIANCE_DIMENSION];
+    arm_matrix_instance_f32 K_PxzT = {UKF_COVARIANCE_DIMENSION, UKF_COVARIANCE_DIMENSION,
+                    K_PxzT_data};
+    mat_mult_f32(&kalman_gain, &P_cross_covariance_transpose, &K_PxzT);
+
+    float Pxz_KT_data[UKF_COVARIANCE_DIMENSION * UKF_COVARIANCE_DIMENSION];
+    arm_matrix_instance_f32 Pxz_KT = {UKF_COVARIANCE_DIMENSION, UKF_COVARIANCE_DIMENSION,
+                    Pxz_KT_data};
+    mat_mult_f32(&P_cross_covariance, &kalman_gain_transpose, &Pxz_KT);
+
+    float S_KT_data[UKF_MEASUREMENT_DIMENSION * UKF_COVARIANCE_DIMENSION];
+    arm_matrix_instance_f32 S_KT = {UKF_MEASUREMENT_DIMENSION, UKF_COVARIANCE_DIMENSION,
+                    S_KT_data};
+    mat_mult_f32(&innovation_covariance, &kalman_gain_transpose, &S_KT);
+
+    float K_S_KT_data[UKF_COVARIANCE_DIMENSION * UKF_COVARIANCE_DIMENSION];
+    arm_matrix_instance_f32 K_S_KT = {UKF_COVARIANCE_DIMENSION, UKF_COVARIANCE_DIMENSION,
+                    K_S_KT_data};
+    mat_mult_f32(&kalman_gain, &S_KT, &K_S_KT);
+
+    float new_P_data[UKF_COVARIANCE_DIMENSION * UKF_COVARIANCE_DIMENSION];
+    arm_matrix_instance_f32 new_P = {UKF_COVARIANCE_DIMENSION, UKF_COVARIANCE_DIMENSION, new_P_data};
+    float temp_P_data[UKF_COVARIANCE_DIMENSION * UKF_COVARIANCE_DIMENSION];
+    arm_matrix_instance_f32 temp_P = {UKF_COVARIANCE_DIMENSION, UKF_COVARIANCE_DIMENSION, temp_P_data};
+
+    mat_sub_f32(&P, &K_PxzT, &temp_P);
+    mat_sub_f32(&temp_P, &Pxz_KT, &temp_P);
+    mat_add_f32(&temp_P, &K_S_KT, &new_P);
+    memcpy(P.pData, new_P.pData, sizeof(new_P_data));
+    symmetrize(&P);
 
   // update state machine
   state_update(ukfh);
@@ -519,25 +576,35 @@ static int calculate_cross_covariance(const float *measurement_mean,
 }
 
 void calculate_initial_orientation(const float *imu_accel, const float *mag_field,
+                                   const float R_imu[9], const float R_mag[9],
                                    float *init_quaternion, float *mag_world_frame) {
   float norm_acc = sqrtf(imu_accel[0] * imu_accel[0] + imu_accel[1] * imu_accel[1] +
                          imu_accel[2] * imu_accel[2]);
   float norm_mag = sqrtf(mag_field[0] * mag_field[0] + mag_field[1] * mag_field[1] +
                          mag_field[2] * mag_field[2]);
-  float acc_vehicle[3] = {
-    (imu_accel[0] / SQRT2_F + imu_accel[1] / SQRT2_F) / norm_acc,
-    (-imu_accel[0] / SQRT2_F + imu_accel[1] / SQRT2_F) / norm_acc,
-      imu_accel[2] / norm_acc,
-  };
+
+  float acc_sensor_norm[3] = {imu_accel[0] / norm_acc, imu_accel[1] / norm_acc,
+                              imu_accel[2] / norm_acc};
+  float mag_sensor_norm[3] = {mag_field[0] / norm_mag, mag_field[1] / norm_mag,
+                              mag_field[2] / norm_mag};
+
+  /* Rotate accel from sensor → board frame */
+  float acc_board[3];
+  mat3_vec3_mult(R_imu, acc_sensor_norm, acc_board);
+
+  /* Rotate mag from sensor → board frame */
+  float mag_board[3];
+  mat3_vec3_mult(R_mag, mag_sensor_norm, mag_board);
+
   float *mag_vehicle_quat = temp_quat;
   mag_vehicle_quat[0] = 0.0F;
-  mag_vehicle_quat[1] = -mag_field[1] / norm_mag;
-  mag_vehicle_quat[2] = mag_field[0] / norm_mag;
-  mag_vehicle_quat[3] = -mag_field[2] / norm_mag;
+  mag_vehicle_quat[1] = mag_board[0];
+  mag_vehicle_quat[2] = mag_board[1];
+  mag_vehicle_quat[3] = mag_board[2];
 
-  float roll = atan2f(acc_vehicle[1], acc_vehicle[2]);
-  float pitch = atan2f(-acc_vehicle[0],
-                       sqrtf(acc_vehicle[1] * acc_vehicle[1] + acc_vehicle[2] * acc_vehicle[2]));
+  float roll = atan2f(acc_board[1], acc_board[2]);
+  float pitch = atan2f(-acc_board[0],
+                       sqrtf(acc_board[1] * acc_board[1] + acc_board[2] * acc_board[2]));
   float mx2 = mag_vehicle_quat[1] * cosf(pitch) + mag_vehicle_quat[3] * sinf(pitch);
   float my2 = mag_vehicle_quat[1] * sinf(roll) * sinf(pitch) + mag_vehicle_quat[2] * cosf(roll) -
               mag_vehicle_quat[3] * sinf(roll) * cosf(pitch);

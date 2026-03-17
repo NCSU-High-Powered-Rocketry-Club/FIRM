@@ -25,6 +25,10 @@ typedef struct UKF {
 
     float initial_pressure;
     float mag_world[3];
+
+    // sensor-to-board rotation matrices (set per hardware version in ukf_init)
+    float R_imu_to_board[9]; /* 3×3 row-major: IMU sensor frame → board frame */
+    float R_mag_to_board[9]; /* 3×3 row-major: mag sensor frame → board frame */
 } UKF;
 
 /**
@@ -48,7 +52,13 @@ int ukf_predict(UKF *ukfh, float delta_time);
 
 int ukf_update(UKF *ukfh);
 
-void calculate_initial_orientation(const float *imu_accel, const float *mag_field, float *init_quaternion, float *mag_world_frame);
+/**
+ * @param R_imu  3×3 row-major: IMU sensor → board frame rotation
+ * @param R_mag  3×3 row-major: mag sensor → board frame rotation
+ */
+void calculate_initial_orientation(const float *imu_accel, const float *mag_field,
+                                   const float R_imu[9], const float R_mag[9],
+                                   float *init_quaternion, float *mag_world_frame);
 
 void ukf_set_measurement(UKF *ukfh, const float *measurements);
 

@@ -177,6 +177,7 @@ static int setup_device() {
   return 0;
 }
 
+
 int adxl371_read_data(ADXL371Packet_t *packet) {
   // clear interrupt (pulls interrupt back up high) and verify new data is ready
   uint8_t data_ready = 0;

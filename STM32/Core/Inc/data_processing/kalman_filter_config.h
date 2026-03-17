@@ -61,3 +61,28 @@ extern float ukf_measurement_noise_covariance_diag[STATE_MACHINE_NUM_STATES]
 #define UKF_SIGMA_TERTIARY_KAPPA 0.0F
 
 #define GROUND_ALTITUDE_METERS 20.0F
+
+#define SQRT2_INV 0.70710678118F /* 1/√2 */
+
+/* ====================================================================
+ * Three-frame sensor rotation model
+ * ====================================================================
+ * Sensor frame  : IC-specific axes (per datasheet)
+ * Board frame   : +X forward, +Y left, +Z up
+ * World frame   : inertial frame, defined by the quaternion state
+ *
+ * R_imu_to_board  transforms a vector from IMU sensor frame → board frame
+ * R_mag_to_board  transforms a vector from mag sensor frame → board frame
+ *
+ * Selection at runtime via firmSettings.firmware_version:
+ *   "v1.x.x" → legacy hardware  (v1 matrices)
+ *   "v2.x.x" → current hardware (v2 matrices, default)
+ * ==================================================================== */
+
+/* Hardware version v2 (current) */
+extern const float ukf_v2_R_imu_to_board[9]; /* 3×3 row-major */
+extern const float ukf_v2_R_mag_to_board[9]; /* 3×3 row-major */
+
+/* Hardware version v1 (legacy) */
+extern const float ukf_v1_R_imu_to_board[9]; /* 3×3 row-major */
+extern const float ukf_v1_R_mag_to_board[9]; /* 3×3 row-major */
