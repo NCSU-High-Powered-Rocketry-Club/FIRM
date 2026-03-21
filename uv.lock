@@ -41,6 +41,7 @@ source = { editable = "." }
 dependencies = [
     { name = "msgspec" },
     { name = "pyserial" },
+    { name = "ripgrepy" },
 ]
 
 [package.dev-dependencies]
@@ -57,6 +58,7 @@ dev = [
 requires-dist = [
     { name = "msgspec", specifier = ">=0.19.0" },
     { name = "pyserial", specifier = ">=3.5" },
+    { name = "ripgrepy", specifier = ">=2.2.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -396,6 +398,12 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/14/0d/e2c3b43bbce3cf6bd97c840b46088a3031085179e596d4929729d8d68270/PyYAML-6.0.2-cp313-cp313-win32.whl", hash = "sha256:bc2fa7c6b47d6bc618dd7fb02ef6fdedb1090ec036abab80d4681424b84c1183", size = 140527, upload-time = "2024-08-06T20:33:03.001Z" },
     { url = "https://files.pythonhosted.org/packages/fa/de/02b54f42487e3d3c6efb3f89428677074ca7bf43aae402517bc7cca949f3/PyYAML-6.0.2-cp313-cp313-win_amd64.whl", hash = "sha256:8388ee1976c416731879ac16da0aff3f63b286ffdd57cdeb95f3f2e085687563", size = 156446, upload-time = "2024-08-06T20:33:04.33Z" },
 ]
+
+[[package]]
+name = "ripgrepy"
+version = "2.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/80/8a/023e7c432634a6090a26ace319a37a2a73aac8fa6a7bf142fd7b3ec8fd3b/ripgrepy-2.2.0.tar.gz", hash = "sha256:4c43c61384f257660007acd271a5d8e4abe9be0b069c418d091f7299e080ca9d", size = 31740, upload-time = "2025-07-11T01:18:01.662Z" }
 
 [[package]]
 name = "ruff"
