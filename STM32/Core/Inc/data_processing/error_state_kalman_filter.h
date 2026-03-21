@@ -26,8 +26,8 @@ typedef struct ESKF {
   float mag_world[3];
 
   // sensor-to-board rotation matrices
-  float R_imu_to_board[9]; /* 3x3 row-major: IMU sensor frame -> board frame */
-  float R_mag_to_board[9]; /* 3x3 row-major: mag sensor frame -> board  frame */
+  float R_imu_to_board[9]; // 3x3 row-major: IMU sensor frame -> board frame
+  float R_mag_to_board[9]; // 3x3 row-major: mag sensor frame -> board  frame
 
   // measurement vector (set before calling update)
   float z[ESKF_MEASUREMENT_DIM];

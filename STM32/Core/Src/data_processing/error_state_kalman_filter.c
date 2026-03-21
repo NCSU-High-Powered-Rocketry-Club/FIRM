@@ -96,9 +96,13 @@ int eskf_init(ESKF *eskf) {
                                 R_mag.pData, &eskf->x_nom[ESKF_QUAT_W],
                                 eskf->mag_world);
 
-  /* Initialise flight state to INIT + load Q/R diags */
+  // load Q/R/P diags
   set_state_matrices(eskf);
-
+  // reset accumulated values
+  accum_count = 0;
+  pressure_accum = 0;
+  memset(accel_accum, 0, sizeof(accel_accum));
+  memset(mag_accum, 0, sizeof(mag_accum));
   return 0;
 }
 
