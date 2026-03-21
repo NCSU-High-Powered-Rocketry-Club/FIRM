@@ -26,9 +26,11 @@ osThreadId_t transmit_task_handle;
 osThreadId_t usb_read_task_handle;
 osThreadId_t mock_packet_handler_handle;
 
+// usb and transmit queues and streams
 StreamBufferHandle_t usb_rx_stream;
 QueueHandle_t transmit_queue;
 
+// command/request queues
 QueueHandle_t system_request_queue;
 QueueHandle_t mode_indicator_command_queue;
 QueueHandle_t bmp581_command_queue;
@@ -38,6 +40,9 @@ QueueHandle_t adxl371_command_queue;
 QueueHandle_t data_filter_command_queue;
 QueueHandle_t packetizer_command_queue;
 QueueHandle_t mock_packet_handler_command_queue;
+
+// event for when all sensors have collected data
+EventGroupHandle_t sensors_collected;
 
 // mock packets
 #define SENSOR_TIMESTAMP_SIZE_BYTES (sizeof(((SensorPacket *)0)->timestamp))
@@ -52,10 +57,8 @@ const osThreadAttr_t systemManagerTask_attributes = {
     .stack_size = 128 * 4,
     .priority = (osPriority_t)osPriorityNormal,
 };
-const osThreadAttr_t modeIndicatorTask_attributes = {.name = "modeIndicatorTask",
-                                                     .stack_size = 128 * 4,
-                                                     .priority =
-                                                         (osPriority_t)osPriorityAboveNormal};
+const osThreadAttr_t modeIndicatorTask_attributes = {
+    .name = "modeIndicatorTask", .stack_size = 128 * 4, .priority = (osPriority_t)osPriorityNormal};
 const osThreadAttr_t bmp581Task_attributes = {
     .name = "bmp581Task",
     .stack_size = 256 * 4,
@@ -221,8 +224,13 @@ void firm_rtos_init(void) {
       xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(SystemResponsePacket));
   mock_packet_handler_command_queue =
       xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
+
+  // mock ring initialization and mutex
   mock_ring_init(&mock_ring, mock_ring_storage, MOCK_RING_CAPACITY);
   mock_ring_mutex = xSemaphoreCreateMutex();
+
+  // event group to signal when kalman filter can be run
+  sensors_collected = xEventGroupCreate();
 }
 
 void system_manager_task(void *argument) {
@@ -371,6 +379,7 @@ void collect_bmp581_data_task(void *argument) {
       if (!err) {
         logger_write_entry('B', sizeof(BMP581Packet_t));
         bmp581_convert_packet(bmp581_packet, (DataPacket *)&data_packet.data);
+        xEventGroupSetBits(sensors_collected, BMP581_TASK_BIT);
       }
       osMutexRelease(sensorDataMutexHandle);
 
@@ -436,6 +445,7 @@ void collect_icm45686_data_task(void *argument) {
       if (!err) {
         logger_write_entry('I', sizeof(ICM45686Packet_t));
         icm45686_convert_packet(icm45686_packet, (DataPacket *)&data_packet.data);
+        xEventGroupSetBits(sensors_collected, ICM45686_TASK_BIT);
       }
       osMutexRelease(sensorDataMutexHandle);
 
@@ -502,6 +512,7 @@ void collect_mmc5983ma_data_task(void *argument) {
       if (!err) {
         logger_write_entry('M', sizeof(MMC5983MAPacket_t));
         mmc5983ma_convert_packet(mmc5983ma_packet, (DataPacket *)&data_packet.data);
+        xEventGroupSetBits(sensors_collected, MMC5983MA_TASK_BIT);
       }
       osMutexRelease(sensorDataMutexHandle);
 
@@ -560,7 +571,6 @@ void filter_data_task(void *argument) {
   TaskCommandOption cmd_status = TASKCMD_SETUP;
   float last_time = 0.0F;
   TickType_t start_time = xTaskGetTickCount();
-  const TickType_t kalman_frequency = MAX_WAIT_TIME(firmSettings.frequency_hz);
 
   for (;;) {
     xQueueReceive(data_filter_command_queue, &cmd_status, 0);
@@ -575,13 +585,12 @@ void filter_data_task(void *argument) {
       vTaskDelay(pdMS_TO_TICKS(100));
       while ((xTaskGetTickCount() - start_time) <
              pdMS_TO_TICKS(KALMAN_FILTER_STARTUP_DELAY_TIME_MS)) {
-        vTaskDelay(kalman_frequency);
+        vTaskDelay(pdMS_TO_TICKS(1));
         // orientation initialization relies on acceleration and magnetic field, initial altitude
         // uses raw pressure
-
-        eskf_accumulate(&eskf, data_packet.data.data_packet.pressure_pascals,
-                        &data_packet.data.data_packet.raw_acceleration_x_gs,
-                        &data_packet.data.data_packet.magnetic_field_x_microteslas);
+        DataPacket *p = &data_packet.data.data_packet;
+        eskf_accumulate(p->pressure_pascals, &p->raw_acceleration_x_gs,
+                        &p->magnetic_field_x_microteslas);
       }
 
       // filter can initialize, and FIRM can go into live mode
@@ -605,26 +614,21 @@ void filter_data_task(void *argument) {
       memcpy(&raw_data_instance.pressure_pascals, &data_packet.data.data_packet.pressure_pascals,
              sizeof(raw_data_instance) - sizeof(raw_data_instance.timestamp_seconds));
       float dt = (float)raw_data_instance.timestamp_seconds - last_time;
-      
+
       if (dt > 1e-6) {
         last_time = (float)raw_data_instance.timestamp_seconds;
-        /* ---- Build raw IMU readings (sensor frame) ---- */
-        float accel_raw[3] = {raw_data_instance.raw_acceleration_x_gs,
-                              raw_data_instance.raw_acceleration_y_gs,
-                              raw_data_instance.raw_acceleration_z_gs};
-        float gyro_raw[3] = {raw_data_instance.raw_angular_rate_x_deg_per_s,
-                             raw_data_instance.raw_angular_rate_y_deg_per_s,
-                             raw_data_instance.raw_angular_rate_z_deg_per_s};
+        // build control input vector
+        float u[ESKF_CONTROL_DIM] = {raw_data_instance.raw_acceleration_x_gs,
+                                     raw_data_instance.raw_acceleration_y_gs,
+                                     raw_data_instance.raw_acceleration_z_gs,
+                                     raw_data_instance.raw_angular_rate_x_deg_per_s,
+                                     raw_data_instance.raw_angular_rate_y_deg_per_s,
+                                     raw_data_instance.raw_angular_rate_z_deg_per_s};
 
-        /* ---- Build control input: IMU ---- */
-        float u[ESKF_CONTROL_DIM] = {
-            accel_raw[0], accel_raw[1], accel_raw[2], gyro_raw[0], gyro_raw[1], gyro_raw[2],
-        };
-
-        /* ---- Predict ---- */
+        // predict
         eskf_predict(&eskf, u, dt);
 
-        /* ---- Build measurement: pressure + mag ---- */
+        // build measurement vector and update
         float z_raw[ESKF_MEASUREMENT_DIM] = {
             raw_data_instance.pressure_pascals,
             raw_data_instance.magnetic_field_x_microteslas,
@@ -632,15 +636,19 @@ void filter_data_task(void *argument) {
             raw_data_instance.magnetic_field_z_microteslas,
         };
         eskf_set_measurement(&eskf, z_raw);
+        eskf_update(&eskf);
 
-        /* ---- Update ---- */
-        eskf_update(&eskf, eskf.z);
-
-        /* ---- Copy estimates back to data packet ---- */
-        memcpy(&data_packet.data.data_packet.est_position_x_meters, eskf.x_nom,
+        // Copy estimates back to data packet
+        memcpy(&data_packet.data.data_packet.est_position_z_meters, eskf.x_nom,
                ESKF_NOMINAL_DIM * sizeof(float));
-        
-        vTaskDelayUntil(&start_time, kalman_frequency);
+
+        // wait for all sensors to collect data
+        xEventGroupWaitBits(sensors_collected,
+                            BMP581_TASK_BIT | ICM45686_TASK_BIT |
+                                MMC5983MA_TASK_BIT,
+                            pdTRUE, // clear bits after unblocking
+                            pdTRUE, // wait for ALL bits
+                            portMAX_DELAY);
       }
     }
   }

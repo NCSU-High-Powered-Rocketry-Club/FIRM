@@ -11,10 +11,10 @@
  * ==================================================================== */
 
 typedef struct ESKF {
-  // nominal state (10)
+  // nominal state (6)
   float x_nom[ESKF_NOMINAL_DIM];
 
-  // error-state covariance P (9×9 row-major)
+  // error-state covariance P (5x5 row-major)
   float P[ESKF_ERROR_DIM * ESKF_ERROR_DIM];
 
   // process & measurement noise (diag stored as full matrices)
@@ -25,15 +25,9 @@ typedef struct ESKF {
   float initial_pressure;
   float mag_world[3];
 
-  // sensor-to-board rotation matrices (set per hardware version in eskf_init)
-  float R_imu_to_board[9]; /* 3×3 row-major: IMU sensor frame → board frame */
-  float R_board_to_mag[9]; /* 3×3 row-major: board frame → mag sensor frame */
-
-  // accumulator for INIT phase bias estimation
-  float accel_accum[3];
-  float mag_accum[3];
-  float pressure_accum;
-  uint32_t accum_count;
+  // sensor-to-board rotation matrices
+  float R_imu_to_board[9]; /* 3x3 row-major: IMU sensor frame -> board frame */
+  float R_mag_to_board[9]; /* 3x3 row-major: mag sensor frame -> board  frame */
 
   // measurement vector (set before calling update)
   float z[ESKF_MEASUREMENT_DIM];
@@ -54,7 +48,7 @@ typedef struct {
 } ESKFRawData;
 
 /**
- * @brief Initialise the ESKF struct: state, covariance, calibration.
+ * @brief Initialise the ESKF struct: state, covariance, initial values.
  *
  * @param eskf Pointer to ESKF struct
  * @return 0 on success
@@ -65,29 +59,27 @@ int eskf_init(ESKF *eskf);
  * @brief Accumulates raw pressure, acceleration, and magnetic field during intialization. Used
  * during init to calculate initial orientation and initial reference altitude.
  *
- * @param eskf pointer to ESKF struct
  * @param pressure_raw a data point with the current raw pressure
  * @param accel_raw a data point with the current raw acceleration (x, y, z)
  * @param mag_raw data point with the current raw magnetic fields (x, y, z)
  */
-void eskf_accumulate(ESKF *eskf, float pressure_raw, const float *accel_raw, const float *mag_raw);
+void eskf_accumulate(float pressure_raw, const float *accel_raw, const float *mag_raw);
 
 /**
  * @brief ESKF prediction step (nominal propagation + covariance).
  *
- * @param eskf  Pointer to ESKF struct
- * @param u     Control vector [accel(3), gyro(3)] — sensor frame, bias-subtracted
- * @param dt    Time step in seconds
+ * @param eskf Pointer to ESKF struct
+ * @param u Control vector [accel(3), gyro(3)] — sensor frame, bias-subtracted
+ * @param dt Time step in seconds
  */
 void eskf_predict(ESKF *eskf, const float u[ESKF_CONTROL_DIM], float dt);
 
 /**
  * @brief ESKF measurement update (pressure + mag).
  *
- * @param eskf  Pointer to ESKF struct
- * @param z     Measurement vector [pressure, mag_x, mag_y, mag_z]
+ * @param eskf Pointer to ESKF struct
  */
-void eskf_update(ESKF *eskf, const float z[ESKF_MEASUREMENT_DIM]);
+void eskf_update(ESKF *eskf);
 
 /**
  * @brief Set the measurement vector into eskf->z.
@@ -97,13 +89,11 @@ void eskf_set_measurement(ESKF *eskf, const float *measurements);
 /**
  * @brief Compute initial orientation from accel + mag and set mag_world.
  *
- * @param imu_accel       Raw accelerometer reading (sensor frame)
- * @param mag_field       Raw magnetometer reading (sensor frame)
- * @param R_imu           3×3 row-major: IMU sensor → board frame rotation
- * @param R_mag           3×3 row-major: board frame → mag sensor rotation
- * @param init_quaternion Output quaternion [w,x,y,z]
- * @param mag_world_frame Output world-frame magnetic field vector
+ * @param imu_accel Raw accelerometer reading (sensor frame)
+ * @param mag_field Raw magnetometer reading (sensor frame)
+ * @param R_imu 3x3 row-major: IMU sensor → board frame rotation
+ * @param R_mag 3x3 row-major: board frame → mag sensor rotation
  */
 void calculate_initial_orientation(const float *imu_accel, const float *mag_field,
-                                   const float R_imu[9], const float R_mag[9],
-                                   float *init_quaternion, float *mag_world_frame);
+                                   const float *R_imu, const float *R_mag,
+                                  float *init_quaternion, float *mag_world_frame);

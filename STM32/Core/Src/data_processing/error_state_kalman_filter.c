@@ -4,107 +4,96 @@
 #include <math.h>
 #include <string.h>
 
-/* ====================================================================
- * Error-State Extended Kalman Filter (ESKF) — core engine
- * ==================================================================== */
+/* ==================================================
+ * Error-State Extended Kalman Filter (ESKF)
+ * ================================================== */
 
 /* ---- scratch buffers (static allocation, no malloc) --------------- */
-#define N ESKF_ERROR_DIM       /* 9  */
-#define M ESKF_MEASUREMENT_DIM /* 4  */
+#define N ESKF_ERROR_DIM
+#define M ESKF_MEASUREMENT_DIM
 
+static float R_imu_data[3 * 3];      /* IMU -> board rot matrix  */
+static float R_mag_data[3 * 3];      /* mag -> board rot matrix  */
 static float F_d_data[N * N];        /* discrete error Jacobian  */
 static float Q_d_data[N * N];        /* discrete process noise   */
 static float FP_data[N * N];         /* F @ P                    */
 static float FP_FT_data[N * N];      /* F @ P @ F^T              */
-static float HT_data[N * M];         /* H^T (9×4)                */
-static float PHT_data[N * M];        /* P @ H^T (9×4)            */
-static float HPHT_data[M * M];       /* H @ P @ H^T (4×4)        */
+static float HT_data[N * M];         /* H^T (5x4)                */
+static float PHT_data[N * M];        /* P @ H^T (5x4)            */
+static float HPHT_data[M * M];       /* H @ P @ H^T (4x4)        */
 static float S_data[M * M];          /* S = HPHT + R             */
 static float S_inv_data[M * M];      /* S^{-1}                   */
-static float K_data[N * M];          /* Kalman gain (9×4)        */
-static float IKH_data[N * N];        /* I − K @ H                */
-static float IKH_P_data[N * N];      /* (I−KH) @ P               */
-static float IKH_P_IKHT_data[N * N]; /* (I−KH) @ P @ (I−KH)^T   */
-static float IKHT_data[N * N];       /* (I−KH)^T                 */
-static float KR_data[N * M];         /* K @ R (9×4)              */
-static float KRKT_data[N * N];       /* K @ R @ K^T              */
-static float KT_data[M * N];         /* K^T (4×9)                */
-static float temp_nn_data[N * N];    /* generic N×N temp         */
+static float K_data[N * M];          /* Kalman gain (5x4)        */
+static float HP_data[M * N];         /* H @ P                    */
+static float KHP_data[N * N];        /* K @ (H @ P)              */
+static float temp_nn_data[N * N];    /* generic NxN temp         */
 
 /* matrix_instance_f32 wrappers (set once, reused) */
+static matrix_instance_f32 R_imu = {3, 3, R_imu_data};
+static matrix_instance_f32 R_mag = {3, 3, R_mag_data};
 static matrix_instance_f32 F_d = {N, N, F_d_data};
 static matrix_instance_f32 Q_d = {N, N, Q_d_data};
 static matrix_instance_f32 FP = {N, N, FP_data};
 static matrix_instance_f32 FP_FT = {N, N, FP_FT_data};
-
 static matrix_instance_f32 HT = {N, M, HT_data};
 static matrix_instance_f32 PHT = {N, M, PHT_data};
 static matrix_instance_f32 HPHT = {M, M, HPHT_data};
 static matrix_instance_f32 S_mat = {M, M, S_data};
 static matrix_instance_f32 S_inv = {M, M, S_inv_data};
 static matrix_instance_f32 K_mat = {N, M, K_data};
-static matrix_instance_f32 IKH = {N, N, IKH_data};
-static matrix_instance_f32 IKH_P = {N, N, IKH_P_data};
-static matrix_instance_f32 IKHT = {N, N, IKHT_data};
-static matrix_instance_f32 IKH_P_IKHT = {N, N, IKH_P_IKHT_data};
-static matrix_instance_f32 KR = {N, M, KR_data};
-static matrix_instance_f32 KT_mat = {M, N, KT_data};
-static matrix_instance_f32 KRKT = {N, N, KRKT_data};
+static matrix_instance_f32 HP = {M, N, HP_data};
+static matrix_instance_f32 KHP = {N, N, KHP_data};
 
-/* H lives on the stack as row-major float[M*N], wrapped when needed */
+static float pressure_accum = 0.0F;
+static float accel_accum[3] = {0.0F};
+static float mag_accum[3] = {0.0F};
+static uint32_t accum_count = 0;
 
 static void set_state_matrices(ESKF *eskf) {
   for (int i = 0; i < ESKF_ERROR_DIM; i++) {
-    eskf->Q[i * ESKF_ERROR_DIM + i] = eskf_q_diag[i];
+    eskf->Q[i] = eskf_q_diag[i];
   }
   for (int i = 0; i < ESKF_MEASUREMENT_DIM; i++) {
-    eskf->R[i * ESKF_MEASUREMENT_DIM + i] = eskf_r_diag[i];
+    eskf->R[i] = eskf_r_diag[i];
   }
   for (int i = 0; i < ESKF_ERROR_DIM; i++) {
-    eskf->P[i * ESKF_ERROR_DIM + i] = eskf_initial_cov_diag[i];
+    eskf->P[i] = eskf_initial_cov_diag[i];
   }
 }
 
-/* ==================================================================== */
 
 int eskf_init(ESKF *eskf) {
-  /* Save accumulated data before zeroing (memset clears everything) */
-  float saved_accel[3], saved_mag[3];
-  float saved_pressure = eskf->pressure_accum;
-  uint32_t saved_count = eskf->accum_count;
-  memcpy(saved_accel, eskf->accel_accum, sizeof(saved_accel));
-  memcpy(saved_mag, eskf->mag_accum, sizeof(saved_mag));
-
-  /* Zero everything first */
+  // zero everything first
   memset(eskf, 0, sizeof(ESKF));
 
-  /* ---- Select rotation matrices based on hardware version ---- */
+  // Select rotation matrices based on hardware version
   if (firmSettings.firmware_version[0] == 'v' && firmSettings.firmware_version[1] == '1' &&
       firmSettings.firmware_version[2] == '.') {
-    memcpy(eskf->R_imu_to_board, eskf_v1_R_imu_to_board, sizeof(eskf->R_imu_to_board));
-    memcpy(eskf->R_board_to_mag, eskf_v1_R_board_to_mag, sizeof(eskf->R_board_to_mag));
+    // firmware version v1.x.x (hardware v0.1), legacy PCB version
+    memcpy(R_imu.pData, eskf_v1_R_imu_to_board, sizeof(R_imu_data));
+    memcpy(R_mag.pData, eskf_v1_R_mag_to_board, sizeof(R_mag_data));
   } else {
-    /* Default: v2 (current hardware) */
-    memcpy(eskf->R_imu_to_board, eskf_v2_R_imu_to_board, sizeof(eskf->R_imu_to_board));
-    memcpy(eskf->R_board_to_mag, eskf_v2_R_board_to_mag, sizeof(eskf->R_board_to_mag));
+    // firmware version v2.x.x (hardware v1.0), current PCB version
+    memcpy(R_imu.pData, eskf_v2_R_imu_to_board, sizeof(R_imu_data));
+    memcpy(R_mag.pData, eskf_v1_R_mag_to_board, sizeof(R_mag_data));
   }
 
-  /* Copy initial nominal state (pos=0, vel=0, quat=identity) */
+  // Copy initial nominal state (pos=0, vel=0, quat=identity)
   memcpy(eskf->x_nom, eskf_initial_state, sizeof(float) * ESKF_NOMINAL_DIM);
 
-  /* Initial pressure */
-  eskf->initial_pressure = saved_pressure / (float)saved_count;
+  // Initial pressure
+  eskf->initial_pressure = pressure_accum / (float)accum_count;
 
-  /* Compute initial orientation from accel + mag, and set mag_world */
-  float initial_accel[3] = {saved_accel[0] / (float)saved_count,
-                            saved_accel[1] / (float)saved_count,
-                            saved_accel[2] / (float)saved_count};
+  // Compute initial orientation from accel + mag, and set mag_world
+  float initial_accel[3] = {accel_accum[0] / (float)accum_count,
+                            accel_accum[1] / (float)accum_count,
+                            accel_accum[2] / (float)accum_count};
 
-  float initial_mag[3] = {saved_mag[0] / (float)saved_count,
-                          saved_mag[1] / (float)saved_count,
-                          saved_mag[2] / (float)saved_count};
-  calculate_initial_orientation(initial_accel, initial_mag, eskf->R_imu_to_board,
-                                eskf->R_board_to_mag, &eskf->x_nom[ESKF_QUAT_W],
+  float initial_mag[3] = {mag_accum[0] / (float)accum_count,
+                          mag_accum[1] / (float)accum_count,
+                          mag_accum[2] / (float)accum_count};
+  calculate_initial_orientation(initial_accel, initial_mag, R_imu.pData,
+                                R_mag.pData, &eskf->x_nom[ESKF_QUAT_W],
                                 eskf->mag_world);
 
   /* Initialise flight state to INIT + load Q/R diags */
@@ -113,145 +102,106 @@ int eskf_init(ESKF *eskf) {
   return 0;
 }
 
-/* ==================================================================== */
-
-void eskf_accumulate(ESKF *eskf, float pressure_raw, const float *accel_raw, const float *mag_raw) {
+void eskf_accumulate(float pressure_raw, const float *accel_raw, const float *mag_raw) {
   for (int i = 0; i < 3; i++) {
-    eskf->accel_accum[i] += accel_raw[i];
-    eskf->mag_accum[i] += mag_raw[i];
+    accel_accum[i] += accel_raw[i];
+    mag_accum[i] += mag_raw[i];
   }
-  eskf->pressure_accum += pressure_raw;
-  eskf->accum_count++;
+  pressure_accum += pressure_raw;
+  accum_count++;
 }
 
-/* ==================================================================== */
-
 void eskf_predict(ESKF *eskf, const float u[ESKF_CONTROL_DIM], float dt) {
-  if (dt < 1e-9F)
+  if (dt < 1e-8F)
     return;
 
-  /* ---- Normalise nominal quaternion ---- */
+  // normalize nominal quaternion state
   quaternion_normalize_f32(&eskf->x_nom[ESKF_QUAT_W]);
 
-  /* ---- Propagate nominal state ---- */
-  eskf_nominal_predict(eskf->x_nom, u, dt, eskf->R_imu_to_board);
+  // propagate forward the nominal state
+  eskf_nominal_predict(eskf->x_nom, u, dt, &R_imu);
 
-  /* ---- Build discrete error Jacobian F_d ---- */
-  eskf_error_jacobian(eskf->x_nom, u, dt, eskf->R_imu_to_board, F_d_data);
+  // build the error jacobian
+  eskf_error_jacobian(eskf->x_nom, u, dt, &R_imu, F_d_data);
 
-  /* ---- Build discrete process noise Q_d = diag(qvar * dt) ---- */
-  memset(Q_d_data, 0, sizeof(Q_d_data));
+  // Build discrete process noise Q_d = diag(qvar * dt)
   for (int i = 0; i < ESKF_ERROR_DIM; i++) {
     Q_d_data[i * ESKF_ERROR_DIM + i] = eskf->Q[i * ESKF_ERROR_DIM + i] * dt;
   }
 
-  /* ---- Covariance propagation: P = F_d @ P @ F_d^T + Q_d ---- */
+  // error-state covariance propagation: P = F_d @ P @ F_d^T + Q_d
   matrix_instance_f32 P_mat = {N, N, eskf->P};
   matrix_instance_f32 F_dT = {N, N, temp_nn_data};
 
-  mat_mult_f32(&F_d, &P_mat, &FP);   /* FP = F_d @ P           */
-  mat_trans_f32(&F_d, &F_dT);        /* F_dT = F_d^T           */
-  mat_mult_f32(&FP, &F_dT, &FP_FT);  /* FP_FT = FP @ F_d^T     */
-  mat_add_f32(&FP_FT, &Q_d, &P_mat); /* P = FP_FT + Q_d        */
+  mat_mult_f32(&F_d, &P_mat, &FP); // FP = F_d @ P
+  mat_trans_f32(&F_d, &F_dT); // F_dT = F_d^T
+  mat_mult_f32(&FP, &F_dT, &FP_FT); // FP_FT = FP @ F_d^T
+  mat_add_f32(&FP_FT, &Q_d, &P_mat); // P = FP_FT + Q_d
 }
 
-/* ==================================================================== */
-
-void eskf_update(ESKF *eskf, const float z[ESKF_MEASUREMENT_DIM]) {
-  /* ---- Predicted measurement ---- */
+void eskf_update(ESKF *eskf) {
+  // predicted measurement
   float z_pred[M];
   eskf_measurement_function(eskf->x_nom, eskf->initial_pressure, eskf->mag_world,
-                            eskf->R_board_to_mag, z_pred);
+                            &R_mag, z_pred);
 
-  /* ---- Measurement Jacobian H (4×9) ---- */
-  float H_data[M * N];
+  // measurement jacobian (4x5)
+  float H_data[M * N] = {0};
   matrix_instance_f32 H = {M, N, H_data};
   eskf_measurement_jacobian(eskf->x_nom, eskf->initial_pressure, eskf->mag_world,
-                            eskf->R_board_to_mag, H_data);
+                            R_mag.pData, H_data);
 
-  /* ---- Innovation y = z − z_pred ---- */
+  // Innovation y = z − z_pred
   float y[M];
   for (int i = 0; i < M; i++) {
-    y[i] = z[i] - z_pred[i];
+    y[i] = eskf->z[i] - z_pred[i];
   }
 
-  /* ---- Innovation covariance: S = H @ P @ H^T + R ---- */
+  // Innovation covariance: S = H @ P @ H^T + R
   matrix_instance_f32 P_mat = {N, N, eskf->P};
   matrix_instance_f32 R_mat = {M, M, eskf->R};
 
-  mat_trans_f32(&H, &HT);             /* HT = H^T (9×4) */
-  mat_mult_f32(&P_mat, &HT, &PHT);    /* PHT = P @ H^T  */
-  mat_mult_f32(&H, &PHT, &HPHT);      /* HPHT = H @ PHT */
-  mat_add_f32(&HPHT, &R_mat, &S_mat); /* S = HPHT + R   */
+  mat_trans_f32(&H, &HT); // HT = H^T (5x4)
+  mat_mult_f32(&P_mat, &HT, &PHT); // PHT = P @ H^T
+  mat_mult_f32(&H, &PHT, &HPHT); // HPHT = H @ PHT
+  mat_add_f32(&HPHT, &R_mat, &S_mat); // S = HPHT + R
+  mat_inverse_f32(&S_mat, &S_inv); // S inverse (4x4)
 
-  /* ---- S inverse (4×4) ---- */
-  mat_inverse_f32(&S_mat, &S_inv);
-
-  /* ---- Kalman gain: K = P @ H^T @ S^{-1} ---- */
+  // Kalman gain: K = P @ H^T @ S^{-1}
   mat_mult_f32(&PHT, &S_inv, &K_mat); /* K = PHT @ S_inv */
 
-  /* ---- Pressure→velocity decoupling sigmoid ---- */
-  {
-    float vx = eskf->x_nom[ESKF_VEL_X];
-    float vy = eskf->x_nom[ESKF_VEL_Y];
-    float vz = eskf->x_nom[ESKF_VEL_Z];
-    float speed = sqrtf(vx * vx + vy * vy + vz * vz);
-    float arg = ESKF_PV_COUPLING_SHARPNESS * (speed - ESKF_PV_COUPLING_SPEED);
-    float coupling = 1.0F / (1.0F + expf(arg));
-
-    /* Scale velocity rows (3,4,5) of pressure column (0) */
-    K_data[3 * M + 0] *= coupling;
-    K_data[4 * M + 0] *= coupling;
-    K_data[5 * M + 0] *= coupling;
+  // pressure decoupling: above threshold, pressure stops correcting velocity
+  // and quaternion states
+  float speed = fabsf(eskf->x_nom[ESKF_VEL_Z]);
+  float coupling = 1.0F / (1.0F + expf(ESKF_PV_COUPLING_SHARPNESS * (speed - ESKF_PV_COUPLING_SPEED)));
+  for (int i = 1; i < N; i++) {
+    K_data[i * M] *= coupling; // decouple velocity and quat component from pressure measurement
   }
 
-  /* ---- Error-state correction: dx = K @ y ---- */
+  // Error-state correction: dx = K @ y
   float dx[N];
   mat_vec_mult_f32(&K_mat, y, dx);
 
-  /* ---- Inject error into nominal state ---- */
-  /* position + velocity: additive */
-  for (int i = 0; i < 6; i++) {
-    eskf->x_nom[i] += dx[i];
-  }
+  // Inject error into nominal state
+  eskf->x_nom[ESKF_POS_Z] += dx[ESKF_POS_Z];
+  eskf->x_nom[ESKF_VEL_Z] += dx[ESKF_VEL_Z];
 
-  /* quaternion: multiplicative update q ← q * rotvec_to_quat(dθ) */
-  {
-    float dtheta[3] = {dx[6], dx[7], dx[8]};
-    float delta_q[4];
-    rotvec_to_quat(dtheta, delta_q);
+  // quaternion error injection (dx[2:5] = dtheta)
+  float delta_q[4];
+  rotvec_to_quat(&dx[ESKF_QUAT_W], delta_q);
+  float new_q[4];
+  quaternion_product_f32(&eskf->x_nom[ESKF_QUAT_W], delta_q, new_q);
+  eskf->x_nom[ESKF_QUAT_W] = new_q[0];
+  eskf->x_nom[ESKF_QUAT_X] = new_q[1];
+  eskf->x_nom[ESKF_QUAT_Y] = new_q[2];
+  eskf->x_nom[ESKF_QUAT_Z] = new_q[3];
 
-    float quat[4] = {eskf->x_nom[ESKF_QUAT_W], eskf->x_nom[ESKF_QUAT_X], eskf->x_nom[ESKF_QUAT_Y],
-                     eskf->x_nom[ESKF_QUAT_Z]};
-    float new_q[4];
-    quaternion_product_f32(quat, delta_q, new_q);
-    eskf->x_nom[ESKF_QUAT_W] = new_q[0];
-    eskf->x_nom[ESKF_QUAT_X] = new_q[1];
-    eskf->x_nom[ESKF_QUAT_Y] = new_q[2];
-    eskf->x_nom[ESKF_QUAT_Z] = new_q[3];
-  }
-
-  /* ---- Covariance update (Joseph form) ---- */
-  /* P = (I − K@H) @ P @ (I − K@H)^T + K @ R @ K^T */
-  {
-    matrix_instance_f32 I_nn = {N, N, temp_nn_data};
-    mat_set_identity_f32(&I_nn);    /* I(9)           */
-    mat_mult_f32(&K_mat, &H, &IKH); /* IKH = K @ H    */
-    mat_sub_f32(&I_nn, &IKH, &IKH); /* IKH = I − K@H  */
-
-    mat_mult_f32(&IKH, &P_mat, &IKH_P);       /* IKH_P = IKH@P  */
-    mat_trans_f32(&IKH, &IKHT);               /* IKHT           */
-    mat_mult_f32(&IKH_P, &IKHT, &IKH_P_IKHT); /* (I-KH)P(I-KH)' */
-
-    mat_mult_f32(&K_mat, &R_mat, &KR); /* KR = K@R       */
-    mat_trans_f32(&K_mat, &KT_mat);    /* KT = K^T       */
-    mat_mult_f32(&KR, &KT_mat, &KRKT); /* KRKT = KR@K^T  */
-
-    mat_add_f32(&IKH_P_IKHT, &KRKT, &P_mat); /* P = ... + KRKT */
-  }
+  // Covariance Update: P = P - K @ (H @ P)
+  mat_mult_f32(&H, &P_mat, &HP);
+  mat_mult_f32(&K_mat, &HP, &KHP);
+  mat_sub_f32(&P_mat, &KHP, &P_mat);
+  symmetrize(&P_mat);
 }
-
-/* ==================================================================== */
 
 void eskf_set_measurement(ESKF *eskf, const float *measurements) {
   /* measurements[0] = pressure
@@ -272,16 +222,14 @@ void eskf_set_measurement(ESKF *eskf, const float *measurements) {
   eskf->z[3] = mz / norm_mag;
 }
 
-/* ==================================================================== */
-
-/* ---- helper: 3×3 matrix-vector multiply (row-major) --------------- */
+/* ---- helper: 3x3 matrix-vector multiply (row-major) --------------- */
 static void mat3_vec3_mult(const float R[9], const float v[3], float out[3]) {
   out[0] = R[0] * v[0] + R[1] * v[1] + R[2] * v[2];
   out[1] = R[3] * v[0] + R[4] * v[1] + R[5] * v[2];
   out[2] = R[6] * v[0] + R[7] * v[1] + R[8] * v[2];
 }
 
-/* ---- helper: 3×3 transpose-vector multiply (R^T @ v) -------------- */
+/* ---- helper: 3x3 transpose-vector multiply (R^T @ v) -------------- */
 static void mat3T_vec3_mult(const float R[9], const float v[3], float out[3]) {
   out[0] = R[0] * v[0] + R[3] * v[1] + R[6] * v[2];
   out[1] = R[1] * v[0] + R[4] * v[1] + R[7] * v[2];
@@ -289,7 +237,7 @@ static void mat3T_vec3_mult(const float R[9], const float v[3], float out[3]) {
 }
 
 void calculate_initial_orientation(const float *imu_accel, const float *mag_field,
-                                   const float R_imu[9], const float R_mag[9],
+                                   const float *R_imu, const float *R_mag,
                                    float *init_quaternion, float *mag_world_frame) {
   /* Normalise raw readings */
   float norm_acc = sqrtf(imu_accel[0] * imu_accel[0] + imu_accel[1] * imu_accel[1] +

@@ -31,11 +31,7 @@ typedef struct {
   float magnetic_field_x_microteslas;
   float magnetic_field_y_microteslas;
   float magnetic_field_z_microteslas;
-  float est_position_x_meters;
-  float est_position_y_meters;
   float est_position_z_meters;
-  float est_velocity_x_meters_per_s;
-  float est_velocity_y_meters_per_s;
   float est_velocity_z_meters_per_s;
   float est_quaternion_w;
   float est_quaternion_x;

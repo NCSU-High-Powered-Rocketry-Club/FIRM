@@ -1,4 +1,5 @@
 #include "eskf_functions.h"
+#include "matrix_helper.h"
 
 #ifndef PI_F
 #define PI_F 3.14159265358979323846F
@@ -8,232 +9,169 @@
  * ESKF dynamics, measurement model, and Jacobians
  * ==================================================================== */
 
-/* ---- helper: 3×3 matrix-vector multiply (row-major) --------------- */
-static void mat3_vec3_mult(const float M[9], const float v[3], float out[3]) {
-  out[0] = M[0] * v[0] + M[1] * v[1] + M[2] * v[2];
-  out[1] = M[3] * v[0] + M[4] * v[1] + M[5] * v[2];
-  out[2] = M[6] * v[0] + M[7] * v[1] + M[8] * v[2];
-}
+static void eskf_imu_to_board(const matrix_instance_f32 *R_imu, const float *accel_sensor,
+                              const float *gyro_sensor, float *accel_vehicle_ms2,
+                              float *gyro_vehicle_rads) {
+  // Rotate imu -> vehicle
+  mat_vec_mult_f32(R_imu, accel_sensor, accel_vehicle_ms2);
+  mat_vec_mult_f32(R_imu, gyro_sensor, gyro_vehicle_rads);
 
-/* ---- helper: 3×3 transpose-vector multiply (R^T @ v) -------------- */
-static void mat3T_vec3_mult(const float M[9], const float v[3], float out[3]) {
-  out[0] = M[0] * v[0] + M[3] * v[1] + M[6] * v[2];
-  out[1] = M[1] * v[0] + M[4] * v[1] + M[7] * v[2];
-  out[2] = M[2] * v[0] + M[5] * v[1] + M[8] * v[2];
-}
-
-/* ---- helper: 3×3 @ 3×3, both row-major ---------------------------- */
-static void mat3_mat3_mult(const float A[9], const float B[9], float C[9]) {
-  for (int r = 0; r < 3; ++r) {
-    for (int c = 0; c < 3; ++c) {
-      float s = 0.0F;
-      for (int k = 0; k < 3; ++k) {
-        s += A[r * 3 + k] * B[k * 3 + c];
-      }
-      C[r * 3 + c] = s;
-    }
-  }
-}
-
-/* ---- helper: build 3×3 skew-symmetric into flat row-major --------- */
-static void skew_flat(const float v[3], float S[9]) {
-  S[0] = 0.0F;
-  S[1] = -v[2];
-  S[2] = v[1];
-  S[3] = v[2];
-  S[4] = 0.0F;
-  S[5] = -v[0];
-  S[6] = -v[1];
-  S[7] = v[0];
-  S[8] = 0.0F;
-}
-
-/* ==================================================================== */
-
-void eskf_imu_to_vehicle(const float R_imu[9], const float accel_sensor[3],
-                         const float gyro_sensor[3], float accel_vehicle_ms2[3],
-                         float gyro_vehicle_rads[3]) {
-  /* Rotate sensor → vehicle */
-  float a_rot[3], g_rot[3];
-  mat3_vec3_mult(R_imu, accel_sensor, a_rot);
-  mat3_vec3_mult(R_imu, gyro_sensor, g_rot);
-
-  /* Convert units */
+  // convert units
   for (int i = 0; i < 3; ++i) {
-    accel_vehicle_ms2[i] = a_rot[i] * GRAVITY_METERS_PER_SECOND_SQUARED; /* g → m/s² */
-    gyro_vehicle_rads[i] = g_rot[i] * (PI_F / 180.0F);                   /* deg/s → rad/s */
+    accel_vehicle_ms2[i] = accel_vehicle_ms2[i] * GRAVITY_METERS_PER_SECOND_SQUARED; // g to m/s^2
+    gyro_vehicle_rads[i] = gyro_vehicle_rads[i] * (PI_F / 180.0F); // deg/sec to rad/sec
   }
 }
 
-/* ==================================================================== */
+void eskf_nominal_predict(float *x_nom, const float *u, float dt,
+                          const matrix_instance_f32 *R_imu) {
+  // convert sensor-frame imu measurements to board-frame
+  float a_board_ms2[3], w_board_rads[3];
+  eskf_imu_to_board(R_imu, u, u + 3, a_board_ms2, w_board_rads);
 
-void eskf_nominal_predict(float x_nom[ESKF_NOMINAL_DIM], const float u[ESKF_CONTROL_DIM],
-                          float dt, const float R_imu[9]) {
-  float a_veh[3], w_veh[3];
-  eskf_imu_to_vehicle(R_imu, u, u + 3, a_veh, w_veh);
+  // quaternion state and conjugate
+  float *quat_state = &x_nom[ESKF_QUAT_W];
+  float quat_conj[4] = {x_nom[ESKF_QUAT_W], -x_nom[ESKF_QUAT_X], -x_nom[ESKF_QUAT_Y],
+                        -x_nom[ESKF_QUAT_Z]};
 
-  /* Quaternion → rotation matrix (vehicle→world) */
-  float quat[4] = {x_nom[ESKF_QUAT_W], x_nom[ESKF_QUAT_X], x_nom[ESKF_QUAT_Y], x_nom[ESKF_QUAT_Z]};
-  quaternion_normalize_f32(quat);
+  // World-frame acceleration: (q * a * q_conj) − [0,0,g]
+  float temp[4] = {0};
+  float a_board_quat[4] = {0, a_board_ms2[0], a_board_ms2[1], a_board_ms2[2]};
+  quaternion_product_f32(quat_state, a_board_quat, temp);
+  quaternion_product_f32(temp, quat_conj, a_board_quat); // reusing a_board_quat
+  float *a_world = &a_board_ms2[1]; // a_world is the x,y,z element of the a_board_quat quaternion
+  a_world[2] -= GRAVITY_METERS_PER_SECOND_SQUARED; // subtract from z axis
 
-  float R_v2w_data[9];
-  matrix_instance_f32 R_v2w = {3, 3, R_v2w_data};
-  quat_to_rotation_matrix_f32(quat, &R_v2w);
-
-  /* World-frame acceleration: R @ a_vehicle − [0,0,g] */
-  float a_world[3];
-  mat3_vec3_mult(R_v2w_data, a_veh, a_world);
-  a_world[2] -= GRAVITY_METERS_PER_SECOND_SQUARED;
-
-  /* Integrate position & velocity */
-  x_nom[ESKF_POS_X] += x_nom[ESKF_VEL_X] * dt;
-  x_nom[ESKF_POS_Y] += x_nom[ESKF_VEL_Y] * dt;
+  // Integrate position and velocity
   x_nom[ESKF_POS_Z] += x_nom[ESKF_VEL_Z] * dt;
-
-  x_nom[ESKF_VEL_X] += a_world[0] * dt;
-  x_nom[ESKF_VEL_Y] += a_world[1] * dt;
   x_nom[ESKF_VEL_Z] += a_world[2] * dt;
 
-  /* Quaternion integration: q ← q * rotvec_to_quat(ω*dt) */
-  float delta_theta[3] = {w_veh[0] * dt, w_veh[1] * dt, w_veh[2] * dt};
+  // Quaternion integration: q = q * rotvec_to_quat(ω*dt)
+  float delta_theta[3] = {w_board_rads[0] * dt, w_board_rads[1] * dt, w_board_rads[2] * dt};
   float delta_q[4];
   rotvec_to_quat(delta_theta, delta_q);
 
   float new_q[4];
-  quaternion_product_f32(quat, delta_q, new_q);
+  quaternion_product_f32(quat_state, delta_q, new_q);
+  quaternion_normalize_f32(new_q);
   x_nom[ESKF_QUAT_W] = new_q[0];
   x_nom[ESKF_QUAT_X] = new_q[1];
   x_nom[ESKF_QUAT_Y] = new_q[2];
   x_nom[ESKF_QUAT_Z] = new_q[3];
 }
 
-void eskf_error_jacobian(const float x_nom[ESKF_NOMINAL_DIM], const float u[ESKF_CONTROL_DIM],
-                         float dt, const float R_imu[9],
-                         float F_d_data[ESKF_ERROR_DIM * ESKF_ERROR_DIM]) {
-  float a_veh[3], w_veh[3];
-  eskf_imu_to_vehicle(R_imu, u, u + 3, a_veh, w_veh);
+void eskf_error_jacobian(const float *x_nom, const float *u, float dt,
+                         const matrix_instance_f32 *R_imu, float *F_d_data) {
+  // convert sensor-frame imu measurements to board-frame
+  float a_board_ms2[3], w_board_rads[3];
+  eskf_imu_to_board(R_imu, u, u + 3, a_board_ms2, w_board_rads);
 
-  float quat[4] = {x_nom[ESKF_QUAT_W], x_nom[ESKF_QUAT_X], x_nom[ESKF_QUAT_Y], x_nom[ESKF_QUAT_Z]};
-  quaternion_normalize_f32(quat);
+  // get shorthands for quaternion states and control inputs
+  const float qw = x_nom[ESKF_QUAT_W];
+  const float qx = x_nom[ESKF_QUAT_X];
+  const float qy = x_nom[ESKF_QUAT_Y];
+  const float qz = x_nom[ESKF_QUAT_Z];
 
-  float R_v2w_data[9];
-  matrix_instance_f32 R_v2w = {3, 3, R_v2w_data};
-  quat_to_rotation_matrix_f32(quat, &R_v2w);
+  float ax = a_board_ms2[0];
+  float ay = a_board_ms2[1];
+  float az = a_board_ms2[2];
+  float wx = w_board_rads[0];
+  float wy = w_board_rads[1];
+  float wz = w_board_rads[2];
 
-  /*
-   * F_d = I(9) + F_c * dt   where F_c is:
-   *   [0  I  0 ]          0-2: pos
-   *   [0  0  -R@skew(a)]  3-5: vel
-   *   [0  0  -skew(w) ]   6-8: theta
-   */
-
-  /* Start with identity */
-  memset(F_d_data, 0, sizeof(float) * ESKF_ERROR_DIM * ESKF_ERROR_DIM);
-  for (int i = 0; i < ESKF_ERROR_DIM; ++i) {
+  memset(F_d_data, 0, ESKF_ERROR_DIM * ESKF_ERROR_DIM * sizeof(float));
+  // set to identity matrix (1's on diagonal)
+  for (int i = 0; i < ESKF_ERROR_DIM; i++) {
     F_d_data[i * ESKF_ERROR_DIM + i] = 1.0F;
   }
 
-  /* F[0:3, 3:6] += I(3) * dt   (δṗ += δv * dt) */
-  F_d_data[0 * ESKF_ERROR_DIM + 3] += dt;
-  F_d_data[1 * ESKF_ERROR_DIM + 4] += dt;
-  F_d_data[2 * ESKF_ERROR_DIM + 5] += dt;
+  // row 1: δẑ += δv_z * dt
+  F_d_data[1] = dt;
 
-  /* F[3:6, 6:9] = -R @ skew(a_vehicle) * dt */
-  float S_a[9];
-  skew_flat(a_veh, S_a);
+  // directly compute the 3rd row of the rotation matrix from the quaternion
+  float r31 = 2.0F * (qx * qz - qw * qy);
+  float r32 = 2.0F * (qw * qz + qw * qx);
+  float r33 = 1.0F - 2.0F * (qx * qx + qy * qy);
 
-  float RS_a[9];
-  mat3_mat3_mult(R_v2w_data, S_a, RS_a);
+  // row 2: δv̇_z = (a_board_ms2 * r_3) * dt
+  F_d_data[5 + 2] = (ay * r33 - az * r32) * dt;
+  F_d_data[5 + 3] = (az * r31 - ax * r33) * dt;
+  F_d_data[5 + 4] = (ax * r32 - ay * r31) * dt;
 
-  for (int r = 0; r < 3; ++r) {
-    for (int c = 0; c < 3; ++c) {
-      F_d_data[(3 + r) * ESKF_ERROR_DIM + (6 + c)] = -RS_a[r * 3 + c] * dt;
-    }
-  }
+  // row 3: δθ̇ = -skew(ω) @ δθ * dt (Unrolled)
+  F_d_data[10 + 3] = wz * dt;
+  F_d_data[10 + 4] = -wy * dt;
 
-  /* F[6:9, 6:9] += -skew(ω) * dt */
-  float S_w[9];
-  skew_flat(w_veh, S_w);
+  // row 4
+  F_d_data[15 + 2] = -wz * dt;
+  F_d_data[15 + 4] = wx * dt;
 
-  for (int r = 0; r < 3; ++r) {
-    for (int c = 0; c < 3; ++c) {
-      F_d_data[(6 + r) * ESKF_ERROR_DIM + (6 + c)] += -S_w[r * 3 + c] * dt;
-    }
-  }
+  // row 5
+  F_d_data[20 + 2] = wy * dt;
+  F_d_data[20 + 3] = -wx * dt;
 }
 
-/* ==================================================================== */
+void eskf_measurement_function(const float *x_nom, float init_pressure, const float *mag_world,
+                               const matrix_instance_f32 *R_mag, float *z_pred) {
+  // outputs predicted measurement: pressure + mag (in sensor frame)
+  float altitude_meters = x_nom[ESKF_POS_Z];
 
-void eskf_measurement_function(const float x_nom[ESKF_NOMINAL_DIM], float init_pressure,
-                               const float mag_world[3], const float R_mag[9],
-                               float z_pred[ESKF_MEASUREMENT_DIM]) {
-  float altitude = x_nom[ESKF_POS_Z];
+  // get quaternion state, conjugate, and mag_world as a quaternion
+  const float *quat = &x_nom[ESKF_QUAT_W];
+  float quat_conj[4] = {quat[0], -quat[1], -quat[2], -quat[3]};
+  const float mag_world_q[4] = {0.0F, mag_world[0], mag_world[1], mag_world[2]};
 
-  /* Barometric pressure from altitude */
-  float base = 1.0F - altitude / PRESSURE_ALTITUDE_CONST;
-  if (base < 0.0F)
-    base = 0.0F;
-  z_pred[0] = init_pressure * powf(base, PRESSURE_EXPONENT);
+  // magnetometer: rotate world mag into board frame, then into sensor frame
+  quaternion_product_f32(quat_conj, mag_world_q, z_pred); // using z_pred as temp storage
+  quaternion_product_f32(z_pred, quat, quat_conj);        // reusing quat_conj
+  mat_vec_mult_f32(R_mag, quat_conj, &z_pred[1]);
 
-  /* Quaternion → rotation matrix */
-  float quat[4] = {x_nom[ESKF_QUAT_W], x_nom[ESKF_QUAT_X], x_nom[ESKF_QUAT_Y], x_nom[ESKF_QUAT_Z]};
-  quaternion_normalize_f32(quat);
-
-  float R_v2w_data[9];
-  matrix_instance_f32 R_v2w = {3, 3, R_v2w_data};
-  quat_to_rotation_matrix_f32(quat, &R_v2w);
-
-  /* mag_vehicle = R_v2w^T @ mag_world */
-  float mag_vehicle[3];
-  mat3T_vec3_mult(R_v2w_data, mag_world, mag_vehicle);
-
-  /* mag_sensor = R_mag @ mag_vehicle */
-  float mag_sensor[3];
-  mat3_vec3_mult(R_mag, mag_vehicle, mag_sensor);
-
-  z_pred[1] = mag_sensor[0];
-  z_pred[2] = mag_sensor[1];
-  z_pred[3] = mag_sensor[2];
+  // pressure from altitude
+  z_pred[0] =
+      init_pressure * powf(1.0F - (altitude_meters / PRESSURE_ALTITUDE_CONST), PRESSURE_EXPONENT);
 }
 
-/* ==================================================================== */
-
-void eskf_measurement_jacobian(const float x_nom[ESKF_NOMINAL_DIM], float init_pressure,
-                               const float mag_world[3], const float R_mag[9],
-                               float H_data[ESKF_MEASUREMENT_DIM * ESKF_ERROR_DIM]) {
+void eskf_measurement_jacobian(const float *x_nom, float init_pressure, const float *mag_world,
+                               const float *R_mag, float *H_data) {
+  memset(H_data, 0, ESKF_MEASUREMENT_DIM * ESKF_ERROR_DIM * sizeof(float));
   float altitude = x_nom[ESKF_POS_Z];
 
-  memset(H_data, 0, sizeof(float) * ESKF_MEASUREMENT_DIM * ESKF_ERROR_DIM);
+  // creating shorthands for quaternion state and mag_world
+  const float qw = x_nom[ESKF_QUAT_W];
+  const float qx = x_nom[ESKF_QUAT_X];
+  const float qy = x_nom[ESKF_QUAT_Y];
+  const float qz = x_nom[ESKF_QUAT_Z];
+  const float wx = mag_world[0];
+  const float wy = mag_world[1];
+  const float wz = mag_world[2];
 
-  /* ∂pressure/∂altitude → H[0, 2] */
-  float base = 1.0F - altitude / PRESSURE_ALTITUDE_CONST;
-  if (base > 0.0F) {
-    float dp_dalt = init_pressure * PRESSURE_EXPONENT * powf(base, PRESSURE_EXPONENT - 1.0F) *
-                    (-1.0F / PRESSURE_ALTITUDE_CONST);
-    H_data[0 * ESKF_ERROR_DIM + 2] = dp_dalt;
-  }
+  // ∂pressure/∂altitude
+  H_data[0] = init_pressure * (PRESSURE_EXPONENT * (-1.0F / PRESSURE_ALTITUDE_CONST)) *
+              powf(1.0F - altitude / PRESSURE_ALTITUDE_CONST, PRESSURE_EXPONENT);
 
-  /* ∂mag_sensor/∂δθ → H[1:4, 6:9] = R_mag @ skew(mag_vehicle) */
-  float quat[4] = {x_nom[ESKF_QUAT_W], x_nom[ESKF_QUAT_X], x_nom[ESKF_QUAT_Y], x_nom[ESKF_QUAT_Z]};
-  quaternion_normalize_f32(quat);
+  // Compute mag_board = R_b2w.T @ mag_world directly from quat
+  // These are the dot products of mag_world with the columns of R_b2w
+  const float mx = (1.0F - 2.0F * (qy * qy + qz * qz)) * wx + 2.0F * (qx * qy + qw * qz) * wy +
+                   2.0F * (qx * qz - qw * qy) * wz;
+  const float my = 2.0F * (qx * qy - qw * qz) * wx + (1.0F - 2.0F * (qx * qx + qz * qz)) * wy +
+                   2.0F * (qy * qz + qw * qx) * wz;
+  const float mz = 2.0F * (qx * qz + qw * qy) * wx + 2.0F * (qy * qz - qw * qx) * wy +
+                   (1.0F - 2.0F * (qx * qx + qy * qy)) * wz;
 
-  float R_v2w_data[9];
-  matrix_instance_f32 R_v2w = {3, 3, R_v2w_data};
-  quat_to_rotation_matrix_f32(quat, &R_v2w);
+  // ∂mag_sensor/∂δθ = R_mag @ skew(mag_board)
+  // Unrolled as the cross product of R_mag rows and mag_board
+  // R_mag row 0
+  H_data[5 + 2] = R_mag[1] * mz - R_mag[2] * my;
+  H_data[5 + 3] = R_mag[2] * mx - R_mag[0] * mz;
+  H_data[5 + 4] = R_mag[0] * my - R_mag[1] * mx;
 
-  float mag_vehicle[3];
-  mat3T_vec3_mult(R_v2w_data, mag_world, mag_vehicle);
+  // R_mag row 1
+  H_data[10 + 2] = R_mag[3 + 1] * mz - R_mag[3 + 2] * my;
+  H_data[10 + 3] = R_mag[3 + 2] * mx - R_mag[3 + 0] * mz;
+  H_data[10 + 4] = R_mag[3 + 0] * my - R_mag[3 + 1] * mx;
 
-  float S_mag[9];
-  skew_flat(mag_vehicle, S_mag);
-
-  /* R_mag @ skew(mag_vehicle) */
-  float block[9];
-  mat3_mat3_mult(R_mag, S_mag, block);
-
-  for (int r = 0; r < 3; ++r) {
-    for (int c = 0; c < 3; ++c) {
-      H_data[(1 + r) * ESKF_ERROR_DIM + (6 + c)] = block[r * 3 + c];
-    }
-  }
+  // R_mag row 2
+  H_data[15 + 2] = R_mag[6 + 1] * mz - R_mag[6 + 2] * my;
+  H_data[15 + 3] = R_mag[6 + 2] * mx - R_mag[6 + 0] * mz;
+  H_data[15 + 4] = R_mag[6 + 0] * my - R_mag[6 + 1] * mx;
 }

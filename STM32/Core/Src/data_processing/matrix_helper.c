@@ -65,7 +65,6 @@ void quat_to_rotvec(const float quat[4], float rotvec[3]) {
   rotvec[2] = z * scale;
 }
 
-// cmsis-dsp doesnt have f32 matrix scale
 void mat_scale_f32(const matrix_instance_f32 *pSrc, float scale, matrix_instance_f32 *pDst) {
   int numElements = pSrc->numRows * pSrc->numCols;
   for (int i = 0; i < numElements; i++) {
@@ -73,7 +72,6 @@ void mat_scale_f32(const matrix_instance_f32 *pSrc, float scale, matrix_instance
   }
 }
 
-// cmsis-dsp doesnt have f32 matrix add
 void mat_add_f32(const matrix_instance_f32 *pSrcA, const matrix_instance_f32 *pSrcB,
                  matrix_instance_f32 *pDst) {
   int numElements = pSrcA->numRows * pSrcA->numCols;
@@ -90,7 +88,6 @@ void mat_sub_f32(const matrix_instance_f32 *pSrcA, const matrix_instance_f32 *pS
   }
 }
 
-// cmsis-dsp doesnt have f32 matrix/vector multiply
 void mat_vec_mult_f32(const matrix_instance_f32 *pSrcA, const float *pVec, float *pDst) {
   uint16_t rows = pSrcA->numRows;
   uint16_t cols = pSrcA->numCols;
