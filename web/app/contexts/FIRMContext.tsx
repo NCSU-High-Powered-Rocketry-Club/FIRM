@@ -202,7 +202,7 @@ export function FIRMProvider({ children }: { children: ReactNode }) {
     const HEADER_LEN = 2 + 2 + 4; // header + identifier + length
     const CRC_LEN = 2;
 
-    let buffer = new Uint8Array(0);
+    let buffer: Uint8Array<ArrayBufferLike> = new Uint8Array(0);
 
     const readU16LE = (b: Uint8Array, off: number) => b[off] | (b[off + 1] << 8);
     const readU32LE = (b: Uint8Array, off: number) =>
