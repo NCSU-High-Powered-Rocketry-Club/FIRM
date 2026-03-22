@@ -26,6 +26,17 @@ npm run dev
 
 This starts Vite and serves the app at a URL printed in the terminal (usually http://localhost:5173/). Any code changes to the UI will hot-reload.
 
+### Run the web app in production mode locally
+
+To test the production build locally:
+
+```bash
+$env:VITE_BASE="/"; npm run build
+npx http-server build/client -p 8080
+```
+
+Then open http://127.0.0.1:8080/ in your browser. This builds the app with optimizations and serves it from a static HTTP server, matching the production environment.
+
 ---
 
 ## 2. Working on the Documentation (MkDocs)
