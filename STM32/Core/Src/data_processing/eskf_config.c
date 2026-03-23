@@ -22,8 +22,8 @@ const float eskf_q_diag[ESKF_ERROR_DIM] = {
 };
 
 const float eskf_r_diag[ESKF_MEASUREMENT_DIM] = {
-  5e1F, // pressure (Pa)
-  1e-1F, 1e-1F, 1e-1F, // magnetic field (normalized)
+  1e1F, // pressure (Pa)
+  1.0F, 1.0F, 1.0F, // magnetic field (normalized)
 };
 
 /* ==================================================================================

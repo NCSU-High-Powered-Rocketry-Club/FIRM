@@ -570,22 +570,29 @@ void filter_data_task(void *argument) {
   ESKFRawData raw_data_instance;
   TaskCommandOption cmd_status = TASKCMD_SETUP;
   float last_time = 0.0F;
-  TickType_t start_time = xTaskGetTickCount();
 
   for (;;) {
     xQueueReceive(data_filter_command_queue, &cmd_status, 0);
     if (cmd_status == TASKCMD_SETUP || cmd_status == TASKCMD_MOCK_SETUP) {
       // making sure data has been collected
       if (data_packet.data.data_packet.magnetic_field_x_microteslas == 0) {
+        vTaskDelay(pdMS_TO_TICKS(10));
         continue;
       }
+      if (data_packet.data.data_packet.pressure_pascals == 0) {
+        vTaskDelay(pdMS_TO_TICKS(10));
+        continue;
+      }
+
+      // Reset start_time right before we begin accumulating data for 2 seconds
+      TickType_t start_time = xTaskGetTickCount();
 
       // loop collecting data until enough is collected to get starting rotation and initial
       // altitude. 100ms delay allows sensors to collect intitial data
       vTaskDelay(pdMS_TO_TICKS(100));
       while ((xTaskGetTickCount() - start_time) <
              pdMS_TO_TICKS(KALMAN_FILTER_STARTUP_DELAY_TIME_MS)) {
-        vTaskDelay(pdMS_TO_TICKS(1));
+        vTaskDelay(pdMS_TO_TICKS(5));
         // orientation initialization relies on acceleration and magnetic field, initial altitude
         // uses raw pressure
         DataPacket *p = &data_packet.data.data_packet;
@@ -594,14 +601,15 @@ void filter_data_task(void *argument) {
       }
 
       // filter can initialize, and FIRM can go into live mode
-      eskf_init(&eskf);
       if (cmd_status == TASKCMD_SETUP) {
         xQueueSend(system_request_queue, &(SystemRequest){SYSREQ_FINISH_SETUP}, portMAX_DELAY);
+        cmd_status = TASKCMD_LIVE;
       }
       if (cmd_status == TASKCMD_MOCK_SETUP) {
         xQueueSend(system_request_queue, &(SystemRequest){SYSREQ_FINISH_MOCK_SETUP}, portMAX_DELAY);
+        cmd_status = TASKCMD_MOCK;
       }
-
+      eskf_init(&eskf);
       // set the last time to calculate the delta timestamp, minus some initial offset so that the
       // first iteration of the filter doesn't have an extremely small dt.
       last_time = (float)data_packet.data.data_packet.timestamp_seconds - 0.005F;

@@ -1,5 +1,6 @@
 #include "error_state_kalman_filter.h"
 #include "eskf_functions.h"
+#include "firm_fsm.h"
 #include "settings.h"
 #include <math.h>
 #include <string.h>
@@ -51,13 +52,13 @@ static uint32_t accum_count = 0;
 
 static void set_state_matrices(ESKF *eskf) {
   for (int i = 0; i < ESKF_ERROR_DIM; i++) {
-    eskf->Q[i] = eskf_q_diag[i];
+    eskf->Q[i + i * ESKF_ERROR_DIM] = eskf_q_diag[i];
   }
   for (int i = 0; i < ESKF_MEASUREMENT_DIM; i++) {
-    eskf->R[i] = eskf_r_diag[i];
+    eskf->R[i + i * ESKF_MEASUREMENT_DIM] = eskf_r_diag[i];
   }
   for (int i = 0; i < ESKF_ERROR_DIM; i++) {
-    eskf->P[i] = eskf_initial_cov_diag[i];
+    eskf->P[i + i * ESKF_ERROR_DIM] = eskf_initial_cov_diag[i];
   }
 }
 
@@ -75,7 +76,7 @@ int eskf_init(ESKF *eskf) {
   } else {
     // firmware version v2.x.x (hardware v1.0), current PCB version
     memcpy(R_imu.pData, eskf_v2_R_imu_to_board, sizeof(R_imu_data));
-    memcpy(R_mag.pData, eskf_v1_R_mag_to_board, sizeof(R_mag_data));
+    memcpy(R_mag.pData, eskf_v2_R_mag_to_board, sizeof(R_mag_data));
   }
 
   // Copy initial nominal state (pos=0, vel=0, quat=identity)

@@ -39,7 +39,7 @@ void eskf_nominal_predict(float *x_nom, const float *u, float dt,
   float a_board_quat[4] = {0, a_board_ms2[0], a_board_ms2[1], a_board_ms2[2]};
   quaternion_product_f32(quat_state, a_board_quat, temp);
   quaternion_product_f32(temp, quat_conj, a_board_quat); // reusing a_board_quat
-  float *a_world = &a_board_ms2[1]; // a_world is the x,y,z element of the a_board_quat quaternion
+  float *a_world = &a_board_quat[1]; // a_world is the x,y,z element of the a_board_quat quaternion
   a_world[2] -= GRAVITY_METERS_PER_SECOND_SQUARED; // subtract from z axis
 
   // Integrate position and velocity
@@ -124,7 +124,7 @@ void eskf_measurement_function(const float *x_nom, float init_pressure, const fl
   // magnetometer: rotate world mag into board frame, then into sensor frame
   quaternion_product_f32(quat_conj, mag_world_q, z_pred); // using z_pred as temp storage
   quaternion_product_f32(z_pred, quat, quat_conj);        // reusing quat_conj
-  mat_vec_mult_f32(R_mag, quat_conj, &z_pred[1]);
+  mat_vec_mult_f32(R_mag, &quat_conj[1], &z_pred[1]);
 
   // pressure from altitude
   z_pred[0] =
@@ -147,7 +147,7 @@ void eskf_measurement_jacobian(const float *x_nom, float init_pressure, const fl
 
   // ∂pressure/∂altitude
   H_data[0] = init_pressure * (PRESSURE_EXPONENT * (-1.0F / PRESSURE_ALTITUDE_CONST)) *
-              powf(1.0F - altitude / PRESSURE_ALTITUDE_CONST, PRESSURE_EXPONENT);
+              powf(1.0F - altitude / PRESSURE_ALTITUDE_CONST, PRESSURE_EXPONENT - 1.0F);
 
   // Compute mag_board = R_b2w.T @ mag_world directly from quat
   // These are the dot products of mag_world with the columns of R_b2w
