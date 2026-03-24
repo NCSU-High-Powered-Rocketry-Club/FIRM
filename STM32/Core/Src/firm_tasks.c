@@ -870,6 +870,10 @@ void mock_packet_handler(void *argument) {
         (void)xTaskNotify(mmc5983ma_task_handle, SENSOR_NOTIFY_MOCK_BIT, eSetBits);
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
         break;
+      case MOCKID_ADXL371:
+        (void)xTaskNotify(adxl371_task_handle, SENSOR_NOTIFY_MOCK_BIT, eSetBits);
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        break;
       default:
         break;
       }
