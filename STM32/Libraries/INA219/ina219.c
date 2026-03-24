@@ -27,7 +27,7 @@ static int setup_device(bool soft_reset_complete);
  * @param len the number of bytes to read
  * @retval HAL Status, 0 on successful read
  */
-static HAL_StatusTypeDef read_registers(uint16_t reg_addr, uint16_t *buffer, size_t len);
+static HAL_StatusTypeDef read_registers(uint8_t reg_addr, uint16_t *buffer, size_t len);
 
 /**
  * @brief Writes 1 byte of data to the MMC5983MA with I2C
@@ -36,9 +36,10 @@ static HAL_StatusTypeDef read_registers(uint16_t reg_addr, uint16_t *buffer, siz
  * @param data the data to write to the register
  * @retval HAL Status, 0 on successful write
  */
-static HAL_StatusTypeDef write_register(uint16_t reg_addr, uint16_t data);
+static HAL_StatusTypeDef write_register(uint8_t reg_addr, uint16_t data);
 
 static const uint16_t configuration = 0x00; //config defaults to 399F
+//Shunt resistor is .01 ohms. So according to the data sheet, the 
 
 static I2CSettings i2cSettings;
 
@@ -46,7 +47,6 @@ void set_spi_ina(I2C_HandleTypeDef *hi2c, uint8_t device_i2c_addr) {
   i2cSettings.hi2c = hi2c;
   i2cSettings.dev_addr = device_i2c_addr;
 }
-s
 
 int ina219_init(I2C_HandleTypeDef *hi2c, uint8_t device_i2c_addr) {
   if (hi2c == NULL) {
@@ -79,13 +79,12 @@ int ina219_init(I2C_HandleTypeDef *hi2c, uint8_t device_i2c_addr) {
   return 0;
 }
 
-
 int setup_device(bool soft_reset_complete) {
   HAL_Delay(14); // 15ms power-on time
   uint16_t result = 0;
 
   // perform dummy read as required by datasheet
-  HAL_StatusTypeDef hal_status = read_registers(configuration, &result, 1);
+  HAL_StatusTypeDef hal_status = read_registers(configuration, &result, 2);
   if (hal_status) {
     switch (hal_status) {
     case HAL_BUSY:
@@ -105,7 +104,7 @@ int setup_device(bool soft_reset_complete) {
 
   if (soft_reset_complete) {
 
-    read_registers(configuration, &result, 1);
+    read_registers(configuration, &result, 2);
     if (result & 0b1011100110011111) { //the lsb of config should flip to low after reset
       serialPrintStr("\tINA219 did not complete software reset");
       return 1;
@@ -113,8 +112,8 @@ int setup_device(bool soft_reset_complete) {
   }
 
 
-  //read cehck
-  read_registers(configuration, &result, 1);
+  //read check
+  read_registers(configuration, &result, 2);
   if (result != 0x399F) {
     serialPrintStr("\t INA219 could not read");
     return 1;
@@ -123,7 +122,7 @@ int setup_device(bool soft_reset_complete) {
   //write check
   //writting to a bit which is not in use
     write_register(configuration, 0x799F);
-    read_registers(configuration, &result, 1);
+    read_registers(configuration, &result, 2);
     if (result != 0x799F ){
       serialPrintStr("\t INA219 could not write");
       return 1;
@@ -135,15 +134,49 @@ int setup_device(bool soft_reset_complete) {
   return 0;
 }
 
+static HAL_StatusTypeDef read_registers(uint8_t reg_addr, uint16_t *buffer, size_t len) {
 
-static HAL_StatusTypeDef read_registers(uint16_t reg_addr, uint16_t *buffer, size_t len) {
+  uint16_t data = HAL_I2C_Mem_Read(i2cSettings.hi2c, (uint16_t)(i2cSettings.dev_addr << 1),
+                          (uint8_t)reg_addr, I2C_MEMADD_SIZE_8BIT, buffer, len, 100);
+  
+                
+  //Shift MSB and LSB to big Endian
+  uint16_t MSB = 0xFF00;
+  uint16_t LSB = 0x00FF;
 
-  return HAL_I2C_Mem_Read(i2cSettings.hi2c, (uint16_t)(i2cSettings.dev_addr << 1),
-                          (uint16_t)reg_addr, I2C_MEMADD_SIZE_16BIT, buffer, len, 100);
+  MSB = data & MSB;
+  LSB = data & LSB;
+
+  data = 0x0000;
+
+  MSB>>8;
+  LSB<<8;
+
+  data = data | MSB;
+  data = data | LSB;
+  //-----------------
+  return data;
 }
 
-static HAL_StatusTypeDef write_register(uint16_t reg_addr, uint16_t data) {
+static HAL_StatusTypeDef write_register(uint8_t reg_addr, uint16_t data) {
+  //Shift MSB and LSB to big Endian
+  uint16_t MSB = 0xFF00;
+  uint16_t LSB = 0x00FF;
+
+  MSB = data & MSB;
+  LSB = data & LSB;
+
+  data = 0x0000;
+
+  MSB>>8;
+  LSB<<8;
+
+  data = data | MSB;
+  data = data | LSB;
+  //-----------------
+
+
 
   return HAL_I2C_Mem_Write(i2cSettings.hi2c, (uint16_t)(i2cSettings.dev_addr << 1),
-                           (uint16_t)reg_addr, I2C_MEMADD_SIZE_16BIT, &data, 1, 100);
+                           (uint8_t)reg_addr, I2C_MEMADD_SIZE_8BIT, &data, 2, 100);
 }
