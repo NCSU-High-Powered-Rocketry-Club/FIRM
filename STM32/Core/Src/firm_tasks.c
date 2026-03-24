@@ -549,8 +549,29 @@ void collect_adxl371_data_task(void *argument) {
       SensorPacket *adxl371_packet = (SensorPacket *)((uint8_t *)adxl371_storage + 1);
       int err = 0;
 
-      // TODO: add mock here
-      if (do_live) {
+      if (do_mock) {
+        MockSensorPacket mock_packet;
+        bool popped = false;
+        if (mock_ring_mutex != NULL) {
+          (void)xSemaphoreTake(mock_ring_mutex, portMAX_DELAY);
+        }
+        if (mock_ring_peek(&mock_ring, &mock_packet) && mock_packet.id == MOCKID_ADXL371) {
+          popped = mock_ring_pop(&mock_ring, &mock_packet);
+        }
+        if (mock_ring_mutex != NULL) {
+          (void)xSemaphoreGive(mock_ring_mutex);
+        }
+
+        if (!popped) {
+          osMutexRelease(sensorDataMutexHandle);
+          if (mock_packet_handler_handle != NULL) {
+            xTaskNotifyGive(mock_packet_handler_handle);
+          }
+          continue;
+        }
+        memcpy(adxl371_packet, &mock_packet.packet,
+               SENSOR_TIMESTAMP_SIZE_BYTES + sizeof(ADXL371Packet_t));
+      } else if (do_live) {
         err = adxl371_read_data(&adxl371_packet->packet.adxl371_packet);
         uint32_t clock_cycle_count = DWT->CYCCNT;
         memcpy(adxl371_packet->timestamp, &clock_cycle_count, sizeof(adxl371_packet->timestamp));
@@ -559,6 +580,10 @@ void collect_adxl371_data_task(void *argument) {
         logger_write_entry('A', sizeof(ADXL371Packet_t));
       }
       osMutexRelease(sensorDataMutexHandle);
+
+      if (do_mock) {
+        xTaskNotifyGive(mock_packet_handler_handle);
+      }
     }
   }
 }
