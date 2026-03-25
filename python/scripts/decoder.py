@@ -5,6 +5,7 @@ import os
 import struct
 import sys
 
+DECODER_LOG_VERSION = "FIRM LOG v1.3"
 
 # identifier for each packet type
 BMP581_ID = 'B'
@@ -119,7 +120,12 @@ class Decoder:
 
     def read_header(self, file):
         # header text is FIRM LOG v1.x
-        file.read(HEADER_SIZE_TEXT)
+        header_b = file.read(HEADER_SIZE_TEXT)
+        header_format_string = "<" + str(HEADER_SIZE_TEXT) + "s"
+        header = struct.unpack(header_format_string, header_b)[0].decode("utf-8")[:-2]
+        if header == DECODER_LOG_VERSION:
+            print("Wrong FIRM log version!")
+            sys.exit(1)
         # flash chip unique ID. We use this to identify the FIRM device
         uid_b = file.read(HEADER_UID_SIZE)
         # user-set device name

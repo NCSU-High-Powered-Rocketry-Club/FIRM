@@ -8,6 +8,7 @@
 
 #define FIRM_SETTINGS_FREQUENCY_MIN_HZ 1u
 #define FIRM_SETTINGS_FREQUENCY_MAX_HZ 1000u
+#define FIRM_FIRMWARE_VERSION "v2.1.0"
 
 /**
  * We store our settings in sector 0, on the first 1024-byte block.
