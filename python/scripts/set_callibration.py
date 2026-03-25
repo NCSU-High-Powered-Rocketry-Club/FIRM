@@ -116,7 +116,9 @@ def apply_calibration(frm_path: Path, calibration_yaml_path: Path) -> None:
 
     raw_bytes = bytearray(frm_path.read_bytes())
     version = _read_log_version(raw_bytes)
-
+    if version != "1.3":
+        print("Wrong FIRM log version")
+        return
     calibration_offset = _calibration_offset_in_file()
     calibration_end = calibration_offset + CAL_BLOCK_SIZE_BYTES
 
