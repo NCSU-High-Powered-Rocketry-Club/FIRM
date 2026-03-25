@@ -137,7 +137,7 @@ def apply_calibration(frm_path: Path, calibration_yaml_path: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        prog="set_callibration",
+        prog="set_calibration",
         description="Write calibration data in a .frm log using values from a YAML file.",
     )
     parser.add_argument("frm_file", help="Path to the .frm file")
