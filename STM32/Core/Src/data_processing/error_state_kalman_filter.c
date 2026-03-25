@@ -73,7 +73,6 @@ int eskf_init(ESKF *eskf) {
     // firmware version v1.x.x (hardware v0.1), legacy PCB version
     memcpy(R_imu.pData, eskf_v2_R_imu_to_board, sizeof(R_imu_data));
     memcpy(R_mag.pData, eskf_v2_R_mag_to_board, sizeof(R_mag_data));
-    led_toggle_status(FIRM_MODE_MOCK);
   } else {
     // firmware version v2.x.x (hardware v1.0), current PCB version
     memcpy(R_imu.pData, eskf_v1_R_imu_to_board, sizeof(R_imu_data));
