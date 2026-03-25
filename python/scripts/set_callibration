@@ -1,0 +1,130 @@
+from __future__ import annotations
+
+import argparse
+import struct
+from pathlib import Path
+
+import yaml
+
+HEADER_SIZE_TEXT = 14
+HEADER_UID_SIZE = 8
+HEADER_DEVICE_NAME_LEN = 32
+HEADER_COMM_SIZE = 4
+FIRMWARE_VERSION_LEN = 8
+FREQUENCY_LEN = 2
+
+CAL_FLOATS_PER_SENSOR = 12
+CAL_TOTAL_FLOATS = CAL_FLOATS_PER_SENSOR * 4
+CAL_BLOCK_SIZE_BYTES = CAL_TOTAL_FLOATS * 4
+
+ACCEL_BASE = 0
+GYRO_BASE = 12
+MAG_BASE = 24
+HIGH_G_BASE = 36
+
+
+def _header_padding_size() -> int:
+    header_before_padding = (
+        HEADER_UID_SIZE + HEADER_DEVICE_NAME_LEN + HEADER_COMM_SIZE + FIRMWARE_VERSION_LEN + FREQUENCY_LEN
+    )
+    return (8 - (header_before_padding % 8)) % 8
+
+
+def _calibration_offset_in_file() -> int:
+    return (
+        HEADER_SIZE_TEXT
+        + HEADER_UID_SIZE
+        + HEADER_DEVICE_NAME_LEN
+        + HEADER_COMM_SIZE
+        + FIRMWARE_VERSION_LEN
+        + FREQUENCY_LEN
+        + _header_padding_size()
+    )
+
+
+def _read_log_version(data: bytes) -> str:
+    header_text_raw = data[:HEADER_SIZE_TEXT]
+    header_text = header_text_raw.decode("utf-8", errors="ignore").rstrip("\x00")
+    return header_text.replace("FIRM LOG v", "").strip()
+
+
+def _load_calibration_from_yaml_file(calibration_file: Path) -> dict:
+    with calibration_file.open("r", encoding="utf-8") as stream:
+        parsed = yaml.safe_load(stream)
+
+    calibration = parsed.get("calibration", parsed)
+
+    return calibration
+
+
+def _set_calibration(existing_values: list[float], calibration: dict) -> list[float]:
+    changed_values = existing_values.copy()
+
+    accel_offset = [float(value) for value in calibration["accel_offset"]]
+    accel_matrix: list[float] = []
+    for row in calibration["accel_matrix"]:
+        accel_matrix.extend(float(value) for value in row)
+
+    gyro_offset = [float(value) for value in calibration["gyro_offset"]]
+    gyro_matrix : list[float] = []
+    for row in calibration["gyro_matrix"]:
+        gyro_matrix.extend(float(value) for value in row)
+
+    mag_offset = [float(value) for value in calibration["mag_offset"]]
+    mag_matrix: list[float] = []
+    for row in calibration["mag_matrix"]:
+        mag_matrix.extend(float(value) for value in row)
+
+    high_g_offset = [float(value) for value in calibration["high_g_offset"]]
+    high_g_matrix: list[float] = []
+    for row in calibration["high_g_matrix"]:
+        high_g_matrix.extend(float(value) for value in row)
+
+    changed_values[ACCEL_BASE + 0 : ACCEL_BASE + 9] = accel_matrix
+    changed_values[ACCEL_BASE + 9 : ACCEL_BASE + 12] = accel_offset
+    changed_values[GYRO_BASE + 0 : GYRO_BASE + 9] = gyro_matrix
+    changed_values[GYRO_BASE + 9 : GYRO_BASE + 12] = gyro_offset
+    changed_values[MAG_BASE + 0 : MAG_BASE + 9] = mag_matrix
+    changed_values[MAG_BASE + 9 : MAG_BASE + 12] = mag_offset
+    changed_values[HIGH_G_BASE + 0 : HIGH_G_BASE + 9] = high_g_matrix
+    changed_values[HIGH_G_BASE + 9 : HIGH_G_BASE + 12] = high_g_offset
+
+    return changed_values
+
+
+def apply_calibration(frm_path: Path, calibration_yaml_path: Path) -> None:
+    calibration = _load_calibration_from_yaml_file(calibration_yaml_path)
+
+    raw_bytes = bytearray(frm_path.read_bytes())
+    version = _read_log_version(raw_bytes)
+
+    calibration_offset = _calibration_offset_in_file()
+    calibration_end = calibration_offset + CAL_BLOCK_SIZE_BYTES
+
+    calibration_bytes = raw_bytes[calibration_offset:calibration_end]
+    existing_values = list(struct.unpack("<" + ("f" * CAL_TOTAL_FLOATS), calibration_bytes))
+
+    changed_values = _set_calibration(existing_values, calibration)
+    changed_bytes = struct.pack("<" + ("f" * CAL_TOTAL_FLOATS), *changed_values)
+
+    raw_bytes[calibration_offset:calibration_end] = changed_bytes
+    frm_path.write_bytes(raw_bytes)
+
+    print(f"FIRM log version: {version}")
+    print(f"Updated calibration in-place: {frm_path}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        prog="set_callibration",
+        description="Write calibration data in a .frm log using values from a YAML file.",
+    )
+    parser.add_argument("frm_file", help="Path to the .frm file")
+    parser.add_argument("calibration_file", help="Path to YAML file defining calibration values")
+    args = parser.parse_args()
+
+    apply_calibration(Path(args.frm_file), Path(args.calibration_file))
+
+
+if __name__ == "__main__":
+    main()
