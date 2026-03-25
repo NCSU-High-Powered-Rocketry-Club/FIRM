@@ -60,34 +60,53 @@ def _load_calibration_from_yaml_file(calibration_file: Path) -> dict:
 def _set_calibration(existing_values: list[float], calibration: dict) -> list[float]:
     changed_values = existing_values.copy()
 
-    accel_offset = [float(value) for value in calibration["accel_offset"]]
-    accel_matrix: list[float] = []
-    for row in calibration["accel_matrix"]:
-        accel_matrix.extend(float(value) for value in row)
+    accel_offset = calibration.get("accel_offset")
+    if accel_offset is not None:
+        accel_offset = [float(value) for value in accel_offset]
+        changed_values[ACCEL_BASE + 0 : ACCEL_BASE + 3] = accel_offset
 
-    gyro_offset = [float(value) for value in calibration["gyro_offset"]]
-    gyro_matrix : list[float] = []
-    for row in calibration["gyro_matrix"]:
-        gyro_matrix.extend(float(value) for value in row)
+    accel_matrix = calibration.get("accel_scale")
+    if accel_matrix is not None:
+        accel_matrix_values: list[float] = []
+        for row in accel_matrix:
+            accel_matrix_values.extend(float(value) for value in row)
+        changed_values[ACCEL_BASE + 3 : ACCEL_BASE + 12] = accel_matrix_values
 
-    mag_offset = [float(value) for value in calibration["mag_offset"]]
-    mag_matrix: list[float] = []
-    for row in calibration["mag_matrix"]:
-        mag_matrix.extend(float(value) for value in row)
+    gyro_offset = calibration.get("gyro_offset")
+    if gyro_offset is not None:
+        gyro_offset = [float(value) for value in gyro_offset]
+        changed_values[GYRO_BASE + 0 : GYRO_BASE + 3] = gyro_offset
 
-    high_g_offset = [float(value) for value in calibration["high_g_offset"]]
-    high_g_matrix: list[float] = []
-    for row in calibration["high_g_matrix"]:
-        high_g_matrix.extend(float(value) for value in row)
+    gyro_matrix = calibration.get("gyro_scale")
+    if gyro_matrix is not None:
+        gyro_matrix_values: list[float] = []
+        for row in gyro_matrix:
+            gyro_matrix_values.extend(float(value) for value in row)
+        changed_values[GYRO_BASE + 3 : GYRO_BASE + 12] = gyro_matrix_values
 
-    changed_values[ACCEL_BASE + 0 : ACCEL_BASE + 9] = accel_matrix
-    changed_values[ACCEL_BASE + 9 : ACCEL_BASE + 12] = accel_offset
-    changed_values[GYRO_BASE + 0 : GYRO_BASE + 9] = gyro_matrix
-    changed_values[GYRO_BASE + 9 : GYRO_BASE + 12] = gyro_offset
-    changed_values[MAG_BASE + 0 : MAG_BASE + 9] = mag_matrix
-    changed_values[MAG_BASE + 9 : MAG_BASE + 12] = mag_offset
-    changed_values[HIGH_G_BASE + 0 : HIGH_G_BASE + 9] = high_g_matrix
-    changed_values[HIGH_G_BASE + 9 : HIGH_G_BASE + 12] = high_g_offset
+    mag_offset = calibration.get("mag_offset")
+    if mag_offset is not None:
+        mag_offset = [float(value) for value in mag_offset]
+        changed_values[MAG_BASE + 0 : MAG_BASE + 3] = mag_offset
+
+    mag_matrix = calibration.get("mag_scale")
+    if mag_matrix is not None:
+        mag_matrix_values: list[float] = []
+        for row in mag_matrix:
+            mag_matrix_values.extend(float(value) for value in row)
+        changed_values[MAG_BASE + 3 : MAG_BASE + 12] = mag_matrix_values
+
+    high_g_offset = calibration.get("high_g_offset")
+    if high_g_offset is not None:
+        high_g_offset = [float(value) for value in high_g_offset]
+        changed_values[HIGH_G_BASE + 0 : HIGH_G_BASE + 3] = high_g_offset
+
+    high_g_matrix = calibration.get("high_g_scale")
+    if high_g_matrix is not None:
+        high_g_matrix_values: list[float] = []
+        for row in high_g_matrix:
+            high_g_matrix_values.extend(float(value) for value in row)
+        changed_values[HIGH_G_BASE + 3 : HIGH_G_BASE + 12] = high_g_matrix_values
 
     return changed_values
 
