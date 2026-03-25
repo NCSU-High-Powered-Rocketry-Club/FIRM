@@ -131,7 +131,7 @@ static void settings_write_defaults(void) {
   firmSettings.i2c_transfer_enabled = false;
   firmSettings.spi_transfer_enabled = false;
   strcpy(firmSettings.device_name, "FIRM Device");
-  strcpy(firmSettings.firmware_version, "v2.0.0");
+  strcpy(firmSettings.firmware_version, FIRM_FIRMWARE_VERSION);
   firmSettings.frequency_hz = 100;
 
   (void)settings_write_calibration_settings(&calibrationSettings.icm45686_accel,
