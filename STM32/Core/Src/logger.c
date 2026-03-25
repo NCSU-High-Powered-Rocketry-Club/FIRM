@@ -178,7 +178,7 @@ static FRESULT logger_ensure_capacity(size_t capacity) {
 
 static FRESULT logger_write() {
   if (HAL_DMA_GetState(hdma_sdio_tx) != HAL_DMA_STATE_READY) {
-    serialPrintStr("Full");
+    // full
     return FR_DISK_ERR;
   }
 
@@ -199,11 +199,9 @@ static FRESULT logger_write() {
   sd_FastWriteFlag = 0;
 
   if (fr != FR_OK) {
-    serialPrintStr("ERR logger_write");
+    // error in logger write
     return fr;
   }
-
-  // serialPrintStr(file_name);
 
   return fr;
 }

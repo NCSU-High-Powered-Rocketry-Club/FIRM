@@ -73,7 +73,7 @@ void set_spi_bmp(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_
 
 int bmp581_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin) {
   if (hspi == NULL || cs_channel == NULL) {
-    serialPrintStr("Invalid spi handle or chip select pin for BMP581");
+    // Invalid spi handle or chip select pin
     return 1;
   }
   // set up the SPI settings
@@ -81,12 +81,13 @@ int bmp581_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_p
   spiSettings.cs_channel = cs_channel;
   spiSettings.cs_pin = cs_pin;
 
-  serialPrintStr("Beginning BMP581 initialization");
+  // Beginning BMP581 initialization
   // sets up the BMP581 in SPI mode and ensures SPI is working
   if (bmp581_setup_device(false)) {
     return 1;
   }
-  serialPrintStr("\tIssuing BMP581 software reset...");
+
+  // Issuing BMP581 software reset
   write_register(cmd, 0b10110110); // do a soft-reset of the sensor's settings
   if (bmp581_setup_device(true)) { // verify correct setup again
     return 1;
@@ -102,7 +103,8 @@ int bmp581_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_p
   write_register(odr_config, 0b10000011);
   // continuous mode actually ignores the ODR bits that were set, and uses the OSR to determine
   // the ODR (255hz with 4x pressure OSR)
-  serialPrintStr("\tBMP581 startup successful!");
+
+  // BMP581 startup successful
   return 0;
 }
 
@@ -133,19 +135,6 @@ static int bmp581_setup_device(bool soft_reset_complete) {
   // perform dummy read as required by datasheet
   HAL_StatusTypeDef hal_status = read_registers(chip_id, &result, 1);
   if (hal_status) {
-    switch (hal_status) {
-    case HAL_BUSY:
-      serialPrintStr("\tSPI handle currently busy, unable to read");
-      break;
-    case HAL_TIMEOUT:
-      serialPrintStr("\tSPI read timed out during dummy read");
-      break;
-    case HAL_ERROR:
-      serialPrintStr("\tSPI read transaction failed during dummy read");
-      break;
-    default:
-      break;
-    }
     return 1;
   }
   // give device enough time to switch to correct mode
@@ -154,47 +143,46 @@ static int bmp581_setup_device(bool soft_reset_complete) {
   // ensure that device is set up in SPI Mode0/Mode3, or autoconfig mode
   read_registers(chip_status, &result, 1);
   if (result == 0x00) {
-    serialPrintStr("\tBMP581 wrongly initialized in I2C mode");
+    // BMP581 wrongly initialized in I2C mode
     uint8_t read_check;
     read_registers(chip_id, &read_check, 1);
     if (read_check != 0x50) {
-      serialPrintStr("\tBMP581 chip ID read failed, device is most likely not wired correctly");
+      // BMP581 chip ID read failed, device is most likely not wired correctly
     }
 
     return 1;
   }
   if (result == 0x01) {
-    serialPrintStr("\tBMP581 wrongly initialized in SPI Mode 1/2");
+    // BMP581 wrongly initialized in SPI Mode 1/2
     return 1;
   }
   if (result & 0x0C) {
-    serialPrintStr("\tI3C error, check datasheet register 0x11 for more info");
+    // I3C error, check datasheet register 0x11 for more info
     return 1;
   }
 
   // verify chip ID and asic rev ID read works
   read_registers(chip_id, &result, 1);
   if (result != 0x50) {
-    serialPrintStr("\tBMP581 could not read chip ID");
+    // BMP581 could not read chip ID
     return 1;
   }
   read_registers(asic_rev_id, &result, 1);
   if (result != 0x32) {
-    serialPrintStr("\tBMP581 could not read ASIC revision ID");
+    // BMP581 could not read ASIC revision ID
     return 1;
   }
 
   // verify that writes work
   read_registers(fifo_sel, &result, 1);
   if (result) {
-    serialPrintStr("\tCould not start write test: wrong expected value for FIFO_SEL");
+    // Could not start write test: wrong expected value for FIFO_SEL
     return 1;
   }
   write_register(fifo_sel, 0b00000100);
   read_registers(fifo_sel, &result, 1);
   if (result != 0x04) {
-    serialPrintStr(
-        "\tBMP581 SPI Write test failed, wrote to register and did not read expected value back!");
+    // BMP581 SPI Write test failed, wrote to register and did not read expected value back
     return 1;
   }
   write_register(fifo_sel, 0b00000000); // set back to default
@@ -202,11 +190,11 @@ static int bmp581_setup_device(bool soft_reset_complete) {
   // verify device is ready to be configured
   read_registers(status, &result, 1);
   if (result & 0x04) {
-    serialPrintStr("\tNVM error, refer to datasheet for source of error");
+    // NVM error, refer to datasheet for source of error
     return 1;
   }
   if (result & 0x08) {
-    serialPrintStr("\tNVM command error, refer to datasheet for source of error");
+    // NVM command error, refer to datasheet for source of error
     return 1;
   }
 
@@ -215,7 +203,7 @@ static int bmp581_setup_device(bool soft_reset_complete) {
     // verify software reset is recognized as complete by the interrupt status register
     read_registers(int_status, &result, 1);
     if (!(result & 0x10)) { // check that bit 4 (POR) is 1
-      serialPrintStr("\tSoftware reset interrupt signal not generated!");
+      // Software reset interrupt signal not generated
       return 1;
     }
   }

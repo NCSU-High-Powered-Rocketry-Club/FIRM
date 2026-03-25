@@ -11,11 +11,6 @@ static bool settings_write_flash_block(uint8_t *block_to_write);
 
 static bool settings_write_flash_block_to_sector(uint8_t *block_to_write, uint8_t sector);
 
-/*
-  So the way the settings are stored in the flash chip is:
-    Sector 0 (4 KB): [CalibrationSettings (512 bytes)][FIRMSettings (512 bytes)]
-*/
-
 int settings_init(SPI_HandleTypeDef *flash_hspi, GPIO_TypeDef *flash_cs_channel,
                   uint16_t flash_cs_pin) {
   // set up flash chip porting layer
@@ -42,7 +37,7 @@ int settings_init(SPI_HandleTypeDef *flash_hspi, GPIO_TypeDef *flash_cs_channel,
   uint64_t uid;
   w25q128jv_read_UID((uint8_t *)&uid, 8);
   if (uid != firmSettings.device_uid) {
-    serialPrintStr("Settings initialization failed, device may need to be configured");
+    // Settings initialization failed, device may need to be configured
     return 1;
   }
   return 0;

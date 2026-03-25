@@ -59,19 +59,18 @@ void set_spi_adxl(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs
 int adxl371_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin) {
 
   if (hspi == NULL || cs_channel == NULL) {
-    serialPrintStr("Invalid spi handle or chip select pin for ADXL371");
+    // Invalid spi handle or chip select pin
     return 1;
   }
   // set up the SPI settings
   set_spi_adxl(hspi, cs_channel, cs_pin);
 
-  serialPrintStr("Beginning ADXL371 initialization");
+  // Beginning ADXL371 initialization
   // sets up the accelerometer in SPI mode and ensures SPI is working
   if (setup_device())
     return 1;
 
   // do a soft-reset of the sensor's settings
-  serialPrintStr("\tIssuing ADXL371 software reset...");
   write_register(reset, 0x52);
   // verify correct setup again
   if (setup_device())
@@ -119,8 +118,7 @@ int adxl371_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_
   value = value | 0b00000011;
   write_register(power_ctl, value);
 
-  serialPrintStr("\tADXL371 startup successful!");
-
+  //ADXL371 startup successful
   return 0;
 }
 
@@ -133,19 +131,6 @@ static int setup_device() {
   // perform dummy read as required by datasheet
   HAL_StatusTypeDef hal_status = read_registers(who_am_i, &result, 1);
   if (hal_status) {
-    switch (hal_status) {
-    case HAL_BUSY:
-      serialPrintStr("\tSPI handle currently busy, unable to read");
-      break;
-    case HAL_TIMEOUT:
-      serialPrintStr("\tSPI read timed out during dummy read");
-      break;
-    case HAL_ERROR:
-      serialPrintStr("\tSPI read transaction failed during dummy read");
-      break;
-    default:
-      break;
-    }
     return 1;
   }
   // give device enough time to switch to correct mode
@@ -155,7 +140,7 @@ static int setup_device() {
   // verify chip ID read works
   read_registers(who_am_i, &result, 1);
   if (result != 0xAD) {
-    serialPrintStr("\n could not read chip ID");
+    // could not read chip ID
     return 1;
   }
 
@@ -163,14 +148,14 @@ static int setup_device() {
   read_registers(fifo_ctl, &result, 1); // fifo_ctl is default to 0x00
 
   if (result != 0x00) {
-    serialPrintStr("\t could not read fifo ctl register");
+    // could not read fifo ctl register
     return 1;
   }
 
   write_register(fifo_ctl, 0x38);
   read_registers(fifo_ctl, &result, 1);
   if (result != 0x38) {
-    serialPrintStr("\t ADXL SPI Write test failed, wrote to register and did not read expected value back!");
+    // ADXL SPI Write test failed, wrote to register and did not read expected value back
   }
   write_register(fifo_ctl, 0x00); // Set it back to default (0x80)
 

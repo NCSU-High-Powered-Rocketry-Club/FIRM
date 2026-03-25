@@ -718,7 +718,7 @@ void StartupTask(void *argument)
   // Setup the SD card
   FRESULT res = logger_init(&hdma_sdio_tx);
   if (res) {
-    serialPrintStr("Failed to initialized the logger (SD card)");
+    // Failed to initialized the logger
     Error_Handler();
   }
 
