@@ -7,9 +7,10 @@
 #include "messages.h"
 #include "mocking_handler.h"
 #include "settings.h"
-#include "ukf_functions.h"
-#include "unscented_kalman_filter.h"
+#include "eskf_functions.h"
+#include "error_state_kalman_filter.h"
 #include "utils.h"
+#include "commands.h"
 #include <adxl371.h>
 #include <bmp581.h>
 #include <icm45686.h>
@@ -17,18 +18,22 @@
 
 #include "FreeRTOS.h"
 #include "cmsis_os.h"
-#include "commands.h"
 #include "queue.h"
 #include "stream_buffer.h"
 #include "task.h"
+#include "event_groups.h"
 
-// TODO: prolly set these to 100 eventually
 #define BMP581_POLL_RATE_HZ 255
 #define ICM45686_POLL_RATE_HZ 400
 #define MMC5983MA_POLL_RATE_HZ 225
 #define ADXL371_POLL_RATE_HZ 160
-#define TRANSMIT_FREQUENCY_HZ 100
-#define KALMAN_FILTER_STARTUP_DELAY_TIME_MS 1000
+// bitmask for the sensor tasks (only ones used in kalman filter)
+// TODO: include ADXL in kalman filter
+#define BMP581_TASK_BIT (1 << 0)
+#define ICM45686_TASK_BIT (1 << 1)
+#define MMC5983MA_TASK_BIT (1 << 2)
+
+#define KALMAN_FILTER_STARTUP_DELAY_TIME_MS 2000
 
 #define MAX_WAIT_TIME(hz) (TickType_t)(pdMS_TO_TICKS(1000 / (hz)) + 1)
 

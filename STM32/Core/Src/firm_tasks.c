@@ -26,9 +26,11 @@ osThreadId_t transmit_task_handle;
 osThreadId_t usb_read_task_handle;
 osThreadId_t mock_packet_handler_handle;
 
+// usb and transmit queues and streams
 StreamBufferHandle_t usb_rx_stream;
 QueueHandle_t transmit_queue;
 
+// command/request queues
 QueueHandle_t system_request_queue;
 QueueHandle_t mode_indicator_command_queue;
 QueueHandle_t bmp581_command_queue;
@@ -38,6 +40,9 @@ QueueHandle_t adxl371_command_queue;
 QueueHandle_t data_filter_command_queue;
 QueueHandle_t packetizer_command_queue;
 QueueHandle_t mock_packet_handler_command_queue;
+
+// event for when all sensors have collected data
+EventGroupHandle_t sensors_collected;
 
 // mock packets
 #define SENSOR_TIMESTAMP_SIZE_BYTES (sizeof(((SensorPacket *)0)->timestamp))
@@ -52,10 +57,8 @@ const osThreadAttr_t systemManagerTask_attributes = {
     .stack_size = 128 * 4,
     .priority = (osPriority_t)osPriorityNormal,
 };
-const osThreadAttr_t modeIndicatorTask_attributes = {.name = "modeIndicatorTask",
-                                                     .stack_size = 128 * 4,
-                                                     .priority =
-                                                         (osPriority_t)osPriorityAboveNormal};
+const osThreadAttr_t modeIndicatorTask_attributes = {
+    .name = "modeIndicatorTask", .stack_size = 128 * 4, .priority = (osPriority_t)osPriorityNormal};
 const osThreadAttr_t bmp581Task_attributes = {
     .name = "bmp581Task",
     .stack_size = 256 * 4,
@@ -72,9 +75,9 @@ const osThreadAttr_t mmc5983maTask_attributes = {
     .priority = (osPriority_t)osPriorityHigh,
 };
 const osThreadAttr_t adxl371Task_attributes = {
-  .name = "adxl371Task",
-  .stack_size = 256 * 4,
-  .priority = (osPriority_t)osPriorityHigh,
+    .name = "adxl371Task",
+    .stack_size = 256 * 4,
+    .priority = (osPriority_t)osPriorityHigh,
 };
 const osThreadAttr_t filterDataTask_attributes = {
     .name = "filterDataTask",
@@ -166,7 +169,6 @@ int initialize_firm(SPIHandles *spi_handles_ptr, I2CHandles *i2c_handles_ptr,
   HAL_NVIC_DisableIRQ(EXTI2_IRQn);
   HAL_NVIC_DisableIRQ(EXTI3_IRQn);
 
-  
   if (icm45686_init(spi_handles_ptr->hspi2, GPIOB, GPIO_PIN_9)) {
     led_set_status(IMU_FAIL);
     Error_Handler();
@@ -222,8 +224,13 @@ void firm_rtos_init(void) {
       xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(SystemResponsePacket));
   mock_packet_handler_command_queue =
       xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
+
+  // mock ring initialization and mutex
   mock_ring_init(&mock_ring, mock_ring_storage, MOCK_RING_CAPACITY);
   mock_ring_mutex = xSemaphoreCreateMutex();
+
+  // event group to signal when kalman filter can be run
+  sensors_collected = xEventGroupCreate();
 }
 
 void system_manager_task(void *argument) {
@@ -372,6 +379,7 @@ void collect_bmp581_data_task(void *argument) {
       if (!err) {
         logger_write_entry('B', sizeof(BMP581Packet_t));
         bmp581_convert_packet(bmp581_packet, (DataPacket *)&data_packet.data);
+        xEventGroupSetBits(sensors_collected, BMP581_TASK_BIT);
       }
       osMutexRelease(sensorDataMutexHandle);
 
@@ -437,6 +445,7 @@ void collect_icm45686_data_task(void *argument) {
       if (!err) {
         logger_write_entry('I', sizeof(ICM45686Packet_t));
         icm45686_convert_packet(icm45686_packet, (DataPacket *)&data_packet.data);
+        xEventGroupSetBits(sensors_collected, ICM45686_TASK_BIT);
       }
       osMutexRelease(sensorDataMutexHandle);
 
@@ -503,6 +512,7 @@ void collect_mmc5983ma_data_task(void *argument) {
       if (!err) {
         logger_write_entry('M', sizeof(MMC5983MAPacket_t));
         mmc5983ma_convert_packet(mmc5983ma_packet, (DataPacket *)&data_packet.data);
+        xEventGroupSetBits(sensors_collected, MMC5983MA_TASK_BIT);
       }
       osMutexRelease(sensorDataMutexHandle);
 
@@ -530,7 +540,8 @@ void collect_adxl371_data_task(void *argument) {
       }
 
       osMutexAcquire(sensorDataMutexHandle, osWaitForever);
-      void *adxl371_storage = logger_malloc_packet(sizeof(ADXL371Packet_t) + 5); // + 4 for the timestamp, +1 for the sensor letter
+      void *adxl371_storage = logger_malloc_packet(
+          sizeof(ADXL371Packet_t) + 5); // + 4 for the timestamp, +1 for the sensor letter
       if (adxl371_storage == NULL) {
         osMutexRelease(sensorDataMutexHandle);
         continue;
@@ -538,8 +549,29 @@ void collect_adxl371_data_task(void *argument) {
       SensorPacket *adxl371_packet = (SensorPacket *)((uint8_t *)adxl371_storage + 1);
       int err = 0;
 
-      // TODO: add mock here
-      if (do_live) {
+      if (do_mock) {
+        MockSensorPacket mock_packet;
+        bool popped = false;
+        if (mock_ring_mutex != NULL) {
+          (void)xSemaphoreTake(mock_ring_mutex, portMAX_DELAY);
+        }
+        if (mock_ring_peek(&mock_ring, &mock_packet) && mock_packet.id == MOCKID_ADXL371) {
+          popped = mock_ring_pop(&mock_ring, &mock_packet);
+        }
+        if (mock_ring_mutex != NULL) {
+          (void)xSemaphoreGive(mock_ring_mutex);
+        }
+
+        if (!popped) {
+          osMutexRelease(sensorDataMutexHandle);
+          if (mock_packet_handler_handle != NULL) {
+            xTaskNotifyGive(mock_packet_handler_handle);
+          }
+          continue;
+        }
+        memcpy(adxl371_packet, &mock_packet.packet,
+               SENSOR_TIMESTAMP_SIZE_BYTES + sizeof(ADXL371Packet_t));
+      } else if (do_live) {
         err = adxl371_read_data(&adxl371_packet->packet.adxl371_packet);
         uint32_t clock_cycle_count = DWT->CYCCNT;
         memcpy(adxl371_packet->timestamp, &clock_cycle_count, sizeof(adxl371_packet->timestamp));
@@ -548,56 +580,108 @@ void collect_adxl371_data_task(void *argument) {
         logger_write_entry('A', sizeof(ADXL371Packet_t));
       }
       osMutexRelease(sensorDataMutexHandle);
+
+      if (do_mock) {
+        xTaskNotifyGive(mock_packet_handler_handle);
+      }
     }
   }
 }
 
 void filter_data_task(void *argument) {
 
-  UKF ukf;
-  ukf.measurement_function = ukf_measurement_function;
-  ukf.state_transition_function = ukf_state_transition_function;
-  DataPacket packet = data_packet.data.data_packet;
+  ESKF eskf;
+  memset(&eskf, 0, sizeof(ESKF));
+  ESKFRawData raw_data_instance;
   TaskCommandOption cmd_status = TASKCMD_SETUP;
   float last_time = 0.0F;
-  // set the timer based on the set packet transmission frequency
 
   for (;;) {
     xQueueReceive(data_filter_command_queue, &cmd_status, 0);
     if (cmd_status == TASKCMD_SETUP || cmd_status == TASKCMD_MOCK_SETUP) {
-      // time that FIRM should be running for (collecting sensor data) before starting the kalman
-      // filter
-      vTaskDelay(pdMS_TO_TICKS(KALMAN_FILTER_STARTUP_DELAY_TIME_MS));
-      // filter can initialize, and FIRM can go into live mode
-      memcpy(&packet, &data_packet.data.data_packet, 13 * 4);
-      ukf_init(&ukf, packet.pressure_pascals, &packet.raw_acceleration_x_gs,
-               &packet.magnetic_field_x_microteslas);
+      // making sure data has been collected
+      if (data_packet.data.data_packet.magnetic_field_x_microteslas == 0) {
+        vTaskDelay(pdMS_TO_TICKS(10));
+        continue;
+      }
+      if (data_packet.data.data_packet.pressure_pascals == 0) {
+        vTaskDelay(pdMS_TO_TICKS(10));
+        continue;
+      }
 
+      // Reset start_time right before we begin accumulating data for 2 seconds
+      TickType_t start_time = xTaskGetTickCount();
+
+      // loop collecting data until enough is collected to get starting rotation and initial
+      // altitude. 100ms delay allows sensors to collect intitial data
+      vTaskDelay(pdMS_TO_TICKS(100));
+      while ((xTaskGetTickCount() - start_time) <
+             pdMS_TO_TICKS(KALMAN_FILTER_STARTUP_DELAY_TIME_MS)) {
+        vTaskDelay(pdMS_TO_TICKS(5));
+        // orientation initialization relies on acceleration and magnetic field, initial altitude
+        // uses raw pressure
+        DataPacket *p = &data_packet.data.data_packet;
+        eskf_accumulate(p->pressure_pascals, &p->raw_acceleration_x_gs,
+                        &p->magnetic_field_x_microteslas);
+      }
+
+      // filter can initialize, and FIRM can go into live mode
       if (cmd_status == TASKCMD_SETUP) {
         xQueueSend(system_request_queue, &(SystemRequest){SYSREQ_FINISH_SETUP}, portMAX_DELAY);
+        cmd_status = TASKCMD_LIVE;
       }
       if (cmd_status == TASKCMD_MOCK_SETUP) {
         xQueueSend(system_request_queue, &(SystemRequest){SYSREQ_FINISH_MOCK_SETUP}, portMAX_DELAY);
+        cmd_status = TASKCMD_MOCK;
       }
+      eskf_init(&eskf);
       // set the last time to calculate the delta timestamp, minus some initial offset so that the
       // first iteration of the filter doesn't have an extremely small dt.
-      last_time = (float)packet.timestamp_seconds - 0.005F;
+      last_time = (float)data_packet.data.data_packet.timestamp_seconds - 0.005F;
     }
+
     if (cmd_status != TASKCMD_SETUP && cmd_status != TASKCMD_MOCK_SETUP) {
-      memcpy(&packet, &data_packet.data.data_packet, 13 * 4);
-      float dt = (float)packet.timestamp_seconds - last_time;
+      // setting the current data packet to the instance of data to be used in this next filter
+      // update
+      raw_data_instance.timestamp_seconds = data_packet.data.data_packet.timestamp_seconds;
+      memcpy(&raw_data_instance.pressure_pascals, &data_packet.data.data_packet.pressure_pascals,
+             sizeof(raw_data_instance) - sizeof(raw_data_instance.timestamp_seconds));
+      float dt = (float)raw_data_instance.timestamp_seconds - last_time;
+
       if (dt > 1e-6) {
-        last_time = (float)packet.timestamp_seconds;
-        int err = ukf_predict(&ukf, dt);
-        if (err) {
-          led_set_status(FIRM_MODE_BOOT);
-        }
-        ukf_set_measurement(&ukf, &packet.pressure_pascals);
-        err = ukf_update(&ukf);
-        if (err) {
-          led_set_status(FIRM_MODE_BOOT);
-        }
-        memcpy(&data_packet.data.data_packet.est_position_x_meters, ukf.X, UKF_STATE_DIMENSION * 4);
+        last_time = (float)raw_data_instance.timestamp_seconds;
+        // build control input vector
+        float u[ESKF_CONTROL_DIM] = {raw_data_instance.raw_acceleration_x_gs,
+                                     raw_data_instance.raw_acceleration_y_gs,
+                                     raw_data_instance.raw_acceleration_z_gs,
+                                     raw_data_instance.raw_angular_rate_x_deg_per_s,
+                                     raw_data_instance.raw_angular_rate_y_deg_per_s,
+                                     raw_data_instance.raw_angular_rate_z_deg_per_s};
+
+        // predict
+        eskf_predict(&eskf, u, dt);
+
+        // build measurement vector and update
+        float z_raw[ESKF_MEASUREMENT_DIM] = {
+            raw_data_instance.pressure_pascals,
+            raw_data_instance.magnetic_field_x_microteslas,
+            raw_data_instance.magnetic_field_y_microteslas,
+            raw_data_instance.magnetic_field_z_microteslas,
+        };
+        eskf_set_measurement(&eskf, z_raw);
+        eskf_update(&eskf);
+
+        // Copy estimates back to data packet
+        memcpy(&data_packet.data.data_packet.est_position_z_meters, eskf.x_nom,
+               ESKF_NOMINAL_DIM * sizeof(float));
+
+        // wait for all sensors to collect data
+        xEventGroupWaitBits(sensors_collected,
+                            BMP581_TASK_BIT | ICM45686_TASK_BIT |
+                                MMC5983MA_TASK_BIT,
+                            pdTRUE, // clear bits after unblocking
+                            pdTRUE, // wait for ALL bits
+                            portMAX_DELAY);
       }
     }
   }
@@ -809,6 +893,10 @@ void mock_packet_handler(void *argument) {
         break;
       case MOCKID_MMC5983MA:
         (void)xTaskNotify(mmc5983ma_task_handle, SENSOR_NOTIFY_MOCK_BIT, eSetBits);
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        break;
+      case MOCKID_ADXL371:
+        (void)xTaskNotify(adxl371_task_handle, SENSOR_NOTIFY_MOCK_BIT, eSetBits);
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
         break;
       default:

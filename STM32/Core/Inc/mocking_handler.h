@@ -23,6 +23,7 @@ typedef enum {
   MOCKID_BMP581 = 'B',
   MOCKID_ICM45686 = 'I',
   MOCKID_MMC5983MA = 'M',
+  MOCKID_ADXL371 = 'A',
   MOCKID_SETTINGS = 'H',
 } MockPacketID;
 

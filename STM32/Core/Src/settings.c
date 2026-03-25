@@ -205,6 +205,8 @@ bool settings_write_mock_settings(FIRMSettings_t *firm_settings,
 
   // Write firm settings after calibration settings
   memcpy(buffer_to_write + sizeof(CalibrationSettings_t), firm_settings, sizeof(FIRMSettings_t));
+  // Update in-memory firmSettings so the ESKF can detect the hardware version from the mock log
+  memcpy(&firmSettings, firm_settings, sizeof(FIRMSettings_t));
 
   // Write to sector 2 instead of sector 0
   return settings_write_flash_block_to_sector(buffer_to_write, 2);

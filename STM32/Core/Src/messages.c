@@ -68,6 +68,7 @@ MessageIdentifier validate_message_identifier(uint16_t header, uint16_t identifi
     case (uint16_t)'B':
     case (uint16_t)'I':
     case (uint16_t)'M':
+    case (uint16_t)'A':
     case (uint16_t)'H':
       return MSGID_MOCK_PACKET;
     default:

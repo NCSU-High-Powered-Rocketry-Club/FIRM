@@ -31,18 +31,8 @@ typedef struct {
   float magnetic_field_x_microteslas;
   float magnetic_field_y_microteslas;
   float magnetic_field_z_microteslas;
-  float est_position_x_meters;
-  float est_position_y_meters;
   float est_position_z_meters;
-  float est_velocity_x_meters_per_s;
-  float est_velocity_y_meters_per_s;
   float est_velocity_z_meters_per_s;
-  float est_acceleration_x_gs;
-  float est_acceleration_y_gs;
-  float est_acceleration_z_gs;
-  float est_angular_rate_x_rad_per_s;
-  float est_angular_rate_y_rad_per_s;
-  float est_angular_rate_z_rad_per_s;
   float est_quaternion_w;
   float est_quaternion_x;
   float est_quaternion_y;
@@ -67,8 +57,7 @@ void bmp581_convert_packet(SensorPacket *packet, DataPacket *result_packet);
  * @param result_packet Pointer to a DataPacket where the result of the preprocessor
  *                      will be stored
  */
-void mmc5983ma_convert_packet(SensorPacket *packet,
-                                                        DataPacket *result_packet);
+void mmc5983ma_convert_packet(SensorPacket *packet, DataPacket *result_packet);
 
 /**
  * @brief Converts raw ICM45686 data to SI units

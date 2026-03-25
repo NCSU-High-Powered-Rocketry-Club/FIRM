@@ -729,6 +729,7 @@ void StartupTask(void *argument)
       icm45686_get_accel_scale_factor(),
       icm45686_get_gyro_scale_factor(),
       mmc5983ma_get_magnetic_field_scale_factor(),
+      adxl371_get_accel_scale_factor(),
   };
 
   logger_write_header(&header_fields);
