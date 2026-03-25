@@ -1,4 +1,5 @@
 #include "messages.h"
+#include "commands.h"
 
 static uint8_t temp_buffer[COMMAND_READ_CHUNK_SIZE_BYTES];
 
@@ -55,6 +56,7 @@ MessageIdentifier validate_message_identifier(uint16_t header, uint16_t identifi
     case CMDID_SET_DEVICE_CONFIG:
     case CMDID_SET_IMU_CALIBRATON:
     case CMDID_SET_MAG_CALIBRATON:
+    case CMDID_GET_CALIBRATION:
     case CMDID_REBOOT:
       return MSGID_COMMAND_PACKET;
     default:
@@ -66,6 +68,7 @@ MessageIdentifier validate_message_identifier(uint16_t header, uint16_t identifi
     case (uint16_t)'B':
     case (uint16_t)'I':
     case (uint16_t)'M':
+    case (uint16_t)'A':
     case (uint16_t)'H':
       return MSGID_MOCK_PACKET;
     default:

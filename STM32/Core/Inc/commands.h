@@ -1,11 +1,12 @@
 #pragma once
 
+#include "settings.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
-#define COMMAND_READ_CHUNK_SIZE_BYTES 256
-#define COMMAND_PAYLOAD_MAX_LEN_BYTES 248
+#define COMMAND_READ_CHUNK_SIZE_BYTES 294
+#define COMMAND_PAYLOAD_MAX_LEN_BYTES 286
 
 #define DEVICE_NAME_LENGTH 32
 #define DEVICE_ID_LENGTH 8
@@ -20,6 +21,7 @@ typedef enum {
   CMDID_MOCK_REQUEST = 0x0005,
   CMDID_SET_MAG_CALIBRATON = 0x0006,
   CMDID_SET_IMU_CALIBRATON = 0x0007,
+  CMDID_GET_CALIBRATION = 0x0008,
   CMDID_CANCEL_REQUEST = 0x00FF,
 } CommandIdentifier;
 
@@ -48,6 +50,7 @@ typedef struct {
 typedef union {
   DeviceConfig device_config;
   DeviceInfo device_info;
+  CalibrationSettings_t calibration_settings;
   CommandSuccess success;
 } ResponsePacket;
 

@@ -127,10 +127,10 @@ int icm45686_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs
     // verify correct setup again
     if (setup_device(true)) return 1;
 
-    // sets accel range to +/- 32g, and ODR to 800hz
-    write_register(accel_config0, 0b00000110);
-    // sets gyro range to 4000dps, and ODR to 800hz
-    write_register(gyro_config0, 0b00000110);
+    // sets accel range to +/- 32g, and ODR to 400hz
+    write_register(accel_config0, 0b00000111);
+    // sets gyro range to 4000dps, and ODR to 400hz
+    write_register(gyro_config0, 0b00000111);
     // fifo set to stream mode, and 2k byte size
     write_register(fifo_config0, 0b01000111);
     // enable fifo for acceleration and gyroscope
@@ -309,6 +309,7 @@ static int setup_device(bool soft_reset_complete) {
 
 
 static HAL_StatusTypeDef read_registers(uint8_t addr, uint8_t* buffer, size_t len) {
+  addr |= 0x80;
     return spi_read(spiSettings.hspi, spiSettings.cs_channel, spiSettings.cs_pin, addr, buffer,
                     len);
 }

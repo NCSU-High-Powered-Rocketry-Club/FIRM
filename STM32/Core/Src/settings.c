@@ -11,6 +11,11 @@ static bool settings_write_flash_block(uint8_t *block_to_write);
 
 static bool settings_write_flash_block_to_sector(uint8_t *block_to_write, uint8_t sector);
 
+/*
+  So the way the settings are stored in the flash chip is:
+    Sector 0 (4 KB): [CalibrationSettings (512 bytes)][FIRMSettings (512 bytes)]
+*/
+
 int settings_init(SPI_HandleTypeDef *flash_hspi, GPIO_TypeDef *flash_cs_channel,
                   uint16_t flash_cs_pin) {
   // set up flash chip porting layer
@@ -45,8 +50,10 @@ int settings_init(SPI_HandleTypeDef *flash_hspi, GPIO_TypeDef *flash_cs_channel,
 
 bool settings_write_calibration_settings(AccelCalibration_t *accel_cal_settings,
                                          GyroCalibration_t *gyro_cal_settings,
-                                         MagCalibration_t *mag_cal_settings) {
-  if (accel_cal_settings == NULL && gyro_cal_settings == NULL && mag_cal_settings == NULL) {
+                                         MagCalibration_t *mag_cal_settings,
+                                         ADXLAccelCalibration_t *adxl371_accel_cal_settings) {
+  if (accel_cal_settings == NULL && gyro_cal_settings == NULL && mag_cal_settings == NULL &&
+      adxl371_accel_cal_settings == NULL) {
     return false;
   }
 
@@ -66,14 +73,14 @@ bool settings_write_calibration_settings(AccelCalibration_t *accel_cal_settings,
     memcpy(buffer_to_write + sizeof(AccelCalibration_t) + sizeof(GyroCalibration_t),
            mag_cal_settings, sizeof(MagCalibration_t));
   }
+  if (adxl371_accel_cal_settings != NULL) {
+    memcpy(buffer_to_write + sizeof(AccelCalibration_t) + sizeof(GyroCalibration_t) +
+               sizeof(MagCalibration_t),
+           adxl371_accel_cal_settings, sizeof(ADXLAccelCalibration_t));
+  }
   bool ok = settings_write_flash_block(buffer_to_write);
   if (ok) {
-    memcpy(&calibrationSettings.icm45686_accel, buffer_to_write, sizeof(AccelCalibration_t));
-    memcpy(&calibrationSettings, buffer_to_write + sizeof(AccelCalibration_t),
-           sizeof(GyroCalibration_t));
-    memcpy(&calibrationSettings,
-           buffer_to_write + sizeof(AccelCalibration_t) + sizeof(GyroCalibration_t),
-           sizeof(MagCalibration_t));
+    memcpy(&calibrationSettings, buffer_to_write, sizeof(CalibrationSettings_t));
   }
   return 1;
 }
@@ -103,15 +110,18 @@ static void settings_write_defaults(void) {
         calibrationSettings.icm45686_accel.scale_multiplier[3 * i + j] = 0.0F;
         calibrationSettings.icm45686_gyro.scale_multiplier[3 * i + j] = 0.0F;
         calibrationSettings.mmc5983ma_mag.scale_multiplier[3 * i + j] = 0.0F;
+        calibrationSettings.adxl371_accel.scale_multiplier[3 * i + j] = 0.0F;
         continue;
       }
       calibrationSettings.icm45686_accel.scale_multiplier[3 * i + j] = 1.0F;
       calibrationSettings.icm45686_gyro.scale_multiplier[3 * i + j] = 1.0F;
       calibrationSettings.mmc5983ma_mag.scale_multiplier[3 * i + j] = 1.0F;
+      calibrationSettings.adxl371_accel.scale_multiplier[3 * i + j] = 1.0F;
     }
     calibrationSettings.icm45686_accel.offset_gs[i] = 0.0F;
     calibrationSettings.icm45686_gyro.offset_dps[i] = 0.0F;
     calibrationSettings.mmc5983ma_mag.offset_ut[i] = 0.0F;
+    calibrationSettings.adxl371_accel.offset_gs[i] = 0.0F;
   }
 
   // TODO: determine settings to use
@@ -121,12 +131,13 @@ static void settings_write_defaults(void) {
   firmSettings.i2c_transfer_enabled = false;
   firmSettings.spi_transfer_enabled = false;
   strcpy(firmSettings.device_name, "FIRM Device");
-  strcpy(firmSettings.firmware_version, "v1.0.0");
+  strcpy(firmSettings.firmware_version, "v2.0.0");
   firmSettings.frequency_hz = 100;
 
   (void)settings_write_calibration_settings(&calibrationSettings.icm45686_accel,
                                             &calibrationSettings.icm45686_gyro,
-                                            &calibrationSettings.mmc5983ma_mag);
+                                            &calibrationSettings.mmc5983ma_mag,
+                                            &calibrationSettings.adxl371_accel);
   (void)settings_write_firm_settings(&firmSettings);
 }
 
@@ -194,6 +205,8 @@ bool settings_write_mock_settings(FIRMSettings_t *firm_settings,
 
   // Write firm settings after calibration settings
   memcpy(buffer_to_write + sizeof(CalibrationSettings_t), firm_settings, sizeof(FIRMSettings_t));
+  // Update in-memory firmSettings so the ESKF can detect the hardware version from the mock log
+  memcpy(&firmSettings, firm_settings, sizeof(FIRMSettings_t));
 
   // Write to sector 2 instead of sector 0
   return settings_write_flash_block_to_sector(buffer_to_write, 2);

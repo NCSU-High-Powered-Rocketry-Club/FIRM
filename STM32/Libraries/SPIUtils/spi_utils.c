@@ -8,7 +8,6 @@
 
 HAL_StatusTypeDef spi_read(SPI_HandleTypeDef *hspi, GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin,
                            uint8_t addr, uint8_t *buffer, uint8_t len) {
-  addr |= 0x80;
   HAL_GPIO_WritePin(GPIOx, GPIO_Pin, GPIO_PIN_RESET); // pull CS pin low
   HAL_StatusTypeDef ret =
       HAL_SPI_Transmit(hspi, &addr, 1, 100); // send the address that you want data from
