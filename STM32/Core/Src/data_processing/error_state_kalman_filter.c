@@ -1,6 +1,7 @@
 #include "error_state_kalman_filter.h"
 #include "eskf_functions.h"
 #include "firm_fsm.h"
+#include "led.h"
 #include "settings.h"
 #include <math.h>
 #include <string.h>
@@ -68,15 +69,15 @@ int eskf_init(ESKF *eskf) {
   memset(eskf, 0, sizeof(ESKF));
 
   // Select rotation matrices based on hardware version
-  if (firmSettings.firmware_version[0] == 'v' && firmSettings.firmware_version[1] == '1' &&
-      firmSettings.firmware_version[2] == '.') {
+  if (firmSettings.firmware_version[1] == '2') {
     // firmware version v1.x.x (hardware v0.1), legacy PCB version
-    memcpy(R_imu.pData, eskf_v1_R_imu_to_board, sizeof(R_imu_data));
-    memcpy(R_mag.pData, eskf_v1_R_mag_to_board, sizeof(R_mag_data));
-  } else {
-    // firmware version v2.x.x (hardware v1.0), current PCB version
     memcpy(R_imu.pData, eskf_v2_R_imu_to_board, sizeof(R_imu_data));
     memcpy(R_mag.pData, eskf_v2_R_mag_to_board, sizeof(R_mag_data));
+    led_toggle_status(FIRM_MODE_MOCK);
+  } else {
+    // firmware version v2.x.x (hardware v1.0), current PCB version
+    memcpy(R_imu.pData, eskf_v1_R_imu_to_board, sizeof(R_imu_data));
+    memcpy(R_mag.pData, eskf_v1_R_mag_to_board, sizeof(R_mag_data));
   }
 
   // Copy initial nominal state (pos=0, vel=0, quat=identity)
