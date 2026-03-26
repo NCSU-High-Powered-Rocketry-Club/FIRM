@@ -2,6 +2,7 @@
 #include "bmp581_packet.h"
 #include "firm_fsm.h"
 #include "icm45686_packet.h"
+#include "ina219.h"
 #include "led.h"
 #include "mmc5983ma_packet.h"
 #include "mock_ring_buffer.h"
@@ -189,6 +190,12 @@ int initialize_firm(SPIHandles *spi_handles_ptr, I2CHandles *i2c_handles_ptr,
 
   if (adxl371_init(spi_handles_ptr->hspi2, GPIOA, GPIO_PIN_8)) {
     led_set_status(UKF_FAIL);
+    Error_Handler();
+    return 1;
+  }
+
+  if (ina219_init(i2c_handles_ptr->hi2c1, 0x40)) {
+    led_set_status(SD_CARD_FAIL);
     Error_Handler();
     return 1;
   }
