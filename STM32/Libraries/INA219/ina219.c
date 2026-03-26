@@ -1,5 +1,6 @@
 #include "ina219.h"
 #include <stdint.h>
+#include "ina219_packet.h"
 
 
 /**
@@ -38,8 +39,17 @@ static HAL_StatusTypeDef read_registers(uint8_t reg_addr, uint16_t *buffer, size
  */
 static HAL_StatusTypeDef write_register(uint8_t reg_addr, uint16_t data);
 
-static const uint16_t configuration = 0x00; //config defaults to 399F
-//Shunt resistor is .01 ohms. So according to the data sheet, the 
+
+//Since max expected current is 1A, the current_lsb is 1/(2)^15
+//Shunt resistor is .01 ohms. So according to the data sheet, the calibration calc is 
+//133332
+static const uint8_t configuration = 0x00; //config defaults to 399F
+static const uint8_t shunt_voltage = 0x01;
+static const uint8_t bus_voltage = 0x02;
+static const uint8_t power = 0x03;
+static const uint8_t current = 0x04;
+static const uint8_t calibration =0x05;
+
 
 static I2CSettings i2cSettings;
 
@@ -74,6 +84,9 @@ int ina219_init(I2C_HandleTypeDef *hi2c, uint8_t device_i2c_addr) {
   //BADC (Voltage Bus) SADC(shunt voltage)  is set to a voltage resolution to 12 bits and a sample size to 16 samples
   //  sets Shunt and voltage bus, continuous
   write_register(configuration, 0b0011111001100111);
+
+  //writes calculated calibration value.
+  write_register(calibration, 133332);
 
   serialPrintStr("\tINA219 startup successful!");
   return 0;
@@ -131,6 +144,15 @@ int setup_device(bool soft_reset_complete) {
     write_register(configuration, 0x399F);
 
   
+  return 0;
+}
+
+int ina219_read_data(INA219Packet_t* packet){
+  read_registers(shunt_voltage,packet->shunt_voltage ,2);
+  read_registers(bus_voltage,packet->bus_voltage, 2);
+  read_registers(power,packet->power, 2);
+  read_registers(current,packet->current, 2);
+
   return 0;
 }
 
