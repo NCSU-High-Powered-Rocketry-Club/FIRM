@@ -41,13 +41,15 @@ FSMResponse fsm_process_request(SystemRequest sysreq, TaskCommand *task_command_
     task_command_queue[2].command = TASKCMD_MOCK;
     task_command_queue[3].target_task = TASK_MMC5983MA;
     task_command_queue[3].command = TASKCMD_MOCK;
-    task_command_queue[4].target_task = TASK_DATA_FILTER;
-    task_command_queue[4].command = TASKCMD_MOCK_SETUP;
-    task_command_queue[5].target_task = TASK_MOCK_PACKET_HANDLER;
-    task_command_queue[5].command = TASKCMD_START;
-    task_command_queue[6].target_task = TASK_PACKETIZER;
-    task_command_queue[6].command = TASKCMD_SYSTEM_PACKET_SUCCESS;
-    task_command_queue[7].target_task = TASK_NULL;
+    task_command_queue[4].target_task = TASK_ADXL371;
+    task_command_queue[4].command = TASKCMD_MOCK;
+    task_command_queue[5].target_task = TASK_DATA_FILTER;
+    task_command_queue[5].command = TASKCMD_MOCK_SETUP;
+    task_command_queue[6].target_task = TASK_MOCK_PACKET_HANDLER;
+    task_command_queue[6].command = TASKCMD_START;
+    task_command_queue[7].target_task = TASK_PACKETIZER;
+    task_command_queue[7].command = TASKCMD_SYSTEM_PACKET_SUCCESS;
+    task_command_queue[8].target_task = TASK_NULL;
     state = FIRM_MOCK_SETUP;
     return FSMRES_VALID;
 
@@ -78,13 +80,15 @@ FSMResponse fsm_process_request(SystemRequest sysreq, TaskCommand *task_command_
     task_command_queue[2].command = TASKCMD_LIVE;
     task_command_queue[3].target_task = TASK_MMC5983MA;
     task_command_queue[3].command = TASKCMD_LIVE;
-    task_command_queue[4].target_task = TASK_DATA_FILTER;
-    task_command_queue[4].command = TASKCMD_SETUP;
-    task_command_queue[5].target_task = TASK_MOCK_PACKET_HANDLER;
-    task_command_queue[5].command = TASKCMD_START;
-    task_command_queue[6].target_task = TASK_PACKETIZER;
-    task_command_queue[6].command = TASKCMD_SYSTEM_PACKET_SUCCESS;
-    task_command_queue[7].target_task = TASK_NULL;
+    task_command_queue[4].target_task = TASK_ADXL371;
+    task_command_queue[4].command = TASKCMD_LIVE;
+    task_command_queue[5].target_task = TASK_DATA_FILTER;
+    task_command_queue[5].command = TASKCMD_SETUP;
+    task_command_queue[6].target_task = TASK_MOCK_PACKET_HANDLER;
+    task_command_queue[6].command = TASKCMD_START;
+    task_command_queue[7].target_task = TASK_PACKETIZER;
+    task_command_queue[7].command = TASKCMD_SYSTEM_PACKET_SUCCESS;
+    task_command_queue[8].target_task = TASK_NULL;
     state = FIRM_SETUP;
     return FSMRES_VALID;
   default:

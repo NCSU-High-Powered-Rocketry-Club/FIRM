@@ -1,6 +1,6 @@
-#include "matrixhelper.h"
+#include "matrix_helper.h"
 
-int symmetrize(arm_matrix_instance_f32 *enter_matrix) {
+int symmetrize(matrix_instance_f32 *enter_matrix) {
   uint16_t mat_rows = enter_matrix->numRows;
   uint16_t mat_cols = enter_matrix->numCols;
   if (mat_rows != mat_cols) {
@@ -65,34 +65,30 @@ void quat_to_rotvec(const float quat[4], float rotvec[3]) {
   rotvec[2] = z * scale;
 }
 
-// cmsis-dsp doesnt have f32 matrix scale
-void mat_scale_f32(const arm_matrix_instance_f32 *pSrc, float scale,
-                   arm_matrix_instance_f32 *pDst) {
+void mat_scale_f32(const matrix_instance_f32 *pSrc, float scale, matrix_instance_f32 *pDst) {
   int numElements = pSrc->numRows * pSrc->numCols;
   for (int i = 0; i < numElements; i++) {
     pDst->pData[i] = pSrc->pData[i] * scale;
   }
 }
 
-// cmsis-dsp doesnt have f32 matrix add
-void mat_add_f32(const arm_matrix_instance_f32 *pSrcA, const arm_matrix_instance_f32 *pSrcB,
-                 arm_matrix_instance_f32 *pDst) {
+void mat_add_f32(const matrix_instance_f32 *pSrcA, const matrix_instance_f32 *pSrcB,
+                 matrix_instance_f32 *pDst) {
   int numElements = pSrcA->numRows * pSrcA->numCols;
   for (int i = 0; i < numElements; i++) {
     pDst->pData[i] = pSrcA->pData[i] + pSrcB->pData[i];
   }
 }
 
-void mat_sub_f32(const arm_matrix_instance_f32 *pSrcA, const arm_matrix_instance_f32 *pSrcB,
-                 arm_matrix_instance_f32 *pDst) {
+void mat_sub_f32(const matrix_instance_f32 *pSrcA, const matrix_instance_f32 *pSrcB,
+                 matrix_instance_f32 *pDst) {
   int numElements = pSrcA->numRows * pSrcA->numCols;
   for (int i = 0; i < numElements; i++) {
     pDst->pData[i] = pSrcA->pData[i] - pSrcB->pData[i];
   }
 }
 
-// cmsis-dsp doesnt have f32 matrix/vector multiply
-void mat_vec_mult_f32(const arm_matrix_instance_f32 *pSrcA, const float *pVec, float *pDst) {
+void mat_vec_mult_f32(const matrix_instance_f32 *pSrcA, const float *pVec, float *pDst) {
   uint16_t rows = pSrcA->numRows;
   uint16_t cols = pSrcA->numCols;
   for (int i = 0; i < rows; i++) {
@@ -123,8 +119,8 @@ void quaternion_product_f32(const float *q1, const float *q2, float *out) {
   out[3] = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2;
 }
 
-void mat_mult_f32(const arm_matrix_instance_f32 *pSrcA, const arm_matrix_instance_f32 *pSrcB,
-                  arm_matrix_instance_f32 *pDst) {
+void mat_mult_f32(const matrix_instance_f32 *pSrcA, const matrix_instance_f32 *pSrcB,
+                  matrix_instance_f32 *pDst) {
   int a_rows = pSrcA->numRows;
   int a_cols = pSrcA->numCols;
   int b_cols = pSrcB->numCols;
@@ -164,7 +160,7 @@ void vec_mult_f32(const float *pSrcA, const float *pSrcB, float *pDst, int lengt
   }
 }
 
-void mat_trans_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 *pDst) {
+void mat_trans_f32(const matrix_instance_f32 *pSrc, matrix_instance_f32 *pDst) {
   uint16_t rows = pSrc->numRows;
   uint16_t cols = pSrc->numCols;
   for (uint16_t j = 0; j < cols; j++) {
@@ -174,7 +170,7 @@ void mat_trans_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 
   }
 }
 
-float mat_cholesky_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 *pDst) {
+float mat_cholesky_f32(const matrix_instance_f32 *pSrc, matrix_instance_f32 *pDst) {
   const int n = (int)pDst->numRows;
   float min_L_diag = FLT_MAX;
 
@@ -208,7 +204,7 @@ float mat_cholesky_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_
   return min_L_diag * min_L_diag;
 }
 
-void mat_inverse_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f32 *pDst) {
+void mat_inverse_f32(const matrix_instance_f32 *pSrc, matrix_instance_f32 *pDst) {
   uint32_t n = pSrc->numRows;
   if (n == 0U) {
     return;
@@ -257,3 +253,58 @@ void mat_inverse_f32(const arm_matrix_instance_f32 *pSrc, arm_matrix_instance_f3
     }
   }
 }
+
+void mat_set_identity_f32(matrix_instance_f32 *M) {
+  uint16_t n = M->numRows;
+  for (uint16_t i = 0; i < n; i++) {
+    for (uint16_t j = 0; j < n; j++) {
+      M->pData[i * n + j] = (i == j) ? 1.0F : 0.0F;
+    }
+  }
+}
+
+void mat_set_diagonal_f32(matrix_instance_f32 *M, const float *diag, uint16_t n) {
+  for (uint16_t i = 0; i < n * n; i++) {
+    M->pData[i] = 0.0F;
+  }
+  for (uint16_t i = 0; i < n; i++) {
+    M->pData[i * n + i] = diag[i];
+  }
+}
+
+void skew_f32(const float v[3], matrix_instance_f32 *out) {
+  float *d = out->pData;
+  d[0] = 0.0F;
+  d[1] = -v[2];
+  d[2] = v[1];
+  d[3] = v[2];
+  d[4] = 0.0F;
+  d[5] = -v[0];
+  d[6] = -v[1];
+  d[7] = v[0];
+  d[8] = 0.0F;
+}
+
+void quat_to_rotation_matrix_f32(const float q[4], matrix_instance_f32 *R) {
+  float w = q[0], x = q[1], y = q[2], z = q[3];
+  float *d = R->pData;
+  d[0] = 1.0F - 2.0F * (y * y + z * z);
+  d[1] = 2.0F * (x * y - w * z);
+  d[2] = 2.0F * (x * z + w * y);
+  d[3] = 2.0F * (x * y + w * z);
+  d[4] = 1.0F - 2.0F * (x * x + z * z);
+  d[5] = 2.0F * (y * z - w * x);
+  d[6] = 2.0F * (x * z - w * y);
+  d[7] = 2.0F * (y * z + w * x);
+  d[8] = 1.0F - 2.0F * (x * x + y * y);
+}
+
+float vec_dot_f32(const float *a, const float *b, uint32_t n) {
+  float sum = 0.0F;
+  for (uint32_t i = 0; i < n; i++) {
+    sum += a[i] * b[i];
+  }
+  return sum;
+}
+
+float vec_norm_f32(const float *v, uint32_t n) { return sqrtf(vec_dot_f32(v, v, n)); }

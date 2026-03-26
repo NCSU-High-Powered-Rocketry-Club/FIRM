@@ -1,32 +1,39 @@
 #pragma once
 
+#include "data_preprocess.h"
 #include "firm_fsm.h"
+#include "led.h"
+#include "logger.h"
+#include "messages.h"
+#include "mocking_handler.h"
+#include "settings.h"
+#include "eskf_functions.h"
+#include "error_state_kalman_filter.h"
+#include "utils.h"
+#include "commands.h"
+#include <adxl371.h>
 #include <bmp581.h>
 #include <icm45686.h>
 #include <mmc5983ma.h>
-#include "data_preprocess.h"
-#include "logger.h"
-#include "utils.h"
-#include "led.h"
-#include "settings.h"
-#include "unscented_kalman_filter.h"
-#include "ukf_functions.h"
-#include "messages.h"
-#include "mocking_handler.h"
 
-
-#include "cmsis_os.h"
 #include "FreeRTOS.h"
-#include "stream_buffer.h"
+#include "cmsis_os.h"
 #include "queue.h"
+#include "stream_buffer.h"
 #include "task.h"
-#include "commands.h"
+#include "event_groups.h"
 
-#define BMP581_POLL_RATE_HZ 500
-#define ICM45686_POLL_RATE_HZ 800
+#define BMP581_POLL_RATE_HZ 255
+#define ICM45686_POLL_RATE_HZ 400
 #define MMC5983MA_POLL_RATE_HZ 225
-#define TRANSMIT_FREQUENCY_HZ 100
-#define KALMAN_FILTER_STARTUP_DELAY_TIME_MS 1000
+#define ADXL371_POLL_RATE_HZ 160
+// bitmask for the sensor tasks (only ones used in kalman filter)
+// TODO: include ADXL in kalman filter
+#define BMP581_TASK_BIT (1 << 0)
+#define ICM45686_TASK_BIT (1 << 1)
+#define MMC5983MA_TASK_BIT (1 << 2)
+
+#define KALMAN_FILTER_STARTUP_DELAY_TIME_MS 2000
 
 #define MAX_WAIT_TIME(hz) (TickType_t)(pdMS_TO_TICKS(1000 / (hz)) + 1)
 
@@ -42,6 +49,7 @@ extern osThreadId_t firm_mode_indicator_task_handle;
 extern osThreadId_t bmp581_task_handle;
 extern osThreadId_t icm45686_task_handle;
 extern osThreadId_t mmc5983ma_task_handle;
+extern osThreadId_t adxl371_task_handle;
 extern osThreadId_t packetizer_task_handle;
 extern osThreadId_t transmit_task_handle;
 extern osThreadId_t usb_read_task_handle;
@@ -51,7 +59,7 @@ extern osThreadId_t mock_packet_handler_handle;
 // Task-notification bits for sensor tasks.
 // We must distinguish EXTI (live) wakeups from mock dispatch wakeups so that
 // in mock mode the EXTI ISR cannot cause out-of-order ring pops.
-#define SENSOR_NOTIFY_ISR_BIT  (1UL << 0)
+#define SENSOR_NOTIFY_ISR_BIT (1UL << 0)
 #define SENSOR_NOTIFY_MOCK_BIT (1UL << 1)
 
 extern QueueHandle_t system_request_queue;
@@ -61,6 +69,7 @@ extern const osThreadAttr_t modeIndicatorTask_attributes;
 extern const osThreadAttr_t bmp581Task_attributes;
 extern const osThreadAttr_t icm45686Task_attributes;
 extern const osThreadAttr_t mmc5983maTask_attributes;
+extern const osThreadAttr_t adxl371Task_attributes;
 extern const osThreadAttr_t packetizerTask_attributes;
 extern const osThreadAttr_t transmitTask_attributes;
 extern const osThreadAttr_t usbReadTask_attributes;
@@ -134,7 +143,7 @@ void firm_rtos_init(void);
 
 /**
  * Callback function to handle received USB data. It is called from the USB ISR.
- * 
+ *
  * @param buffer Pointer to the received data buffer
  * @param data_length Length of the received data
  */
@@ -145,6 +154,7 @@ void firm_mode_indicator_task(void *argument);
 void collect_bmp581_data_task(void *argument);
 void collect_icm45686_data_task(void *argument);
 void collect_mmc5983ma_data_task(void *argument);
+void collect_adxl371_data_task(void *argument);
 void packetizer_task(void *argument);
 void filter_data_task(void *argument);
 void transmit_data(void *argument);

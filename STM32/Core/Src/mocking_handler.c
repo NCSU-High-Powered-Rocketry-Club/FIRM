@@ -1,4 +1,5 @@
 #include "mocking_handler.h"
+#include "adxl371_packet.h"
 
 static uint32_t mock_prev_ts = 0U;
 static bool mock_have_prev_ts = false;
@@ -85,6 +86,12 @@ bool mock_parse_sensor_packet(MockPacketID identifier, const uint8_t *payload_by
       return false;
     }
     memcpy(&out_packet->packet.mmc5983ma_packet, sensor_bytes, sizeof(MMC5983MAPacket_t));
+    return true;
+  case MOCKID_ADXL371:
+    if (sensor_len != (uint32_t)sizeof(ADXL371Packet_t)) {
+      return false;
+    }
+    memcpy(&out_packet->packet.adxl371_packet, sensor_bytes, sizeof(ADXL371Packet_t));
     return true;
   case MOCKID_SETTINGS:
   default:

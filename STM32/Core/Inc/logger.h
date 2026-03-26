@@ -15,7 +15,7 @@
 #include "ff.h"
 
 /** The current version of the FIRM log file */
-#define FIRM_LOG_HEADER_TEXT "FIRM LOG v1.2\n"
+#define FIRM_LOG_HEADER_TEXT "FIRM LOG v1.3\n"
 
 /** The sector size of the SD card. This is the smallest we are able to use. */
 #define SD_SECTOR_SIZE 8192
@@ -29,6 +29,7 @@ typedef struct {
   float accel_sf;
   float angular_rate_sf;
   float magnetic_field_sf;
+  float hi_g_accel_sf;
 } HeaderFields;
 
 /**

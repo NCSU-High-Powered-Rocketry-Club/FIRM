@@ -79,6 +79,7 @@ python/scripts/*.TXT
 python/scripts/*.csv
 python/scripts/*.FRM
 python/scripts/*.bak
+python/scripts/*.yaml
 
 # Python files:
 __pycache__/
