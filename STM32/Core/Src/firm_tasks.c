@@ -7,7 +7,6 @@
 #include "mock_ring_buffer.h"
 #include "mocking_handler.h"
 #include "semphr.h"
-#include "usb_print_debug.h"
 #include "usbd_cdc_if.h"
 #include "usbd_def.h"
 #include <stdint.h>

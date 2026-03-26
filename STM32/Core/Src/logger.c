@@ -7,7 +7,6 @@
 
 #include "logger.h"
 #include "settings.h"
-#include "usb_print_debug.h"
 #include <stdint.h>
 #include <stdio.h>
 

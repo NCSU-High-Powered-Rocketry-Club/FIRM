@@ -19,13 +19,6 @@ int settings_init(SPI_HandleTypeDef *flash_hspi, GPIO_TypeDef *flash_cs_channel,
   if (w25q128jv_init() != 1) {
     return 1; // error
   }
-  // if this pin is pulled to ground (default pulled high), write settings to flash chip
-  GPIO_TypeDef *write_check_pin_channel = GPIOA;
-  uint16_t write_check_pin = GPIO_PIN_4;
-
-  if (HAL_GPIO_ReadPin(write_check_pin_channel, write_check_pin) == GPIO_PIN_RESET) {
-    settings_write_defaults();
-  }
 
   // read settings block
   uint8_t buf[SETTINGS_FLASH_BLOCK_SIZE_BYTES];

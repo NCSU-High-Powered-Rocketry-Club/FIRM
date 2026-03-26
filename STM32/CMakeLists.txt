@@ -72,9 +72,9 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Libraries/ADXL371/adxl371.c
     Libraries/SPIUtils/spi_utils.c
     Core/Src/logger.c
-    Core/Src/usb_print_debug.c
     Core/Src/data_processing/data_preprocess.c
-    Core/Src/settings.c
+    Core/Src/interfaces/settings_manager.c
+    Core/Src/interfaces/settings_storage.c
     Core/Src/utils.c
     Core/Src/commands.c
     Core/Src/messages.c

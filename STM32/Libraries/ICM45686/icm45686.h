@@ -7,7 +7,6 @@
 
 #pragma once
 #include "icm45686_packet.h"
-#include "usb_print_debug.h"
 #include <math.h>
 #include <stdbool.h>
 
