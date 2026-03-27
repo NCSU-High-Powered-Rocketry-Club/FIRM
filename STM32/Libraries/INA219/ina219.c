@@ -158,26 +158,33 @@ int ina219_read_data(INA219Packet_t* packet){
 
 static HAL_StatusTypeDef read_registers(uint8_t reg_addr, uint16_t *buffer, size_t len) {
 
-  uint16_t data = HAL_I2C_Mem_Read(i2cSettings.hi2c, (uint16_t)(i2cSettings.dev_addr << 1),
+  HAL_StatusTypeDef HAL = HAL_I2C_Mem_Read(i2cSettings.hi2c, (uint16_t)(i2cSettings.dev_addr << 1),
                           (uint8_t)reg_addr, I2C_MEMADD_SIZE_8BIT, buffer, len, 100);
   
-                
+  uint16_t test0 = *buffer;
   //Shift MSB and LSB to big Endian
   uint16_t MSB = 0xFF00;
   uint16_t LSB = 0x00FF;
+  uint16_t temp;
 
-  MSB = data & MSB;
-  LSB = data & LSB;
+  MSB = *buffer & MSB;
+  LSB = *buffer & LSB;
 
-  data = 0x0000;
+  *buffer = 0x0000;
 
-  MSB>>8;
-  LSB<<8;
+  uint16_t test1 = *buffer;
 
-  data = data | MSB;
-  data = data | LSB;
-  //-----------------
-  return data;
+  MSB=MSB<<8;
+  LSB=LSB>>8;
+
+  uint16_t test2 = *buffer;
+
+  *buffer = *buffer | MSB;
+  *buffer = *buffer | LSB;
+  
+  uint16_t test3 = *buffer;
+  //----------------- 
+  return HAL;
 }
 
 static HAL_StatusTypeDef write_register(uint8_t reg_addr, uint16_t data) {
@@ -190,12 +197,12 @@ static HAL_StatusTypeDef write_register(uint8_t reg_addr, uint16_t data) {
 
   data = 0x0000;
 
-  MSB>>8;
-  LSB<<8;
+  MSB =MSB>>8;
+  LSB= LSB<<8;
 
   data = data | MSB;
   data = data | LSB;
-  //-----------------
+
 
 
 
