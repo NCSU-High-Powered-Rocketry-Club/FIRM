@@ -1,9 +1,10 @@
 #pragma once
 #include <stdint.h>
 #include <string.h>
-#include "settings.h"
+#include "settings_manager.h"
 #include <stdbool.h>
 #include "data_preprocess.h"
+#include "system_settings.h"
 
 // HeaderFields is owned by logger.h. In host unit tests we avoid including
 // logger.h so Ceedling doesn't pull in logger.c (which depends on FATFS).
@@ -65,8 +66,6 @@ void mock_timestamp_accumulator_reset(void);
 // Uses MOCK_DEFAULT_CYCLES_PER_MS.
 uint32_t mock_timestamp_accumulate_delay_ms(uint32_t *accumulated_clock_cycles, const uint8_t timestamp_bytes[4]);
 
-typedef bool (*MockSettingsWriteFn)(void *ctx, FIRMSettings_t *firm_settings, CalibrationSettings_t *calibration_settings);
-
 /**
  * Processes a mock header/settings packet by parsing the settings and calibration data
  * and writing them to sector 2 of the flash chip.
@@ -80,8 +79,5 @@ typedef bool (*MockSettingsWriteFn)(void *ctx, FIRMSettings_t *firm_settings, Ca
  */
 bool process_mock_settings_packet(uint8_t *received_bytes,
                                  uint32_t length,
-                                 FIRMSettings_t* firm_settings,
-                                 CalibrationSettings_t* calibration_settings,
-                                 HeaderFields* header_fields,
-                                 MockSettingsWriteFn write_fn,
-                                 void *write_ctx);
+                                 SystemSettings_t* settings,
+                                 SensorScaleFactors_t* header_fields);

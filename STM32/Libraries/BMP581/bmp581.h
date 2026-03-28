@@ -6,8 +6,9 @@
  */
 #pragma once
 #include "bmp581_packet.h"
-#include "usb_print_debug.h"
 #include <stdbool.h>
+#include <spi_utils.h>
+#include <stdint.h>
 
 /**
  * @brief ensures SPI read/write is working to the BMP581, and configures register settings

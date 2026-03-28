@@ -1,5 +1,5 @@
 #pragma once
-#include "settings.h"
+#include "settings_manager.h"
 #include <adxl371_packet.h>
 #include <bmp581_packet.h>
 #include <icm45686_packet.h>

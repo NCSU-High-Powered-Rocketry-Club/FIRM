@@ -67,20 +67,19 @@ void set_spi_mmc(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_
 
 int mmc5983ma_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin) {
   if (hspi == NULL) {
-    serialPrintStr("Invalid SPI handle for MMC5983MA");
+    // Invalid SPI handle
     return 1;
   }
 
   // configure spi settings
   set_spi_mmc(hspi, cs_channel, cs_pin);
-  serialPrintStr("Beginning MMC5983MA initialization");
 
+  // Beginning MMC5983MA initialization
   // sets up the magnetometer in spi mode and ensures spi is working
   if (setup_device(false))
     return 1;
 
   // initiating a software reset
-  serialPrintStr("\tIssuing MMC5983MA software reset...");
   write_register(internal_control1, 0b10000000);
 
   // verify correct setup again
@@ -102,7 +101,7 @@ int mmc5983ma_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t c
   // enable continuous measurement mode at 200hz
   write_register(internal_control2, 0b00001110);
 
-  serialPrintStr("\tMMC5983MA startup successful!");
+  // MMC5983MA startup successful
   return 0;
 }
 
@@ -123,7 +122,6 @@ int mmc5983ma_read_data(MMC5983MAPacket_t *packet) {
 
     return 0;
   }
-  // serialPrintStr("no data");
   return 1;
 }
 
@@ -140,16 +138,6 @@ int setup_device(bool soft_reset_complete) {
   // perform dummy read as required by datasheet
   HAL_StatusTypeDef hal_status = read_registers(product_id1, &result, 1);
   if (hal_status) {
-    switch (hal_status) {
-    case HAL_BUSY:
-      serialPrintStr("\tSPI handle currently busy, unable to read");
-      break;
-    case HAL_ERROR:
-      serialPrintStr("\tSPI read transaction failed during dummy read");
-      break;
-    default:
-      break;
-    }
     return 1;
   }
   // give device enough time to switch to correct mode
@@ -158,7 +146,7 @@ int setup_device(bool soft_reset_complete) {
 
   read_registers(product_id1, &result, 1);
   if (result != product_id_val) {
-    serialPrintStr("\tMMC5983MA could not read Product ID");
+    // MMC5983MA could not read Product ID
     return 1;
   }
 
@@ -170,7 +158,7 @@ int setup_device(bool soft_reset_complete) {
     // check that bit 7 (sw_rst) is back to 0
     read_registers(internal_control1, &result, 1);
     if (result & 0x80) {
-      serialPrintStr("\tMMC5983MA did not complete software reset");
+      // MMC5983MA did not complete software reset
       return 1;
     }
   }
