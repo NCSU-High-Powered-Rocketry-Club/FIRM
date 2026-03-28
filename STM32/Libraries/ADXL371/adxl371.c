@@ -1,5 +1,4 @@
 #include "adxl371.h"
-#include "spi_utils.h"
 
 /**
  * @brief the SPI settings for the ADXL372 to use when accessing device registers

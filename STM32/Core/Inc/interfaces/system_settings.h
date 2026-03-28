@@ -1,4 +1,6 @@
 #pragma once
+#include <stdbool.h>
+#include <stdint.h>
 
 typedef struct {
   float offset[3];

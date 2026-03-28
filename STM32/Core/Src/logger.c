@@ -6,7 +6,7 @@
  */
 
 #include "logger.h"
-#include "settings.h"
+#include "settings_manager.h"
 #include <stdint.h>
 #include <stdio.h>
 
@@ -118,15 +118,13 @@ FRESULT logger_init(DMA_HandleTypeDef *dma_sdio_tx_handle) {
   return fr;
 }
 
-FRESULT logger_write_header(HeaderFields *sensor_scale_factors) {
+FRESULT logger_write_header(SensorScaleFactors_t *sensor_scale_factors) {
   const char *firm_log_header = FIRM_LOG_HEADER_TEXT;
   size_t header_len = strlen(firm_log_header);
-  size_t scale_factor_len = sizeof(HeaderFields);
-  size_t firm_settings_len = sizeof(firmSettings);
-  size_t calibration_settings_len = sizeof(calibrationSettings);
+  size_t scale_factor_len = sizeof(SensorScaleFactors_t);
+  size_t system_settings_len = sizeof(SystemSettings_t);
 
-  FRESULT error_status = logger_ensure_capacity(header_len + scale_factor_len + firm_settings_len +
-                                                calibration_settings_len);
+  FRESULT error_status = logger_ensure_capacity(header_len + scale_factor_len + system_settings_len);
   if (error_status) {
     return error_status;
   }
@@ -135,12 +133,10 @@ FRESULT logger_write_header(HeaderFields *sensor_scale_factors) {
   // NOLINTNEXTLINE(bugprone-not-null-terminated-result)
   memcpy(current_buffer + current_offset, firm_log_header, header_len);
   current_offset += header_len;
-  // copy in firm settings
-  memcpy(current_buffer + current_offset, &firmSettings, firm_settings_len);
-  current_offset += firm_settings_len;
-  // copy calibration settings
-  memcpy(current_buffer + current_offset, &calibrationSettings, calibration_settings_len);
-  current_offset += calibration_settings_len;
+  // copy in system settings
+  const SystemSettings_t *system_settings = get_settings();
+  memcpy(current_buffer + current_offset, system_settings, system_settings_len);
+  current_offset += system_settings_len;
   // copy sensor scale factor struct
   memcpy(current_buffer + current_offset, sensor_scale_factors, scale_factor_len);
   current_offset += scale_factor_len;
@@ -215,21 +211,17 @@ static void logger_swap_buffers() {
   current_offset = 0;
 }
 
-FRESULT logger_append_mock_header(FIRMSettings_t *firm_settings,
-                                  CalibrationSettings_t *calibration_settings,
-                                  HeaderFields *sensor_scale_factors) {
-  if (firm_settings == NULL || calibration_settings == NULL || sensor_scale_factors == NULL) {
+FRESULT logger_append_mock_header(SystemSettings_t *settings, SensorScaleFactors_t *sensor_scale_factors) {
+  if (settings == NULL ||  sensor_scale_factors == NULL) {
     return FR_INVALID_PARAMETER;
   }
 
   const char *mock_header = FIRM_LOG_HEADER_TEXT;
   size_t header_len = strlen(mock_header);
-  size_t firm_settings_len = sizeof(FIRMSettings_t);
-  size_t calibration_settings_len = sizeof(CalibrationSettings_t);
-  size_t scale_factor_len = sizeof(HeaderFields);
+  size_t system_settings_len = sizeof(SystemSettings_t);
+  size_t scale_factor_len = sizeof(SensorScaleFactors_t);
 
-  FRESULT error_status = logger_ensure_capacity(header_len + firm_settings_len + 2 +
-                                                calibration_settings_len + scale_factor_len);
+  FRESULT error_status = logger_ensure_capacity(header_len + system_settings_len + scale_factor_len);
   if (error_status) {
     return error_status;
   }
@@ -240,11 +232,8 @@ FRESULT logger_append_mock_header(FIRMSettings_t *firm_settings,
   current_offset += header_len;
 
   // Append mock firmware settings
-  memcpy(current_buffer + current_offset, firm_settings, firm_settings_len);
-  current_offset += firm_settings_len;
-  // Append mock calibration settings
-  memcpy(current_buffer + current_offset, calibration_settings, calibration_settings_len);
-  current_offset += calibration_settings_len;
+  memcpy(current_buffer + current_offset, settings, system_settings_len);
+  current_offset += system_settings_len;
 
   // Append sensor scale factors
   memcpy(current_buffer + current_offset, sensor_scale_factors, scale_factor_len);

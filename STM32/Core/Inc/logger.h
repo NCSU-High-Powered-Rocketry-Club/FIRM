@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "settings.h"
+#include "settings_manager.h"
 #include <stdint.h>
 #include <string.h>
 
@@ -30,7 +30,7 @@ typedef struct {
   float angular_rate_sf;
   float magnetic_field_sf;
   float hi_g_accel_sf;
-} HeaderFields;
+} SensorScaleFactors_t;
 
 /**
  * @brief Initializes the SD card and creates the log file.
@@ -46,20 +46,17 @@ FRESULT logger_init(DMA_HandleTypeDef *dma_sdio_tx_handle);
  * @param sensor_scale_factors address of the struct with the scale factor values of the sensors
  * @retval File Status error code, 0 on success.
  */
-FRESULT logger_write_header(HeaderFields *sensor_scale_factors);
+FRESULT logger_write_header(SensorScaleFactors_t *sensor_scale_factors);
 
 /**
  * @brief Appends a mock header to the current log file
  *
- * @param firm_settings pointer to the mock firmware settings
- * @param calibration_settings pointer to the mock calibration settings
+ * @param firm_settings pointer to the mock settings
  * @param sensor_scale_factors address of the struct with the scale factor values from the mock
  * header
  * @retval File Status error code, 0 on success.
  */
-FRESULT logger_append_mock_header(FIRMSettings_t *firm_settings,
-                                  CalibrationSettings_t *calibration_settings,
-                                  HeaderFields *sensor_scale_factors);
+FRESULT logger_append_mock_header(SystemSettings_t *settings, SensorScaleFactors_t *sensor_scale_factors);
 
 /**
  * @brief allocates space for a sensor packet in the logger, not including the metadata info.

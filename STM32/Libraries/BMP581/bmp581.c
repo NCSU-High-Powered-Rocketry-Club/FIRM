@@ -5,8 +5,6 @@
  *      Author: Wlsan
  */
 #include "bmp581.h"
-#include <spi_utils.h>
-#include <stdint.h>
 
 /**
  * @brief the SPI settings for the BMP581 to use when accessing device registers

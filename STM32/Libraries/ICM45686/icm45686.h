@@ -6,9 +6,10 @@
  */
 
 #pragma once
-#include "icm45686_packet.h"
-#include <math.h>
 #include <stdbool.h>
+#include <math.h>
+#include "spi_utils.h"
+#include "icm45686_packet.h"
 
 /**
  * @brief Indirect Register type enumeration

@@ -1,4 +1,5 @@
 #include "firm_fsm.h"
+#include "settings_storage.h"
 
 static FIRMState state = FIRM_BOOT;
 
@@ -33,6 +34,7 @@ FSMResponse fsm_process_request(SystemRequest sysreq, TaskCommand *task_command_
       task_command_queue[0].command = TASKCMD_SYSTEM_PACKET_FAILURE;
       return FSMRES_INVALID;
     }
+    settings_storage_set_partition(PARTITION_SETTINGS_MOCK);
     task_command_queue[0].target_task = TASK_MODE_INDICATOR;
     task_command_queue[0].command = TASKCMD_MOCK;
     task_command_queue[1].target_task = TASK_BMP581;
@@ -72,6 +74,7 @@ FSMResponse fsm_process_request(SystemRequest sysreq, TaskCommand *task_command_
       task_command_queue[0].command = TASKCMD_SYSTEM_PACKET_FAILURE;
       return FSMRES_INVALID;
     }
+    settings_storage_set_partition(PARTITION_SETTINGS_MAIN);
     task_command_queue[0].target_task = TASK_MODE_INDICATOR;
     task_command_queue[0].command = TASKCMD_SETUP;
     task_command_queue[1].target_task = TASK_BMP581;

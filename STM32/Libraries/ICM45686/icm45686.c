@@ -6,7 +6,6 @@
  */
 
 #include "icm45686.h"
-#include "spi_utils.h"
 
 /**
  * @brief the SPI settings for the IMU to use when accessing device registers

@@ -120,12 +120,6 @@ static void firm_system_reset_cb(void *ctx) {
   HAL_NVIC_SystemReset();
 }
 
-static bool mock_settings_write_cb(void *ctx, FIRMSettings_t *firm_settings,
-                                   CalibrationSettings_t *calibration_settings) {
-  (void)ctx;
-  return settings_write_mock_settings(firm_settings, calibration_settings);
-}
-
 int initialize_firm(SPIHandles *spi_handles_ptr, I2CHandles *i2c_handles_ptr,
                     DMAHandles *dma_handles_ptr, UARTHandles *uart_handles_ptr) {
   firm_huart1 = uart_handles_ptr->huart1;
@@ -187,17 +181,11 @@ int initialize_firm(SPIHandles *spi_handles_ptr, I2CHandles *i2c_handles_ptr,
   }
 
   if (adxl371_init(spi_handles_ptr->hspi2, GPIOA, GPIO_PIN_8)) {
-    led_set_status(UKF_FAIL);
+    led_set_status(HIGH_G_FAIL);
     Error_Handler();
     return 1;
   }
 
-  // set up settings module with flash chip
-  if (settings_init(spi_handles_ptr->hspi1, GPIOC, GPIO_PIN_4)) {
-    led_set_status(FLASH_CHIP_FAIL);
-    Error_Handler();
-    return 1;
-  }
   return 0;
 };
 
@@ -692,7 +680,8 @@ void packetizer_task(void *argument) {
   data_packet.identifier = 0x0000;
   data_packet.packet_len = sizeof(DataPacket);
   // set the timer based on the set packet transmission frequency
-  const TickType_t transmit_freq = MAX_WAIT_TIME(firmSettings.frequency_hz);
+  const SystemSettings_t *settings = get_settings();
+  const TickType_t transmit_freq = MAX_WAIT_TIME(settings->frequency_hz);
   TickType_t last_wake_time = xTaskGetTickCount();
   SystemResponsePacket sys_response;
 
@@ -713,6 +702,7 @@ void packetizer_task(void *argument) {
 
 void transmit_data(void *argument) {
   Packet packet;
+  const SystemSettings_t *settings = get_settings();
   for (;;) {
     if (xQueueReceive(transmit_queue, &packet, portMAX_DELAY) == pdTRUE) {
       // calculate and attach the crc16 to the end of the packet
@@ -733,7 +723,7 @@ void transmit_data(void *argument) {
       }
 
       // optionally transmit over uart if the setting is enabled
-      if (firmSettings.uart_transfer_enabled && uart_tx_done) {
+      if (settings->uart_transfer_enabled && uart_tx_done) {
         uart_tx_done = false;
         HAL_UART_Transmit_DMA(firm_huart1, (uint8_t *)&packet, serialized_packet_len);
       }
@@ -747,11 +737,6 @@ void usb_read_data(void *argument) {
   UsbMessageMeta meta;
 
   for (;;) {
-    // simply an overflow check that can be removed later
-    if (xStreamBufferBytesAvailable(usb_rx_stream) > 1500) {
-      led_set_status(SD_CARD_FAIL);
-    }
-
     xStreamBufferReceive(usb_rx_stream, meta_bytes, sizeof(meta_bytes), portMAX_DELAY);
     if (!usb_parse_message_meta(meta_bytes, sizeof(meta_bytes), &meta)) {
       continue;
@@ -804,13 +789,10 @@ void usb_read_data(void *argument) {
 
     switch (type) {
     case USBMSG_MOCK_SETTINGS: {
-      FIRMSettings_t mock_firm_settings;
-      CalibrationSettings_t mock_calibration_settings;
-      HeaderFields header_fields;
-      if (process_mock_settings_packet(received_bytes, meta.payload_length, &mock_firm_settings,
-                                       &mock_calibration_settings, &header_fields,
-                                       mock_settings_write_cb, NULL)) {
-        logger_append_mock_header(&mock_firm_settings, &mock_calibration_settings, &header_fields);
+      SystemSettings_t mock_settings = {0};
+      SensorScaleFactors_t scale_factors;
+      if (process_mock_settings_packet(received_bytes, meta.payload_length, &mock_settings, &scale_factors)) {
+        logger_append_mock_header(&mock_settings, &scale_factors);
       }
       if (mock_ring_mutex != NULL) {
         (void)xSemaphoreTake(mock_ring_mutex, portMAX_DELAY);

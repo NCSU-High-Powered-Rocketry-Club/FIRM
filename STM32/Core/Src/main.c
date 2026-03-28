@@ -26,10 +26,14 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "firm_tasks.h"
+#include "settings_manager.h"
+#include "system_settings.h"
+#include "targets.h"
 
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+
 
 /* USER CODE END Includes */
 
@@ -715,6 +719,13 @@ void StartDefaultTask(void *argument)
 void StartupTask(void *argument)
 {
   /* USER CODE BEGIN StartupTask */
+  
+  // set up the settings manager
+  if (settings_manager_init()) {
+    led_set_status(SETTINGS_FAIL);
+    Error_Handler();
+  }
+
   // Setup the SD card
   FRESULT res = logger_init(&hdma_sdio_tx);
   if (res) {
@@ -723,7 +734,7 @@ void StartupTask(void *argument)
   }
 
   // get scale factor values for each sensor to put in header
-  HeaderFields header_fields = {
+  SensorScaleFactors_t scale_factors = {
       bmp581_get_temp_scale_factor(),
       bmp581_get_pressure_scale_factor(),
       icm45686_get_accel_scale_factor(),
@@ -732,7 +743,7 @@ void StartupTask(void *argument)
       adxl371_get_accel_scale_factor(),
   };
 
-  logger_write_header(&header_fields);
+  logger_write_header(&scale_factors);
 
   // the IMU runs into issues when the fifo is full at the very beginning, causing the interrupt
   // to be pulled back low too fast, and the ISR doesn't catch it for whatever reason. Doing
@@ -744,7 +755,6 @@ void StartupTask(void *argument)
 
   // even though we call this function in settings setup, it somehow breaks settings
   // when you try to write to it during rtos. So we have to call this again.
-  w25q128jv_set_spi_settings(&hspi1, GPIOC, GPIO_PIN_4);
   set_spi_icm(&hspi2, GPIOB, GPIO_PIN_9);
   set_spi_bmp(&hspi2, GPIOC, GPIO_PIN_2);
   set_spi_mmc(&hspi2, GPIOC, GPIO_PIN_7);

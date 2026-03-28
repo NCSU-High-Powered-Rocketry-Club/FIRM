@@ -7,6 +7,7 @@
 
 #pragma once
 #include "adxl371_packet.h"
+#include "spi_utils.h"
 #include <math.h>
 #include <stdbool.h>
 
