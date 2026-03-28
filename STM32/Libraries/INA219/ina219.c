@@ -37,7 +37,7 @@ static HAL_StatusTypeDef read_registers(uint8_t reg_addr, uint16_t *buffer, size
  * @param data the data to write to the register
  * @retval HAL Status, 0 on successful write
  */
-static HAL_StatusTypeDef write_register(uint8_t reg_addr, uint16_t data);
+static HAL_StatusTypeDef write_registers(uint8_t reg_addr, uint16_t data);
 
 
 //Since max expected current is 1A, the current_lsb is 1/(2)^15
@@ -73,20 +73,20 @@ int ina219_init(I2C_HandleTypeDef *hi2c, uint8_t device_i2c_addr) {
   if (setup_device(false))
     return 1;
 
-  // initiating a software reset
+    // initiating a software reset
   serialPrintStr("\tIssuing INA219 software reset...");
-  write_register(configuration, 0b1011100110011111);
-
+  write_registers(configuration, 0b1011100110011111);
+  
   // verify correct setup again
   if (setup_device(true))
     return 1;
   // Sets the voltage range to 32FSR, PGA to +-320 with a gain of /8
   //BADC (Voltage Bus) SADC(shunt voltage)  is set to a voltage resolution to 12 bits and a sample size to 16 samples
   //  sets Shunt and voltage bus, continuous
-  write_register(configuration, 0b0011111001100111);
+  write_registers(configuration, 0b0011111001100111);
 
-  //writes calculated calibration value.
-  write_register(calibration, 133332);
+  //writes calculated calibration value. (Need to recalculate)
+  write_registers(calibration, 0x0000);
 
   serialPrintStr("\tINA219 startup successful!");
   return 0;
@@ -118,7 +118,7 @@ int setup_device(bool soft_reset_complete) {
   if (soft_reset_complete) {
 
     read_registers(configuration, &result, 2);
-    if (result & 0b1011100110011111) { //the lsb of config should flip to low after reset
+    if (result == 0b1011100110011111) { //the lsb of config should flip to low after reset
       serialPrintStr("\tINA219 did not complete software reset");
       return 1;
     }
@@ -134,15 +134,12 @@ int setup_device(bool soft_reset_complete) {
 
   //write check
   //writting to a bit which is not in use
-    write_register(configuration, 0x799F);
-    read_registers(configuration, &result, 2);
-    if (result != 0x799F ){
+    write_registers(calibration, 0x799E);
+    read_registers(calibration, &result, 2);
+    if (result != 0x799E ){
       serialPrintStr("\t INA219 could not write");
       return 1;
     }
-    //reset config to default
-    write_register(configuration, 0x399F);
-
   
   return 0;
 }
@@ -161,33 +158,30 @@ static HAL_StatusTypeDef read_registers(uint8_t reg_addr, uint16_t *buffer, size
   HAL_StatusTypeDef HAL = HAL_I2C_Mem_Read(i2cSettings.hi2c, (uint16_t)(i2cSettings.dev_addr << 1),
                           (uint8_t)reg_addr, I2C_MEMADD_SIZE_8BIT, buffer, len, 100);
   
-  uint16_t test0 = *buffer;
   //Shift MSB and LSB to big Endian
   uint16_t MSB = 0xFF00;
   uint16_t LSB = 0x00FF;
-  uint16_t temp;
 
   MSB = *buffer & MSB;
   LSB = *buffer & LSB;
 
   *buffer = 0x0000;
 
-  uint16_t test1 = *buffer;
 
-  MSB=MSB<<8;
-  LSB=LSB>>8;
 
-  uint16_t test2 = *buffer;
+  MSB=MSB>>8;
+  LSB=LSB<<8;
+
 
   *buffer = *buffer | MSB;
   *buffer = *buffer | LSB;
   
-  uint16_t test3 = *buffer;
+
   //----------------- 
   return HAL;
 }
 
-static HAL_StatusTypeDef write_register(uint8_t reg_addr, uint16_t data) {
+static HAL_StatusTypeDef write_registers(uint8_t reg_addr, uint16_t data) {
   //Shift MSB and LSB to big Endian
   uint16_t MSB = 0xFF00;
   uint16_t LSB = 0x00FF;
