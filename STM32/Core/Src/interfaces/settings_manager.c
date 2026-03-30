@@ -2,13 +2,15 @@
 #include "system_settings.h"
 
 #define FIRM_DEFAULT_DEVICE_NAME "FIRM Device"
-#define SETTINGS_WRITE_DEFAULT 0
+#define SETTINGS_WRITE_DEFAULT 1
 
 #if SETTINGS_WRITE_DEFAULT == 1
 static bool settings_write_defaults(void);
 #endif
 
 static SystemSettings_t FIRMSystemSettings = {0};
+
+static void settings_set_firmware_version(void);
 
 int settings_manager_init(void) {
   #if SETTINGS_WRITE_DEFAULT == 1
@@ -23,6 +25,8 @@ int settings_manager_init(void) {
     // Settings initialization failed, device may need to be configured
     return 1;
   }
+  // firmware version overwrite
+  settings_set_firmware_version();
   return 0;
 }
 
@@ -61,6 +65,11 @@ bool settings_write_firm_settings(SystemSettings_t *settings) {
 
 const SystemSettings_t *get_settings(void) {
   return (const SystemSettings_t*)&FIRMSystemSettings;
+}
+
+static void settings_set_firmware_version(void) {
+  strcpy(FIRMSystemSettings.firmware_version, FIRM_FIRMWARE_VERSION);
+  settings_write_firm_settings(&FIRMSystemSettings);
 }
 
 #if SETTINGS_WRITE_DEFAULT == 1
