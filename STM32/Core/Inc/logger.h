@@ -15,7 +15,7 @@
 #include "ff.h"
 
 /** The current version of the FIRM log file */
-#define FIRM_LOG_HEADER_TEXT "FIRM LOG v1.3\n"
+#define FIRM_LOG_HEADER_TEXT "FIRM LOG v1.4\n"
 
 /** The sector size of the SD card. This is the smallest we are able to use. */
 #define SD_SECTOR_SIZE 8192

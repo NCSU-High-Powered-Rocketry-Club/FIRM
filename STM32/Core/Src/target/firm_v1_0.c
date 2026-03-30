@@ -5,28 +5,22 @@
 
 #if FIRM_HARDWARE_VERSION == VERSION_V1_0
 
-#define FLASH_SETTINGS_SECTOR 0
-#define FLASH_MAIN_SETTINGS_OFFSET 0
-#define FLASH_MOCK_SETTINGS_OFFSET 512
+#define FLASH_MAIN_SETTINGS_SECTOR 0
+#define FLASH_MOCK_SETTINGS_SECTOR 1
 
-static uint32_t get_settings_offset(StoragePartition_t partition) {
-  uint32_t offset = 0;
-  if (partition == PARTITION_SETTINGS_MAIN) {
-    offset = FLASH_MAIN_SETTINGS_OFFSET;
-  } else if (partition == PARTITION_SETTINGS_MOCK) {
-    offset = FLASH_MOCK_SETTINGS_OFFSET;
-  }
-  return offset;
+static uint32_t get_sector(const StoragePartition_t partition) {
+  if (partition == PARTITION_SETTINGS_MOCK)
+    return FLASH_MOCK_SETTINGS_SECTOR;
+  return FLASH_MAIN_SETTINGS_SECTOR;
 }
 
-static void settings_storage_read(StoragePartition_t partition, uint8_t *buffer, uint8_t len) {
-  uint32_t offset = get_settings_offset(partition);
-  w25q128jv_read_sector(buffer, FLASH_SETTINGS_SECTOR, offset, len);
+static void settings_storage_read(const StoragePartition_t partition, uint8_t *buffer, size_t len) {
+  w25q128jv_read_sector(buffer, get_sector(partition), 0, len);
 }
 
-static void settings_storage_write(StoragePartition_t partition, uint8_t *buffer, uint8_t len) {
-  uint32_t offset = get_settings_offset(partition);
-  w25q128jv_write_sector(buffer, FLASH_SETTINGS_SECTOR, offset, len);
+static void settings_storage_write(const StoragePartition_t partition, uint8_t *buffer, size_t len) {
+  w25q128jv_erase_sector(get_sector(partition));
+  w25q128jv_write_sector(buffer, get_sector(partition), 0, len);
 }
 
 static uint64_t settings_read_uid(void) {

@@ -29,6 +29,7 @@
 #include "settings_manager.h"
 #include "system_settings.h"
 #include "targets.h"
+#include "firm_v1_0.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -164,6 +165,11 @@ int main(void)
   UARTHandles uart_handles = {
       .huart1 = &huart1,
   };
+
+  #if FIRM_HARDWARE_VERSION == VERSION_V1_0
+  if (firm_init_hardware())
+    Error_Handler();
+  #endif
 
   if (initialize_firm(&spi_handles, &i2c_handles, &dma_handles, &uart_handles)) {
     Error_Handler();
@@ -659,7 +665,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void blink() { HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET); }
 
 /**
  * @brief ISR for interrupt pins

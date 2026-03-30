@@ -12,12 +12,13 @@
   #include "logger.h"
 #else
   typedef struct {
-      float temp_sf;
-      float pressure_sf;
-      float accel_sf;
-      float angular_rate_sf;
-      float magnetic_field_sf;
-  } HeaderFields;
+  float temp_sf;
+  float pressure_sf;
+  float accel_sf;
+  float angular_rate_sf;
+  float magnetic_field_sf;
+  float hi_g_accel_sf;
+} SensorScaleFactors_t;
 #endif
 
 typedef enum {

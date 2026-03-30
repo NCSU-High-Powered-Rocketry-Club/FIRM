@@ -36,7 +36,6 @@ bool process_mock_settings_packet(uint8_t *received_bytes, uint32_t length,
   
   // put the last of the header bytes into the scale factor fields
   memcpy(scale_factors, &received_bytes[offset], sizeof(SensorScaleFactors_t));
-  settings_write_firm_settings(settings);
   return settings_write_firm_settings(settings);
 }
 

@@ -9,7 +9,7 @@
 
 #define FIRM_SETTINGS_FREQUENCY_MIN_HZ 1u
 #define FIRM_SETTINGS_FREQUENCY_MAX_HZ 1000u
-#define FIRM_FIRMWARE_VERSION "v2.1.0"
+#define FIRM_FIRMWARE_VERSION "v2.2.0"
 
 /**
  * @brief sets up the settings manager by ensuring the storage has existing settings and
@@ -33,17 +33,17 @@ bool settings_write_calibration(Calibration_t *accel_calibraion, Calibration_t *
                                 Calibration_t *mag_calibration, Calibration_t *high_g_calibration);
 
 /**
- * Writes the firm settings to the settings storage.
+ * @brief Writes the firm settings to the settings storage.
  *
  * @param firm_settings pointer to firm settings to write
+ * @retval true on success
  */
 bool settings_write_firm_settings(SystemSettings_t *firm_settings);
 
 /**
- * Reads the firm settings to the settings storage.
- *
- * @param firm_settings result of the stored firm settings
+ * @brief Gets the singleton instance of the System Settings
+ * @note this cannot be modified
+ * 
+ * @retval the SystemSettings_t struct
  */
-bool settings_read_firm_settings(SystemSettings_t *firm_settings);
-
 const SystemSettings_t *get_settings(void);

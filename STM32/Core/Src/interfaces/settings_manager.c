@@ -1,17 +1,19 @@
 #include "settings_manager.h"
 #include "system_settings.h"
 
+#define FIRM_DEFAULT_DEVICE_NAME "FIRM Device"
 #define SETTINGS_WRITE_DEFAULT 0
 
 #if SETTINGS_WRITE_DEFAULT == 1
-static void settings_write_defaults(SystemSettings_t *settings);
+static bool settings_write_defaults(void);
 #endif
 
 static SystemSettings_t FIRMSystemSettings = {0};
 
 int settings_manager_init(void) {
-  #if SETTINGS_WrITE_DEFAULT == 1
-  settings_write_defaults(&FIRMSystemSettings);
+  #if SETTINGS_WRITE_DEFAULT == 1
+  if (!settings_write_defaults())
+    return 1;
   #endif
   settings_read_from_storage(&FIRMSystemSettings);
 
@@ -62,39 +64,26 @@ const SystemSettings_t *get_settings(void) {
 }
 
 #if SETTINGS_WRITE_DEFAULT == 1
-static void settings_write_defaults(SystemSettings_t *settings) {
+static bool settings_write_defaults(void) {
+  SystemSettings_t default_settings = {0};
+
+  // default calibration is 0.0 offset, and scale factor matrix is the identity matrix
   for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      if (i != j) {
-        settings->accel_cal.scale_matrix[3 * i + j] = 0.0F;
-        settings->gyro_cal.scale_matrix[3 * i + j] = 0.0F;
-        settings->mag_cal.scale_matrix[3 * i + j] = 0.0F;
-        settings->high_g_cal.scale_matrix[3 * i + j] = 0.0F;
-        continue;
-      }
-      settings->accel_cal.scale_matrix[3 * i + j] = 1.0F;
-      settings->gyro_cal.scale_matrix[3 * i + j] = 1.0F;
-      settings->mag_cal.scale_matrix[3 * i + j] = 1.0F;
-      settings->high_g_cal.scale_matrix[3 * i + j] = 1.0F;
-    }
-    settings->accel_cal.offset_gs[i] = 0.0F;
-    settings->gyro_cal.offset_dps[i] = 0.0F;
-    settings->mag_cal.offset_ut[i] = 0.0F;
-    settings->high_g_cal.offset_gs[i] = 0.0F;
+    default_settings.accel_cal.scale_matrix[3 * i + i] = 1.0F;
+    default_settings.gyro_cal.scale_matrix[3 * i + i] = 1.0F;
+    default_settings.mag_cal.scale_matrix[3 * i + i] = 1.0F;
+    default_settings.high_g_cal.scale_matrix[3 * i + i] = 1.0F;
   }
+  
+  default_settings.device_uid = settings_read_storage_uid();
+  default_settings.usb_transfer_enabled = true;
+  default_settings.uart_transfer_enabled = false;
+  default_settings.i2c_transfer_enabled = false;
+  default_settings.spi_transfer_enabled = false;
+  strcpy(default_settings.device_name, FIRM_DEFAULT_DEVICE_NAME);
+  strcpy(default_settings.firmware_version, FIRM_FIRMWARE_VERSION);
+  default_settings.frequency_hz = 100;
 
-  settings->device_uid = settings_read_storage_uid();
-  settings->.usb_transfer_enabled = true;
-  settings->.uart_transfer_enabled = false;
-  settings->.i2c_transfer_enabled = false;
-  settings->.spi_transfer_enabled = false;
-  strcpy(settings->.device_name, "FIRM Device");
-  strcpy(settings->.firmware_version, FIRM_FIRMWARE_VERSION);
-  settings->.frequency_hz = 100;
-
-  (void)settings_write_calibration_settings(
-      &settings->accel_cal, &settings->gyro_cal,
-      &settings->mag_cal, &settings->high_g_cal);
-  (void)settings_write_firm_settings(&settings->);
+  return settings_write_firm_settings(&default_settings);
 }
 #endif

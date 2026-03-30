@@ -1,6 +1,7 @@
 #pragma once
 #include "system_settings.h"
 #include <stdint.h>
+#include <stddef.h>
 
 typedef enum {
   PARTITION_SETTINGS_MAIN,
@@ -8,8 +9,8 @@ typedef enum {
 } StoragePartition_t;
 
 typedef struct {
-  void(*read_settings)(StoragePartition_t partition, uint8_t* buf, uint8_t len);
-  void(*write_settings)(StoragePartition_t partition, uint8_t* buf, uint8_t len);
+  void(*read_settings)(const StoragePartition_t partition, uint8_t* buf, size_t len);
+  void(*write_settings)(const StoragePartition_t partition, uint8_t* buf, size_t len);
   uint64_t(*read_uid)(void);
 } SettingsStorageInterface_t;
 
