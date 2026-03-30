@@ -2,7 +2,7 @@
 #include "system_settings.h"
 
 #define FIRM_DEFAULT_DEVICE_NAME "FIRM Device"
-#define SETTINGS_WRITE_DEFAULT 1
+#define SETTINGS_WRITE_DEFAULT 0
 
 #if SETTINGS_WRITE_DEFAULT == 1
 static bool settings_write_defaults(void);
