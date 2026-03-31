@@ -10,14 +10,15 @@ static bool settings_write_defaults(void);
 
 static SystemSettings_t FIRMSystemSettings = {0};
 
-static void settings_set_firmware_version(void);
+static int settings_write_new_version(void);
 
 int settings_manager_init(void) {
   #if SETTINGS_WRITE_DEFAULT == 1
   if (!settings_write_defaults())
     return 1;
   #endif
-  settings_read_from_storage(&FIRMSystemSettings);
+  if (settings_read_from_storage(&FIRMSystemSettings))
+    return 1;
 
   // uid validation
   uint64_t uid = settings_read_storage_uid();
@@ -26,8 +27,7 @@ int settings_manager_init(void) {
     return 1;
   }
   // firmware version overwrite
-  settings_set_firmware_version();
-  return 0;
+  return settings_write_new_version();
 }
 
 bool settings_write_calibration(Calibration_t *accel_calibraion,
@@ -51,25 +51,26 @@ bool settings_write_calibration(Calibration_t *accel_calibraion,
   if (high_g_calibration != NULL) {
     FIRMSystemSettings.high_g_cal = *high_g_calibration;
   }
-  settings_write_to_storage(&FIRMSystemSettings);
-  return true;
+  return !settings_write_to_storage(&FIRMSystemSettings);
 }
 
 bool settings_write_firm_settings(SystemSettings_t *settings) {
   if (settings == NULL)
     return false;
   FIRMSystemSettings = *settings;
-  settings_write_to_storage(&FIRMSystemSettings);
-  return true;
+  return !settings_write_to_storage(&FIRMSystemSettings);
 }
 
 const SystemSettings_t *get_settings(void) {
   return (const SystemSettings_t*)&FIRMSystemSettings;
 }
 
-static void settings_set_firmware_version(void) {
-  strcpy(FIRMSystemSettings.firmware_version, FIRM_FIRMWARE_VERSION);
-  settings_write_firm_settings(&FIRMSystemSettings);
+static int settings_write_new_version(void) {
+  if (strcmp(FIRMSystemSettings.firmware_version, FIRM_FIRMWARE_VERSION) != 0) {
+    strcpy(FIRMSystemSettings.firmware_version, FIRM_FIRMWARE_VERSION);
+    return settings_write_firm_settings(&FIRMSystemSettings);
+  }
+  return 0;
 }
 
 #if SETTINGS_WRITE_DEFAULT == 1
