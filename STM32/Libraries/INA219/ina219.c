@@ -40,9 +40,9 @@ static HAL_StatusTypeDef read_registers(uint8_t reg_addr, uint16_t *buffer, size
 static HAL_StatusTypeDef write_registers(uint8_t reg_addr, uint16_t data);
 
 
-//Since max expected current is 1A, the current_lsb is 1/(2)^15
+//Since max expected current is 2.5A, the current_lsb is 1/(2)^15
 //Shunt resistor is .01 ohms. So according to the data sheet, the calibration calc is 
-//133332
+//53687 
 static const uint8_t configuration = 0x00; //config defaults to 399F
 static const uint8_t shunt_voltage = 0x01;
 static const uint8_t bus_voltage = 0x02;
@@ -85,8 +85,8 @@ int ina219_init(I2C_HandleTypeDef *hi2c, uint8_t device_i2c_addr) {
   //  sets Shunt and voltage bus, continuous
   write_registers(configuration, 0b0011111001100111);
 
-  //writes calculated calibration value. (Need to recalculate)
-  write_registers(calibration, 0x0000);
+  //writes calculated calibration value. 
+  write_registers(calibration, 53687);
 
   serialPrintStr("\tINA219 startup successful!");
   return 0;
@@ -127,9 +127,16 @@ int setup_device(bool soft_reset_complete) {
 
   //read check
   read_registers(configuration, &result, 2);
-  if (result != 0x399F) {
-    serialPrintStr("\t INA219 could not read");
-    return 1;
+
+  switch(result){
+    case 0x399F:
+    serialPrintStr("\t INA219 is new!");
+    break;
+    case 0x3E67:
+    serialPrintStr("\t INA219 is has previously been configured!");
+    break;
+    default:
+    serialPrintStr("\t INA219 could could not be read :(");
   }
 
   //write check
