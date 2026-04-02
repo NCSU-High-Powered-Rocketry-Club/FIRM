@@ -1,5 +1,5 @@
 #include "data_preprocess.h"
-#include "settings.h"
+#include "settings_manager.h"
 
 // number of times the DWT timestamp has overflowed. This happens every ~25 seconds
 static volatile uint32_t dwt_overflow_count = 0;
@@ -84,23 +84,24 @@ void mmc5983ma_convert_packet(SensorPacket *packet, DataPacket *result_packet) {
   float mag_float_z = ((float)mag_binary_z) / (131072.0F / 800.0F);
 
   // subtract values by magnetometer calibration offsets
-  mag_float_x -= calibrationSettings.mmc5983ma_mag.offset_ut[0];
-  mag_float_y -= calibrationSettings.mmc5983ma_mag.offset_ut[1];
-  mag_float_z -= calibrationSettings.mmc5983ma_mag.offset_ut[2];
+  const Calibration_t calibration = get_settings()->mag_cal;
+  mag_float_x -= calibration.offset[0];
+  mag_float_y -= calibration.offset[1];
+  mag_float_z -= calibration.offset[2];
 
   // apply 3x3 scaling matrix to each value
   result_packet->magnetic_field_x_microteslas =
-      mag_float_x * calibrationSettings.mmc5983ma_mag.scale_multiplier[0] +
-      mag_float_y * calibrationSettings.mmc5983ma_mag.scale_multiplier[3] +
-      mag_float_z * calibrationSettings.mmc5983ma_mag.scale_multiplier[6];
+      mag_float_x * calibration.scale_matrix[0] +
+      mag_float_y * calibration.scale_matrix[3] +
+      mag_float_z * calibration.scale_matrix[6];
   result_packet->magnetic_field_y_microteslas =
-      mag_float_x * calibrationSettings.mmc5983ma_mag.scale_multiplier[1] +
-      mag_float_y * calibrationSettings.mmc5983ma_mag.scale_multiplier[4] +
-      mag_float_z * calibrationSettings.mmc5983ma_mag.scale_multiplier[7];
+      mag_float_x * calibration.scale_matrix[1] +
+      mag_float_y * calibration.scale_matrix[4] +
+      mag_float_z * calibration.scale_matrix[7];
   result_packet->magnetic_field_z_microteslas =
-      mag_float_x * calibrationSettings.mmc5983ma_mag.scale_multiplier[2] +
-      mag_float_y * calibrationSettings.mmc5983ma_mag.scale_multiplier[5] +
-      mag_float_z * calibrationSettings.mmc5983ma_mag.scale_multiplier[8];
+      mag_float_x * calibration.scale_matrix[2] +
+      mag_float_y * calibration.scale_matrix[5] +
+      mag_float_z * calibration.scale_matrix[8];
   // result_packet->magnetic_field_x_microteslas = mag_float_x;
   // result_packet->magnetic_field_y_microteslas = mag_float_y;
   // result_packet->magnetic_field_z_microteslas = mag_float_z;
@@ -145,38 +146,40 @@ void icm45686_convert_packet(SensorPacket *packet, DataPacket *result_packet) {
   float gyro_float_z = ((float)gyro_binary_z) / 131.072F;
 
   // subtract values by accelerometer/gyroscope calibration offsets (offsets in g's and deg/s)
-  acc_float_x -= calibrationSettings.icm45686_accel.offset_gs[0];
-  acc_float_y -= calibrationSettings.icm45686_accel.offset_gs[1];
-  acc_float_z -= calibrationSettings.icm45686_accel.offset_gs[2];
-  gyro_float_x -= calibrationSettings.icm45686_gyro.offset_dps[0];
-  gyro_float_y -= calibrationSettings.icm45686_gyro.offset_dps[1];
-  gyro_float_z -= calibrationSettings.icm45686_gyro.offset_dps[2];
+  const Calibration_t accel_cal = get_settings()->accel_cal;
+  const Calibration_t gyro_cal = get_settings()->gyro_cal;
+  acc_float_x -= accel_cal.offset[0];
+  acc_float_y -= accel_cal.offset[1];
+  acc_float_z -= accel_cal.offset[2];
+  gyro_float_x -= gyro_cal.offset[0];
+  gyro_float_y -= gyro_cal.offset[1];
+  gyro_float_z -= gyro_cal.offset[2];
 
   // apply 3x3 scaling matrix to each value
   result_packet->raw_acceleration_x_gs =
-      acc_float_x * calibrationSettings.icm45686_accel.scale_multiplier[0] +
-      acc_float_y * calibrationSettings.icm45686_accel.scale_multiplier[3] +
-      acc_float_z * calibrationSettings.icm45686_accel.scale_multiplier[6];
+      acc_float_x * accel_cal.scale_matrix[0] +
+      acc_float_y * accel_cal.scale_matrix[3] +
+      acc_float_z * accel_cal.scale_matrix[6];
   result_packet->raw_acceleration_y_gs =
-      acc_float_x * calibrationSettings.icm45686_accel.scale_multiplier[1] +
-      acc_float_y * calibrationSettings.icm45686_accel.scale_multiplier[4] +
-      acc_float_z * calibrationSettings.icm45686_accel.scale_multiplier[7];
+      acc_float_x * accel_cal.scale_matrix[1] +
+      acc_float_y * accel_cal.scale_matrix[4] +
+      acc_float_z * accel_cal.scale_matrix[7];
   result_packet->raw_acceleration_z_gs =
-      acc_float_x * calibrationSettings.icm45686_accel.scale_multiplier[2] +
-      acc_float_y * calibrationSettings.icm45686_accel.scale_multiplier[5] +
-      acc_float_z * calibrationSettings.icm45686_accel.scale_multiplier[8];
+      acc_float_x * accel_cal.scale_matrix[2] +
+      acc_float_y * accel_cal.scale_matrix[5] +
+      acc_float_z * accel_cal.scale_matrix[8];
   result_packet->raw_angular_rate_x_deg_per_s =
-      gyro_float_x * calibrationSettings.icm45686_gyro.scale_multiplier[0] +
-      gyro_float_y * calibrationSettings.icm45686_gyro.scale_multiplier[3] +
-      gyro_float_z * calibrationSettings.icm45686_gyro.scale_multiplier[6];
+      gyro_float_x * gyro_cal.scale_matrix[0] +
+      gyro_float_y * gyro_cal.scale_matrix[3] +
+      gyro_float_z * gyro_cal.scale_matrix[6];
   result_packet->raw_angular_rate_y_deg_per_s =
-      gyro_float_x * calibrationSettings.icm45686_gyro.scale_multiplier[1] +
-      gyro_float_y * calibrationSettings.icm45686_gyro.scale_multiplier[4] +
-      gyro_float_z * calibrationSettings.icm45686_gyro.scale_multiplier[7];
+      gyro_float_x * gyro_cal.scale_matrix[1] +
+      gyro_float_y * gyro_cal.scale_matrix[4] +
+      gyro_float_z * gyro_cal.scale_matrix[7];
   result_packet->raw_angular_rate_z_deg_per_s =
-      gyro_float_x * calibrationSettings.icm45686_gyro.scale_multiplier[2] +
-      gyro_float_y * calibrationSettings.icm45686_gyro.scale_multiplier[5] +
-      gyro_float_z * calibrationSettings.icm45686_gyro.scale_multiplier[8];
+      gyro_float_x * gyro_cal.scale_matrix[2] +
+      gyro_float_y * gyro_cal.scale_matrix[5] +
+      gyro_float_z * gyro_cal.scale_matrix[8];
 }
 
 void adxl371_convert_packet(SensorPacket *packet, DataPacket *result_packet) {
@@ -201,15 +204,15 @@ void adxl371_convert_packet(SensorPacket *packet, DataPacket *result_packet) {
 
   //   // 3x3 scaling matrix
   //     result_packet->adxl_accel_x =
-  //         accel_x_float * calibrationSettings.adxl371_accel.scale_multiplier[0] +
-  //         accel_y_float * calibrationSettings.adxl371_accel.scale_multiplier[3] +
-  //         accel_z_float * calibrationSettings.adxl371_accel.scale_multiplier[6];
+  //         accel_x_float * calibrationSettings.adxl371_accel.scale_matrix[0] +
+  //         accel_y_float * calibrationSettings.adxl371_accel.scale_matrix[3] +
+  //         accel_z_float * calibrationSettings.adxl371_accel.scale_matrix[6];
   //     result_packet->adxl_accel_y =
-  //         accel_x_float * calibrationSettings.adxl371_accel.scale_multiplier[1] +
-  //         accel_y_float * calibrationSettings.adxl371_accel.scale_multiplier[4] +
-  //         accel_z_float * calibrationSettings.adxl371_accel.scale_multiplier[7];
+  //         accel_x_float * calibrationSettings.adxl371_accel.scale_matrix[1] +
+  //         accel_y_float * calibrationSettings.adxl371_accel.scale_matrix[4] +
+  //         accel_z_float * calibrationSettings.adxl371_accel.scale_matrix[7];
   //     result_packet->adxl_accel_z =
-  //         accel_x_float * calibrationSettings.adxl371_accel.scale_multiplier[2] +
-  //         accel_y_float * calibrationSettings.adxl371_accel.scale_multiplier[5] +
-  //         accel_z_float * calibrationSettings.adxl371_accel.scale_multiplier[8];
+  //         accel_x_float * calibrationSettings.adxl371_accel.scale_matrix[2] +
+  //         accel_y_float * calibrationSettings.adxl371_accel.scale_matrix[5] +
+  //         accel_z_float * calibrationSettings.adxl371_accel.scale_matrix[8];
 }

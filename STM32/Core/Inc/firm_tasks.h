@@ -6,7 +6,7 @@
 #include "logger.h"
 #include "messages.h"
 #include "mocking_handler.h"
-#include "settings.h"
+#include "settings_manager.h"
 #include "eskf_functions.h"
 #include "error_state_kalman_filter.h"
 #include "utils.h"

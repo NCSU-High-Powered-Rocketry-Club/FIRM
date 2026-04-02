@@ -1,6 +1,6 @@
 #pragma once
 
-#include "settings.h"
+#include "system_settings.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -46,6 +46,13 @@ typedef struct {
 typedef struct {
   bool b;
 } CommandSuccess;
+
+typedef struct {
+  Calibration_t accel;
+  Calibration_t gyro;
+  Calibration_t mag;
+  Calibration_t high_g;
+} CalibrationSettings_t;
 
 typedef union {
   DeviceConfig device_config;

@@ -26,10 +26,15 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "firm_tasks.h"
+#include "settings_manager.h"
+#include "system_settings.h"
+#include "targets.h"
+#include "firm_v1_0.h"
 
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+
 
 /* USER CODE END Includes */
 
@@ -68,14 +73,14 @@ osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
   .stack_size = 256 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityRealtime1,
 };
 /* Definitions for startupTask */
 osThreadId_t startupTaskHandle;
 const osThreadAttr_t startupTask_attributes = {
   .name = "startupTask",
   .stack_size = 256 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityRealtime,
 };
 /* USER CODE BEGIN PV */
 
@@ -160,6 +165,11 @@ int main(void)
   UARTHandles uart_handles = {
       .huart1 = &huart1,
   };
+
+  #if FIRM_HARDWARE_VERSION == VERSION_V1_0
+  if (firm_init_hardware())
+    Error_Handler();
+  #endif
 
   if (initialize_firm(&spi_handles, &i2c_handles, &dma_handles, &uart_handles)) {
     Error_Handler();
@@ -655,7 +665,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void blink() { HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET); }
 
 /**
  * @brief ISR for interrupt pins
@@ -699,9 +708,7 @@ void StartDefaultTask(void *argument)
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
-  for (;;) {
-    osDelay(1);
-  }
+  vTaskDelete(NULL);
   /* USER CODE END 5 */
 }
 
@@ -715,15 +722,22 @@ void StartDefaultTask(void *argument)
 void StartupTask(void *argument)
 {
   /* USER CODE BEGIN StartupTask */
+  
+  // set up the settings manager
+  if (settings_manager_init()) {
+    led_set_status(SETTINGS_FAIL);
+    Error_Handler();
+  }
+
   // Setup the SD card
   FRESULT res = logger_init(&hdma_sdio_tx);
   if (res) {
-    serialPrintStr("Failed to initialized the logger (SD card)");
+    // Failed to initialized the logger
     Error_Handler();
   }
 
   // get scale factor values for each sensor to put in header
-  HeaderFields header_fields = {
+  SensorScaleFactors_t scale_factors = {
       bmp581_get_temp_scale_factor(),
       bmp581_get_pressure_scale_factor(),
       icm45686_get_accel_scale_factor(),
@@ -732,7 +746,7 @@ void StartupTask(void *argument)
       adxl371_get_accel_scale_factor(),
   };
 
-  logger_write_header(&header_fields);
+  logger_write_header(&scale_factors);
 
   // the IMU runs into issues when the fifo is full at the very beginning, causing the interrupt
   // to be pulled back low too fast, and the ISR doesn't catch it for whatever reason. Doing
@@ -744,7 +758,6 @@ void StartupTask(void *argument)
 
   // even though we call this function in settings setup, it somehow breaks settings
   // when you try to write to it during rtos. So we have to call this again.
-  w25q128jv_set_spi_settings(&hspi1, GPIOC, GPIO_PIN_4);
   set_spi_icm(&hspi2, GPIOB, GPIO_PIN_9);
   set_spi_bmp(&hspi2, GPIOC, GPIO_PIN_2);
   set_spi_mmc(&hspi2, GPIOC, GPIO_PIN_7);
