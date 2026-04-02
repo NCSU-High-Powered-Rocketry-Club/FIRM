@@ -8,7 +8,7 @@ typedef struct {
 } Calibration_t;
 
 /**
- * User-defined settings and calibraiton for FIRM, saved in flash memory and reloaded on boot.
+ * User-defined settings and calibration for FIRM, saved in flash memory and reloaded on boot.
  */
 typedef struct __attribute__((packed)) {
   uint64_t device_uid; // UID of settings storage device

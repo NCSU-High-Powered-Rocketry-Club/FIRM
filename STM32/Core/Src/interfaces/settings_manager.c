@@ -5,7 +5,7 @@
 #define SETTINGS_WRITE_DEFAULT 0
 
 #if SETTINGS_WRITE_DEFAULT == 1
-static bool settings_write_defaults(void);
+static int settings_write_defaults(void);
 #endif
 
 static SystemSettings_t FIRMSystemSettings = {0};
@@ -13,10 +13,10 @@ static SystemSettings_t FIRMSystemSettings = {0};
 static int settings_write_new_version(void);
 
 int settings_manager_init(void) {
-  #if SETTINGS_WRITE_DEFAULT == 1
-  if (!settings_write_defaults())
+#if SETTINGS_WRITE_DEFAULT == 1
+  if (settings_write_defaults())
     return 1;
-  #endif
+#endif
   if (settings_read_from_storage(&FIRMSystemSettings))
     return 1;
 
@@ -30,17 +30,16 @@ int settings_manager_init(void) {
   return settings_write_new_version();
 }
 
-bool settings_write_calibration(Calibration_t *accel_calibraion,
-                                Calibration_t *gyro_calibration, Calibration_t *mag_calibration,
-                                Calibration_t *high_g_calibration) {
-  if (accel_calibraion == NULL && gyro_calibration == NULL && mag_calibration == NULL &&
+int settings_write_calibration(Calibration_t *accel_calibration, Calibration_t *gyro_calibration,
+                               Calibration_t *mag_calibration, Calibration_t *high_g_calibration) {
+  if (accel_calibration == NULL && gyro_calibration == NULL && mag_calibration == NULL &&
       high_g_calibration == NULL) {
-    return false;
+    return 1;
   }
 
   // Sets only the calibration fields that are provided
-  if (accel_calibraion != NULL) {
-    FIRMSystemSettings.accel_cal = *accel_calibraion;
+  if (accel_calibration != NULL) {
+    FIRMSystemSettings.accel_cal = *accel_calibration;
   }
   if (gyro_calibration != NULL) {
     FIRMSystemSettings.gyro_cal = *gyro_calibration;
@@ -51,19 +50,17 @@ bool settings_write_calibration(Calibration_t *accel_calibraion,
   if (high_g_calibration != NULL) {
     FIRMSystemSettings.high_g_cal = *high_g_calibration;
   }
-  return !settings_write_to_storage(&FIRMSystemSettings);
+  return settings_write_to_storage(&FIRMSystemSettings);
 }
 
-bool settings_write_firm_settings(SystemSettings_t *settings) {
+int settings_write_firm_settings(SystemSettings_t *settings) {
   if (settings == NULL)
-    return false;
+    return 1;
   FIRMSystemSettings = *settings;
-  return !settings_write_to_storage(&FIRMSystemSettings);
+  return settings_write_to_storage(&FIRMSystemSettings);
 }
 
-const SystemSettings_t *get_settings(void) {
-  return (const SystemSettings_t*)&FIRMSystemSettings;
-}
+const SystemSettings_t *get_settings(void) { return (const SystemSettings_t *)&FIRMSystemSettings; }
 
 static int settings_write_new_version(void) {
   if (strcmp(FIRMSystemSettings.firmware_version, FIRM_FIRMWARE_VERSION) != 0) {
@@ -74,7 +71,7 @@ static int settings_write_new_version(void) {
 }
 
 #if SETTINGS_WRITE_DEFAULT == 1
-static bool settings_write_defaults(void) {
+static int settings_write_defaults(void) {
   SystemSettings_t default_settings = {0};
 
   // default calibration is 0.0 offset, and scale factor matrix is the identity matrix
@@ -84,7 +81,7 @@ static bool settings_write_defaults(void) {
     default_settings.mag_cal.scale_matrix[3 * i + i] = 1.0F;
     default_settings.high_g_cal.scale_matrix[3 * i + i] = 1.0F;
   }
-  
+
   default_settings.device_uid = settings_read_storage_uid();
   default_settings.usb_transfer_enabled = true;
   default_settings.uart_transfer_enabled = false;

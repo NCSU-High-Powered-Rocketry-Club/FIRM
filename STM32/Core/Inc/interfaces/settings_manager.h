@@ -28,17 +28,18 @@ int settings_manager_init();
  * @param gyro_calibration desired gyroscope calibration (or null)
  * @param mag_calibration desired magnetometer calibration (or null)
  * @param high_g_calibration desired high-g accelerometer calibration (or null)
+ * @retval 0 on success, 1 on failure
  */
-bool settings_write_calibration(Calibration_t *accel_calibraion, Calibration_t *gyro_calibration,
+int settings_write_calibration(Calibration_t *accel_calibration, Calibration_t *gyro_calibration,
                                 Calibration_t *mag_calibration, Calibration_t *high_g_calibration);
 
 /**
  * @brief Writes the firm settings to the settings storage.
  *
  * @param firm_settings pointer to firm settings to write
- * @retval true on success
+ * @retval 0 on success, 1 on failure
  */
-bool settings_write_firm_settings(SystemSettings_t *firm_settings);
+int settings_write_firm_settings(SystemSettings_t *firm_settings);
 
 /**
  * @brief Gets the singleton instance of the System Settings

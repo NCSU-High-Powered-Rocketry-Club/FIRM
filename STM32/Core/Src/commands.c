@@ -40,7 +40,10 @@ static bool set_device_config(DeviceConfig *new_config) {
   updated_settings.uart_transfer_enabled = (new_config->protocol == PROTOCOL_UART);
   updated_settings.i2c_transfer_enabled = (new_config->protocol == PROTOCOL_I2C);
   updated_settings.spi_transfer_enabled = (new_config->protocol == PROTOCOL_SPI);
-  return settings_write_firm_settings(&updated_settings);
+  if (settings_write_firm_settings(&updated_settings)) {
+    return false;
+  }
+  return true;
 }
 
 uint32_t execute_command(CommandIdentifier identifier, uint8_t *data, uint32_t data_len,
@@ -93,8 +96,14 @@ uint32_t execute_command(CommandIdentifier identifier, uint8_t *data, uint32_t d
     // Payload format: CalibrationSettings struct
     Calibration_t new_mag_calibration;
     memcpy(&new_mag_calibration, data, sizeof(Calibration_t));
-    response_packet->success.b =
-        settings_write_calibration(NULL, NULL, &new_mag_calibration, NULL);
+    
+    // if the settings_write_calibration is successful, it will set the success field to true
+    response_packet->success.b = false;
+    if (!settings_write_calibration(NULL, NULL, &new_mag_calibration, NULL)) {
+      response_packet->success.b = true;
+    }
+    
+        
     return 1;
   }
   case CMDID_SET_IMU_CALIBRATON: {
@@ -103,8 +112,13 @@ uint32_t execute_command(CommandIdentifier identifier, uint8_t *data, uint32_t d
     Calibration_t new_gyro_calibration;
     memcpy(&new_accel_calibration, data, sizeof(Calibration_t));
     memcpy(&new_gyro_calibration, data + sizeof(Calibration_t), sizeof(Calibration_t));
-    response_packet->success.b = settings_write_calibration(&new_accel_calibration,
-    &new_gyro_calibration, NULL, NULL);
+
+    // if the settings_write_calibration is successful, it will set the success field to true
+    response_packet->success.b = false;
+    if (!settings_write_calibration(&new_accel_calibration, &new_gyro_calibration, NULL, NULL)) {
+      response_packet->success.b = true;
+    }
+    
     return 1;
   }
   case CMDID_GET_CALIBRATION: {

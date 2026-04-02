@@ -73,14 +73,14 @@ osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
   .stack_size = 256 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityRealtime1,
 };
 /* Definitions for startupTask */
 osThreadId_t startupTaskHandle;
 const osThreadAttr_t startupTask_attributes = {
   .name = "startupTask",
   .stack_size = 256 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityRealtime,
 };
 /* USER CODE BEGIN PV */
 
@@ -708,9 +708,7 @@ void StartDefaultTask(void *argument)
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
-  for (;;) {
-    osDelay(1);
-  }
+  vTaskDelete(NULL);
   /* USER CODE END 5 */
 }
 
