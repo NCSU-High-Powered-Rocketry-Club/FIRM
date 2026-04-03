@@ -2,8 +2,7 @@ import struct
 import pandas as pd
 import sys
 import os
-import struct
-import sys
+
 
 DECODER_LOG_VERSION = "FIRM LOG v1.3"
 
@@ -113,9 +112,8 @@ class Decoder:
 
             # if not an ID byte, most likely garbage data at end of file
             return False
-        except:
-
-            # hit end of file
+        except Exception as e:
+            print(f"Error reading packet: {e}")
             return False
 
     def read_header(self, file):
