@@ -1,10 +1,4 @@
 #include "error_state_kalman_filter.h"
-#include "eskf_functions.h"
-#include "firm_fsm.h"
-#include "led.h"
-#include "settings_manager.h"
-#include <math.h>
-#include <string.h>
 
 /* ==================================================
  * Error-State Extended Kalman Filter (ESKF)
@@ -14,8 +8,6 @@
 #define N ESKF_ERROR_DIM
 #define M ESKF_MEASUREMENT_DIM
 
-static float R_imu_data[3 * 3];      /* IMU -> board rot matrix  */
-static float R_mag_data[3 * 3];      /* mag -> board rot matrix  */
 static float F_d_data[N * N];        /* discrete error Jacobian  */
 static float Q_d_data[N * N];        /* discrete process noise   */
 static float FP_data[N * N];         /* F @ P                    */
@@ -29,10 +21,13 @@ static float K_data[N * M];          /* Kalman gain (5x4)        */
 static float HP_data[M * N];         /* H @ P                    */
 static float KHP_data[N * N];        /* K @ (H @ P)              */
 static float temp_nn_data[N * N];    /* generic NxN temp         */
+static SensorOrientations_t sensor_orientations = {0};
+static uint8_t imu_orientation_set = 0;
+static uint8_t mag_orientation_set = 0;
 
 /* matrix_instance_f32 wrappers (set once, reused) */
-static matrix_instance_f32 R_imu = {3, 3, R_imu_data};
-static matrix_instance_f32 R_mag = {3, 3, R_mag_data};
+static matrix_instance_f32 R_imu = {3, 3, sensor_orientations.R_imu_to_board};
+static matrix_instance_f32 R_mag = {3, 3, sensor_orientations.R_mag_to_board};
 static matrix_instance_f32 F_d = {N, N, F_d_data};
 static matrix_instance_f32 Q_d = {N, N, Q_d_data};
 static matrix_instance_f32 FP = {N, N, FP_data};
@@ -63,22 +58,49 @@ static void set_state_matrices(ESKF *eskf) {
   }
 }
 
+int eskf_set_imu_rotation_matrix(const float *R_imu_to_board) {
+  if (R_imu_to_board == NULL) {
+    return 1;
+  }
+  memcpy(sensor_orientations.R_imu_to_board, R_imu_to_board,
+         sizeof(sensor_orientations.R_imu_to_board));
+  imu_orientation_set = 1;
+  return 0;
+}
+
+int eskf_set_mag_rotation_matrix(const float *R_mag_to_board) {
+  if (R_mag_to_board == NULL) {
+    return 1;
+  }
+  memcpy(sensor_orientations.R_mag_to_board, R_mag_to_board,
+         sizeof(sensor_orientations.R_mag_to_board));
+  mag_orientation_set = 1;
+  return 0;
+}
+
+int eskf_set_sensor_orientations(const SensorOrientations_t *orientations) {
+  if (orientations == NULL) {
+    return 1;
+  }
+  if (eskf_set_imu_rotation_matrix(orientations->R_imu_to_board)) {
+    return 1;
+  }
+  if (eskf_set_mag_rotation_matrix(orientations->R_mag_to_board)) {
+    return 1;
+  }
+  return 0;
+}
 
 int eskf_init(ESKF *eskf) {
+  if (eskf == NULL) {
+    return 1;
+  }
+  if (!imu_orientation_set || !mag_orientation_set) {
+    return 1;
+  }
+
   // zero everything first
   memset(eskf, 0, sizeof(ESKF));
-
-  // Select rotation matrices based on hardware version
-  const SystemSettings_t *settings = get_settings();
-  if (settings->firmware_version[1] == '2') {
-    // firmware version v1.x.x (hardware v0.1), legacy PCB version
-    memcpy(R_imu.pData, eskf_v2_R_imu_to_board, sizeof(R_imu_data));
-    memcpy(R_mag.pData, eskf_v2_R_mag_to_board, sizeof(R_mag_data));
-  } else {
-    // firmware version v2.x.x (hardware v1.0), current PCB version
-    memcpy(R_imu.pData, eskf_v1_R_imu_to_board, sizeof(R_imu_data));
-    memcpy(R_mag.pData, eskf_v1_R_mag_to_board, sizeof(R_mag_data));
-  }
 
   // Copy initial nominal state (pos=0, vel=0, quat=identity)
   memcpy(eskf->x_nom, eskf_initial_state, sizeof(float) * ESKF_NOMINAL_DIM);

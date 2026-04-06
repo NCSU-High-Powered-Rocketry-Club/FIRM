@@ -1,6 +1,7 @@
 #pragma once
 #include "eskf_config.h"
 #include "matrix_helper.h"
+#include "eskf_functions.h"
 
 #ifndef PI_F
 #define PI_F 3.141592653589793F
@@ -44,10 +45,38 @@ typedef struct {
 } ESKFRawData;
 
 /**
+ * @brief Set both IMU and magnetometer orientation matrices used by ESKF.
+ *
+ * @param orientations Pointer to orientation matrices
+ * @retval 0 on success, 1 on invalid argument
+ */
+int eskf_set_sensor_orientations(const SensorOrientations_t *orientations);
+
+/**
+ * @brief Set the IMU sensor -> board frame rotation matrix used by ESKF.
+ * @note Runtime updates are supported. Caller is responsible for synchronization with
+ * eskf_predict()/eskf_update().
+ *
+ * @param R_imu_to_board Pointer to 3x3 row-major matrix
+ * @retval 0 on success, 1 on invalid argument
+ */
+int eskf_set_imu_rotation_matrix(const float *R_imu_to_board);
+
+/**
+ * @brief Set the magnetometer board -> sensor frame rotation matrix used by ESKF.
+ * @note Runtime updates are supported. Caller is responsible for synchronization with
+ * eskf_predict()/eskf_update().
+ *
+ * @param R_mag_to_board Pointer to 3x3 row-major matrix
+ * @retval 0 on success, 1 on invalid argument
+ */
+int eskf_set_mag_rotation_matrix(const float *R_mag_to_board);
+
+/**
  * @brief Initialise the ESKF struct: state, covariance, initial values.
  *
  * @param eskf Pointer to ESKF struct
- * @return 0 on success
+ * @return 0 on success, nonzero if orientation has not been explicitly configured
  */
 int eskf_init(ESKF *eskf);
 

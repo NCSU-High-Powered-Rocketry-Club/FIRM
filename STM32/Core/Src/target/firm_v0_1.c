@@ -1,11 +1,11 @@
-#include "firm_v1_0.h"
+#include "firm_v0_1.h"
 #include "settings_storage.h"
 #include "led.h"
 #include "error_state_kalman_filter.h"
 #include <string.h>
 
 
-#if FIRM_HARDWARE_VERSION == FIRM_VERSION_V1_0
+#if FIRM_HARDWARE_VERSION == FIRM_VERSION_V0_1
 
 #define FLASH_MAIN_SETTINGS_SECTOR 0
 #define FLASH_MOCK_SETTINGS_SECTOR 1
@@ -35,9 +35,9 @@ static uint64_t settings_read_uid(void) {
 
 int firm_init_hardware(void) {
   SensorOrientations_t sensor_orientations = {0};
-  memcpy(sensor_orientations.R_imu_to_board, eskf_v2_R_imu_to_board,
+  memcpy(sensor_orientations.R_imu_to_board, eskf_v1_R_imu_to_board,
          sizeof(sensor_orientations.R_imu_to_board));
-  memcpy(sensor_orientations.R_mag_to_board, eskf_v2_R_mag_to_board,
+  memcpy(sensor_orientations.R_mag_to_board, eskf_v1_R_mag_to_board,
          sizeof(sensor_orientations.R_mag_to_board));
   if (eskf_set_sensor_orientations(&sensor_orientations)) {
     return 1;

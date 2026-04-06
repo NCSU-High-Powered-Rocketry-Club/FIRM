@@ -1,5 +1,4 @@
 #include "eskf_functions.h"
-#include "matrix_helper.h"
 
 #ifndef PI_F
 #define PI_F 3.14159265358979323846F

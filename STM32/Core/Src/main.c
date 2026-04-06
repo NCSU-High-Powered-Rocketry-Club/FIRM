@@ -29,7 +29,11 @@
 #include "settings_manager.h"
 #include "system_settings.h"
 #include "targets.h"
+#if FIRM_HARDWARE_VERSION == FIRM_VERSION_V0_1
+#include "firm_v0_1.h"
+#elif FIRM_HARDWARE_VERSION == FIRM_VERSION_V1_0
 #include "firm_v1_0.h"
+#endif
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -166,10 +170,10 @@ int main(void)
       .huart1 = &huart1,
   };
 
-  #if FIRM_HARDWARE_VERSION == VERSION_V1_0
+#if FIRM_HARDWARE_VERSION == FIRM_VERSION_V0_1 || FIRM_HARDWARE_VERSION == FIRM_VERSION_V1_0
   if (firm_init_hardware())
     Error_Handler();
-  #endif
+#endif
 
   if (initialize_firm(&spi_handles, &i2c_handles, &dma_handles, &uart_handles)) {
     Error_Handler();

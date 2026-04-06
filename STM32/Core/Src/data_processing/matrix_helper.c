@@ -39,39 +39,6 @@ void rotvec_to_quat(const float rotvec[3], float quat[4]) {
   quat[3] = (rotvec[2] * 0.5F) * s;
 }
 
-void quat_to_rotvec(const float quat[4], float rotvec[3]) {
-  // Normalize quaternion manually (no arm_quaternion_norm_f32 available)
-  float quat_norm =
-      sqrtf(quat[0] * quat[0] + quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
-
-  float w = quat[0] / quat_norm;
-  float x = quat[1] / quat_norm;
-  float y = quat[2] / quat_norm;
-  float z = quat[3] / quat_norm;
-
-  float half_angle = acosf(w);
-  float theta = 2.0F * half_angle;
-  float sin_half = sinf(half_angle);
-  if (fabsf(sin_half) < 1e-6) {
-    rotvec[0] = 0.0F;
-    rotvec[1] = 0.0F;
-    rotvec[2] = 0.0F;
-    return;
-  }
-
-  float scale = theta / sin_half;
-  rotvec[0] = x * scale;
-  rotvec[1] = y * scale;
-  rotvec[2] = z * scale;
-}
-
-void mat_scale_f32(const matrix_instance_f32 *pSrc, float scale, matrix_instance_f32 *pDst) {
-  int numElements = pSrc->numRows * pSrc->numCols;
-  for (int i = 0; i < numElements; i++) {
-    pDst->pData[i] = pSrc->pData[i] * scale;
-  }
-}
-
 void mat_add_f32(const matrix_instance_f32 *pSrcA, const matrix_instance_f32 *pSrcB,
                  matrix_instance_f32 *pDst) {
   int numElements = pSrcA->numRows * pSrcA->numCols;
@@ -136,24 +103,6 @@ void mat_mult_f32(const matrix_instance_f32 *pSrcA, const matrix_instance_f32 *p
   }
 }
 
-void vec_sub_f32(const float *pSrcA, const float *pSrcB, float *pDst, int length) {
-  for (int i = 0; i < length; i++) {
-    pDst[i] = pSrcA[i] - pSrcB[i];
-  }
-}
-
-void vec_add_f32(const float *pSrcA, const float *pSrcB, float *pDst, int length) {
-  for (int i = 0; i < length; i++) {
-    pDst[i] = pSrcA[i] + pSrcB[i];
-  }
-}
-
-void vec_scale_f32(const float *pSrcA, const float scale, float *pDst, int length) {
-  for (int i = 0; i < length; i++) {
-    pDst[i] = pSrcA[i] * scale;
-  }
-}
-
 void vec_mult_f32(const float *pSrcA, const float *pSrcB, float *pDst, int length) {
   for (int i = 0; i < length; i++) {
     pDst[i] = pSrcA[i] * pSrcB[i];
@@ -168,40 +117,6 @@ void mat_trans_f32(const matrix_instance_f32 *pSrc, matrix_instance_f32 *pDst) {
       pDst->pData[j * rows + i] = pSrc->pData[i * cols + j];
     }
   }
-}
-
-float mat_cholesky_f32(const matrix_instance_f32 *pSrc, matrix_instance_f32 *pDst) {
-  const int n = (int)pDst->numRows;
-  float min_L_diag = FLT_MAX;
-
-  // computes lower triangular cholesky
-  for (int row = 0; row < n; row++) {
-    for (int col = 0; col <= row; col++) {
-      float sum = pSrc->pData[row * n + col];
-      for (int k = 0; k < col; k++) {
-        sum -= pDst->pData[row * n + k] * pDst->pData[col * n + k];
-      }
-
-      if (row == col) {
-        if (sum < 0.0F) {
-          return -1.0F;
-        }
-        float diag = sqrtf(sum);
-        pDst->pData[row * n + col] = diag;
-        if (diag < min_L_diag)
-          min_L_diag = diag;
-      } else {
-        pDst->pData[row * n + col] = sum / pDst->pData[col * n + col];
-      }
-    }
-
-    // Zero the upper triangle for clarity/determinism.
-    for (int col = row + 1; col < n; col++) {
-      pDst->pData[row * n + col] = 0.0F;
-    }
-  }
-  // lower bound of minimum eigenvalue
-  return min_L_diag * min_L_diag;
 }
 
 void mat_inverse_f32(const matrix_instance_f32 *pSrc, matrix_instance_f32 *pDst) {
@@ -253,58 +168,3 @@ void mat_inverse_f32(const matrix_instance_f32 *pSrc, matrix_instance_f32 *pDst)
     }
   }
 }
-
-void mat_set_identity_f32(matrix_instance_f32 *M) {
-  uint16_t n = M->numRows;
-  for (uint16_t i = 0; i < n; i++) {
-    for (uint16_t j = 0; j < n; j++) {
-      M->pData[i * n + j] = (i == j) ? 1.0F : 0.0F;
-    }
-  }
-}
-
-void mat_set_diagonal_f32(matrix_instance_f32 *M, const float *diag, uint16_t n) {
-  for (uint16_t i = 0; i < n * n; i++) {
-    M->pData[i] = 0.0F;
-  }
-  for (uint16_t i = 0; i < n; i++) {
-    M->pData[i * n + i] = diag[i];
-  }
-}
-
-void skew_f32(const float v[3], matrix_instance_f32 *out) {
-  float *d = out->pData;
-  d[0] = 0.0F;
-  d[1] = -v[2];
-  d[2] = v[1];
-  d[3] = v[2];
-  d[4] = 0.0F;
-  d[5] = -v[0];
-  d[6] = -v[1];
-  d[7] = v[0];
-  d[8] = 0.0F;
-}
-
-void quat_to_rotation_matrix_f32(const float q[4], matrix_instance_f32 *R) {
-  float w = q[0], x = q[1], y = q[2], z = q[3];
-  float *d = R->pData;
-  d[0] = 1.0F - 2.0F * (y * y + z * z);
-  d[1] = 2.0F * (x * y - w * z);
-  d[2] = 2.0F * (x * z + w * y);
-  d[3] = 2.0F * (x * y + w * z);
-  d[4] = 1.0F - 2.0F * (x * x + z * z);
-  d[5] = 2.0F * (y * z - w * x);
-  d[6] = 2.0F * (x * z - w * y);
-  d[7] = 2.0F * (y * z + w * x);
-  d[8] = 1.0F - 2.0F * (x * x + y * y);
-}
-
-float vec_dot_f32(const float *a, const float *b, uint32_t n) {
-  float sum = 0.0F;
-  for (uint32_t i = 0; i < n; i++) {
-    sum += a[i] * b[i];
-  }
-  return sum;
-}
-
-float vec_norm_f32(const float *v, uint32_t n) { return sqrtf(vec_dot_f32(v, v, n)); }

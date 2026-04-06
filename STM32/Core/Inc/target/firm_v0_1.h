@@ -5,7 +5,7 @@
 #include "w25q128jv.h"
 
 
-#if FIRM_HARDWARE_VERSION == FIRM_VERSION_V1_0
+#if FIRM_HARDWARE_VERSION == FIRM_VERSION_V0_1
 
 int firm_init_hardware(void);
 

@@ -89,7 +89,7 @@ extern SPI_HandleTypeDef hspi1;
 #define ICM45686_CS_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
-#define FIRM_HARDWARE_VERSION VERSION_V1_0
+#define FIRM_HARDWARE_VERSION FIRM_VERSION_V1_0
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

@@ -82,6 +82,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/interfaces/settings_storage.c
 
     Core/Src/target/firm_v1_0.c
+    Core/Src/target/firm_v0_1.c
 
     Core/Src/utils.c
     Core/Src/commands.c

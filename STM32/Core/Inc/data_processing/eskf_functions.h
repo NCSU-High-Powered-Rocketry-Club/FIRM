@@ -5,6 +5,14 @@
 #include <string.h>
 
 /**
+ * @brief Hardware-specific rotation matrices for sensors
+ */
+typedef struct {
+  float R_imu_to_board[9];
+  float R_mag_to_board[9];
+} SensorOrientations_t;
+
+/**
  * @brief Propagate the 6-dim nominal state.
  *
  * @param x_nom the nominal ESKF state vector
@@ -35,9 +43,8 @@ void eskf_error_jacobian(const float *x_nom, const float *u, float dt,
  * @param R_mag         3x3: board frame -> mag sensor rotation matrix
  * @param z_pred        output: predicted measurement vector
  */
-void eskf_measurement_function(const float x_nom[ESKF_NOMINAL_DIM], float init_pressure,
-                               const float mag_world[3], const matrix_instance_f32 *R_mag,
-                               float z_pred[ESKF_MEASUREMENT_DIM]);
+void eskf_measurement_function(const float *x_nom, float init_pressure, const float *mag_world,
+                               const matrix_instance_f32 *R_mag, float *z_pred);
 
 /**
  * @brief Measurement Jacobian H (4x5).
