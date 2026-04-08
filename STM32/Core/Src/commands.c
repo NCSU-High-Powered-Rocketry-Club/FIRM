@@ -68,7 +68,7 @@ uint32_t execute_command(CommandIdentifier identifier, uint8_t *data, uint32_t d
       device_conf.protocol = PROTOCOL_USB;
     }
     // set settings, and set response packet to sucess or failure
-    response_packet->success.b = set_device_config(&device_conf);
+    response_packet->success = set_device_config(&device_conf);
     return 1;
   }
   case CMDID_GET_DEVICE_INFO:
@@ -89,7 +89,7 @@ uint32_t execute_command(CommandIdentifier identifier, uint8_t *data, uint32_t d
     // Payload format: CalibrationSettings struct
     MagCalibration_t new_mag_calibration;
     memcpy(&new_mag_calibration, data, sizeof(MagCalibration_t));
-    response_packet->success.b =
+    response_packet->success =
         settings_write_calibration_settings(NULL, NULL, &new_mag_calibration, NULL);
     return 1;
   }
@@ -99,7 +99,7 @@ uint32_t execute_command(CommandIdentifier identifier, uint8_t *data, uint32_t d
     GyroCalibration_t new_gyro_calibration;
     memcpy(&new_accel_calibration, data, sizeof(AccelCalibration_t));
     memcpy(&new_gyro_calibration, &data[sizeof(AccelCalibration_t)], sizeof(GyroCalibration_t));
-    response_packet->success.b = settings_write_calibration_settings(&new_accel_calibration,
+    response_packet->success = settings_write_calibration_settings(&new_accel_calibration,
     &new_gyro_calibration, NULL, NULL);
     return 1;
   }

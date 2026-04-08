@@ -702,8 +702,8 @@ void packetizer_task(void *argument) {
       Packet response;
       response.header = MSGID_RESPONSE_PACKET;
       response.identifier = sys_response.identifier;
-      response.packet_len = sizeof(response.data.response_packet.success.b);
-      response.data.response_packet.success.b = sys_response.success;
+      response.packet_len = sizeof(response.data.response_packet.success);
+      response.data.response_packet.success = sys_response.success;
       xQueueSend(transmit_queue, &response, 0);
     }
     // send to queue at the specified frequency

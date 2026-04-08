@@ -43,15 +43,17 @@ typedef struct {
   char firmware_version[FIRMWARE_VERSION_LENGTH];
 } DeviceInfo;
 
+/**
 typedef struct {
   bool b;
 } CommandSuccess;
+*/
 
 typedef union {
   DeviceConfig device_config;
   DeviceInfo device_info;
   CalibrationSettings_t calibration_settings;
-  CommandSuccess success;
+  bool success;
 } ResponsePacket;
 
 typedef void (*CommandSystemResetFn)(void *ctx);
