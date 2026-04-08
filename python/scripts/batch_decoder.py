@@ -26,7 +26,8 @@ def decode_launch_logs(folder_path, min_pressure_threshold = 1000):
         return
     for log in launch_logs:
         file_path = os.path.join(folder_path, log)
-        decoder.decode(file_path)
+        os.makedirs(log[:-4], exist_ok=True)
+        decoder.decode(file_path, True, log[:-4])
 
 if __name__ == "__main__":
     if len(sys.argv) >= 2:

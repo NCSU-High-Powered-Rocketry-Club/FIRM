@@ -39,27 +39,28 @@ def twos_complement(val, bits):
     return val
 
 class Decoder:
-    bmp581_scale_factors = [0, 0] # temp, pressure
-    icm45686_scale_factors = [0, 0] # acc, gyro
-    mmc5983ma_scale_factor = 0 # magnetic field
-    adxl371_scale_factor = 0 # high-g accel
-
-    # the data for each sensor
-    bmp581_data = []
-    icm45686_data = []
-    mmc5983ma_data = []
-    adxl371_data = []
-
-    # because we use clock cycle count for timestamp, and we expect the cycle count to
-    # overflow every ~0.1 seconds, we handle the overflow in this file to make the timestamp
-    # column continuous.
-    timestamp_seconds = 0
-    last_clock_count = 0
-
-    # number of times in a row whitespace has been repeated in the log
-    num_repeat_whitespace = 0
-
+    
     def __init__(self, file):
+        self.bmp581_scale_factors = [0, 0] # temp, pressure
+        self.icm45686_scale_factors = [0, 0] # acc, gyro
+        self.mmc5983ma_scale_factor = 0 # magnetic field
+        self.adxl371_scale_factor = 0 # high-g accel
+
+        # the data for each sensor
+        self.bmp581_data = []
+        self.icm45686_data = []
+        self.mmc5983ma_data = []
+        self.adxl371_data = []
+
+        # because we use clock cycle count for timestamp, and we expect the cycle count to
+        # overflow every ~0.1 seconds, we handle the overflow in this file to make the timestamp
+        # column continuous.
+        self.timestamp_seconds = 0
+        self.last_clock_count = 0
+
+        # number of times in a row whitespace has been repeated in the log
+        self.num_repeat_whitespace = 0
+        
         self.f = file
         self.read_header(self.f)
 
@@ -88,7 +89,6 @@ class Decoder:
             clock_count = struct.unpack('<I', clock_count_bytes)[0]
             self.timestamp_seconds += (self.get_delta_timestamp(clock_count)) / 168e6
             self.last_clock_count = clock_count
-
             if id_byte == ord(BMP581_ID):
                 bytes = self.f.read(BMP581_SIZE)
                 data = self.convert_bmp581(bytes)
@@ -109,6 +109,7 @@ class Decoder:
                 data = self.convert_adxl371(bytes)
                 self.adxl371_data.append(data)
                 return True
+            
 
             # if not an ID byte, most likely garbage data at end of file
             return False
@@ -184,10 +185,13 @@ class Decoder:
         accel_x_bin = (binary_packet[0] << 12) | (binary_packet[1] << 4) | (binary_packet[12] >> 4)
         accel_y_bin = (binary_packet[2] << 12) | (binary_packet[3] << 4) | (binary_packet[13] >> 4)
         accel_z_bin = (binary_packet[4] << 12) | (binary_packet[5] << 4) | (binary_packet[14] >> 4)
+        
 
         gyro_x_bin = (binary_packet[6] << 12) | (binary_packet[7] << 4) | (binary_packet[12] & 0x0F)
         gyro_y_bin = (binary_packet[8] << 12) | (binary_packet[9] << 4) | (binary_packet[13] & 0x0F)
         gyro_z_bin = (binary_packet[10] << 12) | (binary_packet[11] << 4) | (binary_packet[14] & 0x0F)
+        
+        
 
         accel_x_bin = twos_complement(accel_x_bin, 20)
         accel_y_bin = twos_complement(accel_y_bin, 20)
@@ -195,7 +199,9 @@ class Decoder:
         gyro_x_bin = twos_complement(gyro_x_bin, 20)
         gyro_y_bin = twos_complement(gyro_y_bin, 20)
         gyro_z_bin = twos_complement(gyro_z_bin, 20)
-
+        
+        
+        
         data = [
             self.timestamp_seconds,
             accel_x_bin / self.icm45686_scale_factors[0],
@@ -262,7 +268,7 @@ def write_to_csv(data: pd.DataFrame, filename, decoder: Decoder):
         f.write("\n\n")
     data.to_csv(filename, mode="a", index=False)
 
-def decode(path):
+def decode(path, is_batch=False, folder_path=None):
     with open(path, 'rb') as f:
         decoder = Decoder(f)
         if getattr(decoder, "adxl371_scale_factor_defaulted", False):
@@ -277,15 +283,27 @@ def decode(path):
         mmc5983ma_df = pd.DataFrame(decoder.mmc5983ma_data, columns=['timestamp', 'mag_x', 'mag_y', 'mag_z'])
         adxl371_df = pd.DataFrame(decoder.adxl371_data, columns=['timestamp', 'accel_x', 'accel_y', 'accel_z'])
 
+        # change path if running batch scan
+        BMP_path = "BMP581_data.csv"
+        ICM_path = "ICM45686_data.csv"
+        MMC_path = "MMC5983MA_data.csv"
+        ADXL_path = "ADXL371_data.csv"
+        
+        if is_batch:
+            BMP_path = os.path.join(folder_path, BMP_path)
+            ICM_path = os.path.join(folder_path, ICM_path)
+            MMC_path = os.path.join(folder_path, MMC_path)
+            ADXL_path = os.path.join(folder_path, ADXL_path)
+
         # write to csv
     
-        write_to_csv(bmp581_df, "BMP581_data.csv", decoder)
+        write_to_csv(bmp581_df, BMP_path, decoder)
         print("wrote BMP581_data.csv")
-        write_to_csv(icm45686_df, "ICM45686_data.csv", decoder)
+        write_to_csv(icm45686_df, ICM_path, decoder)
         print("wrote ICM45686_data.csv")
-        write_to_csv(mmc5983ma_df, "MMC5983MA_data.csv", decoder)
+        write_to_csv(mmc5983ma_df, MMC_path, decoder)
         print("wrote MMC5983MA_data.csv")
-        write_to_csv(adxl371_df, "ADXL371_data.csv", decoder)
+        write_to_csv(adxl371_df, ADXL_path, decoder)
         print("wrote ADXL371_data.csv")
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ def is_launch_log(path, minimum_pressure_threshold = 1000):
     with open(path, 'rb') as f:
         decoder = Decoder(f)
         print(f"Reading file: {path}")
-
+        integer_thing = 0
         # use decoder to read through the file. 
         while (decoder.read_packet()):
             continue
@@ -17,7 +17,6 @@ def is_launch_log(path, minimum_pressure_threshold = 1000):
     min_pressure = pressureData.min()
     initial_pressure = pressureData.iloc[0]
     print(min_pressure, initial_pressure)
-
 
     if (initial_pressure - min_pressure) > minimum_pressure_threshold: # if pressure drops by more than 1000 Pa, it's likely a launch log. 
         return True
