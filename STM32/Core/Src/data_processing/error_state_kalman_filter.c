@@ -98,6 +98,9 @@ int eskf_init(ESKF *eskf) {
   if (!imu_orientation_set || !mag_orientation_set) {
     return 1;
   }
+  if (accum_count == 0U) {
+    return 1;
+  }
 
   // zero everything first
   memset(eskf, 0, sizeof(ESKF));
@@ -137,6 +140,13 @@ void eskf_accumulate(float pressure_raw, const float *accel_raw, const float *ma
   }
   pressure_accum += pressure_raw;
   accum_count++;
+}
+
+void eskf_reset_accumulator(void) {
+  accum_count = 0;
+  pressure_accum = 0.0F;
+  memset(accel_accum, 0, sizeof(accel_accum));
+  memset(mag_accum, 0, sizeof(mag_accum));
 }
 
 void eskf_predict(ESKF *eskf, const float u[ESKF_CONTROL_DIM], float dt) {

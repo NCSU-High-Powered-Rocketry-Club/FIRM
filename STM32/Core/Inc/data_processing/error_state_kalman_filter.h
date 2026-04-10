@@ -77,6 +77,7 @@ int eskf_set_mag_rotation_matrix(const float *R_mag_to_board);
  *
  * @param eskf Pointer to ESKF struct
  * @return 0 on success, nonzero if orientation has not been explicitly configured
+ * or if no accumulated startup samples are available.
  */
 int eskf_init(ESKF *eskf);
 
@@ -110,6 +111,13 @@ void eskf_update(ESKF *eskf);
  * @brief Set the measurement vector into eskf->z.
  */
 void eskf_set_measurement(ESKF *eskf, const float *measurements);
+
+/**
+ * @brief Reset startup accumulation buffers used by eskf_accumulate/eskf_init.
+ *
+ * This does not clear configured sensor orientation matrices.
+ */
+void eskf_reset_accumulator(void);
 
 /**
  * @brief Compute initial orientation from accel + mag and set mag_world.
