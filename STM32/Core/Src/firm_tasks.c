@@ -511,8 +511,8 @@ void collect_mmc5983ma_data_task(void *argument) {
       }
       if (!err) {
         logger_write_entry('M', sizeof(MMC5983MAPacket_t));
-        mmc5983ma_convert_packet(mmc5983ma_packet, (DataPacket *)&data_packet.data);
-        xEventGroupSetBits(sensors_collected, MMC5983MA_TASK_BIT);
+        //mmc5983ma_convert_packet(mmc5983ma_packet, (DataPacket *)&data_packet.data);
+        //xEventGroupSetBits(sensors_collected, MMC5983MA_TASK_BIT);
       }
       osMutexRelease(sensorDataMutexHandle);
 
@@ -663,10 +663,7 @@ void filter_data_task(void *argument) {
 
         // build measurement vector and update
         float z_raw[ESKF_MEASUREMENT_DIM] = {
-            raw_data_instance.pressure_pascals,
-            raw_data_instance.magnetic_field_x_microteslas,
-            raw_data_instance.magnetic_field_y_microteslas,
-            raw_data_instance.magnetic_field_z_microteslas,
+            raw_data_instance.pressure_pascals
         };
         eskf_set_measurement(&eskf, z_raw);
         eskf_update(&eskf);
@@ -677,8 +674,7 @@ void filter_data_task(void *argument) {
 
         // wait for all sensors to collect data
         xEventGroupWaitBits(sensors_collected,
-                            BMP581_TASK_BIT | ICM45686_TASK_BIT |
-                                MMC5983MA_TASK_BIT,
+                            BMP581_TASK_BIT | ICM45686_TASK_BIT,
                             pdTRUE, // clear bits after unblocking
                             pdTRUE, // wait for ALL bits
                             portMAX_DELAY);

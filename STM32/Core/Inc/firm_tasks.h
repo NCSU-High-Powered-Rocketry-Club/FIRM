@@ -31,7 +31,7 @@
 // TODO: include ADXL in kalman filter
 #define BMP581_TASK_BIT (1 << 0)
 #define ICM45686_TASK_BIT (1 << 1)
-#define MMC5983MA_TASK_BIT (1 << 2)
+//#define MMC5983MA_TASK_BIT (1 << 2)
 
 #define KALMAN_FILTER_STARTUP_DELAY_TIME_MS 2000
 

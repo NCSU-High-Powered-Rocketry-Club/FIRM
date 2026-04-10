@@ -113,18 +113,10 @@ void eskf_error_jacobian(const float *x_nom, const float *u, float dt,
 
 void eskf_measurement_function(const float *x_nom, float init_pressure, const float *mag_world,
                                const matrix_instance_f32 *R_mag, float *z_pred) {
-  // outputs predicted measurement: pressure + mag (in sensor frame)
+  // outputs predicted measurement: pressure only
+  (void)mag_world;  // unused
+  (void)R_mag;      // unused
   float altitude_meters = x_nom[ESKF_POS_Z];
-
-  // get quaternion state, conjugate, and mag_world as a quaternion
-  const float *quat = &x_nom[ESKF_QUAT_W];
-  float quat_conj[4] = {quat[0], -quat[1], -quat[2], -quat[3]};
-  const float mag_world_q[4] = {0.0F, mag_world[0], mag_world[1], mag_world[2]};
-
-  // magnetometer: rotate world mag into board frame, then into sensor frame
-  quaternion_product_f32(quat_conj, mag_world_q, z_pred); // using z_pred as temp storage
-  quaternion_product_f32(z_pred, quat, quat_conj);        // reusing quat_conj
-  mat_vec_mult_f32(R_mag, &quat_conj[1], &z_pred[1]);
 
   // pressure from altitude
   z_pred[0] =
@@ -133,45 +125,13 @@ void eskf_measurement_function(const float *x_nom, float init_pressure, const fl
 
 void eskf_measurement_jacobian(const float *x_nom, float init_pressure, const float *mag_world,
                                const float *R_mag, float *H_data) {
+  // measurement jacobian for pressure only
+  (void)mag_world;  // unused
+  (void)R_mag;      // unused
   memset(H_data, 0, ESKF_MEASUREMENT_DIM * ESKF_ERROR_DIM * sizeof(float));
   float altitude = x_nom[ESKF_POS_Z];
-
-  // creating shorthands for quaternion state and mag_world
-  const float qw = x_nom[ESKF_QUAT_W];
-  const float qx = x_nom[ESKF_QUAT_X];
-  const float qy = x_nom[ESKF_QUAT_Y];
-  const float qz = x_nom[ESKF_QUAT_Z];
-  const float wx = mag_world[0];
-  const float wy = mag_world[1];
-  const float wz = mag_world[2];
 
   // ∂pressure/∂altitude
   H_data[0] = init_pressure * (PRESSURE_EXPONENT * (-1.0F / PRESSURE_ALTITUDE_CONST)) *
               powf(1.0F - altitude / PRESSURE_ALTITUDE_CONST, PRESSURE_EXPONENT - 1.0F);
-
-  // Compute mag_board = R_b2w.T @ mag_world directly from quat
-  // These are the dot products of mag_world with the columns of R_b2w
-  const float mx = (1.0F - 2.0F * (qy * qy + qz * qz)) * wx + 2.0F * (qx * qy + qw * qz) * wy +
-                   2.0F * (qx * qz - qw * qy) * wz;
-  const float my = 2.0F * (qx * qy - qw * qz) * wx + (1.0F - 2.0F * (qx * qx + qz * qz)) * wy +
-                   2.0F * (qy * qz + qw * qx) * wz;
-  const float mz = 2.0F * (qx * qz + qw * qy) * wx + 2.0F * (qy * qz - qw * qx) * wy +
-                   (1.0F - 2.0F * (qx * qx + qy * qy)) * wz;
-
-  // ∂mag_sensor/∂δθ = R_mag @ skew(mag_board)
-  // Unrolled as the cross product of R_mag rows and mag_board
-  // R_mag row 0
-  H_data[5 + 2] = R_mag[1] * mz - R_mag[2] * my;
-  H_data[5 + 3] = R_mag[2] * mx - R_mag[0] * mz;
-  H_data[5 + 4] = R_mag[0] * my - R_mag[1] * mx;
-
-  // R_mag row 1
-  H_data[10 + 2] = R_mag[3 + 1] * mz - R_mag[3 + 2] * my;
-  H_data[10 + 3] = R_mag[3 + 2] * mx - R_mag[3 + 0] * mz;
-  H_data[10 + 4] = R_mag[3 + 0] * my - R_mag[3 + 1] * mx;
-
-  // R_mag row 2
-  H_data[15 + 2] = R_mag[6 + 1] * mz - R_mag[6 + 2] * my;
-  H_data[15 + 3] = R_mag[6 + 2] * mx - R_mag[6 + 0] * mz;
-  H_data[15 + 4] = R_mag[6 + 0] * my - R_mag[6 + 1] * mx;
 }

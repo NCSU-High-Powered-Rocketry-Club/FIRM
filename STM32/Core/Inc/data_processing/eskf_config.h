@@ -7,7 +7,7 @@
  *
  * Nominal state (6): altitude(1), velocity(1), quat(4) [w,x,y,z]
  * Error   state (5): δalt(1), δvel(1), δθ(3)
- * Measurement   (4): pressure(1), mag_sensor(3) (normalised)
+ * Measurement   (1): pressure(1) only
  * Control       (6): accel(3), gyro(3) (sensor frame, g and deg/s)
  * ==================================================================== */
 
@@ -15,7 +15,7 @@
 /** Vector Dimensions */
 #define ESKF_NOMINAL_DIM 6
 #define ESKF_ERROR_DIM 5
-#define ESKF_MEASUREMENT_DIM 4
+#define ESKF_MEASUREMENT_DIM 1
 #define ESKF_CONTROL_DIM 6
 
 /** Nominal State Index Enum */

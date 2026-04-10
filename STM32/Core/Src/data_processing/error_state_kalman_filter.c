@@ -8,6 +8,11 @@
 
 /* ==================================================
  * Error-State Extended Kalman Filter (ESKF)
+ * ==================================================
+ * Nominal state (6): altitude(1), velocity(1), quat(4) [w,x,y,z]
+ * Error   state (5): δalt(1), δvel(1), δθ(3)
+ * Measurement   (1): pressure(1) only
+ * Control       (6): accel(3), gyro(3) (sensor frame, g and deg/s)
  * ================================================== */
 
 /* ---- scratch buffers (static allocation, no malloc) --------------- */
@@ -209,22 +214,8 @@ void eskf_update(ESKF *eskf) {
 }
 
 void eskf_set_measurement(ESKF *eskf, const float *measurements) {
-  /* measurements[0] = pressure
-   * measurements[1..3] = raw magnetometer (not normalised) */
+  /* measurements[0] = pressure */
   eskf->z[0] = measurements[0];
-
-  /* normalise magnetometer */
-  float mx = measurements[1], my = measurements[2], mz = measurements[3];
-  float norm_mag = sqrtf(mx * mx + my * my + mz * mz);
-  if (norm_mag < 1e-6F) {
-    eskf->z[1] = 0.0F;
-    eskf->z[2] = 0.0F;
-    eskf->z[3] = 0.0F;
-    return;
-  }
-  eskf->z[1] = mx / norm_mag;
-  eskf->z[2] = my / norm_mag;
-  eskf->z[3] = mz / norm_mag;
 }
 
 /* ---- helper: 3x3 matrix-vector multiply (row-major) --------------- */

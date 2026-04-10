@@ -38,9 +38,6 @@ typedef struct {
   float raw_angular_rate_x_deg_per_s;
   float raw_angular_rate_y_deg_per_s;
   float raw_angular_rate_z_deg_per_s;
-  float magnetic_field_x_microteslas;
-  float magnetic_field_y_microteslas;
-  float magnetic_field_z_microteslas;
 } ESKFRawData;
 
 /**
@@ -71,7 +68,7 @@ void eskf_accumulate(float pressure_raw, const float *accel_raw, const float *ma
 void eskf_predict(ESKF *eskf, const float u[ESKF_CONTROL_DIM], float dt);
 
 /**
- * @brief ESKF measurement update (pressure + mag).
+ * @brief ESKF measurement update (pressure only).
  *
  * @param eskf Pointer to ESKF struct
  */

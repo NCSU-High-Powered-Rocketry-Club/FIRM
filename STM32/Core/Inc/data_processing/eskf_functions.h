@@ -27,12 +27,12 @@ void eskf_error_jacobian(const float *x_nom, const float *u, float dt,
                          const matrix_instance_f32 *R_imu, float *F_d_data);
 
 /**
- * @brief Predicted measurement z_pred = [pressure, mag_sensor(3)].
+ * @brief Predicted measurement z_pred = [pressure].
  *
  * @param x_nom         the nominal ESKF state vector
  * @param init_pressure the ground-level initial pressure on filter init
- * @param mag_world     world-frame magnetic field vector, calculated on filter init
- * @param R_mag         3x3: board frame -> mag sensor rotation matrix
+ * @param mag_world     unused (kept for API compatibility)
+ * @param R_mag         unused (kept for API compatibility)
  * @param z_pred        output: predicted measurement vector
  */
 void eskf_measurement_function(const float x_nom[ESKF_NOMINAL_DIM], float init_pressure,
@@ -40,13 +40,13 @@ void eskf_measurement_function(const float x_nom[ESKF_NOMINAL_DIM], float init_p
                                float z_pred[ESKF_MEASUREMENT_DIM]);
 
 /**
- * @brief Measurement Jacobian H (4x5).
+ * @brief Measurement Jacobian H (1x5) for pressure only.
  *
  * @param x_nom         the nominal ESKF state vector
  * @param init_pressure the ground-level initial pressure on filter init
- * @param mag_world     world-frame magnetic field vector, calculated on filter init
- * @param R_mag         3x3: board frame -> mag sensor rotation matrix
- * @param H_data        output 20-element row-major array
+ * @param mag_world     unused (kept for API compatibility)
+ * @param R_mag         unused (kept for API compatibility)
+ * @param H_data        output 5-element row-major array
  */
 void eskf_measurement_jacobian(const float *x_nom, float init_pressure, const float *mag_world,
                                const float *R_mag, float *H_data);
