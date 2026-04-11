@@ -113,7 +113,16 @@ def main():
     default_selected = [
         c
         for c in y_candidates
-        if any(k in c for k in ["temperature", "pressure", "raw_acceleration", "velocity", "quaternion"])
+        if any(
+            k in c
+            for k in [
+                "temperature",
+                "pressure",
+                "raw_acceleration",
+                "velocity",
+                "quaternion",
+            ]
+        )
     ]
     if not default_selected:
         default_selected = y_candidates[:3]
