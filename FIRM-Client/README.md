@@ -56,6 +56,7 @@ Install it and Node.js here: https://nodejs.org/en/download/
 3.  **Build WASM/TypeScript:**
 
     ```bash
+    cargo install wasm-pack
     cd firm_typescript
     npm install
     npm run clean
@@ -64,6 +65,14 @@ Install it and Node.js here: https://nodejs.org/en/download/
     # For testing the code with examples/index.html
     npx serve .
     ```
+
+## Running Tests
+
+Ensure that you are in the FIRM-Client folder and run:
+
+```bash
+cargo test
+```
 
 ## Usage
 
