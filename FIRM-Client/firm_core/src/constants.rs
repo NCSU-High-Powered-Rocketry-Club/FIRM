@@ -104,6 +104,45 @@ pub mod log_parsing {
     use crate::constants::packet::PacketHeader;
     use std::time::Duration;
 
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct LogPacketMeta {
+        pub id: u8,
+        pub packet_type: FIRMLogPacketType,
+        pub payload_size: usize,
+        pub name: &'static str,
+    }
+
+    pub const LOG_PACKET_META: [LogPacketMeta; 4] = [
+        LogPacketMeta {
+            id: BMP581_ID,
+            packet_type: FIRMLogPacketType::BarometerPacket,
+            payload_size: BMP581_SIZE,
+            name: "BMP581",
+        },
+        LogPacketMeta {
+            id: ICM45686_ID,
+            packet_type: FIRMLogPacketType::IMUPacket,
+            payload_size: ICM45686_SIZE,
+            name: "ICM45686",
+        },
+        LogPacketMeta {
+            id: MMC5983MA_ID,
+            packet_type: FIRMLogPacketType::MagnetometerPacket,
+            payload_size: MMC5983MA_SIZE,
+            name: "MMC5983MA",
+        },
+        LogPacketMeta {
+            id: ADXL371_ID,
+            packet_type: FIRMLogPacketType::HighGPacket,
+            payload_size: ADXL371_SIZE,
+            name: "ADXL371",
+        },
+    ];
+
+    pub fn log_packet_meta_from_id(id: u8) -> Option<&'static LogPacketMeta> {
+        LOG_PACKET_META.iter().find(|m| m.id == id)
+    }
+
     pub const LOG_SENSOR_PACKET_HEADER: u16 = PacketHeader::LogSensor as u16;
     /// Log sensor packet type identifier stored in the second u16 header field.
     #[repr(u16)]

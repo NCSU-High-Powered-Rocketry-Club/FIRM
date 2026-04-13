@@ -117,18 +117,12 @@ impl LogParser {
 
             self.last_clock_count = Some(clock_count);
 
-            let (packet_type, size) = match id {
-                BMP581_ID => (FIRMLogPacketType::BarometerPacket, BMP581_SIZE),
-                ICM45686_ID => (FIRMLogPacketType::IMUPacket, ICM45686_SIZE),
-                MMC5983MA_ID => (FIRMLogPacketType::MagnetometerPacket, MMC5983MA_SIZE),
-                ADXL371_ID => (FIRMLogPacketType::HighGPacket, ADXL371_SIZE),
-                _ => {
-                    // Unknown/garbage byte. Don't give up immediately: advance by one byte and
-                    // keep scanning so we can re-sync if we're offset or the file has junk.
-                    position = log_packet_start + 1;
-                    continue;
-                }
+            let Some(meta) = log_packet_meta_from_id(id) else {
+                position = log_packet_start + 1;
+                continue;
             };
+            let packet_type = meta.packet_type;
+            let size = meta.payload_size;
 
             if position + size > self.bytes.len() {
                 position = log_packet_start;
