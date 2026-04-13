@@ -121,6 +121,7 @@ impl LogParser {
                 BMP581_ID => (FIRMLogPacketType::BarometerPacket, BMP581_SIZE),
                 ICM45686_ID => (FIRMLogPacketType::IMUPacket, ICM45686_SIZE),
                 MMC5983MA_ID => (FIRMLogPacketType::MagnetometerPacket, MMC5983MA_SIZE),
+                ADXL371_ID => (FIRMLogPacketType::HighGPacket, ADXL371_SIZE),
                 _ => {
                     // Unknown/garbage byte. Don't give up immediately: advance by one byte and
                     // keep scanning so we can re-sync if we're offset or the file has junk.
@@ -276,5 +277,30 @@ mod tests {
             LOG_PACKET_TIMESTAMP_SIZE + MMC5983MA_SIZE
         );
         assert!(parser.get_packet().is_none());
+    }
+
+    #[test]
+    fn test_high_g_packet() {
+        let header = make_header();
+        let log_packet_bytes = make_log_packet_bytes(ADXL371_ID, 0x12345678, ADXL371_SIZE);
+
+        let mut parser = LogParser::new();
+        parser.read_header(&header);
+        parser.parse_bytes(&log_packet_bytes);
+
+        let (log_packet, delay) = parser.get_packet_and_time_delay().unwrap();
+        assert_eq!(delay, 0.0);
+        assert_eq!(log_packet.packet_type(), FIRMLogPacketType::HighGPacket);
+        assert_eq!(
+            log_packet.payload().len(),
+            LOG_PACKET_TIMESTAMP_SIZE + ADXL371_SIZE
+        );
+        assert_eq!(log_packet.len() as usize, log_packet.payload().len());
+        assert_eq!(
+            &log_packet.payload()[0..LOG_PACKET_TIMESTAMP_SIZE],
+            &[0x78, 0x56, 0x34, 0x12]
+        );
+        assert!(parser.get_packet_and_time_delay().is_none());
+        
     }
 }
