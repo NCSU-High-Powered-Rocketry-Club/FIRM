@@ -1,0 +1,37 @@
+name: Python Tests
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+    branches: ["main", "master"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  pytest:
+    name: Pytest (uv)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install Python dependencies
+        run: uv sync --group dev
+
+      - name: Build Python extension (maturin develop)
+        run: uv run maturin develop -m firm_python/Cargo.toml
+
+      - name: Run pytest
+        run: uv run pytest -q
