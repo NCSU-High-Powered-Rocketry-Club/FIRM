@@ -43,6 +43,7 @@ fn main() -> ExitCode {
     let mut count_bmp = 0usize;
     let mut count_imu = 0usize;
     let mut count_mag = 0usize;
+    let mut count_high_g = 0usize;
 
     let mut total_delay = 0.0f64;
 
@@ -67,6 +68,7 @@ fn main() -> ExitCode {
                 FIRMLogPacketType::BarometerPacket => count_bmp += 1,
                 FIRMLogPacketType::IMUPacket => count_imu += 1,
                 FIRMLogPacketType::MagnetometerPacket => count_mag += 1,
+                FIRMLogPacketType::HighGPacket => count_high_g += 1,
                 other => println!("Unexpected packet type: {other:?}"),
             }
 
@@ -82,7 +84,7 @@ fn main() -> ExitCode {
     }
 
     println!(
-        "OK: total={count_total} B={count_bmp} I={count_imu} M={count_mag} delay_s={total_delay:.6} (round-trip header/len/crc verified)"
+        "OK: total={count_total} B={count_bmp} I={count_imu} M={count_mag} A={count_high_g} delay_s={total_delay:.6} (round-trip header/len/crc verified)"
     );
 
     ExitCode::SUCCESS

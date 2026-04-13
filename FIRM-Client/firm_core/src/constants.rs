@@ -113,6 +113,7 @@ pub mod log_parsing {
         BarometerPacket = BMP581_ID as u16,
         IMUPacket = ICM45686_ID as u16,
         MagnetometerPacket = MMC5983MA_ID as u16,
+        HighGPacket = ADXL371_ID as u16,
     }
 
     impl FIRMLogPacketType {
@@ -127,6 +128,7 @@ pub mod log_parsing {
                 v if v == Self::BarometerPacket as u16 => Some(Self::BarometerPacket),
                 v if v == Self::IMUPacket as u16 => Some(Self::IMUPacket),
                 v if v == Self::MagnetometerPacket as u16 => Some(Self::MagnetometerPacket),
+                v if v == Self::HighGPacket as u16 => Some(Self::HighGPacket),
                 _ => None,
             }
         }
@@ -141,11 +143,13 @@ pub mod log_parsing {
     pub const BMP581_ID: u8 = b'B';
     pub const ICM45686_ID: u8 = b'I';
     pub const MMC5983MA_ID: u8 = b'M';
+    pub const ADXL371_ID: u8 = b'A';
 
-    // The length of the payloads not including the 3 byte timestamp
+    // The length of the payloads not including the 4 byte timestamp
     pub const BMP581_SIZE: usize = 6;
     pub const ICM45686_SIZE: usize = 15;
     pub const MMC5983MA_SIZE: usize = 7;
+    pub const ADXL371_SIZE: usize = 6;
 
     pub const LOG_FILE_EOF_PADDING_LENGTH: usize = 20;
     pub const LOG_PACKET_TIMESTAMP_SIZE: usize = 4;
@@ -156,9 +160,8 @@ pub mod log_parsing {
     pub const HEADER_COMM_SIZE: usize = 4; // 1 byte usb, 1 byte uart, 1 byte spi, 1 byte i2c
     pub const HEADER_FIRMWARE_VERSION_SIZE: usize = 8; // "vX.X.X.X"
     pub const HEADER_FREQUENCY_SIZE: usize = 2;
-    pub const HEADER_PADDING_SIZE: usize = 2;
-    pub const HEADER_CAL_SIZE: usize = (3 + 9) * 3 * 4; // (offsets + 3x3 matrix) * 3 sensors * 4 bytes
-    pub const HEADER_NUM_SCALE_FACTOR_SIZE: usize = 5 * 4; // 5 floats
+    pub const HEADER_CAL_SIZE: usize = (3 + 9) * 4 * 4; // (offsets + 3x3 matrix) * 4 sensors * 4 bytes
+    pub const HEADER_NUM_SCALE_FACTOR_SIZE: usize = 6 * 4; // 6 floats
 
     pub const HEADER_TOTAL_SIZE: usize = HEADER_SIZE_TEXT
         + HEADER_UID_SIZE
@@ -166,7 +169,6 @@ pub mod log_parsing {
         + HEADER_COMM_SIZE
         + HEADER_FIRMWARE_VERSION_SIZE
         + HEADER_FREQUENCY_SIZE
-        + HEADER_PADDING_SIZE
         + HEADER_CAL_SIZE
         + HEADER_NUM_SCALE_FACTOR_SIZE;
 

@@ -368,4 +368,18 @@ mod tests {
         assert_eq!(parsed.payload(), packet.payload());
         assert_eq!(parsed.crc(), packet.crc());
     }
+
+    #[test]
+    fn test_roundtrip_high_g() {
+        let payload = vec![1, 2, 3, 4, 5, 6];
+        let packet = FIRMLogPacket::new(FIRMLogPacketType::HighGPacket, payload);
+        let bytes = packet.to_bytes();
+        let parsed = FIRMLogPacket::from_bytes(&bytes).unwrap();
+        assert_eq!(parsed.header(), PacketHeader::LogSensor);
+        assert_eq!(parsed.packet_type(), FIRMLogPacketType::HighGPacket);
+        assert_eq!(identifier_from_bytes(&bytes), b'A' as u16);
+        assert_eq!(parsed.len() as usize, parsed.payload().len());
+        assert_eq!(parsed.payload(), packet.payload());
+        assert_eq!(parsed.crc(), packet.crc());
+    }
 }
