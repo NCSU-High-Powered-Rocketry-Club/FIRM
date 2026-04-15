@@ -45,16 +45,14 @@ int icm45686_read_data(ICM45686Packet_t *packet);
 /**
  * @brief gets the scale factor of the acceleration readings to convert to g's.
  *
- * @retval float value to divide binary data by to get acceleration in g's. Returns -1 if sensor
- *         is not initialized yet.
+ * @retval float value to divide binary data by to get acceleration in g's.
  */
 float icm45686_get_accel_scale_factor(void);
 
 /**
- * @brief gets the scale factor of the gyroscope readings to convert to radians per second.
+ * @brief gets the scale factor of the gyroscope readings to convert to degrees per second.
  *
- * @retval float value to divide binary data by to get angular rate in radians per second.
- *         Returns -1 if sensor is not initialized yet.
+ * @retval float value to divide binary data by to get angular rate in degrees per second.
  */
 float icm45686_get_gyro_scale_factor(void);
 
@@ -64,3 +62,43 @@ float icm45686_get_gyro_scale_factor(void);
  * @retval None
  */
 void set_spi_icm(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin);
+
+/**
+ * @brief convets raw sensor data from the ICM45686 to board-frame, calibrated, float values
+ * @note the offset fields and calibration/rotation matrix field must be set to calibrate.
+ *       Default values of [0, 0, 0] offset, and identity matrix will be used otherwise.
+ * 
+ * @param raw the raw sensor data retrieved from icm45686_read_data()
+ * @param out calibrated float values, rotated to board frame
+ */
+void icm45686_convert_and_calibrate(ICM45686RawData_t *raw, ICM45686BoardReading_t *out);
+
+/**
+ * @brief sets the calibration offsets and row-major matrix for the ICM45686 acceleration
+ * @note Calculation is done as follows:
+ *       (X - b) * A
+ *       Where X is the measurement vector in sensor-frame, b is the offsets, and A is the
+ *       3x3 row-major rotation matrix for scaling.
+ *       The scale matrix should bake-in the rotation matrix for converting from sensor-frame to
+ *       board-frame.
+ * 
+ * @param offsets three float calibration offsets for [x, y, z]
+ * @param matrix nine floats for 3x3 row-major matrix for calibration and sensor->board frame
+ *               scaling and rotation.
+ */
+void icm45686_set_accel_calibration(float offsets[3], float matrix[9]);
+
+/**
+ * @brief sets the calibration offsets and row-major matrix for the ICM45686 gyroscope
+ * @note Calculation is done as follows:
+ *       (X - b) * A
+ *       Where X is the measurement vector in sensor-frame, b is the offsets, and A is the
+ *       3x3 row-major rotation matrix for scaling.
+ *       The scale matrix should bake-in the rotation matrix for converting from sensor-frame to
+ *       board-frame.
+ * 
+ * @param offsets three float calibration offsets for [x, y, z]
+ * @param matrix nine floats for 3x3 row-major matrix for calibration and sensor->board frame
+ *               scaling and rotation.
+ */
+void icm45686_set_gyro_calibration(float offsets[3], float matrix[9]);

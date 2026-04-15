@@ -1,6 +1,10 @@
 #include "firm_v1_0.h"
 #include "settings_storage.h"
 #include "led.h"
+#include "adxl371.h"
+#include "icm45686.h"
+#include "bmp581.h"
+#include "mmc5983ma.h"
 
 
 #if FIRM_HARDWARE_VERSION == VERSION_V1_0
@@ -39,14 +43,18 @@ int firm_init_hardware(void) {
     .read_uid = settings_read_uid,
   };
   w25q128jv_set_spi_settings(&hspi1, GPIOC, GPIO_PIN_4);
-  if (w25q128jv_init()) {
-    led_set_status(FLASH_CHIP_FAIL);
-    return 1;
-  }
+  w25q128jv_init();
   if (settings_storage_init(&settings_storage_interface)) {
     led_set_status(FLASH_CHIP_FAIL);
     return 1;
   }
+
+  // initialize sensor communication
+  set_spi_adxl(&hspi2, GPIOA, GPIO_PIN_8);
+  set_spi_bmp(&hspi2, GPIOC, GPIO_PIN_2);
+  set_spi_icm(&hspi2, GPIOB, GPIO_PIN_9);
+  set_spi_mmc(&hspi2, GPIOC, GPIO_PIN_7);
+
   return 0;
 }
 

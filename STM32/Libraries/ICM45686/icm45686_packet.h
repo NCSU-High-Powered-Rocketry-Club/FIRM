@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 /**
- * @brief Packet structure of the ICM45686 hi-res FIFO data. The temp and timestamp fields are
+ * @brief Raw data structure of the ICM45686 hi-res FIFO data. The temp and timestamp fields are
  *        not included.
  * @note Refer to the datasheet section 6.1 "packet structure" for information on the packet
  *       structure to see which bytes of the FIFO packet go to which data points.
@@ -24,4 +24,17 @@ typedef struct {
   uint8_t x_vals_lsb;
   uint8_t y_vals_lsb;
   uint8_t z_vals_lsb;
-} ICM45686Packet_t;
+} ICM45686RawData_t;
+
+/**
+ * @brief ICM45686 acceleration/angular rate data as floats, rotated to board-frame.
+ * @note Calibration is applied.
+ */
+typedef struct {
+  float accel_x_g;
+  float accel_y_g;
+  float accel_z_g;
+  float gyro_x_dps;
+  float gyro_y_dps;
+  float gyro_z_dps;
+} ICM45686BoardReading_t;

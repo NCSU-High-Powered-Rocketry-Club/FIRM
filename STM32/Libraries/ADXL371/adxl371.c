@@ -1,9 +1,8 @@
 #include "adxl371.h"
 
 /**
- * @brief the SPI settings for the ADXL372 to use when accessing device registers
+ * @brief the SPI settings for the ADXL371 to use when accessing device registers
  */
-
 typedef struct {
   SPI_HandleTypeDef *hspi;
   GPIO_TypeDef *cs_channel;
@@ -11,14 +10,14 @@ typedef struct {
 } SPISettings;
 
 /**
- * @brief Starts up and resets the ADXL372, confirms the SPI read/write functionality is working
+ * @brief Starts up and resets the ADXL371, confirms the SPI read/write functionality is working
  *
  * @retval 0 if successful
  */
 static int setup_device();
 
 /**
- * @brief Reads data from the ADXL372 with SPI
+ * @brief Reads data from the ADXL371 with SPI
  *
  * @param addr the address of the register
  * @param buffer where the result of the read will be stored
@@ -28,7 +27,7 @@ static int setup_device();
 static HAL_StatusTypeDef read_registers(uint8_t addr, uint8_t *buffer, size_t len);
 
 /**
- * @brief Writes 1 byte of data to the ADXL372 with SPI
+ * @brief Writes 1 byte of data to the ADXL371 with SPI
  *
  * @param addr the address of the register
  * @param data the data to write to the register
@@ -47,7 +46,13 @@ static const uint8_t fifo_ctl = 0x3A;
 
 static const uint8_t xdata_h = 0x08;
 
+static const float accel_scale_factor = 4096.0F / 400.0F;
+
 static SPISettings spiSettings;
+
+/** Calibration and orientation values for converting raw sensor data to board-frame floats */
+static float calibration_offsets[3] = {0};
+static float calibration_matrix[9] = {1.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 1.0F};
 
 void set_spi_adxl(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin) {
   spiSettings.hspi = hspi;
@@ -117,9 +122,55 @@ int adxl371_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_
   value = value | 0b00000011;
   write_register(power_ctl, value);
 
-  //ADXL371 startup successful
+  // ADXL371 startup successful
   return 0;
 }
+
+int adxl371_read_data(ADXL371RawData_t *packet) {
+  // clear interrupt (pulls interrupt back up high) and verify new data is ready
+  uint8_t data_ready = 0;
+  read_registers(status, &data_ready, 1);
+  if (data_ready & 0x01) { // bit 0 (LSB) will be 1 if new data is ready
+    // Burst read xdata_h to zdata_l (0x08 to 0x0D) into packet
+    read_registers(xdata_h, (uint8_t *)packet, 6);
+    return 0;
+  }
+  return 1;
+}
+
+void adxl371_convert_and_calibrate(ADXL371RawData_t *raw, ADXL371BoardReading_t *out) {
+  const float scale = 1.0F / accel_scale_factor;
+  // extract acceleration as a 32 bit signed integer, which uses two's complement
+  int32_t accel_binary_x = ((int32_t)(int8_t)raw->accX_H << 8 | (int32_t)raw->accX_L);
+
+  int32_t accel_binary_y = ((int32_t)(int8_t)raw->accY_H << 8 | (int32_t)raw->accY_L);
+
+  int32_t accel_binary_z = ((int32_t)(int8_t)raw->accZ_H << 8 | (int32_t)raw->accZ_L);
+
+  // convert acceleration to g's and subtract calibration offset
+  float accel_x_float = (float)accel_binary_x * scale - calibration_offsets[0];
+  float accel_y_float = (float)accel_binary_y * scale - calibration_offsets[1];
+  float accel_z_float = (float)accel_binary_z * scale - calibration_offsets[2];
+
+  // 3x3 calibration matrix
+  out->accel_x_g = accel_x_float * calibration_matrix[0] + accel_y_float * calibration_matrix[3] +
+                   accel_z_float * calibration_matrix[6];
+  out->accel_y_g = accel_x_float * calibration_matrix[1] + accel_y_float * calibration_matrix[4] +
+                   accel_z_float * calibration_matrix[7];
+  out->accel_z_g = accel_x_float * calibration_matrix[2] + accel_y_float * calibration_matrix[5] +
+                   accel_z_float * calibration_matrix[8];
+}
+
+void adxl371_set_calibration(float offsets[3], float matrix[9]) {
+  for (int i = 0; i < 3; i++) {
+    calibration_offsets[i] = offsets[i];
+  }
+  for (int i = 0; i < 9; i++) {
+    calibration_matrix[i] = matrix[i];
+  }
+}
+
+float adxl371_get_accel_scale_factor(void) { return accel_scale_factor; }
 
 static int setup_device() {
   uint8_t result = 0;
@@ -161,19 +212,6 @@ static int setup_device() {
   return 0;
 }
 
-
-int adxl371_read_data(ADXL371Packet_t *packet) {
-  // clear interrupt (pulls interrupt back up high) and verify new data is ready
-  uint8_t data_ready = 0;
-  read_registers(status, &data_ready, 1);
-  if (data_ready & 0x01) { // bit 0 (LSB) will be 1 if new data is ready
-    // Burst read xdata_h to zdata_l (0x08 to 0x0D) into packet
-    read_registers(xdata_h, (uint8_t *)packet, 6);
-    return 0;
-  }
-  return 1;
-}
-
 static HAL_StatusTypeDef read_registers(uint8_t addr, uint8_t *buffer, size_t len) {
   addr = (addr << 1) | 0x01;
   return spi_read(spiSettings.hspi, spiSettings.cs_channel, spiSettings.cs_pin, addr, buffer, len);
@@ -184,6 +222,3 @@ static HAL_StatusTypeDef write_register(uint8_t addr, uint8_t data) {
   return spi_write(spiSettings.hspi, spiSettings.cs_channel, spiSettings.cs_pin, addr, data);
 }
 
-static const float accel_scale_factor = 4096.0F / 400.0F;
-
-float adxl371_get_accel_scale_factor(void) { return accel_scale_factor; }

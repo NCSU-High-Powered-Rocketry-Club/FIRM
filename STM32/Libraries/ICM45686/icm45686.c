@@ -11,9 +11,9 @@
  * @brief the SPI settings for the IMU to use when accessing device registers
  */
 typedef struct {
-    SPI_HandleTypeDef* hspi;
-    GPIO_TypeDef* cs_channel;
-    uint16_t cs_pin;
+  SPI_HandleTypeDef *hspi;
+  GPIO_TypeDef *cs_channel;
+  uint16_t cs_pin;
 } SPISettings;
 
 /**
@@ -32,7 +32,7 @@ static int setup_device(bool soft_reset_complete);
  * @param len the number of bytes to read
  * @retval HAL Status, 0 on successful read
  */
-static HAL_StatusTypeDef read_registers(uint8_t addr, uint8_t* buffer, size_t len);
+static HAL_StatusTypeDef read_registers(uint8_t addr, uint8_t *buffer, size_t len);
 
 /**
  * @brief Writes 1 byte of data to the ICM45686 with SPI
@@ -42,7 +42,6 @@ static HAL_StatusTypeDef read_registers(uint8_t addr, uint8_t* buffer, size_t le
  * @retval HAL Status, 0 on successful write
  */
 static HAL_StatusTypeDef write_register(uint8_t addr, uint8_t data);
-
 
 /**
  * @brief reads an indirect register from the ICM45686
@@ -56,7 +55,7 @@ static HAL_StatusTypeDef write_register(uint8_t addr, uint8_t data);
  * @param result a pointer to the variable that the result of the read will be stored in.
  * @retval error status, 0 on successful read
  */
-static int read_ireg_register(IREGMap_t register_map, uint16_t ireg_addr, uint8_t* result);
+static int read_ireg_register(IREGMap_t register_map, uint16_t ireg_addr, uint8_t *result);
 
 /**
  * @brief writes to an indirect register of the ICM45686
@@ -92,88 +91,93 @@ static const uint8_t sreg_ctrl = 0x67;          // IPREG_TOP1 register
 static const uint8_t ipreg_sys1_reg_166 = 0xA6; // IPREG_SYS1 register
 static const uint8_t ipreg_sys2_reg_123 = 0x7B; // IPREG_SYS2 register
 
-static const float hi_res_fifo_accel_scale_factor = 16384.0F;
-static const float hi_res_fifo_gyro_scale_factor = 131.072F;
-static const float base_accel_scale_factor = 1024.0F;
-static const float base_gyro_scale_factor = 8.192F;
+static const float accel_scale_factor = 16384.0F;
+static const float gyro_scale_factor = 131.072F;
 
 static SPISettings spiSettings;
 
-void set_spi_icm(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin) {
+/** Calibration and orientation values for converting raw sensor data to board-frame floats */
+static float accel_calibration_offsets[3] = {0};
+static float accel_calibration_matrix[9] = {1.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 1.0F};
+static float gyro_calibration_offsets[3] = {0};
+static float gyro_calibration_matrix[9] = {1.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 1.0F};
+
+void set_spi_icm(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin) {
   spiSettings.hspi = hspi;
   spiSettings.cs_channel = cs_channel;
   spiSettings.cs_pin = cs_pin;
 }
 
-int icm45686_init(SPI_HandleTypeDef* hspi, GPIO_TypeDef* cs_channel, uint16_t cs_pin) {
-    if (hspi == NULL || cs_channel == NULL) {
-        // Invalid spi handle or chip select pin
-        return 1;
-    }
-    // set up the SPI settings
-    spiSettings.hspi = hspi;
-    spiSettings.cs_channel = cs_channel;
-    spiSettings.cs_pin = cs_pin;
+int icm45686_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin) {
+  if (hspi == NULL || cs_channel == NULL) {
+    // Invalid spi handle or chip select pin
+    return 1;
+  }
+  // set up the SPI settings
+  spiSettings.hspi = hspi;
+  spiSettings.cs_channel = cs_channel;
+  spiSettings.cs_pin = cs_pin;
 
+  // Beginning ICM45686 initialization
+  // sets up the IMU in SPI mode and ensures SPI is working
+  if (setup_device(false))
+    return 1;
 
-    // Beginning ICM45686 initialization
-    // sets up the IMU in SPI mode and ensures SPI is working
-    if (setup_device(false)) return 1;
+  // do a soft-reset of the sensor's settings
+  write_register(reg_misc2, 0b00000010);
+  // verify correct setup again
+  if (setup_device(true))
+    return 1;
 
-    // do a soft-reset of the sensor's settings
-    write_register(reg_misc2, 0b00000010);
-    // verify correct setup again
-    if (setup_device(true)) return 1;
+  // sets accel range to +/- 32g, and ODR to 400hz
+  write_register(accel_config0, 0b00000111);
+  // sets gyro range to 4000dps, and ODR to 400hz
+  write_register(gyro_config0, 0b00000111);
+  // fifo set to stream mode, and 2k byte size
+  write_register(fifo_config0, 0b01000111);
+  // enable fifo for acceleration and gyroscope
+  write_register(fifo_config3, 0b00001111);
+  // disables all interrupts, to allow interrupt settings to be configured
+  write_register(int1_config0, 0b00000000);
+  // sets interrupt pin to push-pull, latching, and active low
+  write_register(int1_config2, 0b00000010);
+  // sets interrupt pin to only trigger when data is ready or reset is complete
+  write_register(int1_config0, 0b10000100);
 
-    // sets accel range to +/- 32g, and ODR to 400hz
-    write_register(accel_config0, 0b00000111);
-    // sets gyro range to 4000dps, and ODR to 400hz
-    write_register(gyro_config0, 0b00000111);
-    // fifo set to stream mode, and 2k byte size
-    write_register(fifo_config0, 0b01000111);
-    // enable fifo for acceleration and gyroscope
-    write_register(fifo_config3, 0b00001111);
-    // disables all interrupts, to allow interrupt settings to be configured
-    write_register(int1_config0, 0b00000000);
-    // sets interrupt pin to push-pull, latching, and active low
-    write_register(int1_config2, 0b00000010);
-    // sets interrupt pin to only trigger when data is ready or reset is complete
-    write_register(int1_config0, 0b10000100);
+  // big endian mode
+  write_ireg_register(IPREG_TOP1, (uint16_t)sreg_ctrl, 0b00000010);
+  // turn interpolator and FIR filter off for gyro
+  write_ireg_register(IPREG_SYS1, (uint16_t)ipreg_sys1_reg_166, 0b00001011);
+  // turn interpolator and FIR filter off for acceleration
+  write_ireg_register(IPREG_SYS2, (uint16_t)ipreg_sys2_reg_123, 0b00010100);
+  // verify ireg read/write works
+  uint8_t result = 0;
+  read_ireg_register(IPREG_SYS2, (uint16_t)ipreg_sys2_reg_123, &result);
+  if (result != 0b00010100) {
+    // Failed to read or write to IREG registers
+    return 1;
+  }
+  // place both accel and gyro in low noise mode
+  write_register(pwr_mgmt0, 0b00001111);
 
-    // big endian mode
-    write_ireg_register(IPREG_TOP1, (uint16_t)sreg_ctrl, 0b00000010);
-    // turn interpolator and FIR filter off for gyro
-    write_ireg_register(IPREG_SYS1, (uint16_t)ipreg_sys1_reg_166, 0b00001011);
-    // turn interpolator and FIR filter off for acceleration
-    write_ireg_register(IPREG_SYS2, (uint16_t)ipreg_sys2_reg_123, 0b00010100);
-    // verify ireg read/write works
-    uint8_t result = 0;
-    read_ireg_register(IPREG_SYS2, (uint16_t)ipreg_sys2_reg_123, &result);
-    if (result != 0b00010100) {
-        // Failed to read or write to IREG registers
-        return 1;
-    }
-    // place both accel and gyro in low noise mode
-    write_register(pwr_mgmt0, 0b00001111);
+  // delay for gyro to get ready
+  HAL_Delay(74);
 
-    // delay for gyro to get ready
-    HAL_Delay(74);
+  // read to clear any interrupts
+  read_registers(int1_status0, &result, 1);
+  read_registers(int1_status1, &result, 1);
 
-    // read to clear any interrupts
-    read_registers(int1_status0, &result, 1);
-    read_registers(int1_status1, &result, 1);
-
-    // ICM45686 startup successful
-    return 0;
+  // ICM45686 startup successful
+  return 0;
 }
 
-int icm45686_read_data(ICM45686Packet_t* packet) {
+int icm45686_read_data(ICM45686RawData_t *packet) {
   uint8_t data_ready = 0;
   // checking (and resetting) interrupt status
   read_registers(int1_status0, &data_ready, 1);
   if (!(data_ready & 0x04)) // bit 2 is data_ready flag for UI channel
     return 1;
-  
+
   // each packet from the fifo is 20 bytes, with the first being the header, the next 12
   // being the most significant bytes and middle bytes of accel/gyro data, and the last 3
   // bytes of the packet are the least significant bytes of the accel/gyro data. The other
@@ -193,191 +197,225 @@ int icm45686_read_data(ICM45686Packet_t* packet) {
       read_registers(fifo_data, raw_data, 20);
     }
   }
-  
+
   read_registers(fifo_data, raw_data, 20);
-  // copying 12 bytes after the header byte (most significant byte and middle byte of accel/gyro data)
+  // copying 12 bytes after the header byte (most significant byte and middle byte of accel/gyro
+  // data)
   memcpy(packet, &raw_data[1], 12);
   // copying the last 3 bytes (4-bit LSB's for accel/gyro)
   memcpy(&packet->x_vals_lsb, &raw_data[17], 3);
   return 0;
 }
 
+void icm45686_convert_and_calibrate(ICM45686RawData_t *raw, ICM45686BoardReading_t *out) {
+  // extract acceleration and angular rate as a 32 bit signed integer, which uses two's complement
+  int32_t acc_binary_x = ((int32_t)((int8_t)raw->accX_H) << 12) | ((int32_t)raw->accX_L << 4) |
+                         ((int32_t)(raw->x_vals_lsb >> 4));
+
+  int32_t acc_binary_y = ((int32_t)((int8_t)raw->accY_H) << 12) | ((int32_t)raw->accY_L << 4) |
+                         ((int32_t)(raw->y_vals_lsb >> 4));
+
+  int32_t acc_binary_z = ((int32_t)((int8_t)raw->accZ_H) << 12) | ((int32_t)raw->accZ_L << 4) |
+                         ((int32_t)(raw->z_vals_lsb >> 4));
+
+  int32_t gyro_binary_x = ((int32_t)((int8_t)raw->gyroX_H) << 12) | ((int32_t)raw->gyroX_L << 4) |
+                          ((int32_t)(raw->x_vals_lsb & 0x0F));
+
+  int32_t gyro_binary_y = ((int32_t)((int8_t)raw->gyroY_H) << 12) | ((int32_t)raw->gyroY_L << 4) |
+                          ((int32_t)(raw->y_vals_lsb & 0x0F));
+
+  int32_t gyro_binary_z = ((int32_t)((int8_t)raw->gyroZ_H) << 12) | ((int32_t)raw->gyroZ_L << 4) |
+                          ((int32_t)(raw->z_vals_lsb & 0x0F));
+
+  // convert accel to g's, angular rate to degrees per second, and subtract calibration offset
+  float acc_float_x = ((float)acc_binary_x) / accel_scale_factor - accel_calibration_offsets[0];
+  float acc_float_y = ((float)acc_binary_y) / accel_scale_factor - accel_calibration_offsets[1];
+  float acc_float_z = ((float)acc_binary_z) / accel_scale_factor - accel_calibration_offsets[2];
+  float gyro_float_x = ((float)gyro_binary_x) / gyro_scale_factor - gyro_calibration_offsets[0];
+  float gyro_float_y = ((float)gyro_binary_y) / gyro_scale_factor - gyro_calibration_offsets[1];
+  float gyro_float_z = ((float)gyro_binary_z) / gyro_scale_factor - gyro_calibration_offsets[2];
+
+  // apply 3x3 scaling matrix to each value
+  out->accel_x_g = acc_float_x * accel_calibration_matrix[0] +
+                   acc_float_y * accel_calibration_matrix[3] +
+                   acc_float_z * accel_calibration_matrix[6];
+  out->accel_y_g = acc_float_x * accel_calibration_matrix[1] +
+                   acc_float_y * accel_calibration_matrix[4] +
+                   acc_float_z * accel_calibration_matrix[7];
+  out->accel_z_g = acc_float_x * accel_calibration_matrix[2] +
+                   acc_float_y * accel_calibration_matrix[5] +
+                   acc_float_z * accel_calibration_matrix[8];
+  out->gyro_x_dps = gyro_float_x * gyro_calibration_matrix[0] +
+                    gyro_float_y * gyro_calibration_matrix[3] +
+                    gyro_float_z * gyro_calibration_matrix[6];
+  out->gyro_y_dps = gyro_float_x * gyro_calibration_matrix[1] +
+                    gyro_float_y * gyro_calibration_matrix[4] +
+                    gyro_float_z * gyro_calibration_matrix[7];
+  out->gyro_z_dps = gyro_float_x * gyro_calibration_matrix[2] +
+                    gyro_float_y * gyro_calibration_matrix[5] +
+                    gyro_float_z * gyro_calibration_matrix[8];
+}
 
 float icm45686_get_accel_scale_factor(void) {
-    if (spiSettings.hspi == NULL) {
-        return -1;
-    }
-    uint8_t result = 0;
-    read_registers(fifo_config3, &result, 1);
-    if (result & 0x08) {
-        // high resolution mode
-        return hi_res_fifo_accel_scale_factor;
-    }
-
-    // not in fifo mode, use accel config to determine scale factor
-    read_registers(accel_config0, &result, 1);
-    uint8_t full_scale_selection = (result & 0x70) >> 4;
-    if (full_scale_selection > 0b100) {
-        return -1;
-    }
-    return base_accel_scale_factor * (float)pow((double)2, (double)full_scale_selection);
+  // assumes that the range of the accelerometer will always be +/- 32g
+  return accel_scale_factor;
 }
 
 float icm45686_get_gyro_scale_factor(void) {
-    if (spiSettings.hspi == NULL) {
-        return -1;
-    }
-    uint8_t result = 0;
-    read_registers(fifo_config3, &result, 1);
-    if (result & 0x08) {
-        // high resolution mode
-        return hi_res_fifo_gyro_scale_factor;
-    }
-
-    // not in fifo mode, use accel config to determine scale factor
-    read_registers(gyro_config0, &result, 1);
-    uint8_t full_scale_selection = (result & 0xF0) >> 4;
-    if (full_scale_selection > 0b1000) {
-        return -1;
-    }
-    return base_gyro_scale_factor * (float)pow((double)2, (double)full_scale_selection);
+  // assumes that the range of the gyro will always be +/- 4000dps
+  return gyro_scale_factor;
 }
 
+void icm45686_set_accel_calibration(float offsets[3], float matrix[9]) {
+  for (int i = 0; i < 3; i++) {
+    accel_calibration_offsets[i] = offsets[i];
+  }
+  for (int i = 0; i < 9; i++) {
+    accel_calibration_matrix[i] = matrix[i];
+  }
+}
+
+void icm45686_set_gyro_calibration(float offsets[3], float matrix[9]) {
+  for (int i = 0; i < 3; i++) {
+    gyro_calibration_offsets[i] = offsets[i];
+  }
+  for (int i = 0; i < 9; i++) {
+    gyro_calibration_matrix[i] = matrix[i];
+  }
+}
 
 static int setup_device(bool soft_reset_complete) {
-    // datasheet says 2ms to powerup, include some factor of safety
-    HAL_Delay(10);
+  // datasheet says 2ms to powerup, include some factor of safety
+  HAL_Delay(10);
 
-    uint8_t result = 0;
-    // perform dummy read as required by datasheet
-    HAL_StatusTypeDef hal_status = read_registers(who_am_i, &result, 1);
-    if (hal_status) {
+  uint8_t result = 0;
+  // perform dummy read as required by datasheet
+  HAL_StatusTypeDef hal_status = read_registers(who_am_i, &result, 1);
+  if (hal_status) {
+    return 1;
+  }
+  // give device enough time to switch to correct mode
+  // this is a 1ms delay
+  HAL_Delay(0);
+
+  // verify chip ID read works
+  read_registers(who_am_i, &result, 1);
+  if (result != 0xE9) {
+    // IMU could not read chip ID
+    return 1;
+  }
+
+  // verify that writes work by wrting to a register that has no effect on our settings
+  // then set back to original value when the write succeeds.
+  read_registers(fifo_config2, &result, 1);
+  if (result != 0b00100000) {
+    // Could not start write test: wrong expected value for FIFO_CONFIG2
+    return 1;
+  }
+  write_register(fifo_config2, 0b00100100);
+  read_registers(fifo_config2, &result, 1);
+  if (result != 0x24) {
+    // IMU SPI Write test failed, wrote to register and did not read expected value back
+    return 1;
+  }
+  write_register(fifo_config2, 0b00100000); // set back to original value
+
+  if (soft_reset_complete) {
+    // Check bit 1 (soft reset bit) is set back to 0
+    read_registers(reg_misc2, &result, 1);
+    if ((result & 0x02) != 0) {
+      // Software reset failed
       return 1;
     }
-    // give device enough time to switch to correct mode
-    // this is a 1ms delay
-    HAL_Delay(0);
-
-    // verify chip ID read works
-    read_registers(who_am_i, &result, 1);
-    if (result != 0xE9) {
-        // IMU could not read chip ID
-        return 1;
-    }
-
-    // verify that writes work by wrting to a register that has no effect on our settings
-    // then set back to original value when the write succeeds.
-    read_registers(fifo_config2, &result, 1);
-    if (result != 0b00100000) {
-        // Could not start write test: wrong expected value for FIFO_CONFIG2
-        return 1;
-    }
-    write_register(fifo_config2, 0b00100100);
-    read_registers(fifo_config2, &result, 1);
-    if (result != 0x24) {
-        // IMU SPI Write test failed, wrote to register and did not read expected value back
-        return 1;
-    }
-    write_register(fifo_config2, 0b00100000); // set back to original value
-
-    if (soft_reset_complete) {
-        // Check bit 1 (soft reset bit) is set back to 0
-        read_registers(reg_misc2, &result, 1);
-        if ((result & 0x02) != 0) {
-            // Software reset failed
-            return 1;
-        }
-    }
-    return 0;
-
+  }
+  return 0;
 }
 
-
-static HAL_StatusTypeDef read_registers(uint8_t addr, uint8_t* buffer, size_t len) {
+static HAL_StatusTypeDef read_registers(uint8_t addr, uint8_t *buffer, size_t len) {
   addr |= 0x80;
-    return spi_read(spiSettings.hspi, spiSettings.cs_channel, spiSettings.cs_pin, addr, buffer,
-                    len);
+  return spi_read(spiSettings.hspi, spiSettings.cs_channel, spiSettings.cs_pin, addr, buffer, len);
 }
-
 
 static HAL_StatusTypeDef write_register(uint8_t addr, uint8_t data) {
-    return spi_write(spiSettings.hspi, spiSettings.cs_channel, spiSettings.cs_pin, addr, data);
+  return spi_write(spiSettings.hspi, spiSettings.cs_channel, spiSettings.cs_pin, addr, data);
 }
 
-static int read_ireg_register(IREGMap_t register_map, uint16_t ireg_addr, uint8_t* result) {
-    switch (register_map) {
-    case IMEM_SRAM:
-        ireg_addr |= 0x0000;
-        break;
-    case IPREG_BAR:
-        ireg_addr |= 0xA000;
-        break;
-    case IPREG_SYS1:
-        ireg_addr |= 0xA400;
-        break;
-    case IPREG_SYS2:
-        ireg_addr |= 0xA500;
-        break;
-    case IPREG_TOP1:
-        ireg_addr |= 0xA200;
-        break;
-    default:
-        return 2;
-    }
-    uint8_t ireg_regs[2];
-    ireg_regs[0] = (uint8_t)(ireg_addr >> 8);
-    ireg_regs[1] = (uint8_t)(ireg_addr & 0x00FF);
+static int read_ireg_register(IREGMap_t register_map, uint16_t ireg_addr, uint8_t *result) {
+  switch (register_map) {
+  case IMEM_SRAM:
+    ireg_addr |= 0x0000;
+    break;
+  case IPREG_BAR:
+    ireg_addr |= 0xA000;
+    break;
+  case IPREG_SYS1:
+    ireg_addr |= 0xA400;
+    break;
+  case IPREG_SYS2:
+    ireg_addr |= 0xA500;
+    break;
+  case IPREG_TOP1:
+    ireg_addr |= 0xA200;
+    break;
+  default:
+    return 2;
+  }
+  uint8_t ireg_regs[2];
+  ireg_regs[0] = (uint8_t)(ireg_addr >> 8);
+  ireg_regs[1] = (uint8_t)(ireg_addr & 0x00FF);
 
-    // Starting the burst write from IREG_ADDR_15_8 means that IREG_ADDR_7_0 will also be
-    // written to, since it is auto-incremented (that's what a SPI burst write does).
-    // So here, sending 2 bytes means 2 addresses (IREG_ADDR_15_8 and IREG_ADDR_7_0) are
-    // configured at once.
-    int error_status = spi_burst_write(spiSettings.hspi, spiSettings.cs_channel, spiSettings.cs_pin, ireg_addr_15_8, ireg_regs, sizeof(ireg_regs));
+  // Starting the burst write from IREG_ADDR_15_8 means that IREG_ADDR_7_0 will also be
+  // written to, since it is auto-incremented (that's what a SPI burst write does).
+  // So here, sending 2 bytes means 2 addresses (IREG_ADDR_15_8 and IREG_ADDR_7_0) are
+  // configured at once.
+  int error_status = spi_burst_write(spiSettings.hspi, spiSettings.cs_channel, spiSettings.cs_pin,
+                                     ireg_addr_15_8, ireg_regs, sizeof(ireg_regs));
 
-    // After the write is over and the CS pin is pulled high, result of the the read
-    // will be stored in the IREG_DATA register. The `result` pointer will have the value:
-    // NOTE: We must wait for a minimum of 4us before reading IREG_DATA:
+  // After the write is over and the CS pin is pulled high, result of the the read
+  // will be stored in the IREG_DATA register. The `result` pointer will have the value:
+  // NOTE: We must wait for a minimum of 4us before reading IREG_DATA:
 
-    HAL_Delay(0); // can only do millisecond delays, so 1ms is enough
-    if (error_status) return error_status;
-    error_status = read_registers(ireg_data, result, 1);
-
+  HAL_Delay(0); // can only do millisecond delays, so 1ms is enough
+  if (error_status)
     return error_status;
+  error_status = read_registers(ireg_data, result, 1);
+
+  return error_status;
 }
 
 static int write_ireg_register(IREGMap_t register_map, uint16_t ireg_addr, uint8_t data) {
-    // combine page with address in as 16 bits
-    switch (register_map) {
-    case IMEM_SRAM:
-        ireg_addr |= 0x0000;
-        break;
-    case IPREG_BAR:
-        ireg_addr |= 0xA000;
-        break;
-    case IPREG_SYS1:
-        ireg_addr |= 0xA400;
-        break;
-    case IPREG_SYS2:
-        ireg_addr |= 0xA500;
-        break;
-    case IPREG_TOP1:
-        ireg_addr |= 0xA200;
-        break;
-    default:
-        return 2;
-    }
+  // combine page with address in as 16 bits
+  switch (register_map) {
+  case IMEM_SRAM:
+    ireg_addr |= 0x0000;
+    break;
+  case IPREG_BAR:
+    ireg_addr |= 0xA000;
+    break;
+  case IPREG_SYS1:
+    ireg_addr |= 0xA400;
+    break;
+  case IPREG_SYS2:
+    ireg_addr |= 0xA500;
+    break;
+  case IPREG_TOP1:
+    ireg_addr |= 0xA200;
+    break;
+  default:
+    return 2;
+  }
 
-    // save the page, register, and data into an array
-    uint8_t ireg_regs[3];
-    ireg_regs[0] = (uint8_t)(ireg_addr >> 8);
-    ireg_regs[1] = (uint8_t)(ireg_addr & 0x00FF);
-    ireg_regs[2] = data;
+  // save the page, register, and data into an array
+  uint8_t ireg_regs[3];
+  ireg_regs[0] = (uint8_t)(ireg_addr >> 8);
+  ireg_regs[1] = (uint8_t)(ireg_addr & 0x00FF);
+  ireg_regs[2] = data;
 
-    // burst write page,register, and data starting at ireg_addr_15_8
-    int error_status = spi_burst_write(spiSettings.hspi, spiSettings.cs_channel, spiSettings.cs_pin, ireg_addr_15_8, ireg_regs, 3);
-    // must wait before next ireg operation
-    // this is a 1ms delay
-    HAL_Delay(0);
-    return error_status;
-    
+  // burst write page,register, and data starting at ireg_addr_15_8
+  int error_status = spi_burst_write(spiSettings.hspi, spiSettings.cs_channel, spiSettings.cs_pin,
+                                     ireg_addr_15_8, ireg_regs, 3);
+  // must wait before next ireg operation
+  // this is a 1ms delay
+  HAL_Delay(0);
+  return error_status;
 }

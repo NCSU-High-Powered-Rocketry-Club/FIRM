@@ -3,8 +3,7 @@
 #include <stdint.h>
 
 /**
- * @brief data packet for the BMP581 temperature and pressure data.
- * @note the order is determined by register order in the datasheet, starting at 0x1D.
+ * @brief the raw pressure and temperature bytes for the BMP581.
  */
 typedef struct {
   uint8_t temp_xlsb;
@@ -13,4 +12,12 @@ typedef struct {
   uint8_t pressure_xlsb;
   uint8_t pressure_lsb;
   uint8_t pressure_msb;
-} BMP581Packet_t;
+} BMP581RawData_t;
+
+/**
+ * @brief BMP581 temperature/pressure data as floats.
+ */
+typedef struct {
+  float temperature_celcius;
+  float pressure_pa;
+} BMP581BoardReading_t;
