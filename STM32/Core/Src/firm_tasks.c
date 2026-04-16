@@ -45,9 +45,9 @@ QueueHandle_t mock_packet_handler_command_queue;
 EventGroupHandle_t sensors_collected;
 
 // mock packets
-#define SENSOR_TIMESTAMP_SIZE_BYTES (sizeof(((SensorPacket *)0)->timestamp))
+#define SENSOR_TIMESTAMP_SIZE_BYTES (sizeof(((SensorSnapshot *)0)->timestamp))
 #define MOCK_RING_CAPACITY 150U
-static MockSensorPacket mock_ring_storage[MOCK_RING_CAPACITY];
+static MockSensorSnapshot mock_ring_storage[MOCK_RING_CAPACITY];
 static MockRingBuffer mock_ring;
 static SemaphoreHandle_t mock_ring_mutex;
 
@@ -111,7 +111,7 @@ const osMutexAttr_t sensorDataMutex_attributes = {.name = "sensorDataMutex"};
 
 // instance of the serialized verison of the data packet that will be reused and overriden as data
 // is collected and processed
-Packet data_packet;
+Frame data_packet;
 
 static UART_HandleTypeDef *firm_huart1;
 static volatile bool uart_tx_done = true;
@@ -210,7 +210,7 @@ void firm_rtos_init(void) {
   // stream and queue for receiving usb bytes and sending packets
   usb_rx_stream =
       xStreamBufferCreate(USB_RX_STREAM_BUFFER_SIZE_BYTES, USB_RX_STREAM_TRIGGER_LEVEL_BYTES);
-  transmit_queue = xQueueCreate(TRANSMIT_QUEUE_LENGTH, sizeof(Packet));
+  transmit_queue = xQueueCreate(TRANSMIT_QUEUE_LENGTH, sizeof(Frame));
 
   // queue for each task's commands
   bmp581_command_queue = xQueueCreate(SYSTEM_REQUEST_QUEUE_LENGTH, sizeof(TaskCommandOption));
@@ -345,17 +345,17 @@ void collect_bmp581_data_task(void *argument) {
         osMutexRelease(sensorDataMutexHandle);
         continue;
       }
-      SensorPacket *bmp581_packet = (SensorPacket *)((uint8_t *)bmp581_storage + 1);
+      SensorSnapshot *bmp581_snapshot = (SensorSnapshot *)((uint8_t *)bmp581_storage + 1);
       int err = 0;
 
       if (do_mock) {
-        MockSensorPacket mock_packet;
+        MockSensorSnapshot mock_snapshot;
         bool popped = false;
         if (mock_ring_mutex != NULL) {
           (void)xSemaphoreTake(mock_ring_mutex, portMAX_DELAY);
         }
-        if (mock_ring_peek(&mock_ring, &mock_packet) && mock_packet.id == MOCKID_BMP581) {
-          popped = mock_ring_pop(&mock_ring, &mock_packet);
+        if (mock_ring_peek(&mock_ring, &mock_snapshot) && mock_snapshot.id == MOCKID_BMP581) {
+          popped = mock_ring_pop(&mock_ring, &mock_snapshot);
         }
         if (mock_ring_mutex != NULL) {
           (void)xSemaphoreGive(mock_ring_mutex);
@@ -369,16 +369,16 @@ void collect_bmp581_data_task(void *argument) {
           }
           continue;
         }
-        memcpy(bmp581_packet, &mock_packet.packet,
+        memcpy(bmp581_snapshot, &mock_snapshot.snapshot,
                SENSOR_TIMESTAMP_SIZE_BYTES + sizeof(BMP581Packet_t));
       } else if (do_live) {
-        err = bmp581_read_data(&bmp581_packet->packet.bmp581_packet);
+        err = bmp581_read_data(&bmp581_snapshot->sensorType.bmp581_packet);
         uint32_t clock_cycle_count = DWT->CYCCNT;
-        memcpy(bmp581_packet->timestamp, &clock_cycle_count, sizeof(bmp581_packet->timestamp));
+        memcpy(bmp581_snapshot->timestamp, &clock_cycle_count, sizeof(bmp581_snapshot->timestamp));
       }
       if (!err) {
         logger_write_entry('B', sizeof(BMP581Packet_t));
-        bmp581_convert_packet(bmp581_packet, (DataPacket *)&data_packet.data);
+        bmp581_convert_packet(bmp581_snapshot, (DataPacket *)&data_packet.payload);
         xEventGroupSetBits(sensors_collected, BMP581_TASK_BIT);
       }
       osMutexRelease(sensorDataMutexHandle);
@@ -412,17 +412,17 @@ void collect_icm45686_data_task(void *argument) {
         osMutexRelease(sensorDataMutexHandle);
         continue;
       }
-      SensorPacket *icm45686_packet = (SensorPacket *)((uint8_t *)icm45686_storage + 1);
+      SensorSnapshot *icm45686_snapshot = (SensorSnapshot *)((uint8_t *)icm45686_storage + 1);
       int err = 0;
 
       if (do_mock) {
-        MockSensorPacket mock_packet;
+        MockSensorSnapshot mock_snapshot;
         bool popped = false;
         if (mock_ring_mutex != NULL) {
           (void)xSemaphoreTake(mock_ring_mutex, portMAX_DELAY);
         }
-        if (mock_ring_peek(&mock_ring, &mock_packet) && mock_packet.id == MOCKID_ICM45686) {
-          popped = mock_ring_pop(&mock_ring, &mock_packet);
+        if (mock_ring_peek(&mock_ring, &mock_snapshot) && mock_snapshot.id == MOCKID_ICM45686) {
+          popped = mock_ring_pop(&mock_ring, &mock_snapshot);
         }
         if (mock_ring_mutex != NULL) {
           (void)xSemaphoreGive(mock_ring_mutex);
@@ -435,16 +435,16 @@ void collect_icm45686_data_task(void *argument) {
           }
           continue;
         }
-        memcpy(icm45686_packet, &mock_packet.packet,
+        memcpy(icm45686_snapshot, &mock_snapshot.snapshot,
                SENSOR_TIMESTAMP_SIZE_BYTES + sizeof(ICM45686Packet_t));
       } else if (do_live) {
-        err = icm45686_read_data(&icm45686_packet->packet.icm45686_packet);
+        err = icm45686_read_data(&icm45686_snapshot->sensorType.icm45686_packet);
         uint32_t clock_cycle_count = DWT->CYCCNT;
-        memcpy(icm45686_packet->timestamp, &clock_cycle_count, sizeof(icm45686_packet->timestamp));
+        memcpy(icm45686_snapshot->timestamp, &clock_cycle_count, sizeof(icm45686_snapshot->timestamp));
       }
       if (!err) {
         logger_write_entry('I', sizeof(ICM45686Packet_t));
-        icm45686_convert_packet(icm45686_packet, (DataPacket *)&data_packet.data);
+        icm45686_convert_packet(icm45686_snapshot, (DataPacket *)&data_packet.payload);
         xEventGroupSetBits(sensors_collected, ICM45686_TASK_BIT);
       }
       osMutexRelease(sensorDataMutexHandle);
@@ -478,17 +478,17 @@ void collect_mmc5983ma_data_task(void *argument) {
         osMutexRelease(sensorDataMutexHandle);
         continue;
       }
-      SensorPacket *mmc5983ma_packet = (SensorPacket *)((uint8_t *)mmc5983ma_storage + 1);
+      SensorSnapshot *mmc5983ma_snapshot = (SensorSnapshot *)((uint8_t *)mmc5983ma_storage + 1);
       int err = 0;
 
       if (do_mock) {
-        MockSensorPacket mock_packet;
+        MockSensorSnapshot mock_snapshot;
         bool popped = false;
         if (mock_ring_mutex != NULL) {
           (void)xSemaphoreTake(mock_ring_mutex, portMAX_DELAY);
         }
-        if (mock_ring_peek(&mock_ring, &mock_packet) && mock_packet.id == MOCKID_MMC5983MA) {
-          popped = mock_ring_pop(&mock_ring, &mock_packet);
+        if (mock_ring_peek(&mock_ring, &mock_snapshot) && mock_snapshot.id == MOCKID_MMC5983MA) {
+          popped = mock_ring_pop(&mock_ring, &mock_snapshot);
         }
         if (mock_ring_mutex != NULL) {
           (void)xSemaphoreGive(mock_ring_mutex);
@@ -501,17 +501,17 @@ void collect_mmc5983ma_data_task(void *argument) {
           }
           continue;
         }
-        memcpy(mmc5983ma_packet, &mock_packet.packet,
+        memcpy(mmc5983ma_snapshot, &mock_snapshot.snapshot,
                SENSOR_TIMESTAMP_SIZE_BYTES + sizeof(MMC5983MAPacket_t));
       } else if (do_live) {
-        err = mmc5983ma_read_data(&mmc5983ma_packet->packet.mmc5983ma_packet);
+        err = mmc5983ma_read_data(&mmc5983ma_snapshot->sensorType.mmc5983ma_packet);
         uint32_t clock_cycle_count = DWT->CYCCNT;
-        memcpy(mmc5983ma_packet->timestamp, &clock_cycle_count,
-               sizeof(mmc5983ma_packet->timestamp));
+        memcpy(mmc5983ma_snapshot->timestamp, &clock_cycle_count,
+               sizeof(mmc5983ma_snapshot->timestamp));
       }
       if (!err) {
         logger_write_entry('M', sizeof(MMC5983MAPacket_t));
-        mmc5983ma_convert_packet(mmc5983ma_packet, (DataPacket *)&data_packet.data);
+        mmc5983ma_convert_packet(mmc5983ma_snapshot, (DataPacket *)&data_packet.payload);
         xEventGroupSetBits(sensors_collected, MMC5983MA_TASK_BIT);
       }
       osMutexRelease(sensorDataMutexHandle);
@@ -546,17 +546,17 @@ void collect_adxl371_data_task(void *argument) {
         osMutexRelease(sensorDataMutexHandle);
         continue;
       }
-      SensorPacket *adxl371_packet = (SensorPacket *)((uint8_t *)adxl371_storage + 1);
+      SensorSnapshot *adxl371_snapshot = (SensorSnapshot *)((uint8_t *)adxl371_storage + 1);
       int err = 0;
 
       if (do_mock) {
-        MockSensorPacket mock_packet;
+        MockSensorSnapshot mock_snapshot;
         bool popped = false;
         if (mock_ring_mutex != NULL) {
           (void)xSemaphoreTake(mock_ring_mutex, portMAX_DELAY);
         }
-        if (mock_ring_peek(&mock_ring, &mock_packet) && mock_packet.id == MOCKID_ADXL371) {
-          popped = mock_ring_pop(&mock_ring, &mock_packet);
+        if (mock_ring_peek(&mock_ring, &mock_snapshot) && mock_snapshot.id == MOCKID_ADXL371) {
+          popped = mock_ring_pop(&mock_ring, &mock_snapshot);
         }
         if (mock_ring_mutex != NULL) {
           (void)xSemaphoreGive(mock_ring_mutex);
@@ -569,12 +569,12 @@ void collect_adxl371_data_task(void *argument) {
           }
           continue;
         }
-        memcpy(adxl371_packet, &mock_packet.packet,
+        memcpy(adxl371_snapshot, &mock_snapshot.snapshot,
                SENSOR_TIMESTAMP_SIZE_BYTES + sizeof(ADXL371Packet_t));
       } else if (do_live) {
-        err = adxl371_read_data(&adxl371_packet->packet.adxl371_packet);
+        err = adxl371_read_data(&adxl371_snapshot->sensorType.adxl371_packet);
         uint32_t clock_cycle_count = DWT->CYCCNT;
-        memcpy(adxl371_packet->timestamp, &clock_cycle_count, sizeof(adxl371_packet->timestamp));
+        memcpy(adxl371_snapshot->timestamp, &clock_cycle_count, sizeof(adxl371_snapshot->timestamp));
       }
       if (!err) {
         logger_write_entry('A', sizeof(ADXL371Packet_t));
@@ -600,11 +600,11 @@ void filter_data_task(void *argument) {
     xQueueReceive(data_filter_command_queue, &cmd_status, 0);
     if (cmd_status == TASKCMD_SETUP || cmd_status == TASKCMD_MOCK_SETUP) {
       // making sure data has been collected
-      if (data_packet.data.data_packet.magnetic_field_x_microteslas == 0) {
+      if (data_packet.payload.data_packet.magnetic_field_x_microteslas == 0) {
         vTaskDelay(pdMS_TO_TICKS(10));
         continue;
       }
-      if (data_packet.data.data_packet.pressure_pascals == 0) {
+      if (data_packet.payload.data_packet.pressure_pascals == 0) {
         vTaskDelay(pdMS_TO_TICKS(10));
         continue;
       }
@@ -620,7 +620,7 @@ void filter_data_task(void *argument) {
         vTaskDelay(pdMS_TO_TICKS(5));
         // orientation initialization relies on acceleration and magnetic field, initial altitude
         // uses raw pressure
-        DataPacket *p = &data_packet.data.data_packet;
+        DataPacket *p = &data_packet.payload.data_packet;
         eskf_accumulate(p->pressure_pascals, &p->raw_acceleration_x_gs,
                         &p->magnetic_field_x_microteslas);
       }
@@ -637,14 +637,14 @@ void filter_data_task(void *argument) {
       eskf_init(&eskf);
       // set the last time to calculate the delta timestamp, minus some initial offset so that the
       // first iteration of the filter doesn't have an extremely small dt.
-      last_time = (float)data_packet.data.data_packet.timestamp_seconds - 0.005F;
+      last_time = (float)data_packet.payload.data_packet.timestamp_seconds - 0.005F;
     }
 
     if (cmd_status != TASKCMD_SETUP && cmd_status != TASKCMD_MOCK_SETUP) {
       // setting the current data packet to the instance of data to be used in this next filter
       // update
-      raw_data_instance.timestamp_seconds = data_packet.data.data_packet.timestamp_seconds;
-      memcpy(&raw_data_instance.pressure_pascals, &data_packet.data.data_packet.pressure_pascals,
+      raw_data_instance.timestamp_seconds = data_packet.payload.data_packet.timestamp_seconds;
+      memcpy(&raw_data_instance.pressure_pascals, &data_packet.payload.data_packet.pressure_pascals,
              sizeof(raw_data_instance) - sizeof(raw_data_instance.timestamp_seconds));
       float dt = (float)raw_data_instance.timestamp_seconds - last_time;
 
@@ -672,7 +672,7 @@ void filter_data_task(void *argument) {
         eskf_update(&eskf);
 
         // Copy estimates back to data packet
-        memcpy(&data_packet.data.data_packet.est_position_z_meters, eskf.x_nom,
+        memcpy(&data_packet.payload.data_packet.est_position_z_meters, eskf.x_nom,
                ESKF_NOMINAL_DIM * sizeof(float));
 
         // wait for all sensors to collect data
@@ -699,11 +699,11 @@ void packetizer_task(void *argument) {
 
   for (;;) {
     if (xQueueReceive(packetizer_command_queue, &sys_response, 0) == pdTRUE) {
-      Packet response;
+      Frame response;
       response.header = MSGID_RESPONSE_PACKET;
       response.identifier = sys_response.identifier;
-      response.packet_len = sizeof(response.data.response_packet.success);
-      response.data.response_packet.success = sys_response.success;
+      response.packet_len = sizeof(response.payload.response_packet.success);
+      response.payload.response_packet.success = sys_response.success;
       xQueueSend(transmit_queue, &response, 0);
     }
     // send to queue at the specified frequency
@@ -713,7 +713,7 @@ void packetizer_task(void *argument) {
 }
 
 void transmit_data(void *argument) {
-  Packet packet;
+  Frame packet;
   for (;;) {
     if (xQueueReceive(transmit_queue, &packet, portMAX_DELAY) == pdTRUE) {
       // calculate and attach the crc16 to the end of the packet
@@ -763,19 +763,19 @@ void usb_read_data(void *argument) {
       if (mock_ring_mutex != NULL) {
         (void)xSemaphoreTake(mock_ring_mutex, portMAX_DELAY);
       }
-      MockSensorPacket *mock_packet = mock_ring_reserve_packet(&mock_ring);
+      MockSensorSnapshot *mock_snapshot = mock_ring_reserve_packet(&mock_ring);
       if (mock_ring_mutex != NULL) {
         (void)xSemaphoreGive(mock_ring_mutex);
       }
-      if (mock_packet == NULL) {
+      if (mock_snapshot == NULL) {
         // Should not happen; drop bytes for this message.
         xStreamBufferReceive(usb_rx_stream, received_bytes, meta.payload_length + 2U,
                              portMAX_DELAY);
         continue;
       }
       // set packet id (which sensor the packet is for) and read the usb stream into the buffer
-      mock_packet->id = meta.identifier;
-      size_t got = xStreamBufferReceive(usb_rx_stream, &mock_packet->packet, meta.payload_length,
+      mock_snapshot->id = meta.identifier;
+      size_t got = xStreamBufferReceive(usb_rx_stream, &mock_snapshot->snapshot, meta.payload_length,
                                         portMAX_DELAY);
       if (got != meta.payload_length) {
         // Don't commit partial packets.
@@ -824,10 +824,10 @@ void usb_read_data(void *argument) {
       break;
     }
     case USBMSG_COMMAND: {
-      Packet response;
+      Frame response;
       response.packet_len = commands_execute_to_response(
           meta.identifier, received_bytes, meta.payload_length, &response.header,
-          &response.identifier, (ResponsePacket *)&response.data);
+          &response.identifier, (ResponsePacket *)&response.payload);
       xQueueSend(transmit_queue, &response, portMAX_DELAY);
       break;
     }
@@ -863,11 +863,11 @@ void mock_packet_handler(void *argument) {
         continue;
       }
 
-      MockSensorPacket mock_packet;
+      MockSensorSnapshot mock_snapshot;
       if (mock_ring_mutex != NULL) {
         (void)xSemaphoreTake(mock_ring_mutex, portMAX_DELAY);
       }
-      bool have = mock_ring_peek(&mock_ring, &mock_packet);
+      bool have = mock_ring_peek(&mock_ring, &mock_snapshot);
       if (mock_ring_mutex != NULL) {
         (void)xSemaphoreGive(mock_ring_mutex);
       }
@@ -878,11 +878,11 @@ void mock_packet_handler(void *argument) {
       }
       // determine if task needs to delay or not based on timestamp
       uint32_t delay_ms = mock_timestamp_accumulate_delay_ms(&accumulated_clock_cycles,
-                                                             mock_packet.packet.timestamp);
+                                                             mock_snapshot.snapshot.timestamp);
       if (delay_ms > 0U) {
         vTaskDelay(pdMS_TO_TICKS(1)); // hardset to 1 for now.
       }
-      switch (mock_packet.id) {
+      switch (mock_snapshot.id) {
       case MOCKID_BMP581:
         (void)xTaskNotify(bmp581_task_handle, SENSOR_NOTIFY_MOCK_BIT, eSetBits);
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);

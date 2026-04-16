@@ -52,18 +52,18 @@ bool process_mock_settings_packet(uint8_t *received_bytes, uint32_t length,
   return write_fn(write_ctx, firm_settings, calibration_settings);
 }
 
-bool mock_parse_sensor_packet(MockPacketID identifier, const uint8_t *payload_bytes,
-                              uint32_t payload_len, SensorPacket *out_packet) {
-  if (payload_bytes == NULL || out_packet == NULL) {
+bool mock_parse_sensor_snapshot(MockSnapshotID identifier, const uint8_t *payload_bytes,
+                              uint32_t payload_len, SensorSnapshot *out_snapshot) {
+  if (payload_bytes == NULL || out_snapshot == NULL) {
     return false;
   }
 
-  const uint32_t ts_len = (uint32_t)sizeof(out_packet->timestamp);
+  const uint32_t ts_len = (uint32_t)sizeof(out_snapshot->timestamp);
   if (payload_len < ts_len) {
     return false;
   }
 
-  memcpy(out_packet->timestamp, payload_bytes, ts_len);
+  memcpy(out_snapshot->timestamp, payload_bytes, ts_len);
 
   const uint8_t *sensor_bytes = payload_bytes + ts_len;
   const uint32_t sensor_len = payload_len - ts_len;
@@ -73,25 +73,25 @@ bool mock_parse_sensor_packet(MockPacketID identifier, const uint8_t *payload_by
     if (sensor_len != (uint32_t)sizeof(BMP581Packet_t)) {
       return false;
     }
-    memcpy(&out_packet->packet.bmp581_packet, sensor_bytes, sizeof(BMP581Packet_t));
+    memcpy(&out_snapshot->sensorType.bmp581_packet, sensor_bytes, sizeof(BMP581Packet_t));
     return true;
   case MOCKID_ICM45686:
     if (sensor_len != (uint32_t)sizeof(ICM45686Packet_t)) {
       return false;
     }
-    memcpy(&out_packet->packet.icm45686_packet, sensor_bytes, sizeof(ICM45686Packet_t));
+    memcpy(&out_snapshot->sensorType.icm45686_packet, sensor_bytes, sizeof(ICM45686Packet_t));
     return true;
   case MOCKID_MMC5983MA:
     if (sensor_len != (uint32_t)sizeof(MMC5983MAPacket_t)) {
       return false;
     }
-    memcpy(&out_packet->packet.mmc5983ma_packet, sensor_bytes, sizeof(MMC5983MAPacket_t));
+    memcpy(&out_snapshot->sensorType.mmc5983ma_packet, sensor_bytes, sizeof(MMC5983MAPacket_t));
     return true;
   case MOCKID_ADXL371:
     if (sensor_len != (uint32_t)sizeof(ADXL371Packet_t)) {
       return false;
     }
-    memcpy(&out_packet->packet.adxl371_packet, sensor_bytes, sizeof(ADXL371Packet_t));
+    memcpy(&out_snapshot->sensorType.adxl371_packet, sensor_bytes, sizeof(ADXL371Packet_t));
     return true;
   case MOCKID_SETTINGS:
   default:

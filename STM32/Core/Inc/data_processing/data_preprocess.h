@@ -12,8 +12,8 @@ typedef struct {
     ICM45686Packet_t icm45686_packet;
     MMC5983MAPacket_t mmc5983ma_packet;
     ADXL371Packet_t adxl371_packet;
-  } packet;
-} SensorPacket;
+  } sensorType;
+} SensorSnapshot;
 
 /**
  * @brief Data packet with timestamp
@@ -43,21 +43,21 @@ typedef struct {
  * @brief Converts raw BMP581 pressure sensor data to SI units
  * @note Temperature converted to Celcius, pressure converted to Pascals
  *
- * @param packet Pointer to a SensorPacket structure containing raw bmp581 sensor data
+ * @param packet Pointer to a SensorSnapshot structure containing raw bmp581 sensor data
  * @param result_packet Pointer to a DataPacket where the result of the preprocessor
  *                      will be stored
  */
-void bmp581_convert_packet(SensorPacket *packet, DataPacket *result_packet);
+void bmp581_convert_packet(SensorSnapshot *packet, DataPacket *result_packet);
 
 /**
  * @brief Converts raw MMC5983MA magnetometer data to SI units
  * @note Magnetic field data converted to microtesla
  *
- * @param packet Pointer to an SensorPacket structure containing raw mmc5983ma sensor data
+ * @param packet Pointer to an SensorSnapshot structure containing raw mmc5983ma sensor data
  * @param result_packet Pointer to a DataPacket where the result of the preprocessor
  *                      will be stored
  */
-void mmc5983ma_convert_packet(SensorPacket *packet, DataPacket *result_packet);
+void mmc5983ma_convert_packet(SensorSnapshot *packet, DataPacket *result_packet);
 
 /**
  * @brief Converts raw ICM45686 data to SI units
@@ -68,6 +68,6 @@ void mmc5983ma_convert_packet(SensorPacket *packet, DataPacket *result_packet);
  * @param result_packet Pointer to a DataPacket where the result of the preprocessor
  *                      will be stored
  */
-void icm45686_convert_packet(SensorPacket *packet, DataPacket *result_packet);
+void icm45686_convert_packet(SensorSnapshot *packet, DataPacket *result_packet);
 
-void adxl371_convert_packet(SensorPacket *packet, DataPacket *result_packet);
+void adxl371_convert_packet(SensorSnapshot *packet, DataPacket *result_packet);

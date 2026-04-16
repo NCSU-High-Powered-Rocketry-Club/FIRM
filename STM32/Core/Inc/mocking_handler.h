@@ -25,10 +25,10 @@ typedef enum {
   MOCKID_MMC5983MA = 'M',
   MOCKID_ADXL371 = 'A',
   MOCKID_SETTINGS = 'H',
-} MockPacketID;
+} MockSnapshotID;
 
 /**
- * Builds a SensorPacket from a mock sensor payload.
+ * Builds a SensorSnapshot from a mock sensor payload.
  *
  * Payload layout:
  *   [timestamp (4)][sensor payload bytes]
@@ -36,13 +36,13 @@ typedef enum {
  * @param identifier One of 'B','I','M'
  * @param payload_bytes Pointer to payload bytes (no CRC)
  * @param payload_len Length of payload bytes
- * @param out_packet Output SensorPacket
+ * @param out_snapshot Output SensorSnapshot
  * @return true on success, false on invalid identifier/length
  */
-bool mock_parse_sensor_packet(MockPacketID identifier,
+bool mock_parse_sensor_snapshot(MockSnapshotID identifier,
                              const uint8_t *payload_bytes,
                              uint32_t payload_len,
-                             SensorPacket *out_packet);
+                             SensorSnapshot *out_snapshot);
 
 // ----------------------------
 // Mock timestamp scheduling

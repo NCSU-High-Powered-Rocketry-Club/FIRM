@@ -1,6 +1,6 @@
 #include "mock_ring_buffer.h"
 
-void mock_ring_init(MockRingBuffer *rb, MockSensorPacket *storage, size_t capacity) {
+void mock_ring_init(MockRingBuffer *rb, MockSensorSnapshot *storage, size_t capacity) {
   if (rb == NULL) {
     return;
   }
@@ -20,7 +20,7 @@ void mock_ring_reset(MockRingBuffer *rb) {
   rb->count = 0U;
 }
 
-MockSensorPacket *mock_ring_reserve_packet(MockRingBuffer *rb) {
+MockSensorSnapshot *mock_ring_reserve_packet(MockRingBuffer *rb) {
   if (rb == NULL || rb->storage == NULL || rb->capacity == 0U) {
     return NULL;
   }
@@ -50,7 +50,7 @@ void mock_ring_commit_reserved(MockRingBuffer *rb) {
   }
 }
 
-bool mock_ring_pop(MockRingBuffer *rb, MockSensorPacket *out) {
+bool mock_ring_pop(MockRingBuffer *rb, MockSensorSnapshot *out) {
   if (rb == NULL || out == NULL || rb->storage == NULL || rb->count == 0U) {
     return false;
   }
@@ -61,7 +61,7 @@ bool mock_ring_pop(MockRingBuffer *rb, MockSensorPacket *out) {
   return true;
 }
 
-bool mock_ring_peek(const MockRingBuffer *rb, MockSensorPacket *out) {
+bool mock_ring_peek(const MockRingBuffer *rb, MockSensorSnapshot *out) {
   if (rb == NULL || out == NULL || rb->storage == NULL || rb->count == 0U) {
     return false;
   }
