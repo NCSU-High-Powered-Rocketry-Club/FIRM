@@ -7,7 +7,7 @@
 
 #pragma once
 #include <stdbool.h>
-#include <math.h>
+#include <string.h>
 #include "spi_utils.h"
 #include "icm45686_packet.h"
 
@@ -40,7 +40,7 @@ int icm45686_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs
  * @retval 0 if successful, 1 if unsuccessful due to the data not being ready. In this case, the
  *         interrupt pin will still be reset to the inactive state, but no data will be collected.
  */
-int icm45686_read_data(ICM45686Packet_t *packet);
+int icm45686_read_data(ICM45686RawData_t *packet);
 
 /**
  * @brief gets the scale factor of the acceleration readings to convert to g's.

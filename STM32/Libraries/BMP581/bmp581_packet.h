@@ -18,6 +18,6 @@ typedef struct {
  * @brief BMP581 temperature/pressure data as floats.
  */
 typedef struct {
-  float temperature_celcius;
+  float temperature_celsius;
   float pressure_pa;
 } BMP581BoardReading_t;

@@ -121,7 +121,7 @@ int bmp581_read_data(BMP581RawData_t *packet) {
   return 1;
 }
 
-void bmp581_convert_to_floats(BMP581RawData_t *raw, BMP581BoardReading_t *out) {
+void bmp581_convert(BMP581RawData_t *raw, BMP581BoardReading_t *out) {
   // extract pressure and temp as a 32 bit signed integer, which uses two's complement
   int32_t temp_binary = ((int32_t)((int8_t)raw->temp_msb) << 16) | ((int32_t)raw->temp_lsb << 8) |
                 ((int32_t)raw->temp_xlsb);
@@ -131,7 +131,7 @@ void bmp581_convert_to_floats(BMP581RawData_t *raw, BMP581BoardReading_t *out) {
                     ((int32_t)raw->pressure_xlsb);
 
   // convert to a float with temp in celcius and pressure in pascals
-  out->temperature_celcius = (float)temp_binary / scale_factor_celcius;
+  out->temperature_celsius = (float)temp_binary / scale_factor_celcius;
   out->pressure_pa = (float)pressure_binary / scale_factor_pascal;
 }
 
