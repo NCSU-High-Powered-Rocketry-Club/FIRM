@@ -140,12 +140,9 @@ int adxl371_read_data(ADXL371RawData_t *packet) {
 
 void adxl371_convert_and_calibrate(ADXL371RawData_t *raw, ADXL371BoardReading_t *out) {
   const float scale = 1.0F / accel_scale_factor;
-  // extract acceleration as a 32 bit signed integer, which uses two's complement
-  int32_t accel_binary_x = ((int32_t)(int8_t)raw->accX_H << 8 | (int32_t)raw->accX_L);
-
-  int32_t accel_binary_y = ((int32_t)(int8_t)raw->accY_H << 8 | (int32_t)raw->accY_L);
-
-  int32_t accel_binary_z = ((int32_t)(int8_t)raw->accZ_H << 8 | (int32_t)raw->accZ_L);
+  int32_t accel_binary_x = ((int32_t)((int8_t)raw->accX_H) << 4) | ((int32_t)(raw->accX_L >> 4));
+  int32_t accel_binary_y = ((int32_t)((int8_t)raw->accY_H) << 4) | ((int32_t)(raw->accY_L >> 4));
+  int32_t accel_binary_z = ((int32_t)((int8_t)raw->accZ_H) << 4) | ((int32_t)(raw->accZ_L >> 4));
 
   // convert acceleration to g's and subtract calibration offset
   float accel_x_float = (float)accel_binary_x * scale - calibration_offsets[0];
