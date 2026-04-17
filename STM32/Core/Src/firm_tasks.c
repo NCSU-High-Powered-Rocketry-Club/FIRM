@@ -511,7 +511,7 @@ void collect_mmc5983ma_data_task(void *argument) {
       }
       if (!err) {
         logger_write_entry('M', sizeof(MMC5983MAPacket_t));
-        //mmc5983ma_convert_packet(mmc5983ma_packet, (DataPacket *)&data_packet.data);
+        mmc5983ma_convert_packet(mmc5983ma_packet, (DataPacket *)&data_packet.data);
         //xEventGroupSetBits(sensors_collected, MMC5983MA_TASK_BIT);
       }
       osMutexRelease(sensorDataMutexHandle);
