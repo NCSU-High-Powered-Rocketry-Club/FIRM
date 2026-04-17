@@ -17,12 +17,9 @@
  * @note Sets ODR to 160hz, data ready to INT1 (Active Low), Disables FIFO, disables High and Low
  * pass Filters,  - Turns off oustosleep and linkloop, sets chip to low noise operation.
  *
- * @param hspi pointer to the SPI channel that the ADXL371 is connected to
- * @param cs_channel specifies the GPIO channel that the chip select pin is connected to.
- * @param cs_pin specifies the GPIO pin that the chip select pin is connected to.
  * @retval 0 upon success
  */
-int adxl371_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin);
+int adxl371_init(void);
 
 /**
  * @brief sets the SPI settings for the ADXL371 without re-initializing the device

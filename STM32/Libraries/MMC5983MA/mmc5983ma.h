@@ -14,12 +14,9 @@
 /**
  * @brief ensures SPI read/write is working to the MMC5983MA, and configures register settings
  *
- * @param hspi pointer to the SPI channel that the MMC5983MA is connected to
- * @param cs_channel specifies the GPIO channel that the chip select pin is connected to.
- * @param cs_pin specifies the GPIO pin that the chip select pin is connected to.
  * @retval 0 upon success
  */
-int mmc5983ma_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin);
+int mmc5983ma_init(void);
 
 /**
  * @brief reads data from the MMC5983MA

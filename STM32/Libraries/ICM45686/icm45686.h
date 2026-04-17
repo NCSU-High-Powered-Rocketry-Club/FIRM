@@ -23,13 +23,10 @@ typedef enum IREGMap { IMEM_SRAM, IPREG_BAR, IPREG_SYS1, IPREG_SYS2, IPREG_TOP1 
  * 		 interrupt pin on data_ready. Interrupt is set to active-low, latching, and
  * push-pull.
  *
- * @param hspi specifies the SPI channel that the ICM45686 is connected to.
- * @param cs_channel specifies the GPIO channel that the chip select pin is connected to.
- * @param cs_pin specifies the GPIO pin that the chip select pin is connected to.
  * @retval 0 if successful, 1 if unsuccessful due to a register being written to incorrectly
  *         or if a register did not output the expected value when read.
  */
-int icm45686_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin);
+int icm45686_init(void);
 
 /**
  * @brief reads acceleration and gyroscope data from the ICM45686, if the data is ready.
@@ -86,7 +83,7 @@ void icm45686_convert_and_calibrate(ICM45686RawData_t *raw, ICM45686BoardReading
  * @param matrix nine floats for 3x3 row-major matrix for calibration and sensor->board frame
  *               scaling and rotation.
  */
-void icm45686_set_accel_calibration(float offsets[3], float matrix[9]);
+void icm45686_set_accel_calibration(const float offsets[3], const float matrix[9]);
 
 /**
  * @brief sets the calibration offsets and row-major matrix for the ICM45686 gyroscope
@@ -101,4 +98,4 @@ void icm45686_set_accel_calibration(float offsets[3], float matrix[9]);
  * @param matrix nine floats for 3x3 row-major matrix for calibration and sensor->board frame
  *               scaling and rotation.
  */
-void icm45686_set_gyro_calibration(float offsets[3], float matrix[9]);
+void icm45686_set_gyro_calibration(const float offsets[3], const float matrix[9]);

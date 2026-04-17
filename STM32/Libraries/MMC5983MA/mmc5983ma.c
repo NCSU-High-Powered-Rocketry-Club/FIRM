@@ -69,14 +69,12 @@ void set_spi_mmc(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_
   spiSettings.cs_pin = cs_pin;
 }
 
-int mmc5983ma_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin) {
-  if (hspi == NULL) {
+int mmc5983ma_init(void) {
+  if (spiSettings.hspi == NULL || spiSettings.cs_channel == NULL) {
     // Invalid SPI handle
     return 1;
   }
 
-  // configure spi settings
-  set_spi_mmc(hspi, cs_channel, cs_pin);
 
   // Beginning MMC5983MA initialization
   // sets up the magnetometer in spi mode and ensures spi is working

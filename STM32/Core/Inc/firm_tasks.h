@@ -88,9 +88,9 @@ typedef struct {
   uint16_t header;
   uint16_t identifier;
   uint32_t packet_len;
-  PacketPayload data;
+  PacketPayload payload;
   uint16_t crc;
-} Packet;
+} Frame;
 
 /**
  * Struct to contain all SPI handles for the firm initialization function

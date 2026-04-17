@@ -108,15 +108,11 @@ void set_spi_icm(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_
   spiSettings.cs_pin = cs_pin;
 }
 
-int icm45686_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin) {
-  if (hspi == NULL || cs_channel == NULL) {
+int icm45686_init(void) {
+  if (spiSettings.hspi == NULL || spiSettings.cs_channel == NULL) {
     // Invalid spi handle or chip select pin
     return 1;
   }
-  // set up the SPI settings
-  spiSettings.hspi = hspi;
-  spiSettings.cs_channel = cs_channel;
-  spiSettings.cs_pin = cs_pin;
 
   // Beginning ICM45686 initialization
   // sets up the IMU in SPI mode and ensures SPI is working
@@ -266,7 +262,7 @@ float icm45686_get_gyro_scale_factor(void) {
   return gyro_scale_factor;
 }
 
-void icm45686_set_accel_calibration(float offsets[3], float matrix[9]) {
+void icm45686_set_accel_calibration(const float offsets[3], const float matrix[9]) {
   for (int i = 0; i < 3; i++) {
     accel_calibration_offsets[i] = offsets[i];
   }
@@ -275,7 +271,7 @@ void icm45686_set_accel_calibration(float offsets[3], float matrix[9]) {
   }
 }
 
-void icm45686_set_gyro_calibration(float offsets[3], float matrix[9]) {
+void icm45686_set_gyro_calibration(const float offsets[3], const float matrix[9]) {
   for (int i = 0; i < 3; i++) {
     gyro_calibration_offsets[i] = offsets[i];
   }

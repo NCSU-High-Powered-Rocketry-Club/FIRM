@@ -60,14 +60,12 @@ void set_spi_adxl(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs
   spiSettings.cs_pin = cs_pin;
 }
 
-int adxl371_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin) {
+int adxl371_init(void) {
 
-  if (hspi == NULL || cs_channel == NULL) {
+  if (spiSettings.hspi == NULL || spiSettings.cs_channel == NULL) {
     // Invalid spi handle or chip select pin
     return 1;
   }
-  // set up the SPI settings
-  set_spi_adxl(hspi, cs_channel, cs_pin);
 
   // Beginning ADXL371 initialization
   // sets up the accelerometer in SPI mode and ensures SPI is working

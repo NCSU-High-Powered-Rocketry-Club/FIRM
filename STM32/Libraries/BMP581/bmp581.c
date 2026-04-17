@@ -69,15 +69,11 @@ void set_spi_bmp(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_
   spiSettings.cs_pin = cs_pin;
 }
 
-int bmp581_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin) {
-  if (hspi == NULL || cs_channel == NULL) {
+int bmp581_init(void) {
+  if (spiSettings.hspi == NULL || spiSettings.cs_channel == NULL) {
     // Invalid spi handle or chip select pin
     return 1;
   }
-  // set up the SPI settings
-  spiSettings.hspi = hspi;
-  spiSettings.cs_channel = cs_channel;
-  spiSettings.cs_pin = cs_pin;
 
   // Beginning BMP581 initialization
   // sets up the BMP581 in SPI mode and ensures SPI is working
