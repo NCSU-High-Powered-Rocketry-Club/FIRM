@@ -41,6 +41,7 @@ typedef enum {
 #define GRAVITY_METERS_PER_SECOND_SQUARED 9.798F
 #define PRESSURE_ALTITUDE_CONST 44330.0F
 #define PRESSURE_EXPONENT 5.255876F
+#define PRESSURE_SEA_LEVEL_REFERENCE_PA 101325.0F
 
 /** √2/2 constant for sensor rotation matrices */
 #define SQRT2_INV 0.70710678118F

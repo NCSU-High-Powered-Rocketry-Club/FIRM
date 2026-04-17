@@ -281,14 +281,14 @@ def decode(path):
 
         # write to csv
     
-        write_to_csv(bmp581_df, "BMP581_data.csv", decoder)
-        print("wrote BMP581_data.csv")
-        write_to_csv(icm45686_df, "ICM45686_data.csv", decoder)
-        print("wrote ICM45686_data.csv")
+        # write_to_csv(bmp581_df, "BMP581_data.csv", decoder)
+        # print("wrote BMP581_data.csv")
+        # write_to_csv(icm45686_df, "ICM45686_data.csv", decoder)
+        # print("wrote ICM45686_data.csv")
         write_to_csv(mmc5983ma_df, "MMC5983MA_data.csv", decoder)
         print("wrote MMC5983MA_data.csv")
-        write_to_csv(adxl371_df, "ADXL371_data.csv", decoder)
-        print("wrote ADXL371_data.csv")
+        # write_to_csv(adxl371_df, "ADXL371_data.csv", decoder)
+        # print("wrote ADXL371_data.csv")
 
 if __name__ == "__main__":
     if len(sys.argv) == 2:

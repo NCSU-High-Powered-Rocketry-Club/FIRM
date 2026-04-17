@@ -22,7 +22,7 @@ typedef struct ESKF {
   float R[ESKF_MEASUREMENT_DIM * ESKF_MEASUREMENT_DIM];
 
   // initial values/states
-  float initial_pressure;
+  float initial_altitude;
   float mag_world[3];
 
   // measurement vector (set before calling update)

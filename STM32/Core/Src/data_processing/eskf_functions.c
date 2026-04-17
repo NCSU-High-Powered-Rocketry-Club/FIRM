@@ -111,27 +111,29 @@ void eskf_error_jacobian(const float *x_nom, const float *u, float dt,
   F_d_data[20 + 3] = -wx * dt;
 }
 
-void eskf_measurement_function(const float *x_nom, float init_pressure, const float *mag_world,
+void eskf_measurement_function(const float *x_nom, float initial_altitude,
+                 const float *mag_world,
                                const matrix_instance_f32 *R_mag, float *z_pred) {
   // outputs predicted measurement: pressure only
   (void)mag_world;  // unused
   (void)R_mag;      // unused
-  float altitude_meters = x_nom[ESKF_POS_Z];
+  float altitude_meters = initial_altitude + x_nom[ESKF_POS_Z];
 
   // pressure from altitude
-  z_pred[0] =
-      init_pressure * powf(1.0F - (altitude_meters / PRESSURE_ALTITUDE_CONST), PRESSURE_EXPONENT);
+  z_pred[0] = PRESSURE_SEA_LEVEL_REFERENCE_PA *
+        powf(1.0F - (altitude_meters / PRESSURE_ALTITUDE_CONST), PRESSURE_EXPONENT);
 }
 
-void eskf_measurement_jacobian(const float *x_nom, float init_pressure, const float *mag_world,
-                               const float *R_mag, float *H_data) {
+void eskf_measurement_jacobian(const float *x_nom, float initial_altitude,
+                 const float *mag_world, const float *R_mag, float *H_data) {
   // measurement jacobian for pressure only
   (void)mag_world;  // unused
   (void)R_mag;      // unused
   memset(H_data, 0, ESKF_MEASUREMENT_DIM * ESKF_ERROR_DIM * sizeof(float));
-  float altitude = x_nom[ESKF_POS_Z];
+  float altitude = initial_altitude + x_nom[ESKF_POS_Z];
 
   // ∂pressure/∂altitude
-  H_data[0] = init_pressure * (PRESSURE_EXPONENT * (-1.0F / PRESSURE_ALTITUDE_CONST)) *
-              powf(1.0F - altitude / PRESSURE_ALTITUDE_CONST, PRESSURE_EXPONENT - 1.0F);
+  H_data[0] = PRESSURE_SEA_LEVEL_REFERENCE_PA *
+        (PRESSURE_EXPONENT * (-1.0F / PRESSURE_ALTITUDE_CONST)) *
+        powf(1.0F - altitude / PRESSURE_ALTITUDE_CONST, PRESSURE_EXPONENT - 1.0F);
 }

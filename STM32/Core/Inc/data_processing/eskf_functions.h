@@ -30,23 +30,23 @@ void eskf_error_jacobian(const float *x_nom, const float *u, float dt,
  * @brief Predicted measurement z_pred = [pressure].
  *
  * @param x_nom         the nominal ESKF state vector
- * @param init_pressure the ground-level initial pressure on filter init
+ * @param initial_altitude startup altitude computed from accumulated pressure
  * @param mag_world     unused (kept for API compatibility)
  * @param R_mag         unused (kept for API compatibility)
  * @param z_pred        output: predicted measurement vector
  */
-void eskf_measurement_function(const float x_nom[ESKF_NOMINAL_DIM], float init_pressure,
-                               const float mag_world[3], const matrix_instance_f32 *R_mag,
-                               float z_pred[ESKF_MEASUREMENT_DIM]);
+void eskf_measurement_function(const float *x_nom, float initial_altitude,
+                               const float *mag_world, const matrix_instance_f32 *R_mag,
+                               float *z_pred);
 
 /**
  * @brief Measurement Jacobian H (1x5) for pressure only.
  *
  * @param x_nom         the nominal ESKF state vector
- * @param init_pressure the ground-level initial pressure on filter init
+ * @param initial_altitude startup altitude computed from accumulated pressure
  * @param mag_world     unused (kept for API compatibility)
  * @param R_mag         unused (kept for API compatibility)
  * @param H_data        output 5-element row-major array
  */
-void eskf_measurement_jacobian(const float *x_nom, float init_pressure, const float *mag_world,
+void eskf_measurement_jacobian(const float *x_nom, float initial_altitude, const float *mag_world,
                                const float *R_mag, float *H_data);

@@ -87,8 +87,11 @@ int eskf_init(ESKF *eskf) {
   // Copy initial nominal state (pos=0, vel=0, quat=identity)
   memcpy(eskf->x_nom, eskf_initial_state, sizeof(float) * ESKF_NOMINAL_DIM);
 
-  // Initial pressure
-  eskf->initial_pressure = pressure_accum / (float)accum_count;
+  // Initial altitude from accumulated pressure
+  float initial_pressure = pressure_accum / (float)accum_count;
+  eskf->initial_altitude =
+      PRESSURE_ALTITUDE_CONST *
+      (1.0F - powf(initial_pressure / PRESSURE_SEA_LEVEL_REFERENCE_PA, 1.0F / PRESSURE_EXPONENT));
 
   // Compute initial orientation from accel + mag, and set mag_world
   float initial_accel[3] = {accel_accum[0] / (float)accum_count,
@@ -152,13 +155,13 @@ void eskf_predict(ESKF *eskf, const float u[ESKF_CONTROL_DIM], float dt) {
 void eskf_update(ESKF *eskf) {
   // predicted measurement
   float z_pred[M];
-  eskf_measurement_function(eskf->x_nom, eskf->initial_pressure, eskf->mag_world,
+  eskf_measurement_function(eskf->x_nom, eskf->initial_altitude, eskf->mag_world,
                             &R_mag, z_pred);
 
   // measurement jacobian (4x5)
   float H_data[M * N] = {0};
   matrix_instance_f32 H = {M, N, H_data};
-  eskf_measurement_jacobian(eskf->x_nom, eskf->initial_pressure, eskf->mag_world,
+  eskf_measurement_jacobian(eskf->x_nom, eskf->initial_altitude, eskf->mag_world,
                             R_mag.pData, H_data);
 
   // Innovation y = z − z_pred
