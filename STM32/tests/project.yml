@@ -100,13 +100,13 @@
     - +:test/**
     - -:test/support
   :source:
-    - ../Core/Src
+    - ../Core/Src/data_processing
     - ../Libraries/BMP581
     - ../Libraries/MMC5983MA
     - ../Libraries/ICM45686
     - ../Libraries/ADXL371
   :include:
-    - ../Core/Inc
+    - ../Core/Inc/data_processing
     - ../Libraries/BMP581
     - ../Libraries/MMC5983MA
     - ../Libraries/ICM45686
@@ -210,6 +210,7 @@
   :use_param_tests: TRUE
   :defines:
     - UNITY_SUPPORT_TEST_CASES
+    - UNITY_INCLUDE_DOUBLE
 
 # You can optionally have ceedling create environment variables for you before
 # performing the rest of its tasks.

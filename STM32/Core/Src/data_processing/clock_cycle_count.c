@@ -26,3 +26,8 @@ double process_clock_cycles(uint32_t clock_cycle_count) {
 void use_clock_speed_mhz(uint32_t clock_speed) {
   clock_speed_hz = clock_speed * 1000000;
 }
+
+void reset_counter(void) {
+  dwt_overflow_count = 0;
+  last_cyccnt = 0;
+}

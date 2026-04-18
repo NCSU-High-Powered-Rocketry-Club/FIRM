@@ -1,6 +1,10 @@
 #pragma once
 #include <stdint.h>
 
+/**
+ * @brief Resets the internal clock cycle counter and overflow counts
+ */
+void reset_counter(void);
 
 /**
  * @brief Returns current timestamp in seconds
