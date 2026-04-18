@@ -8,6 +8,7 @@
 #pragma once
 
 #include "settings_manager.h"
+#include "sensors.h"
 #include <stdint.h>
 #include <string.h>
 
@@ -59,13 +60,14 @@ FRESULT logger_write_header(SensorScaleFactors_t *sensor_scale_factors);
 FRESULT logger_append_mock_header(SystemSettings_t *settings, SensorScaleFactors_t *sensor_scale_factors);
 
 /**
- * @brief allocates space for a sensor packet in the logger, not including the metadata info.
+ * @brief allocates space for a sensor packet in the logger
  * @note also ensures there is enough space available in the buffer. Swaps buffer if necessary.
  *
- * @param capacity the size of the packet in bytes to allocate size for
- * @retval void pointer to the allocated memory, or NULL if not enough memory
+ * @param sensor_id the sensor to log data for
+ * @param timestamp the timestamp of the data
+ * @retval void pointer to the allocated memory
  */
-void *logger_malloc_packet(size_t capacity);
+void *logger_malloc_packet(Sensors_t sensor_id, uint32_t timestamp);
 
 /**
  * @brief writes the packet to the logger buffer, and adds the metadata
