@@ -144,7 +144,8 @@ FRESULT logger_write_header(SensorScaleFactors_t *sensor_scale_factors) {
   return error_status;
 }
 
-void *logger_malloc_packet(size_t capacity) {
+void *logger_malloc_packet(Sensors_t sensor_id, uint32_t timestamp) {
+  // TODO: refactor logging
   if (logger_ensure_capacity(capacity)) {
     return NULL;
   }
@@ -167,7 +168,6 @@ static FRESULT logger_ensure_capacity(size_t capacity) {
     logger_swap_buffers();
   }
 
-  // TODO error handling
   return FR_OK;
 }
 

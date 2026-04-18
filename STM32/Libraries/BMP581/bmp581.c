@@ -69,15 +69,11 @@ void set_spi_bmp(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_
   spiSettings.cs_pin = cs_pin;
 }
 
-int bmp581_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin) {
-  if (hspi == NULL || cs_channel == NULL) {
+int bmp581_init(void) {
+  if (spiSettings.hspi == NULL || spiSettings.cs_channel == NULL) {
     // Invalid spi handle or chip select pin
     return 1;
   }
-  // set up the SPI settings
-  spiSettings.hspi = hspi;
-  spiSettings.cs_channel = cs_channel;
-  spiSettings.cs_pin = cs_pin;
 
   // Beginning BMP581 initialization
   // sets up the BMP581 in SPI mode and ensures SPI is working
@@ -106,7 +102,7 @@ int bmp581_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_p
   return 0;
 }
 
-int bmp581_read_data(BMP581Packet_t *packet) {
+int bmp581_read_data(BMP581RawData_t *packet) {
   // clear interrupt (pulls interrupt back up high) and verify new data is ready
   uint8_t data_ready = 0;
   read_registers(int_status, &data_ready, 1);
@@ -119,6 +115,20 @@ int bmp581_read_data(BMP581Packet_t *packet) {
     return 0;
   }
   return 1;
+}
+
+void bmp581_convert(BMP581RawData_t *raw, BMP581BoardReading_t *out) {
+  // extract pressure and temp as a 32 bit signed integer, which uses two's complement
+  int32_t temp_binary = ((int32_t)((int8_t)raw->temp_msb) << 16) | ((int32_t)raw->temp_lsb << 8) |
+                ((int32_t)raw->temp_xlsb);
+
+  int32_t pressure_binary = ((int32_t)((int8_t)raw->pressure_msb) << 16) |
+                    ((int32_t)raw->pressure_lsb << 8) |
+                    ((int32_t)raw->pressure_xlsb);
+
+  // convert to a float with temp in celcius and pressure in pascals
+  out->temperature_celsius = (float)temp_binary / scale_factor_celcius;
+  out->pressure_pa = (float)pressure_binary / scale_factor_pascal;
 }
 
 float bmp581_get_temp_scale_factor(void) { return scale_factor_celcius; }

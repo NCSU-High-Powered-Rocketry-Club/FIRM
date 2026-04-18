@@ -13,12 +13,9 @@
 /**
  * @brief ensures SPI read/write is working to the BMP581, and configures register settings
  *
- * @param hspi pointer to the SPI channel that the BMP581 is connected to
- * @param cs_channel specifies the GPIO channel that the chip select pin is connected to.
- * @param cs_pin specifies the GPIO pin that the chip select pin is connected to.
  * @retval 0 upon success
  */
-int bmp581_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin);
+int bmp581_init(void);
 
 /**
  * @brief reads the pressure and temperature measurements from the BMP581
@@ -26,7 +23,16 @@ int bmp581_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_p
  * @param packet pointer to the Barometer packet where the data will be stored
  * @retval 0 upon success, 1 if no new data is ready yet
  */
-int bmp581_read_data(BMP581Packet_t *packet);
+int bmp581_read_data(BMP581RawData_t *packet);
+
+/**
+ * @brief Converts raw BMP581 pressure/temperature bytes to float values.
+ * @note Temperature in celcius, pressure in pascals.
+ *
+ * @param raw the raw sensor data retrieved from bmp581_read_data()
+ * @param out converted float values
+ */
+void bmp581_convert(BMP581RawData_t *raw, BMP581BoardReading_t *out);
 
 /**
  * @brief gets the scale factor of the temperature readings to convert to celcius.

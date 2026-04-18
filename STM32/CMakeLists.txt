@@ -71,15 +71,18 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Libraries/ICM45686/icm45686.c
     Libraries/ADXL371/adxl371.c
     Libraries/SPIUtils/spi_utils.c
+
+    Core/Src/tasks/sensor_task.c
     
     Core/Src/data_processing/matrix_helper.c
     Core/Src/data_processing/error_state_kalman_filter.c
     Core/Src/data_processing/eskf_functions.c
     Core/Src/data_processing/eskf_config.c
-    Core/Src/data_processing/data_preprocess.c
+    Core/Src/data_processing/clock_cycle_count.c
 
     Core/Src/interfaces/settings_manager.c
     Core/Src/interfaces/settings_storage.c
+    Core/Src/interfaces/sensor_manager.c
 
     Core/Src/target/firm_v1_0.c
 
@@ -99,9 +102,11 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
    Core/Inc
+   Core/Inc/tasks
    Core/Inc/data_processing
    Core/Inc/target
    Core/Inc/interfaces
+   Core/Inc/shared_packets
    Libraries/ICM45686
    Libraries/BMP581
    Libraries/MMC5983MA

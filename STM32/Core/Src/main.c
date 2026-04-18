@@ -748,21 +748,6 @@ void StartupTask(void *argument)
 
   logger_write_header(&scale_factors);
 
-  // the IMU runs into issues when the fifo is full at the very beginning, causing the interrupt
-  // to be pulled back low too fast, and the ISR doesn't catch it for whatever reason. Doing
-  // this initial read will prevent that.
-  // ICM45686Packet_t imu_packet;
-  // icm45686_read_data(&imu_packet);
-  // MMC5983MAPacket_t mag_packet;
-  // mmc5983ma_read_data(&mag_packet, &magnetometer_flip);
-
-  // even though we call this function in settings setup, it somehow breaks settings
-  // when you try to write to it during rtos. So we have to call this again.
-  set_spi_icm(&hspi2, GPIOB, GPIO_PIN_9);
-  set_spi_bmp(&hspi2, GPIOC, GPIO_PIN_2);
-  set_spi_mmc(&hspi2, GPIOC, GPIO_PIN_7);
-  set_spi_adxl(&hspi2, GPIOA, GPIO_PIN_8);
-
   // re-enable ISR's so that interrupts can trigger the sensor tasks to run
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);
   HAL_NVIC_EnableIRQ(EXTI1_IRQn);

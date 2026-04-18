@@ -59,20 +59,22 @@ static const float scale_factor = (float)data_num_lsb_bits / 800.0F;
 
 static SPISettings spiSettings;
 
+/** Calibration and orientation values for converting raw sensor data to board-frame floats */
+static float calibration_offsets[3] = {0};
+static float calibration_matrix[9] = {1.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 1.0F};
+
 void set_spi_mmc(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin) {
   spiSettings.hspi = hspi;
   spiSettings.cs_channel = cs_channel;
   spiSettings.cs_pin = cs_pin;
 }
 
-int mmc5983ma_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t cs_pin) {
-  if (hspi == NULL) {
+int mmc5983ma_init(void) {
+  if (spiSettings.hspi == NULL || spiSettings.cs_channel == NULL) {
     // Invalid SPI handle
     return 1;
   }
 
-  // configure spi settings
-  set_spi_mmc(hspi, cs_channel, cs_pin);
 
   // Beginning MMC5983MA initialization
   // sets up the magnetometer in spi mode and ensures spi is working
@@ -105,7 +107,7 @@ int mmc5983ma_init(SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_channel, uint16_t c
   return 0;
 }
 
-int mmc5983ma_read_data(MMC5983MAPacket_t *packet) {
+int mmc5983ma_read_data(MMC5983MARawData_t *packet) {
   uint8_t data_ready = 0;
   // read status register to make sure data is ready
   read_registers(status, &data_ready, 1);
@@ -130,6 +132,46 @@ float mmc5983ma_get_magnetic_field_scale_factor(void) {
   // to determine which FS range we are at. I really don't care enough to set up shadow
   // register memory for this driver, so i'm just going to return the value we are using.
   return scale_factor;
+}
+
+void mmc5983ma_convert_and_calibrate(MMC5983MARawData_t *raw, MMC5983MABoardReading_t *out) {
+  // extract magnetic field bytes as 32 bit integer, which uses two's complement
+  int32_t mag_binary_x = (((int32_t)(raw->mag_x_msb) << 10) | ((int32_t)raw->mag_x_mid << 2) |
+                          ((int32_t)(raw->mag_xyz_lsb >> 6))) -
+                         data_num_lsb_bits;
+
+  int32_t mag_binary_y = (((int32_t)(raw->mag_y_msb) << 10) | ((int32_t)raw->mag_y_mid << 2) |
+                          ((int32_t)((raw->mag_xyz_lsb & 0b00110000) >> 4))) -
+                         data_num_lsb_bits;
+
+  int32_t mag_binary_z = (((int32_t)(raw->mag_z_msb) << 10) | ((int32_t)raw->mag_z_mid << 2) |
+                          ((int32_t)((raw->mag_xyz_lsb & 0b00001100) >> 2))) -
+                         data_num_lsb_bits;
+
+  // convert to float in SI units (microtesla) and subtract by magnetometer calibration offsets
+  float mag_float_x = ((float)mag_binary_x) / scale_factor - calibration_offsets[0];
+  float mag_float_y = ((float)mag_binary_y) / scale_factor - calibration_offsets[1];
+  float mag_float_z = ((float)mag_binary_z) / scale_factor - calibration_offsets[2];
+
+  // apply 3x3 scaling matrix to each value
+  out->magnetic_field_x_microteslas = mag_float_x * calibration_matrix[0] +
+                                      mag_float_y * calibration_matrix[3] +
+                                      mag_float_z * calibration_matrix[6];
+  out->magnetic_field_y_microteslas = mag_float_x * calibration_matrix[1] +
+                                      mag_float_y * calibration_matrix[4] +
+                                      mag_float_z * calibration_matrix[7];
+  out->magnetic_field_z_microteslas = mag_float_x * calibration_matrix[2] +
+                                      mag_float_y * calibration_matrix[5] +
+                                      mag_float_z * calibration_matrix[8];
+}
+
+void mmc5983ma_set_calibration(float offsets[3], float matrix[9]) {
+  for (int i = 0; i < 3; i++) {
+    calibration_offsets[i] = offsets[i];
+  }
+  for (int i = 0; i < 9; i++) {
+    calibration_matrix[i] = matrix[i];
+  }
 }
 
 int setup_device(bool soft_reset_complete) {

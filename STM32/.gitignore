@@ -4,3 +4,4 @@ mx.scratch
 CMakeFiles/
 .vscode/*
 !.vscode/c_cpp_properties.json
+/tests/build
