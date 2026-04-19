@@ -21,6 +21,7 @@
 #define FAKE_LOG_DIR "test/logs"
 #define FAKE_LOG_PATH_MAX 512
 
+// Single active file mirrors the embedded logger's currently open log file.
 static FILE *active_log_file = NULL;
 
 static int ensure_logs_dir_exists(void) {
@@ -40,6 +41,7 @@ static int build_log_path(const char *filename, char *path, size_t path_len) {
 		return 1;
 	}
 
+  // Restrict to file names only; do not allow path traversal through separators.
 	if (strchr(filename, '/') != NULL || strchr(filename, '\\') != NULL) {
 		return 1;
 	}
@@ -61,6 +63,7 @@ static void close_active_log_file(void) {
 
 static void remove_all_logs(void) {
 #ifdef _WIN32
+	// Cleanup helper removes files only; directory is retained between tests.
 	char search_pattern[FAKE_LOG_PATH_MAX] = {0};
 	WIN32_FIND_DATAA find_data;
 	HANDLE find_handle;
@@ -108,11 +111,13 @@ static void remove_all_logs(void) {
 }
 
 int fake_logger_init(void) {
+	// Preserve logs directory but always reset open-file state.
 	close_active_log_file();
 	return ensure_logs_dir_exists();
 }
 
 void fake_logger_cleanup_logs(void) {
+	// Keep tests hermetic by deleting all generated log files after each case.
 	close_active_log_file();
 	remove_all_logs();
 }
@@ -154,6 +159,7 @@ int fake_create_file(const char *filename, uint64_t size_bytes) {
 	}
 
 	if (size_bytes > 0U) {
+		// Emulate FATFS pre-allocation by extending file to the requested size.
 		if (size_bytes > (uint64_t)LONG_MAX) {
 			close_active_log_file();
 			return 1;
@@ -182,6 +188,7 @@ int fake_create_file(const char *filename, uint64_t size_bytes) {
 }
 
 bool fake_is_write_ready(void) {
+	// Host backend is always ready when a file is open.
 	return active_log_file != NULL;
 
 }
@@ -196,6 +203,7 @@ int fake_write_sector(const uint8_t *buffer, size_t len) {
 		return 1;
 	}
 
+	// Force visibility for tests that inspect file contents immediately.
 	if (fflush(active_log_file) != 0) {
 		return 1;
 	}

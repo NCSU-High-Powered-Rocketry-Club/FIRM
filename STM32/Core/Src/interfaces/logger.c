@@ -61,14 +61,14 @@ void *logger_malloc_raw_storage(Sensors_t sensor_id, uint32_t timestamp) {
     return NULL;
   }
 
-  // Reserve storage, write metadata, then return payload start.
+  // Reserve storage, write metadata, then return pointer location at start of data
   uint8_t *entry = logger_storage_malloc_capacity(required_size);
   if (entry == NULL)
     return NULL;
 
   entry[0] = (uint8_t)sensor_id;
-  memcpy(entry + sizeof(sensor_id), &timestamp, sizeof(timestamp));
-  return entry + sizeof(sensor_id) + sizeof(timestamp);
+  memcpy(entry + sizeof(char), &timestamp, sizeof(timestamp));
+  return entry + sizeof(char) + sizeof(timestamp);
 }
 
 void logger_set_sensor_info(size_t barometer_size, size_t imu_size, size_t magnetometer_size,

@@ -1,7 +1,5 @@
 #include "logger_storage.h"
 
-#include <string.h>
-
 static LoggerStorageInterface_t storage_interface = {0};
 static uint8_t *current_buffer = NULL;
 static uint8_t *next_buffer = NULL;
@@ -15,18 +13,6 @@ static bool can_write_sector(void) {
   }
 
   return storage_interface.is_write_ready();
-}
-
-static int flush_active_buffer(void) {
-  if (!can_write_sector()) {
-    return 1;
-  }
-
-  if (current_offset < storage_interface.buffer_size) {
-    memset(current_buffer + current_offset, 0, storage_interface.buffer_size - current_offset);
-  }
-
-  return storage_interface.write_sector(current_buffer, storage_interface.buffer_size);
 }
 
 static void swap_buffers(void) {
@@ -75,7 +61,7 @@ void *logger_storage_malloc_capacity(size_t bytes_needed) {
   }
 
   if (current_offset + bytes_needed > storage_interface.buffer_size) {
-    if (flush_active_buffer()) {
+    if (!can_write_sector() || storage_interface.write_sector(current_buffer, storage_interface.buffer_size)) {
       return NULL;
     }
     swap_buffers();
