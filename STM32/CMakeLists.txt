@@ -71,6 +71,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Libraries/ICM45686/icm45686.c
     Libraries/ADXL371/adxl371.c
     Libraries/SPIUtils/spi_utils.c
+    Libraries/FATFS_SD/fatfs_sd.c
 
     Core/Src/tasks/sensor_task.c
     
@@ -83,6 +84,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/interfaces/settings_manager.c
     Core/Src/interfaces/settings_storage.c
     Core/Src/interfaces/sensor_manager.c
+    Core/Src/interfaces/logger.c
+    Core/Src/interfaces/logger_storage.c
 
     Core/Src/target/firm_v1_0.c
 
@@ -95,7 +98,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/firm_tasks.c
     Core/Src/led.c
     Core/Src/firm_fsm.c
-    Core/Src/logger.c
     
 )
 
@@ -113,6 +115,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
    Libraries/W25Q128JV
    Libraries/SPIUtils
    Libraries/ADXL371
+    Libraries/FATFS_SD
 )
 
 # Add project symbols (macros)

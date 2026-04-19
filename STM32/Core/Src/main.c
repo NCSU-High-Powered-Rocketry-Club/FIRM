@@ -725,7 +725,7 @@ void StartupTask(void *argument)
   
   // set up the settings manager
   if (settings_manager_init()) {
-    led_set_status(SETTINGS_FAIL);
+    led_set_status(FLASH_CHIP_FAIL);
     Error_Handler();
   }
 
