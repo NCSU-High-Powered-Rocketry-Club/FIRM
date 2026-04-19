@@ -63,6 +63,11 @@ void test_when_active_buffer_would_overflow_it_swaps_to_standby_buffer(void) {
   memset(second, 0x44, 5U);
   TEST_ASSERT_EQUAL_HEX8(0x33, buffer_a[0]);
   TEST_ASSERT_EQUAL_HEX8(0x44, buffer_b[0]);
+
+  // ensure that buffer A has the last 4 bytes padded with zeroes
+  uint32_t padding;
+  memcpy(&padding, &buffer_a[12], 4);
+  TEST_ASSERT_EQUAL_HEX32(0x00000000, padding);
 }
 
 void test_double_buffering_swaps_back_after_standby_overflow(void) {

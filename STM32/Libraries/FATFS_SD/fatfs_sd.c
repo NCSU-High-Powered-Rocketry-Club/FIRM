@@ -17,7 +17,8 @@ int fatfs_sd_init(DMA_HandleTypeDef *dma_sdio_tx_handle) {
   if (BSP_SD_Init() != MSD_OK)
     return 1;
 
-  FATFS_UnLinkDriver(SDPath);
+  if (FATFS_UnLinkDriver(SDPath) != 0)
+    return 1;
   if (FATFS_LinkDriver(&SD_Driver, SDPath) != 0)
     return 1;
 
@@ -61,7 +62,6 @@ int fatfs_sd_create_file(const char *filename, uint64_t size_bytes) {
     return 1;
   }
 
-  HAL_Delay(10);
   fr = f_expand(&logger_file, (FSIZE_t)size_bytes, 1);
   if (fr != FR_OK) {
     f_close(&logger_file);
