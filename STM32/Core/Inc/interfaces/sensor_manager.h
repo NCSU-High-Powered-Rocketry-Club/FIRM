@@ -23,3 +23,23 @@ void sensor_collect_data(Sensors_t sensor, DataPacket *board_readings);
  * @param time_fn function pointer that takes no args and returns an unsigned 32 bit timestamp.
  */
 void set_time_fn(uint32_t(*time_fn)(void));
+
+/**
+ * @brief Injects barometer raw read callback.
+ */
+void set_barometer_read_fn(int (*read_fn)(BMP581RawData_t *));
+
+/**
+ * @brief Injects IMU raw read callback.
+ */
+void set_imu_read_fn(int (*read_fn)(ICM45686RawData_t *));
+
+/**
+ * @brief Injects magnetometer raw read callback.
+ */
+void set_magnetometer_read_fn(int (*read_fn)(MMC5983MARawData_t *));
+
+/**
+ * @brief Injects high-g accelerometer raw read callback.
+ */
+void set_high_g_read_fn(int (*read_fn)(ADXL371RawData_t *));

@@ -7,6 +7,7 @@
 #include "mock_ring_buffer.h"
 #include "mocking_handler.h"
 #include "semphr.h"
+#include "sensor_manager.h"
 #include "usbd_cdc_if.h"
 #include "usbd_def.h"
 #include <stdint.h>
@@ -661,8 +662,7 @@ void filter_data_task(void *argument) {
 
         // wait for all sensors to collect data
         xEventGroupWaitBits(sensors_collected,
-                            BMP581_TASK_BIT | ICM45686_TASK_BIT |
-                                MMC5983MA_TASK_BIT,
+                            BMP581_TASK_BIT | ICM45686_TASK_BIT | MMC5983MA_TASK_BIT,
                             pdTRUE, // clear bits after unblocking
                             pdTRUE, // wait for ALL bits
                             portMAX_DELAY);
@@ -726,177 +726,4 @@ void transmit_data(void *argument) {
       }
     }
   }
-}
-
-void usb_read_data(void *argument) {
-  uint8_t meta_bytes[sizeof(uint16_t) + sizeof(uint16_t) + sizeof(uint32_t)];
-  uint8_t received_bytes[MESSAGE_BYTE_BUFFER_SIZE];
-  UsbMessageMeta meta;
-
-  for (;;) {
-    xStreamBufferReceive(usb_rx_stream, meta_bytes, sizeof(meta_bytes), portMAX_DELAY);
-    if (!usb_parse_message_meta(meta_bytes, sizeof(meta_bytes), &meta)) {
-      continue;
-    }
-
-    UsbMessageType type = usb_interpret_usb_message(&meta);
-    if (type == USBMSG_MOCK_SENSOR) {
-      if (mock_ring_mutex != NULL) {
-        (void)xSemaphoreTake(mock_ring_mutex, portMAX_DELAY);
-      }
-      MockSensorPacket *mock_packet = mock_ring_reserve_packet(&mock_ring);
-      if (mock_ring_mutex != NULL) {
-        (void)xSemaphoreGive(mock_ring_mutex);
-      }
-      if (mock_packet == NULL) {
-        // Should not happen; drop bytes for this message.
-        xStreamBufferReceive(usb_rx_stream, received_bytes, meta.payload_length + 2U,
-                             portMAX_DELAY);
-        continue;
-      }
-      // set packet id (which sensor the packet is for) and read the usb stream into the buffer
-      mock_packet->id = meta.identifier;
-      size_t got = xStreamBufferReceive(usb_rx_stream, &mock_packet->packet, meta.payload_length,
-                                        portMAX_DELAY);
-      if (got != meta.payload_length) {
-        // Don't commit partial packets.
-        xStreamBufferReceive(usb_rx_stream, received_bytes, 2, portMAX_DELAY);
-        continue;
-      }
-      if (mock_ring_mutex != NULL) {
-        (void)xSemaphoreTake(mock_ring_mutex, portMAX_DELAY);
-      }
-      mock_ring_commit_reserved(&mock_ring); // push the packet to the ring buffer
-      if (mock_ring_mutex != NULL) {
-        (void)xSemaphoreGive(mock_ring_mutex);
-      }
-      xStreamBufferReceive(usb_rx_stream, received_bytes, 2, portMAX_DELAY); // discard CRC bytes
-      continue;
-    }
-
-    // read bytes and validate crc
-    while (xStreamBufferBytesAvailable(usb_rx_stream) < meta.payload_length + 2) {
-      __NOP();
-    }
-    xStreamBufferReceive(usb_rx_stream, received_bytes, meta.payload_length + 2, portMAX_DELAY);
-    if (!validate_message_crc16(meta.header, meta.identifier, meta.payload_length,
-                                received_bytes)) {
-      continue; // invalid crc, skip
-    }
-
-    switch (type) {
-    case USBMSG_MOCK_SETTINGS: {
-      SystemSettings_t mock_settings = {0};
-      SensorScaleFactors_t scale_factors;
-      if (process_mock_settings_packet(received_bytes, meta.payload_length, &mock_settings, &scale_factors)) {
-        logger_append_mock_header(&mock_settings, &scale_factors);
-      }
-      if (mock_ring_mutex != NULL) {
-        (void)xSemaphoreTake(mock_ring_mutex, portMAX_DELAY);
-      }
-      mock_ring_reset(&mock_ring); // reset the ring buffer to prepare for packets
-      if (mock_ring_mutex != NULL) {
-        (void)xSemaphoreGive(mock_ring_mutex);
-      }
-      mock_timestamp_accumulator_reset();
-      break;
-    }
-    case USBMSG_COMMAND: {
-      Packet response;
-      response.packet_len = commands_execute_to_response(
-          meta.identifier, received_bytes, meta.payload_length, &response.header,
-          &response.identifier, (ResponsePacket *)&response.data);
-      xQueueSend(transmit_queue, &response, portMAX_DELAY);
-      break;
-    }
-    case USBMSG_SYSTEM_REQUEST:
-      xQueueSend(system_request_queue, (SystemRequest *)&meta.identifier, portMAX_DELAY);
-      break;
-    // mock sensor should be processed already
-    case USBMSG_MOCK_SENSOR:
-    case USBMSG_INVALID:
-    default:
-      break;
-    }
-  }
-}
-
-void mock_packet_handler(void *argument) {
-  TaskCommandOption cmd_status = TASKCMD_RESET;
-  uint32_t accumulated_clock_cycles = 0;
-
-  for (;;) {
-    if (cmd_status == TASKCMD_RESET) {
-      xQueueReceive(mock_packet_handler_command_queue, &cmd_status, portMAX_DELAY);
-      accumulated_clock_cycles = 0U;
-      mock_timestamp_accumulator_reset();
-    }
-
-    if (cmd_status == TASKCMD_START) {
-      if (xQueueReceive(mock_packet_handler_command_queue, &cmd_status, 0) == pdTRUE) {
-        // cancel command received, reset the buffer
-        mock_ring_reset(&mock_ring);
-        accumulated_clock_cycles = 0U;
-        mock_timestamp_accumulator_reset();
-        continue;
-      }
-
-      MockSensorPacket mock_packet;
-      if (mock_ring_mutex != NULL) {
-        (void)xSemaphoreTake(mock_ring_mutex, portMAX_DELAY);
-      }
-      bool have = mock_ring_peek(&mock_ring, &mock_packet);
-      if (mock_ring_mutex != NULL) {
-        (void)xSemaphoreGive(mock_ring_mutex);
-      }
-
-      if (!have) {
-        vTaskDelay(pdMS_TO_TICKS(1)); // nothing in buffer
-        continue;
-      }
-      // determine if task needs to delay or not based on timestamp
-      uint32_t delay_ms = mock_timestamp_accumulate_delay_ms(&accumulated_clock_cycles,
-                                                             mock_packet.packet.timestamp);
-      if (delay_ms > 0U) {
-        vTaskDelay(pdMS_TO_TICKS(1)); // hardset to 1 for now.
-      }
-      switch (mock_packet.id) {
-      case MOCKID_BMP581:
-        (void)xTaskNotify(bmp581_task_handle, SENSOR_NOTIFY_MOCK_BIT, eSetBits);
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        break;
-      case MOCKID_ICM45686:
-        (void)xTaskNotify(icm45686_task_handle, SENSOR_NOTIFY_MOCK_BIT, eSetBits);
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        break;
-      case MOCKID_MMC5983MA:
-        (void)xTaskNotify(mmc5983ma_task_handle, SENSOR_NOTIFY_MOCK_BIT, eSetBits);
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        break;
-      case MOCKID_ADXL371:
-        (void)xTaskNotify(adxl371_task_handle, SENSOR_NOTIFY_MOCK_BIT, eSetBits);
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        break;
-      default:
-        break;
-      }
-    }
-  }
-}
-
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
-  if (huart == firm_huart1)
-    uart_tx_done = true;
-}
-
-void usb_receive_callback(const uint8_t *buffer, uint32_t data_length) {
-  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-  // Check if the stream buffer is initialized
-  if (usb_rx_stream != NULL) {
-    // Adds the received data to the stream buffer from an ISR context
-    xStreamBufferSendFromISR(usb_rx_stream, buffer, data_length, &xHigherPriorityTaskWoken);
-  }
-  // If the usb_read_data task has a higher priority than the currently running task, request a
-  // context switch
-  portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }

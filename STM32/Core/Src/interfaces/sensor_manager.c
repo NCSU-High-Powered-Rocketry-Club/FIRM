@@ -13,6 +13,22 @@ void set_time_fn(uint32_t(*time_fn)(void)) {
   get_time = time_fn;
 }
 
+void set_barometer_read_fn(int (*read_fn)(BMP581RawData_t *)) {
+  barometer_read_data = read_fn;
+}
+
+void set_imu_read_fn(int (*read_fn)(ICM45686RawData_t *)) {
+  imu_read_data = read_fn;
+}
+
+void set_magnetometer_read_fn(int (*read_fn)(MMC5983MARawData_t *)) {
+  magnetometer_read_data = read_fn;
+}
+
+void set_high_g_read_fn(int (*read_fn)(ADXL371RawData_t *)) {
+  high_g_read_data = read_fn;
+}
+
 void sensor_collect_data(Sensors_t sensor, DataPacket *board_readings) {
   uint32_t clock_cycles = get_time();
   // allocate bytes in the logger for the raw sensor data

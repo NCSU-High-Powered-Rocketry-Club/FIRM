@@ -2,24 +2,16 @@
 #include <stdint.h>
 #include <string.h>
 #include "settings_manager.h"
+#include "sensors.h"
+#include "bmp581_packet.h"
+#include "icm45686_packet.h"
+#include "mmc5983ma_packet.h"
+#include "adxl371_packet.h"
+#include "data_processing/mocking_ring_buffer.h"
 #include <stdbool.h>
 #include "data_preprocess.h"
 #include "system_settings.h"
 
-// HeaderFields is owned by logger.h. In host unit tests we avoid including
-// logger.h so Ceedling doesn't pull in logger.c (which depends on FATFS).
-#ifndef TEST
-  #include "logger.h"
-#else
-  typedef struct {
-  float temp_sf;
-  float pressure_sf;
-  float accel_sf;
-  float angular_rate_sf;
-  float magnetic_field_sf;
-  float hi_g_accel_sf;
-} SensorScaleFactors_t;
-#endif
 
 typedef enum {
   MOCKID_BMP581 = 'B',
@@ -82,3 +74,34 @@ bool process_mock_settings_packet(uint8_t *received_bytes,
                                  uint32_t length,
                                  SystemSettings_t* settings,
                                  SensorScaleFactors_t* header_fields);
+
+/**
+ * @brief Pushes a parsed mock sensor payload into the mock ring in adapter format.
+ *
+ * @param identifier Mock sensor identifier.
+ * @param payload_bytes Payload bytes: [timestamp(4)][raw sensor bytes].
+ * @param payload_len Number of payload bytes.
+ * @retval true on successful enqueue, false on invalid payload.
+ */
+bool mock_ring_push_sensor_instance(MockPacketID identifier,
+                                    const uint8_t *payload_bytes,
+                                    uint32_t payload_len);
+
+/**
+ * @brief Returns timestamp associated with the currently cached mock instance.
+ * @note Intended for sensor_manager's injected time callback.
+ */
+uint32_t mock_adapter_get_time(void);
+
+/**
+ * @brief Injected mock read adapters for sensor_manager callbacks.
+ */
+int mock_adapter_read_bmp581(BMP581RawData_t *out);
+int mock_adapter_read_icm45686(ICM45686RawData_t *out);
+int mock_adapter_read_mmc5983ma(MMC5983MARawData_t *out);
+int mock_adapter_read_adxl371(ADXL371RawData_t *out);
+
+/**
+ * @brief Clears cached mock adapter instance state.
+ */
+void mock_adapter_reset_cached_instance(void);

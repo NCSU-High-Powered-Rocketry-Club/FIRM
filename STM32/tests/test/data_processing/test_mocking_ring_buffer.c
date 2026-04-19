@@ -6,7 +6,43 @@
 
 #define MOCK_BUFFER_SIZE 1500U
 
-void setUp(void) { mock_ring_setup(); }
+static size_t fake_semaphore_count = 0U;
+
+static bool fake_semaphore_try_take(void *context) {
+  size_t *count = (size_t *)context;
+  if (*count == 0U) {
+    return false;
+  }
+
+  (*count)--;
+  return true;
+}
+
+static bool fake_semaphore_give(void *context) {
+  size_t *count = (size_t *)context;
+  (*count)++;
+  return true;
+}
+
+static size_t fake_semaphore_get_count(void *context) {
+  size_t *count = (size_t *)context;
+  return *count;
+}
+
+static void fake_semaphore_reset(void *context) {
+  size_t *count = (size_t *)context;
+  *count = 0U;
+}
+
+static const MockRingCountSemaphore_t fake_count_semaphore = {
+    .context = &fake_semaphore_count,
+    .try_take = fake_semaphore_try_take,
+    .give = fake_semaphore_give,
+    .get_count = fake_semaphore_get_count,
+    .reset = fake_semaphore_reset,
+};
+
+void setUp(void) { mock_ring_setup(&fake_count_semaphore); }
 
 void tearDown(void) {}
 
@@ -17,7 +53,7 @@ void test_setup_resets_length_to_zero(void) {
   TEST_ASSERT_EQUAL_UINT32(1U, (uint32_t)mock_ring_get_length());
 
   // Calling setup should fully reset observable queue state.
-  mock_ring_setup();
+  mock_ring_setup(&fake_count_semaphore);
   TEST_ASSERT_EQUAL_UINT32(0U, (uint32_t)mock_ring_get_length());
 }
 
