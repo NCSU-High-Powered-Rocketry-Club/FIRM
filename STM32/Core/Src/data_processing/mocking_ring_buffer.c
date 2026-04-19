@@ -4,7 +4,6 @@
 
 static uint8_t ring_buffer[MOCK_BUFFER_SIZE];
 
-
 static struct {
   size_t head;
   size_t tail;
@@ -33,7 +32,7 @@ void mock_ring_push(uint8_t *data_instance, size_t instance_size) {
     }
     mock_buffer.head = 0U;
   }
-  
+
   // copy in data to head, increment counts
   memcpy(&ring_buffer[mock_buffer.head], data_instance, instance_size);
   mock_buffer.head = mock_buffer.head + instance_size;
@@ -69,6 +68,4 @@ const void *mock_ring_peek(void) {
   return &ring_buffer[mock_buffer.tail];
 }
 
-size_t mock_ring_get_length(void) {
-  return mock_buffer.instance_count;
-}
+size_t mock_ring_get_length(void) { return mock_buffer.instance_count; }

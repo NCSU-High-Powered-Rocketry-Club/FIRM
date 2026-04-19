@@ -142,4 +142,3 @@ void test_wrap_with_unread_data_keeps_fifo_order_without_overwrite(void) {
   TEST_ASSERT_NOT_NULL(popped_wrapped);
   TEST_ASSERT_EQUAL_MEMORY(wrapped, popped_wrapped, sizeof(wrapped));
 }
-
