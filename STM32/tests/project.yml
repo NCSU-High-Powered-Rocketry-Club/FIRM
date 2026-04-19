@@ -101,12 +101,15 @@
     - -:test/support
   :source:
     - ../Core/Src/data_processing
+    - ../Core/Src/interfaces
     - ../Libraries/BMP581
     - ../Libraries/MMC5983MA
     - ../Libraries/ICM45686
     - ../Libraries/ADXL371
   :include:
     - ../Core/Inc/data_processing
+    - ../Core/Inc/shared_packets
+    - ../Core/Inc/interfaces
     - ../Libraries/BMP581
     - ../Libraries/MMC5983MA
     - ../Libraries/ICM45686
