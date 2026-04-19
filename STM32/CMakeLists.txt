@@ -80,6 +80,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/data_processing/eskf_functions.c
     Core/Src/data_processing/eskf_config.c
     Core/Src/data_processing/clock_cycle_count.c
+    Core/Src/data_processing/mocking_ring_buffer.c
 
     Core/Src/interfaces/settings_manager.c
     Core/Src/interfaces/settings_storage.c
@@ -93,7 +94,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/commands.c
     Core/Src/messages.c
     Core/Src/mocking_handler.c
-    Core/Src/mock_ring_buffer.c
     Core/Src/freertos_trace.c
     Core/Src/firm_tasks.c
     Core/Src/led.c
@@ -103,18 +103,18 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
-   Core/Inc
-   Core/Inc/tasks
-   Core/Inc/data_processing
-   Core/Inc/target
-   Core/Inc/interfaces
-   Core/Inc/shared_packets
-   Libraries/ICM45686
-   Libraries/BMP581
-   Libraries/MMC5983MA
-   Libraries/W25Q128JV
-   Libraries/SPIUtils
-   Libraries/ADXL371
+    Core/Inc
+    Core/Inc/tasks
+    Core/Inc/data_processing
+    Core/Inc/target
+    Core/Inc/interfaces
+    Core/Inc/shared_packets
+    Libraries/ICM45686
+    Libraries/BMP581
+    Libraries/MMC5983MA
+    Libraries/W25Q128JV
+    Libraries/SPIUtils
+    Libraries/ADXL371
     Libraries/FATFS_SD
 )
 

@@ -44,10 +44,7 @@ QueueHandle_t mock_packet_handler_command_queue;
 EventGroupHandle_t sensors_collected;
 
 // mock packets
-#define SENSOR_TIMESTAMP_SIZE_BYTES (sizeof(((SensorPacket *)0)->timestamp))
-#define MOCK_RING_CAPACITY 150U
-static MockSensorPacket mock_ring_storage[MOCK_RING_CAPACITY];
-static MockRingBuffer mock_ring;
+// TODO: 1500 byte buffer
 static SemaphoreHandle_t mock_ring_mutex;
 
 // task attributes
