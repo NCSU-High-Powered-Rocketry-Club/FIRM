@@ -736,17 +736,7 @@ void StartupTask(void *argument)
     Error_Handler();
   }
 
-  // get scale factor values for each sensor to put in header
-  SensorScaleFactors_t scale_factors = {
-      bmp581_get_temp_scale_factor(),
-      bmp581_get_pressure_scale_factor(),
-      icm45686_get_accel_scale_factor(),
-      icm45686_get_gyro_scale_factor(),
-      mmc5983ma_get_magnetic_field_scale_factor(),
-      adxl371_get_accel_scale_factor(),
-  };
-
-  logger_write_header(&scale_factors);
+  logger_write_header();
 
   // re-enable ISR's so that interrupts can trigger the sensor tasks to run
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);

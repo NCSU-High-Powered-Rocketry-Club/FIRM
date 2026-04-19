@@ -26,7 +26,7 @@ int logger_write_header(SystemSettings_t header_info) {
   size_t header_len = strlen(firm_log_header);
   size_t system_settings_len = sizeof(SystemSettings_t);
 
-  void *header_storage = logger_storage_malloc_capacity(header_len + system_settings_len);
+  char *header_storage = (char *)logger_storage_malloc_capacity(header_len + system_settings_len);
   if (header_storage == NULL)
     return 1;
 
@@ -43,7 +43,7 @@ int logger_write_header(SystemSettings_t header_info) {
 
 void *logger_malloc_raw_storage(Sensors_t sensor_id, uint32_t timestamp) {
   // the required log file space is the id byte (sensor_id), the timestamp, and the data itself.
-  size_t required_size = sizeof(timestamp) + sizeof(sensor_id);
+  size_t required_size = sizeof(timestamp) + sizeof(char);
   switch (sensor_id) {
   case BAROMETER:
     required_size += barometer_data_size;

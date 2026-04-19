@@ -1,4 +1,4 @@
-#include "unity.h"
+#include <unity.h>
 #include "clock_cycle_count.h"
 
 void setUp() {

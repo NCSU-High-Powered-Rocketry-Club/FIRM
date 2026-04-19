@@ -33,5 +33,4 @@ uint64_t settings_read_storage_uid(void) {
   if (settings_interface.read_uid == NULL)
     return 1;
   return settings_interface.read_uid();
-  return 0;
 }

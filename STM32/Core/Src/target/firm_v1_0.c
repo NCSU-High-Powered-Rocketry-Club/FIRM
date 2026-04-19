@@ -82,7 +82,8 @@ int firm_init_hardware(void) {
   set_spi_mmc(&hspi2, GPIOC, GPIO_PIN_7);
 
   if (fatfs_sd_init(&hdma_sdio_tx)) {
-    led_set_status(SD_FAIL) return 1;
+    led_set_status(SD_FAIL);
+    return 1;
   }
 
   // initialize logger storage interface (FatFS + SD DMA)
