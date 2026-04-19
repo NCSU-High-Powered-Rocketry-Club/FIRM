@@ -5,16 +5,13 @@ static uint32_t mock_prev_ts = 0U;
 static bool mock_have_prev_ts = false;
 
 bool process_mock_settings_packet(uint8_t *received_bytes, uint32_t length,
-                                  FIRMSettings_t *firm_settings,
-                                  CalibrationSettings_t *calibration_settings,
-                                  HeaderFields *header_fields, MockSettingsWriteFn write_fn,
-                                  void *write_ctx) {
+                                  SystemSettings_t *settings,
+                                  SensorScaleFactors_t *scale_factors) {
   const char *expected_header = FIRM_LOG_HEADER_TEXT;
 
   // Expected payload layout:
-  // - "FIRM LOG v1.1\n" (14 bytes)
-  // - FirmSettings struct
-  // - CalibrationSettings struct
+  // - "FIRM LOG v1.x\n" (14 bytes)
+  // - SystemSettings struct
   // - HeaderFields struct
 
   size_t header_len = strlen(expected_header);
@@ -24,32 +21,25 @@ bool process_mock_settings_packet(uint8_t *received_bytes, uint32_t length,
     return false;
   }
 
-  // Extract FirmSettings
+  // Extract SystemSettings
   uint32_t offset = (uint32_t)header_len;
-  if (offset + sizeof(FIRMSettings_t) > length) {
+  if (offset + sizeof(SystemSettings_t) > length) {
     return false;
   }
-  memcpy(firm_settings, &received_bytes[offset], sizeof(FIRMSettings_t));
-  offset += (uint32_t)sizeof(FIRMSettings_t);
-
-  // Extract CalibrationSettings
-  if (offset + sizeof(CalibrationSettings_t) > length) {
-    return false;
-  }
-  memcpy(calibration_settings, &received_bytes[offset], sizeof(CalibrationSettings_t));
-  offset += (uint32_t)sizeof(CalibrationSettings_t);
+  memcpy(settings, &received_bytes[offset], sizeof(SystemSettings_t));
+  offset += (uint32_t)sizeof(SystemSettings_t);
 
   // Extract HeaderFields
-  if (offset + sizeof(HeaderFields) > length) {
+  if (offset + sizeof(SensorScaleFactors_t) > length) {
     return false;
   }
-  memcpy(header_fields, &received_bytes[offset], sizeof(HeaderFields));
-
-  // Delegate the side-effect (writing settings) to caller-provided callback.
-  if (write_fn == NULL) {
+  
+  // put the last of the header bytes into the scale factor fields
+  memcpy(scale_factors, &received_bytes[offset], sizeof(SensorScaleFactors_t));
+  if (settings_write_firm_settings(settings)) {
     return false;
   }
-  return write_fn(write_ctx, firm_settings, calibration_settings);
+  return true;
 }
 
 bool mock_parse_sensor_packet(MockPacketID identifier, const uint8_t *payload_bytes,

@@ -2,7 +2,7 @@
 #include "eskf_functions.h"
 #include "firm_fsm.h"
 #include "led.h"
-#include "settings.h"
+#include "settings_manager.h"
 #include <math.h>
 #include <string.h>
 
@@ -69,7 +69,8 @@ int eskf_init(ESKF *eskf) {
   memset(eskf, 0, sizeof(ESKF));
 
   // Select rotation matrices based on hardware version
-  if (firmSettings.firmware_version[1] == '2') {
+  const SystemSettings_t *settings = get_settings();
+  if (settings->firmware_version[1] == '2') {
     // firmware version v1.x.x (hardware v0.1), legacy PCB version
     memcpy(R_imu.pData, eskf_v2_R_imu_to_board, sizeof(R_imu_data));
     memcpy(R_mag.pData, eskf_v2_R_mag_to_board, sizeof(R_mag_data));

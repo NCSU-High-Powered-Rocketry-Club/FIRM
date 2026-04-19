@@ -31,7 +31,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "target/targets.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -53,7 +53,8 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-
+extern SPI_HandleTypeDef hspi1;
+extern SPI_HandleTypeDef hspi2;
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
@@ -89,7 +90,7 @@ void Error_Handler(void);
 #define ICM45686_CS_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
-void blink();
+#define FIRM_HARDWARE_VERSION VERSION_V1_0
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
