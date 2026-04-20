@@ -1,33 +1,33 @@
 #include "clock_cycle_count.h"
+#include <stddef.h>
 
-// number of times the DWT timestamp has overflowed. This happens every ~25 seconds
-static volatile uint32_t dwt_overflow_count = 0;
-// last recorded DWT cycle count
-static volatile uint32_t last_cyccnt = 0;
+void clock_cycle_counter_init(ClockCycleCounter_t *counter, uint32_t clock_speed_mhz) {
+  counter->dwt_overflow_count = 0U;
+  counter->last_cyccnt = 0U;
+  counter->clock_speed_hz = clock_speed_mhz * 1000000U;
+}
 
-static uint32_t clock_speed_hz = 168000000;
+void clock_cycle_counter_reset(ClockCycleCounter_t *counter) {
+  counter->dwt_overflow_count = 0U;
+  counter->last_cyccnt = 0U;
+}
 
-double process_clock_cycles(uint32_t clock_cycle_count) {
+void clock_cycle_counter_set_speed_mhz(ClockCycleCounter_t *counter, uint32_t clock_speed_mhz) {
+  counter->clock_speed_hz = clock_speed_mhz * 1000000U;
+}
+
+double clock_cycle_counter_process(ClockCycleCounter_t *counter, uint32_t clock_cycle_count) {
   // Check for overflow by comparing with last value
   // Overflow occurred if current value is less than last value
-  if (clock_cycle_count < last_cyccnt) {
-    dwt_overflow_count++;
+  if (clock_cycle_count < counter->last_cyccnt) {
+    counter->dwt_overflow_count++;
   }
-  last_cyccnt = clock_cycle_count;
+  counter->last_cyccnt = clock_cycle_count;
 
   // using bit concatenation to combine the number of overflows (upper 32 bits) and the clock
   // cycle count (lower 32 bits) to make a 64 bit number.
-  uint64_t cycle_count = ((uint64_t)dwt_overflow_count << 32) | clock_cycle_count;
+  uint64_t cycle_count = ((uint64_t)counter->dwt_overflow_count << 32) | clock_cycle_count;
   
   // divide by clock speed to convert to seconds
-  return ((double)cycle_count) / clock_speed_hz;
-}
-
-void use_clock_speed_mhz(uint32_t clock_speed) {
-  clock_speed_hz = clock_speed * 1000000;
-}
-
-void reset_counter(void) {
-  dwt_overflow_count = 0;
-  last_cyccnt = 0;
+  return ((double)cycle_count) / counter->clock_speed_hz;
 }

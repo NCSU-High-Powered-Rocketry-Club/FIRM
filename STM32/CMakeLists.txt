@@ -83,18 +83,18 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/data_processing/clock_cycle_count.c
     Core/Src/data_processing/mocking_ring_buffer.c
 
-    Core/Src/interfaces/settings_manager.c
     Core/Src/interfaces/settings_storage.c
-    Core/Src/interfaces/sensor_manager.c
-    Core/Src/interfaces/logger.c
     Core/Src/interfaces/logger_storage.c
+
+    Core/Src/modules/settings_manager.c
+    Core/Src/modules/sensor_manager.c
+    Core/Src/modules/logger.c
+    Core/Src/modules/commands.c
+    Core/Src/modules/messages.c
+    Core/Src/modules/mocking_handler.c
 
     Core/Src/target/firm_v1_0.c
 
-    Core/Src/utils.c
-    Core/Src/commands.c
-    Core/Src/messages.c
-    Core/Src/mocking_handler.c
     Core/Src/freertos_trace.c
     Core/Src/firm_tasks.c
     Core/Src/led.c
@@ -109,7 +109,8 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Inc/data_processing
     Core/Inc/target
     Core/Inc/interfaces
-    Core/Inc/shared_packets
+    Core/Inc/modules
+    Core/Inc/shared_data
     Libraries/ICM45686
     Libraries/BMP581
     Libraries/MMC5983MA

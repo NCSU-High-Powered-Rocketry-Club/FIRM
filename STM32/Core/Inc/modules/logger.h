@@ -1,8 +1,7 @@
 #pragma once
-#include "log_info.h"
-#include "logger_storage.h"
-#include "sensors.h"
-#include "system_settings.h"
+#include "shared_data/log_info.h"
+#include "interfaces/logger_storage.h"
+#include "shared_data/system_settings.h"
 
 #include <stdio.h>
 

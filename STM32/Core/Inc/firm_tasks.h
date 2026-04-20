@@ -1,6 +1,5 @@
 #pragma once
 
-#include "data_preprocess.h"
 #include "firm_fsm.h"
 #include "led.h"
 #include "logger.h"
@@ -9,7 +8,6 @@
 #include "settings_manager.h"
 #include "eskf_functions.h"
 #include "error_state_kalman_filter.h"
-#include "utils.h"
 #include "commands.h"
 #include <adxl371.h>
 #include <bmp581.h>
@@ -78,19 +76,6 @@ extern const osThreadAttr_t mockPacketTask_attributes;
 
 extern osMutexId_t sensorDataMutexHandle;
 extern const osMutexAttr_t sensorDataMutex_attributes;
-
-typedef union {
-  DataPacket data_packet;
-  ResponsePacket response_packet;
-} PacketPayload;
-
-typedef struct {
-  uint16_t header;
-  uint16_t identifier;
-  uint32_t packet_len;
-  PacketPayload payload;
-  uint16_t crc;
-} Frame;
 
 /**
  * Struct to contain all SPI handles for the firm initialization function

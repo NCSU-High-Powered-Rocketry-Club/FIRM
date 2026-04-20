@@ -7,9 +7,6 @@
 #include <stdint.h>
 #include <string.h>
 
-#define FIRM_SETTINGS_FREQUENCY_MIN_HZ 1u
-#define FIRM_SETTINGS_FREQUENCY_MAX_HZ 1000u
-#define FIRM_FIRMWARE_VERSION "v2.2.0"
 
 /**
  * @brief sets up the settings manager by ensuring the storage has existing settings and

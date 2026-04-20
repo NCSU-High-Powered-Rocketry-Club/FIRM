@@ -8,6 +8,11 @@ static int (*magnetometer_read_data)(MMC5983MARawData_t *) = mmc5983ma_read_data
 static int (*high_g_read_data)(ADXL371RawData_t *) = adxl371_read_data;
 
 static uint32_t (*get_time)(void);
+static ClockCycleCounter_t clock_counter = {
+  .dwt_overflow_count = 0U,
+  .last_cyccnt = 0U,
+  .clock_speed_hz = 168000000U,
+};
 
 void set_time_fn(uint32_t(*time_fn)(void)) {
   get_time = time_fn;
@@ -55,5 +60,5 @@ void sensor_collect_data(Sensors_t sensor, DataPacket *board_readings) {
       adxl371_convert_and_calibrate(raw_data_storage, (ADXL371BoardReading_t *)(&board_readings->high_g_accel_x_gs));
   }
 
-  board_readings->timestamp_seconds = process_clock_cycles(clock_cycles);
+  board_readings->timestamp_seconds = clock_cycle_counter_process(&clock_counter, clock_cycles);
 }

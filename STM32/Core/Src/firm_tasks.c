@@ -702,13 +702,8 @@ void transmit_data(void *argument) {
   const SystemSettings_t *settings = get_settings();
   for (;;) {
     if (xQueueReceive(transmit_queue, &packet, portMAX_DELAY) == pdTRUE) {
-      // calculate and attach the crc16 to the end of the packet
       size_t serialized_packet_len = packet.packet_len + sizeof(packet.header) +
-                                     sizeof(packet.identifier) + sizeof(packet.packet_len) +
-                                     sizeof(packet.crc);
-      packet.crc = crc16_ccitt((uint8_t *)&(packet), serialized_packet_len - 2);
-      // move the location of the crc bytes directly after the payload
-      memmove((uint8_t *)&packet + serialized_packet_len - 2, &packet.crc, sizeof(packet.crc));
+                                     sizeof(packet.identifier);
 
       // If the USB is busy, we might need to try again in a tick
       for (int timeout = 0; timeout < 5; timeout++) {
@@ -717,12 +712,6 @@ void transmit_data(void *argument) {
         }
 
         vTaskDelay(1);
-      }
-
-      // optionally transmit over uart if the setting is enabled
-      if (settings->uart_transfer_enabled && uart_tx_done) {
-        uart_tx_done = false;
-        HAL_UART_Transmit_DMA(firm_huart1, (uint8_t *)&packet, serialized_packet_len);
       }
     }
   }

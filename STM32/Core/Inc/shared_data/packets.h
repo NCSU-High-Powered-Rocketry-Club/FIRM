@@ -1,12 +1,5 @@
 #pragma once
 
-typedef enum {
-  BAROMETER = 'B',
-  IMU = 'I',
-  MAGNETOMETER = 'M',
-  HIGH_G_ACCELEROMETER = 'A',
-} Sensors_t;
-
 /**
  * @brief Collection of all data (and the timestamp)
  */
