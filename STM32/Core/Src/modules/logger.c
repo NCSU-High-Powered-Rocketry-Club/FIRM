@@ -41,20 +41,20 @@ int logger_write_header(SystemSettings_t header_info) {
   return 0;
 }
 
-void *logger_malloc_raw_storage(Sensors_t sensor_id, uint32_t timestamp) {
+void *logger_malloc_raw_storage(Identifiers_t sensor_id, uint32_t timestamp) {
   // the required log file space is the id byte (sensor_id), the timestamp, and the data itself.
   size_t required_size = sizeof(timestamp) + sizeof(char);
   switch (sensor_id) {
-  case BAROMETER:
+  case ID_BAROMETER:
     required_size += barometer_data_size;
     break;
-  case IMU:
+  case ID_IMU:
     required_size += imu_data_size;
     break;
-  case MAGNETOMETER:
+  case ID_MAGNETOMETER:
     required_size += magnetometer_data_size;
     break;
-  case HIGH_G_ACCELEROMETER:
+  case ID_HIGH_G_ACCELEROMETER:
     required_size += high_g_data_size;
     break;
   default:

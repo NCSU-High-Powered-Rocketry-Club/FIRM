@@ -25,4 +25,4 @@ typedef struct {
   float est_quaternion_x;
   float est_quaternion_y;
   float est_quaternion_z;
-} DataPacket;
+} DataPacket_t;

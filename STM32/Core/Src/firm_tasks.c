@@ -697,22 +697,3 @@ void packetizer_task(void *argument) {
   }
 }
 
-void transmit_data(void *argument) {
-  Packet packet;
-  const SystemSettings_t *settings = get_settings();
-  for (;;) {
-    if (xQueueReceive(transmit_queue, &packet, portMAX_DELAY) == pdTRUE) {
-      size_t serialized_packet_len = packet.packet_len + sizeof(packet.header) +
-                                     sizeof(packet.identifier);
-
-      // If the USB is busy, we might need to try again in a tick
-      for (int timeout = 0; timeout < 5; timeout++) {
-        if (CDC_Transmit_FS((uint8_t *)&packet, (uint16_t)serialized_packet_len) == USBD_OK) {
-          break;
-        }
-
-        vTaskDelay(1);
-      }
-    }
-  }
-}

@@ -75,6 +75,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 
     Core/Src/tasks/sensor_task.c
     Core/Src/tasks/usb_read_data_task.c
+    Core/Src/tasks/transmit_task.c
     
     Core/Src/data_processing/matrix_helper.c
     Core/Src/data_processing/error_state_kalman_filter.c

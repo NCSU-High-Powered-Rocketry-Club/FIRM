@@ -1,8 +1,21 @@
 #include "usb_read_data_task.h"
+#include "commands.h"
+
+
+static bool command_send_to_system_manager(Identifiers_t sys_command) {
+  if (sys_manager_check_command_valid(sys_command)) {
+    xQueueSend(system_request_queue, &sys_command, portMAX_DELAY);
+    return true;
+  }
+  return false;
+}
 
 void usb_read_data(void *argument) {
   uint8_t received_bytes[MESSAGE_BYTE_BUFFER_SIZE];
 
+  // setup system manager commands injection
+  commands_set_sys_manager_send_cmd_fn(command_send_to_system_manager);
+  
   for (;;) {
     // read the identifier byte to determine payload length
     xStreamBufferReceive(usb_rx_stream, received_bytes, 1, portMAX_DELAY);

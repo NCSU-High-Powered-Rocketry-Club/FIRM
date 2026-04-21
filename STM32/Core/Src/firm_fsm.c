@@ -98,3 +98,11 @@ FSMResponse fsm_process_request(SystemRequest sysreq, TaskCommand *task_command_
     return FSMRES_INVALID;
   }
 }
+
+bool sys_manager_check_command_valid(Identifiers_t id) {
+  if (id == ID_CANCEL_REQUEST && (state == FIRM_MOCK || state == FIRM_MOCK_SETUP))
+    return true;
+  if (id == ID_MOCK_REQUEST && state == FIRM_LIVE)
+    return true;
+  return false;
+}

@@ -34,7 +34,7 @@ void set_high_g_read_fn(int (*read_fn)(ADXL371RawData_t *)) {
   high_g_read_data = read_fn;
 }
 
-void sensor_collect_data(Sensors_t sensor, DataPacket *board_readings) {
+void sensor_collect_data(Sensors_t sensor, DataPacket_t *board_readings) {
   uint32_t clock_cycles = get_time();
   // allocate bytes in the logger for the raw sensor data
   void *raw_data_storage = logger_malloc_raw_storage(sensor, clock_cycles);

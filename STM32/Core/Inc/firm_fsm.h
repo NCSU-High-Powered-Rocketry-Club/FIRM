@@ -1,6 +1,7 @@
 #pragma once
 #include <stdbool.h>
 #include <stdint.h>
+#include "shared_data/identifiers.h"
 
 #define MAX_TASK_COMMANDS 15
 
@@ -59,3 +60,5 @@ typedef struct {
 } SystemResponsePacket;
 
 FSMResponse fsm_process_request(SystemRequest sysreq, TaskCommand* task_command_queue);
+
+bool sys_manager_check_command_valid(Identifiers_t id);

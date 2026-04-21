@@ -1,5 +1,6 @@
 #pragma once
 #include "shared_data/log_info.h"
+#include "shared_data/identifiers.h"
 #include "interfaces/logger_storage.h"
 #include "shared_data/system_settings.h"
 
@@ -34,7 +35,7 @@ int logger_write_header(SystemSettings_t header_info);
  * @param timestamp The 32-bit unsigned timestamp for when the sensor data was collected.
  * @retval void pointer to the allocated memory.
  */
-void *logger_malloc_raw_storage(Sensors_t sensor_id, uint32_t timestamp);
+void *logger_malloc_raw_storage(Identifiers_t sensor_id, uint32_t timestamp);
 
 /**
  * @brief Tells the logger module how big each sensor raw data struct is that will be logged.

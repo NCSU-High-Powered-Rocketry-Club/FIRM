@@ -14,7 +14,7 @@
  * @param sensor the sensor type to collect data from
  * @param board_readings the instance of board-wide global data to output the new readings into
  */
-void sensor_collect_data(Sensors_t sensor, DataPacket *board_readings);
+void sensor_collect_data(Sensors_t sensor, DataPacket_t *board_readings);
 
 /**
  * @brief Tells the sensor manager how to get the timestamp for a sensor reading
