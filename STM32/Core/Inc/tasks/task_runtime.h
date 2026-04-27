@@ -1,6 +1,5 @@
 #pragma once
 
-#include "firm_fsm.h"
 #include "main.h"
 #include "packets.h"
 #include "transmit_frame.h"

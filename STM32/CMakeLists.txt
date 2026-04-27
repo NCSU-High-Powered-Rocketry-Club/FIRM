@@ -77,8 +77,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/tasks/sensor_task.c
     Core/Src/tasks/filter_data_task.c
     Core/Src/tasks/packetizer_task.c
-    Core/Src/tasks/mock_packet_handler_task.c
-    Core/Src/tasks/system_manager_task.c
     Core/Src/tasks/usb_read_data_task.c
     Core/Src/tasks/transmit_task.c
     
@@ -102,7 +100,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 
     Core/Src/freertos_trace.c
     Core/Src/led.c
-    Core/Src/firm_fsm.c
     
 )
 

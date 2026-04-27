@@ -1,7 +1,6 @@
 #pragma once
 #include "messages.h"
 #include "identifiers.h"
-#include "firm_fsm.h"
 #include "task_runtime.h"
 
 #define USB_MESSAGE_BYTE_BUFFER_SIZE 128U

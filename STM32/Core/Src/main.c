@@ -26,12 +26,10 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "task_runtime.h"
-#include "system_manager_task.h"
 #include "mode_indicator_task.h"
 #include "sensor_task.h"
 #include "filter_data_task.h"
 #include "packetizer_task.h"
-#include "mock_packet_handler_task.h"
 #include "transmit_task.h"
 #include "usb_read_data_task.h"
 #include "led.h"
@@ -40,6 +38,11 @@
 #include "system_settings.h"
 #include "targets.h"
 #include "firm_v1_0.h"
+
+#include <bmp581.h>
+#include <icm45686.h>
+#include <mmc5983ma.h>
+#include <adxl371.h>
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -159,31 +162,8 @@ int main(void)
   MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
 
-  SPIHandles spi_handles = {
-      .hspi1 = &hspi1,
-      .hspi2 = &hspi2,
-      .hspi3 = &hspi3,
-  };
-  I2CHandles i2c_handles = {
-      .hi2c1 = &hi2c1,
-      .hi2c2 = &hi2c2,
-  };
-  DMAHandles dma_handles = {
-      .hdma_sdio_rx = &hdma_sdio_rx,
-      .hdma_sdio_tx = &hdma_sdio_tx,
-  };
-  UARTHandles uart_handles = {
-      .huart1 = &huart1,
-  };
-
-  #if FIRM_HARDWARE_VERSION == VERSION_V1_0
   if (firm_init_hardware())
     Error_Handler();
-  #endif
-
-  if (initialize_firm(&spi_handles, &i2c_handles, &dma_handles, &uart_handles)) {
-    Error_Handler();
-  };
 
   /* USER CODE END 2 */
 
@@ -191,7 +171,6 @@ int main(void)
   osKernelInitialize();
 
   /* USER CODE BEGIN RTOS_MUTEX */
-  sensorDataMutexHandle = osMutexNew(&sensorDataMutex_attributes);
 
   /* USER CODE END RTOS_MUTEX */
 
@@ -215,26 +194,17 @@ int main(void)
   startupTaskHandle = osThreadNew(StartupTask, NULL, &startupTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  system_manager_task_handle =
-      osThreadNew(system_manager_task, NULL, &systemManagerTask_attributes);
   firm_mode_indicator_task_handle =
       osThreadNew(firm_mode_indicator_task, NULL, &modeIndicatorTask_attributes);
-  bmp581_task_handle = osThreadNew(collect_bmp581_data_task, NULL, &bmp581Task_attributes);
-  icm45686_task_handle = osThreadNew(collect_icm45686_data_task, NULL, &icm45686Task_attributes);
-  mmc5983ma_task_handle = osThreadNew(collect_mmc5983ma_data_task, NULL, &mmc5983maTask_attributes);
-  adxl371_task_handle = osThreadNew(collect_adxl371_data_task, NULL, &adxl371Task_attributes);
+  sensor_task_handle = osThreadNew(sensor_task, NULL, &sensorTask_attributes);
   packetizer_task_handle = osThreadNew(packetizer_task, NULL, &packetizerTask_attributes);
   filter_data_task_handle = osThreadNew(filter_data_task, NULL, &filterDataTask_attributes);
   transmit_task_handle = osThreadNew(transmit_data, NULL, &transmitTask_attributes);
   usb_read_task_handle = osThreadNew(usb_read_data, NULL, &usbReadTask_attributes);
-  mock_packet_handler_handle = osThreadNew(mock_packet_handler, NULL, &mockPacketTask_attributes);
 
-  if (system_manager_task_handle == NULL || firm_mode_indicator_task_handle == NULL ||
-      mmc5983ma_task_handle == NULL || icm45686_task_handle == NULL || bmp581_task_handle == NULL ||
-      adxl371_task_handle == NULL ||
+  if (firm_mode_indicator_task_handle == NULL || sensor_task_handle == NULL ||
       filter_data_task_handle == NULL || packetizer_task_handle == NULL ||
-      transmit_task_handle == NULL || usb_read_task_handle == NULL ||
-      mock_packet_handler_handle == NULL) {
+      transmit_task_handle == NULL || usb_read_task_handle == NULL) {
     Error_Handler();
   }
   /* USER CODE END RTOS_THREADS */
@@ -686,19 +656,19 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
   if (GPIO_Pin == BMP581_Interrupt_Pin) {
-    (void)xTaskNotifyFromISR(bmp581_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits,
+    (void)xTaskNotifyFromISR(sensor_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits,
                              &xHigherPriorityTaskWoken);
   }
   if (GPIO_Pin == ICM45686_Interrupt_Pin) {
-    (void)xTaskNotifyFromISR(icm45686_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits,
+    (void)xTaskNotifyFromISR(sensor_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits,
                              &xHigherPriorityTaskWoken);
   }
   if (GPIO_Pin == MMC5983MA_Interrupt_Pin) {
-    (void)xTaskNotifyFromISR(mmc5983ma_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits,
+    (void)xTaskNotifyFromISR(sensor_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits,
                              &xHigherPriorityTaskWoken);
   }
-  if (GPIO_Pin == ADXL371_Interrupt_Pin && adxl371_task_handle != NULL) {
-    (void)xTaskNotifyFromISR(adxl371_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits,
+  if (GPIO_Pin == ADXL371_Interrupt_Pin) {
+    (void)xTaskNotifyFromISR(sensor_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits,
                              &xHigherPriorityTaskWoken);
   }
   portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
@@ -732,12 +702,58 @@ void StartDefaultTask(void *argument)
 void StartupTask(void *argument)
 {
   /* USER CODE BEGIN StartupTask */
+
+  // We use DWT (Data Watchpoint and Trace unit) to get a high resolution free-running timer.
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+  DWT->CYCCNT = 0;
+  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+
+  // Ensure SPI chip-select lines default to not selected.
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // BMP581 CS pin
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // ICM45686 CS pin
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET); // flash chip CS pin
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET); // MMC5983MA CS pin
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET); // ADXL371 CS pin
+
+  led_set_status(FIRM_UNINITIALIZED);
+
+  HAL_Delay(100);
+
+  // The scheduler is not running yet; prevent EXTI callbacks from notifying task handles.
+  HAL_NVIC_DisableIRQ(EXTI0_IRQn);
+  HAL_NVIC_DisableIRQ(EXTI1_IRQn);
+  HAL_NVIC_DisableIRQ(EXTI2_IRQn);
+  HAL_NVIC_DisableIRQ(EXTI3_IRQn);
+
+  if (icm45686_init()) {
+    led_set_status(IMU_FAIL);
+    Error_Handler();
+  }
+
+  if (mmc5983ma_init()) {
+    led_set_status(MMC5983MA_FAIL);
+    Error_Handler();
+  }
+
+  if (bmp581_init()) {
+    led_set_status(BMP581_FAIL);
+    Error_Handler();
+  }
+
+  if (adxl371_init()) {
+    led_set_status(HIGH_G_FAIL);
+    Error_Handler();
+  }
   
   // set up the settings manager
   if (settings_manager_init()) {
     led_set_status(FLASH_CHIP_FAIL);
     Error_Handler();
   }
+
+  // setup logger with the sensor data sizes
+  logger_set_sensor_info(sizeof(BMP581RawData_t), sizeof(ICM45686RawData_t),
+                         sizeof(MMC5983MARawData_t), sizeof(ADXL371RawData_t));
 
   // Open a new log and emit the metadata header.
   if (create_log()) {
@@ -752,8 +768,7 @@ void StartupTask(void *argument)
   HAL_NVIC_EnableIRQ(EXTI1_IRQn);
   HAL_NVIC_EnableIRQ(EXTI2_IRQn);
   HAL_NVIC_EnableIRQ(EXTI3_IRQn);
-  SystemRequest boot = SYSREQ_SETUP;
-  xQueueSend(system_request_queue, &boot, 0);
+
   vTaskDelete(NULL);
   /* USER CODE END StartupTask */
 }

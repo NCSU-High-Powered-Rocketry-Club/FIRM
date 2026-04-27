@@ -43,19 +43,19 @@ void sensor_collect_data(Sensors_t sensor, DataPacket_t *board_readings) {
   // 1. read data into the raw data storage defined above
   // 2. convert the raw data to board-frame floats, output directly into the global struct
   switch (sensor) {
-    case BAROMETER:
+    case ID_BAROMETER:
       barometer_read_data((BMP581RawData_t *)raw_data_storage);
       bmp581_convert(raw_data_storage, (BMP581BoardReading_t *)(&board_readings->temperature_celsius));
       break;
-    case IMU:
+    case ID_IMU:
       imu_read_data((ICM45686RawData_t *)raw_data_storage);
       icm45686_convert_and_calibrate(raw_data_storage, (ICM45686BoardReading_t *)(&board_readings->raw_acceleration_x_gs));
       break;
-    case MAGNETOMETER:
+    case ID_MAGNETOMETER:
       magnetometer_read_data((MMC5983MARawData_t *)raw_data_storage);
       mmc5983ma_convert_and_calibrate(raw_data_storage, (MMC5983MABoardReading_t *)(&board_readings->magnetic_field_x_microteslas));
       break;
-    case HIGH_G_ACCELEROMETER:
+    case ID_HIGH_G_ACCELEROMETER:
       high_g_read_data((ADXL371RawData_t *)raw_data_storage);
       adxl371_convert_and_calibrate(raw_data_storage, (ADXL371BoardReading_t *)(&board_readings->high_g_accel_x_gs));
   }

@@ -1,37 +1,15 @@
 #include "usb_read_data_task.h"
-#include "system_manager_task.h"
 
-static bool identifier_to_system_request(Identifiers_t id, SystemRequest *request_out) {
-  if (request_out == NULL) {
-    return false;
-  }
-
-  switch (id) {
-  case ID_MOCK_REQUEST:
-    *request_out = SYSREQ_START_MOCK;
-    return true;
-  case ID_CANCEL_REQUEST:
-    *request_out = SYSREQ_CANCEL;
-    return true;
-  default:
-    return false;
-  }
-}
-
-static bool command_send_to_system_manager(Identifiers_t sys_command) {
-  SystemRequest request;
-  if (!identifier_to_system_request(sys_command, &request)) {
-    return false;
-  }
-
-  return system_manager_submit_request(request, portMAX_DELAY);
+static void firm_system_reset_cb(void *ctx) {
+  (void)ctx;
+  HAL_NVIC_SystemReset();
 }
 
 void usb_read_data(void *argument) {
   uint8_t received_bytes[USB_MESSAGE_BYTE_BUFFER_SIZE];
 
   // setup system manager commands injection
-  commands_set_sys_manager_send_cmd_fn(command_send_to_system_manager);
+  commands_register_system_reset(firm_system_reset_cb, NULL);
   
   for (;;) {
     // read the identifier byte to determine payload length
