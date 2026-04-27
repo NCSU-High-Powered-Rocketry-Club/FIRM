@@ -93,10 +93,10 @@ void dispatch_command(const uint8_t *command_bytes) {
 
   case ID_MOCK_REQUEST:
     if (sys_manager_send_cmd != NULL) {
-      if (sys_manager_send_cmd(ID_CANCEL_REQUEST)) {
-        send_response(ID_CANCEL_REQUEST, (uint8_t []){true}, 1);
+      if (sys_manager_send_cmd(ID_MOCK_REQUEST)) {
+        send_response(ID_MOCK_REQUEST, (uint8_t []){true}, 1);
       } else {
-        send_response(ID_CANCEL_REQUEST, (uint8_t []){false}, 1);
+        send_response(ID_MOCK_REQUEST, (uint8_t []){false}, 1);
       }
     }
     break;

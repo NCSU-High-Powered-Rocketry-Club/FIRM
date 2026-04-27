@@ -1,4 +1,8 @@
 #include "transmit_frame.h"
+#include "commands.h"
+#include "transmit_task.h"
+#include "usbd_cdc_if.h"
+#include "usbd_def.h"
 
 static void transmit_send_to_queue(TransmitFrame_t *transmit_frame) {
   xQueueSend(transmit_queue, transmit_frame, portMAX_DELAY);

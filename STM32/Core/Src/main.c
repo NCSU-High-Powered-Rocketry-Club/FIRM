@@ -25,7 +25,17 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "firm_tasks.h"
+#include "task_runtime.h"
+#include "system_manager_task.h"
+#include "mode_indicator_task.h"
+#include "sensor_task.h"
+#include "filter_data_task.h"
+#include "packetizer_task.h"
+#include "mock_packet_handler_task.h"
+#include "transmit_task.h"
+#include "usb_read_data_task.h"
+#include "led.h"
+#include "logger.h"
 #include "settings_manager.h"
 #include "system_settings.h"
 #include "targets.h"
@@ -729,14 +739,13 @@ void StartupTask(void *argument)
     Error_Handler();
   }
 
-  // Setup the SD card
-  FRESULT res = logger_init(&hdma_sdio_tx);
-  if (res) {
-    // Failed to initialized the logger
+  // Open a new log and emit the metadata header.
+  if (create_log()) {
     Error_Handler();
   }
-
-  logger_write_header();
+  if (logger_write_header(*get_settings())) {
+    Error_Handler();
+  }
 
   // re-enable ISR's so that interrupts can trigger the sensor tasks to run
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);

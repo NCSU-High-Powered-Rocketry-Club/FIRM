@@ -52,7 +52,7 @@ static void assert_header_at_offset(size_t offset, const SystemSettings_t *expec
 }
 
 // Validates a raw entry format: sensor id, timestamp, then payload bytes.
-static void assert_raw_entry_layout(size_t offset, Sensors_t sensor_id, uint32_t timestamp,
+static void assert_raw_entry_layout(size_t offset, Identifiers_t sensor_id, uint32_t timestamp,
                                     const uint8_t *expected_payload, size_t payload_len) {
   TEST_ASSERT_EQUAL_HEX8((uint8_t)sensor_id, buf1[offset]);
   TEST_ASSERT_EQUAL_MEMORY(&timestamp, &buf1[offset + 1U], sizeof(timestamp));
@@ -112,12 +112,12 @@ void test_logger_malloc_raw_storage_barometer_layout(void) {
   TEST_ASSERT_EQUAL_INT(0, create_log());
   logger_set_sensor_info(sizeof(payload), 3U, 2U, 1U);
 
-  uint8_t *data_ptr = logger_malloc_raw_storage(BAROMETER, timestamp);
+  uint8_t *data_ptr = logger_malloc_raw_storage(ID_BAROMETER, timestamp);
   TEST_ASSERT_NOT_NULL(data_ptr);
 
   // Write payload through returned pointer and verify full entry layout in-place.
   memcpy(data_ptr, payload, sizeof(payload));
-  assert_raw_entry_layout(0U, BAROMETER, timestamp, payload, sizeof(payload));
+  assert_raw_entry_layout(0U, ID_BAROMETER, timestamp, payload, sizeof(payload));
   TEST_ASSERT_EQUAL_PTR((void *)&buf1[RAW_ENTRY_OVERHEAD_BYTES], data_ptr);
 }
 
@@ -128,11 +128,11 @@ void test_logger_malloc_raw_storage_imu_layout(void) {
   TEST_ASSERT_EQUAL_INT(0, create_log());
   logger_set_sensor_info(1U, sizeof(payload), 2U, 4U);
 
-  uint8_t *data_ptr = logger_malloc_raw_storage(IMU, timestamp);
+  uint8_t *data_ptr = logger_malloc_raw_storage(ID_IMU, timestamp);
   TEST_ASSERT_NOT_NULL(data_ptr);
 
   memcpy(data_ptr, payload, sizeof(payload));
-  assert_raw_entry_layout(0U, IMU, timestamp, payload, sizeof(payload));
+  assert_raw_entry_layout(0U, ID_IMU, timestamp, payload, sizeof(payload));
   TEST_ASSERT_EQUAL_PTR((void *)&buf1[RAW_ENTRY_OVERHEAD_BYTES], data_ptr);
 }
 
@@ -143,11 +143,11 @@ void test_logger_malloc_raw_storage_magnetometer_layout(void) {
   TEST_ASSERT_EQUAL_INT(0, create_log());
   logger_set_sensor_info(2U, 1U, sizeof(payload), 3U);
 
-  uint8_t *data_ptr = logger_malloc_raw_storage(MAGNETOMETER, timestamp);
+  uint8_t *data_ptr = logger_malloc_raw_storage(ID_MAGNETOMETER, timestamp);
   TEST_ASSERT_NOT_NULL(data_ptr);
 
   memcpy(data_ptr, payload, sizeof(payload));
-  assert_raw_entry_layout(0U, MAGNETOMETER, timestamp, payload, sizeof(payload));
+  assert_raw_entry_layout(0U, ID_MAGNETOMETER, timestamp, payload, sizeof(payload));
   TEST_ASSERT_EQUAL_PTR((void *)&buf1[RAW_ENTRY_OVERHEAD_BYTES], data_ptr);
 }
 
@@ -158,11 +158,11 @@ void test_logger_malloc_raw_storage_high_g_layout(void) {
   TEST_ASSERT_EQUAL_INT(0, create_log());
   logger_set_sensor_info(3U, 2U, 1U, sizeof(payload));
 
-  uint8_t *data_ptr = logger_malloc_raw_storage(HIGH_G_ACCELEROMETER, timestamp);
+  uint8_t *data_ptr = logger_malloc_raw_storage(ID_HIGH_G_ACCELEROMETER, timestamp);
   TEST_ASSERT_NOT_NULL(data_ptr);
 
   memcpy(data_ptr, payload, sizeof(payload));
-  assert_raw_entry_layout(0U, HIGH_G_ACCELEROMETER, timestamp, payload, sizeof(payload));
+  assert_raw_entry_layout(0U, ID_HIGH_G_ACCELEROMETER, timestamp, payload, sizeof(payload));
   TEST_ASSERT_EQUAL_PTR((void *)&buf1[RAW_ENTRY_OVERHEAD_BYTES], data_ptr);
 }
 
@@ -184,24 +184,24 @@ void test_sequential_raw_entries_append_without_overwriting_header(void) {
   logger_set_sensor_info(sizeof(bar_payload), sizeof(imu_payload), sizeof(mag_payload), 1U);
 
   size_t offset = HEADER_TOTAL_BYTES;
-  uint8_t *bar_data = logger_malloc_raw_storage(BAROMETER, ts_bar);
+  uint8_t *bar_data = logger_malloc_raw_storage(ID_BAROMETER, ts_bar);
   TEST_ASSERT_NOT_NULL(bar_data);
   memcpy(bar_data, bar_payload, sizeof(bar_payload));
-  assert_raw_entry_layout(offset, BAROMETER, ts_bar, bar_payload, sizeof(bar_payload));
+  assert_raw_entry_layout(offset, ID_BAROMETER, ts_bar, bar_payload, sizeof(bar_payload));
   TEST_ASSERT_EQUAL_PTR((void *)&buf1[offset + RAW_ENTRY_OVERHEAD_BYTES], bar_data);
   offset += RAW_ENTRY_OVERHEAD_BYTES + sizeof(bar_payload);
 
-  uint8_t *imu_data = logger_malloc_raw_storage(IMU, ts_imu);
+  uint8_t *imu_data = logger_malloc_raw_storage(ID_IMU, ts_imu);
   TEST_ASSERT_NOT_NULL(imu_data);
   memcpy(imu_data, imu_payload, sizeof(imu_payload));
-  assert_raw_entry_layout(offset, IMU, ts_imu, imu_payload, sizeof(imu_payload));
+  assert_raw_entry_layout(offset, ID_IMU, ts_imu, imu_payload, sizeof(imu_payload));
   TEST_ASSERT_EQUAL_PTR((void *)&buf1[offset + RAW_ENTRY_OVERHEAD_BYTES], imu_data);
   offset += RAW_ENTRY_OVERHEAD_BYTES + sizeof(imu_payload);
 
-  uint8_t *mag_data = logger_malloc_raw_storage(MAGNETOMETER, ts_mag);
+  uint8_t *mag_data = logger_malloc_raw_storage(ID_MAGNETOMETER, ts_mag);
   TEST_ASSERT_NOT_NULL(mag_data);
   memcpy(mag_data, mag_payload, sizeof(mag_payload));
-  assert_raw_entry_layout(offset, MAGNETOMETER, ts_mag, mag_payload, sizeof(mag_payload));
+  assert_raw_entry_layout(offset, ID_MAGNETOMETER, ts_mag, mag_payload, sizeof(mag_payload));
   TEST_ASSERT_EQUAL_PTR((void *)&buf1[offset + RAW_ENTRY_OVERHEAD_BYTES], mag_data);
 
   TEST_ASSERT_EQUAL_MEMORY(expected_header, buf1, sizeof(expected_header));
@@ -225,17 +225,17 @@ void test_second_header_and_new_raw_entries_append_after_existing_data(void) {
   assert_header_at_offset(0U, &first_header);
 
   size_t offset = HEADER_TOTAL_BYTES;
-  uint8_t *first_data = logger_malloc_raw_storage(BAROMETER, ts_first);
+  uint8_t *first_data = logger_malloc_raw_storage(ID_BAROMETER, ts_first);
   TEST_ASSERT_NOT_NULL(first_data);
   memcpy(first_data, first_payload, sizeof(first_payload));
-  assert_raw_entry_layout(offset, BAROMETER, ts_first, first_payload, sizeof(first_payload));
+  assert_raw_entry_layout(offset, ID_BAROMETER, ts_first, first_payload, sizeof(first_payload));
   TEST_ASSERT_EQUAL_PTR((void *)&buf1[offset + RAW_ENTRY_OVERHEAD_BYTES], first_data);
   offset += RAW_ENTRY_OVERHEAD_BYTES + sizeof(first_payload);
 
-  uint8_t *second_data = logger_malloc_raw_storage(IMU, ts_second);
+  uint8_t *second_data = logger_malloc_raw_storage(ID_IMU, ts_second);
   TEST_ASSERT_NOT_NULL(second_data);
   memcpy(second_data, second_payload, sizeof(second_payload));
-  assert_raw_entry_layout(offset, IMU, ts_second, second_payload, sizeof(second_payload));
+  assert_raw_entry_layout(offset, ID_IMU, ts_second, second_payload, sizeof(second_payload));
   TEST_ASSERT_EQUAL_PTR((void *)&buf1[offset + RAW_ENTRY_OVERHEAD_BYTES], second_data);
   offset += RAW_ENTRY_OVERHEAD_BYTES + sizeof(second_payload);
 
@@ -244,10 +244,10 @@ void test_second_header_and_new_raw_entries_append_after_existing_data(void) {
   assert_header_at_offset(offset, &second_header);
   offset += HEADER_TOTAL_BYTES;
 
-  uint8_t *after_second_header = logger_malloc_raw_storage(MAGNETOMETER, ts_after_second_header);
+  uint8_t *after_second_header = logger_malloc_raw_storage(ID_MAGNETOMETER, ts_after_second_header);
   TEST_ASSERT_NOT_NULL(after_second_header);
   memcpy(after_second_header, post_header_payload, sizeof(post_header_payload));
-  assert_raw_entry_layout(offset, MAGNETOMETER, ts_after_second_header, post_header_payload,
+  assert_raw_entry_layout(offset, ID_MAGNETOMETER, ts_after_second_header, post_header_payload,
                           sizeof(post_header_payload));
   TEST_ASSERT_EQUAL_PTR((void *)&buf1[offset + RAW_ENTRY_OVERHEAD_BYTES], after_second_header);
 

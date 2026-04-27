@@ -1,5 +1,6 @@
 #pragma once
 #include "shared_data/packets.h"
+#include <stdint.h>
 
 #define MAX_TRANSMIT_PAYLOAD_LEN 200
 

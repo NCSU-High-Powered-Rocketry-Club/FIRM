@@ -35,7 +35,7 @@ enable_language(C ASM)
 
 # Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME}
-        Core/Src/firm_tasks.c)
+    Core/Src/tasks/task_runtime.c)
 
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
@@ -73,7 +73,12 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Libraries/SPIUtils/spi_utils.c
     Libraries/FATFS_SD/fatfs_sd.c
 
+    Core/Src/tasks/mode_indicator_task.c
     Core/Src/tasks/sensor_task.c
+    Core/Src/tasks/filter_data_task.c
+    Core/Src/tasks/packetizer_task.c
+    Core/Src/tasks/mock_packet_handler_task.c
+    Core/Src/tasks/system_manager_task.c
     Core/Src/tasks/usb_read_data_task.c
     Core/Src/tasks/transmit_task.c
     
@@ -88,7 +93,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/interfaces/logger_storage.c
 
     Core/Src/modules/settings_manager.c
-    Core/Src/modules/sensor_manager.c
     Core/Src/modules/logger.c
     Core/Src/modules/commands.c
     Core/Src/modules/messages.c
@@ -97,7 +101,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/target/firm_v1_0.c
 
     Core/Src/freertos_trace.c
-    Core/Src/firm_tasks.c
     Core/Src/led.c
     Core/Src/firm_fsm.c
     

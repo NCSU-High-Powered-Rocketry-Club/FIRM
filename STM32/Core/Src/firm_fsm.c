@@ -8,6 +8,8 @@ FSMResponse fsm_process_request(SystemRequest sysreq, TaskCommand *task_command_
   case SYSREQ_SETUP:
     if (state != FIRM_BOOT)
       return FSMRES_INVALID;
+    // TODO(system-manager-refactor): move led/filter into manager endpoint registry when those
+    // tasks are refactored.
     task_command_queue[0].target_task = TASK_MODE_INDICATOR;
     task_command_queue[0].command = TASKCMD_SETUP;
     task_command_queue[1].target_task = TASK_DATA_FILTER;
@@ -20,6 +22,8 @@ FSMResponse fsm_process_request(SystemRequest sysreq, TaskCommand *task_command_
     // switching to live mode can only be done from boot mode
     if (state != FIRM_SETUP)
       return FSMRES_INVALID;
+    // TODO(system-manager-refactor): move led/filter into manager endpoint registry when those
+    // tasks are refactored.
     task_command_queue[0].target_task = TASK_MODE_INDICATOR;
     task_command_queue[0].command = TASKCMD_LIVE;
     task_command_queue[1].target_task = TASK_DATA_FILTER;
@@ -59,6 +63,8 @@ FSMResponse fsm_process_request(SystemRequest sysreq, TaskCommand *task_command_
     // switching into mock run mode can only be done from mock setup
     if (state != FIRM_MOCK_SETUP)
       return FSMRES_INVALID;
+    // TODO(system-manager-refactor): move led/filter into manager endpoint registry when those
+    // tasks are refactored.
     task_command_queue[0].target_task = TASK_MODE_INDICATOR;
     task_command_queue[0].command = TASKCMD_MOCK;
     task_command_queue[1].target_task = TASK_DATA_FILTER;

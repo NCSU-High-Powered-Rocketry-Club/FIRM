@@ -100,6 +100,7 @@
     - +:test/**
     - -:test/support
   :source:
+    - ../Core/Src/modules
     - ../Core/Src/data_processing
     - ../Core/Src/interfaces
     - ../Libraries/BMP581
@@ -107,8 +108,10 @@
     - ../Libraries/ICM45686
     - ../Libraries/ADXL371
   :include:
+    - ../Core/Inc
+    - ../Core/Inc/modules
+    - ../Core/Inc/shared_data
     - ../Core/Inc/data_processing
-    - ../Core/Inc/shared_packets
     - ../Core/Inc/interfaces
     - ../Libraries/BMP581
     - ../Libraries/MMC5983MA
