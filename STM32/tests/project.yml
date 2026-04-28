@@ -56,7 +56,7 @@
   :enabled:
     #- beep                           # beeps when finished, so you don't waste time waiting for ceedling
     - module_generator                # handy for quickly creating source, header, and test templates
-    #- gcov                           # test coverage using gcov. Requires gcc, gcov, and a coverage analyzer like gcovr
+    - gcov                           # test coverage using gcov. Requires gcc, gcov, and a coverage analyzer like gcovr
     #- bullseye                       # test coverage using bullseye. Requires bullseye for your platform
     #- command_hooks                  # write custom actions to be called at different points during the build process
     #- compile_commands_json_db       # generate a compile_commands.json file
@@ -220,7 +220,10 @@
 
 # You can optionally have ceedling create environment variables for you before
 # performing the rest of its tasks.
-:environment: []
+:environment:
+  - :path:
+    - "#{ENV['PATH']}"
+    - "#{ENV['APPDATA']}/Python/Python311/Scripts"
 # :environment:
 #   # List enforces order allowing later to reference earlier with inline Ruby substitution
 #   - :var1: value

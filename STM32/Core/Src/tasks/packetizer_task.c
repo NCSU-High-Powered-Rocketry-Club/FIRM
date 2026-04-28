@@ -1,7 +1,9 @@
 #include "packetizer_task.h"
 
 #include "messages.h"
+#include "packets.h"
 #include "settings_manager.h"
+#include "transmit_frame.h"
 #include "transmit_task.h"
 #include "FreeRTOS.h"
 #include "queue.h"

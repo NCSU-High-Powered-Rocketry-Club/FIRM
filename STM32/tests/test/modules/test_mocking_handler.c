@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "mocking_handler.h"
+#include "system_state.h"
 
 #define TEST_RING_CAPACITY 16U
 #define TEST_RING_INSTANCE_MAX_BYTES 64U

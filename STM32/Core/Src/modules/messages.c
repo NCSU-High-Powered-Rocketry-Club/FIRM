@@ -1,5 +1,6 @@
 #include "messages.h"
 
+
 int parse_message_id(uint8_t identifier_byte) {
   Identifiers_t id = (Identifiers_t)identifier_byte;
   switch (id) {
@@ -11,7 +12,7 @@ int parse_message_id(uint8_t identifier_byte) {
   case ID_GET_CALIBRATION:
     return 0;
   case ID_SET_DEVICE_CONFIG:
-    return 10; // placeholder
+    return sizeof(DeviceConfig_t);
   case ID_SET_MAG_CALIBRATON:
     return sizeof(Calibration_t);
   case ID_SET_IMU_CALIBRATON:
