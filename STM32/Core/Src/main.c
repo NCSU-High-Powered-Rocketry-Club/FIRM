@@ -190,8 +190,6 @@ static void firm_rtos_init(void) {
     Error_Handler();
   }
 
-  memset(&latest_data_packet, 0, sizeof(latest_data_packet));
-
   SemaphoreHandle_t mock_count_sem = xSemaphoreCreateCounting(MOCK_QUEUE_LENGTH, 0U);
   if (mock_count_sem != NULL) {
     MockRingCountSemaphore_t mock_counting_semaphore = {
@@ -255,6 +253,11 @@ int main(void)
   if (firm_init_hardware())
     Error_Handler();
 
+  // global instance of the data packet that contains raw sensor readings and filtered data. This
+  // single instance will be passed into multiple different tasks to read and modify.
+  // TODO: this obviously has synchronization concerns. I'm kinda just ignoring them.
+  DataPacket_t global_data_packet = {0};
+
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -286,9 +289,9 @@ int main(void)
   /* USER CODE BEGIN RTOS_THREADS */
   firm_mode_indicator_task_handle =
       osThreadNew(firm_mode_indicator_task, NULL, &modeIndicatorTask_attributes);
-  sensor_task_handle = osThreadNew(sensor_task, NULL, &sensorTask_attributes);
-  packetizer_task_handle = osThreadNew(packetizer_task, NULL, &packetizerTask_attributes);
-  filter_data_task_handle = osThreadNew(filter_data_task, NULL, &filterDataTask_attributes);
+  sensor_task_handle = osThreadNew(sensor_task, &global_data_packet, &sensorTask_attributes);
+  packetizer_task_handle = osThreadNew(packetizer_task, &global_data_packet, &packetizerTask_attributes);
+  filter_data_task_handle = osThreadNew(filter_data_task, &global_data_packet, &filterDataTask_attributes);
   transmit_task_handle = osThreadNew(transmit_data, NULL, &transmitTask_attributes);
   usb_read_task_handle = osThreadNew(usb_read_data, NULL, &usbReadTask_attributes);
 

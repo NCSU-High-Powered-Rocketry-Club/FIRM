@@ -29,6 +29,5 @@ extern const osThreadAttr_t sensorTask_attributes;
 
 extern EventGroupHandle_t sensor_event_group;
 extern EventGroupHandle_t sensor_collected_group;
-extern DataPacket_t latest_data_packet;
 
 void sensor_task(void *argument);

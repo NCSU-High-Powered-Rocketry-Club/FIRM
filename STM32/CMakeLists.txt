@@ -93,6 +93,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/modules/logger.c
     Core/Src/modules/commands.c
     Core/Src/modules/messages.c
+    Core/Src/modules/sensor_manager.c
     Core/Src/modules/mocking_handler.c
     Core/Src/modules/system_state.c
 

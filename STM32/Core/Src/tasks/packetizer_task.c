@@ -17,7 +17,8 @@ const osThreadAttr_t packetizerTask_attributes = {
   .priority = (osPriority_t)osPriorityHigh,
 };
 
-void packetizer_task(void *argument) {
+void packetizer_task(void *arg) {
+  DataPacket_t *data_packet = (DataPacket_t *)arg;
 
   const SystemSettings_t *settings = get_settings();
   uint16_t frequency_hz = (settings->frequency_hz == 0U) ? 1U : settings->frequency_hz;
@@ -28,7 +29,7 @@ void packetizer_task(void *argument) {
     TransmitFrame_t frame = {0};
     frame.payload[0] = (uint8_t)ID_DATA_PACKET;
 
-    memcpy(&frame.payload[1], &latest_data_packet, sizeof(latest_data_packet));
+    memcpy(&frame.payload[1], data_packet, sizeof(DataPacket_t));
 
     frame.payload_len = (uint16_t)(1U + sizeof(DataPacket_t));
     if (frame.payload_len <= MAX_TRANSMIT_PAYLOAD_LEN) {

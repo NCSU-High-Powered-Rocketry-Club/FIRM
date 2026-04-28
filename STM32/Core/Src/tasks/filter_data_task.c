@@ -16,7 +16,8 @@ const osThreadAttr_t filterDataTask_attributes = {
   .priority = (osPriority_t)osPriorityLow,
 };
 
-void filter_data_task(void *argument) {
+void filter_data_task(void *arg) {
+  DataPacket_t *data_packet = (DataPacket_t *)arg;
 
   ESKF eskf;
   memset(&eskf, 0, sizeof(ESKF));
@@ -26,8 +27,7 @@ void filter_data_task(void *argument) {
   for (;;) {
 
     if (setup) {
-      DataPacket_t snapshot = {0};
-      snapshot = latest_data_packet;
+      DataPacket_t snapshot = *data_packet;
 
       if (snapshot.magnetic_field_x_microteslas == 0.0F || snapshot.pressure_pascals == 0.0F) {
         vTaskDelay(pdMS_TO_TICKS(10));
@@ -41,7 +41,7 @@ void filter_data_task(void *argument) {
              pdMS_TO_TICKS(KALMAN_FILTER_STARTUP_DELAY_TIME_MS)) {
         vTaskDelay(pdMS_TO_TICKS(5));
 
-        snapshot = latest_data_packet;
+        snapshot = *data_packet;
 
         eskf_accumulate(snapshot.pressure_pascals, &snapshot.raw_acceleration_x_gs,
                         &snapshot.magnetic_field_x_microteslas);
@@ -52,21 +52,21 @@ void filter_data_task(void *argument) {
       (void)eskf_init(&eskf);
       system_state_set(SYSTEM_STATE_LIVE);
 
-      last_time = (float)latest_data_packet.timestamp_seconds - 0.005F;
+      last_time = (float)snapshot.timestamp_seconds - 0.005F;
     }
 
     ESKFRawData raw_data = {0};
-    raw_data.timestamp_seconds = latest_data_packet.timestamp_seconds;
-    raw_data.pressure_pascals = latest_data_packet.pressure_pascals;
-    raw_data.raw_acceleration_x_gs = latest_data_packet.raw_acceleration_x_gs;
-    raw_data.raw_acceleration_y_gs = latest_data_packet.raw_acceleration_y_gs;
-    raw_data.raw_acceleration_z_gs = latest_data_packet.raw_acceleration_z_gs;
-    raw_data.raw_angular_rate_x_deg_per_s = latest_data_packet.raw_angular_rate_x_dps;
-    raw_data.raw_angular_rate_y_deg_per_s = latest_data_packet.raw_angular_rate_y_dps;
-    raw_data.raw_angular_rate_z_deg_per_s = latest_data_packet.raw_angular_rate_z_dps;
-    raw_data.magnetic_field_x_microteslas = latest_data_packet.magnetic_field_x_microteslas;
-    raw_data.magnetic_field_y_microteslas = latest_data_packet.magnetic_field_y_microteslas;
-    raw_data.magnetic_field_z_microteslas = latest_data_packet.magnetic_field_z_microteslas;
+    raw_data.timestamp_seconds = data_packet->timestamp_seconds;
+    raw_data.pressure_pascals = data_packet->pressure_pascals;
+    raw_data.raw_acceleration_x_gs = data_packet->raw_acceleration_x_gs;
+    raw_data.raw_acceleration_y_gs = data_packet->raw_acceleration_y_gs;
+    raw_data.raw_acceleration_z_gs = data_packet->raw_acceleration_z_gs;
+    raw_data.raw_angular_rate_x_deg_per_s = data_packet->raw_angular_rate_x_dps;
+    raw_data.raw_angular_rate_y_deg_per_s = data_packet->raw_angular_rate_y_dps;
+    raw_data.raw_angular_rate_z_deg_per_s = data_packet->raw_angular_rate_z_dps;
+    raw_data.magnetic_field_x_microteslas = data_packet->magnetic_field_x_microteslas;
+    raw_data.magnetic_field_y_microteslas = data_packet->magnetic_field_y_microteslas;
+    raw_data.magnetic_field_z_microteslas = data_packet->magnetic_field_z_microteslas;
 
     float dt = (float)raw_data.timestamp_seconds - last_time;
     if (dt <= 1e-6F) {
@@ -93,7 +93,7 @@ void filter_data_task(void *argument) {
     eskf_set_measurement(&eskf, z_raw);
     eskf_update(&eskf);
 
-    memcpy(&latest_data_packet.est_position_z_meters, eskf.x_nom, ESKF_NOMINAL_DIM * sizeof(float));
+    memcpy(&data_packet->est_position_z_meters, eskf.x_nom, ESKF_NOMINAL_DIM * sizeof(float));
 
     (void)xEventGroupWaitBits(sensor_collected_group,
                   SENSOR_COLLECTED_BAROMETER_BIT | SENSOR_COLLECTED_IMU_BIT |
