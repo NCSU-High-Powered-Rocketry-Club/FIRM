@@ -1,4 +1,5 @@
 #include "mocking_handler.h"
+#include "system_state.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -22,6 +23,35 @@ static double mock_prev_delay_seconds = 0.0;
 static bool mock_ring_ready = false;
 static uint32_t mock_last_timestamp_cycles = 0U;
 static MockSensorTaskInjectFns_t mock_sensor_inject_fns = {0};
+static MockTimeFn live_time_fn = NULL;
+static MockBarometerReadFn live_barometer_read_fn = NULL;
+static MockImuReadFn live_imu_read_fn = NULL;
+static MockMagnetometerReadFn live_magnetometer_read_fn = NULL;
+static MockHighGReadFn live_high_g_read_fn = NULL;
+
+static bool mock_injection_ready(void) {
+  return mock_sensor_inject_fns.set_time_fn != NULL &&
+         mock_sensor_inject_fns.set_barometer_read_fn != NULL &&
+         mock_sensor_inject_fns.set_imu_read_fn != NULL &&
+         mock_sensor_inject_fns.set_magnetometer_read_fn != NULL &&
+         mock_sensor_inject_fns.set_high_g_read_fn != NULL &&
+         mock_sensor_inject_fns.get_time_fn != NULL &&
+         mock_sensor_inject_fns.get_barometer_read_fn != NULL &&
+         mock_sensor_inject_fns.get_imu_read_fn != NULL &&
+         mock_sensor_inject_fns.get_magnetometer_read_fn != NULL &&
+         mock_sensor_inject_fns.get_high_g_read_fn != NULL;
+}
+
+static bool mock_capture_live_fns(void) {
+  live_time_fn = mock_sensor_inject_fns.get_time_fn();
+  live_barometer_read_fn = mock_sensor_inject_fns.get_barometer_read_fn();
+  live_imu_read_fn = mock_sensor_inject_fns.get_imu_read_fn();
+  live_magnetometer_read_fn = mock_sensor_inject_fns.get_magnetometer_read_fn();
+  live_high_g_read_fn = mock_sensor_inject_fns.get_high_g_read_fn();
+
+  return live_time_fn != NULL && live_barometer_read_fn != NULL && live_imu_read_fn != NULL &&
+         live_magnetometer_read_fn != NULL && live_high_g_read_fn != NULL;
+}
 
 static size_t mock_raw_size_for_id(Identifiers_t id) {
   switch (id) {
@@ -143,6 +173,49 @@ void mocking_handler_inject_sensor_task_hooks(void) {
   if (mock_sensor_inject_fns.set_high_g_read_fn != NULL) {
     mock_sensor_inject_fns.set_high_g_read_fn(mocking_handler_read_high_g);
   }
+}
+
+bool mocking_handler_start_mock(void) {
+  if (!mock_ring_ready || !mock_injection_ready()) {
+    return false;
+  }
+
+  if (system_state_get() != SYSTEM_STATE_LIVE) {
+    return false;
+  }
+
+  if (!mock_capture_live_fns()) {
+    return false;
+  }
+
+  mocking_handler_reset_delay_state();
+  mocking_handler_inject_sensor_task_hooks();
+  system_state_set(SYSTEM_STATE_MOCK);
+  return true;
+}
+
+bool mocking_handler_cancel_mock(void) {
+  if (!mock_injection_ready()) {
+    return false;
+  }
+
+  if (system_state_get() != SYSTEM_STATE_MOCK) {
+    return false;
+  }
+
+  if (live_time_fn == NULL || live_barometer_read_fn == NULL || live_imu_read_fn == NULL ||
+      live_magnetometer_read_fn == NULL || live_high_g_read_fn == NULL) {
+    return false;
+  }
+
+  mock_sensor_inject_fns.set_time_fn(live_time_fn);
+  mock_sensor_inject_fns.set_barometer_read_fn(live_barometer_read_fn);
+  mock_sensor_inject_fns.set_imu_read_fn(live_imu_read_fn);
+  mock_sensor_inject_fns.set_magnetometer_read_fn(live_magnetometer_read_fn);
+  mock_sensor_inject_fns.set_high_g_read_fn(live_high_g_read_fn);
+  mocking_handler_reset_delay_state();
+  system_state_set(SYSTEM_STATE_LIVE);
+  return true;
 }
 
 uint32_t dispatch_mock_msg(const uint8_t *mock_message) {

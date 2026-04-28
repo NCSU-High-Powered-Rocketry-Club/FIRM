@@ -1,5 +1,19 @@
 #include "usb_read_data_task.h"
 
+#include "main.h"
+#include "FreeRTOS.h"
+#include "stream_buffer.h"
+#include "task.h"
+
+osThreadId_t usb_read_task_handle;
+const osThreadAttr_t usbReadTask_attributes = {
+  .name = "usbReadTask",
+  .stack_size = 2048 * 4,
+  .priority = (osPriority_t)osPriorityNormal,
+};
+
+StreamBufferHandle_t usb_rx_stream;
+
 static void firm_system_reset_cb(void *ctx) {
   (void)ctx;
   HAL_NVIC_SystemReset();
@@ -8,7 +22,7 @@ static void firm_system_reset_cb(void *ctx) {
 void usb_read_data(void *argument) {
   uint8_t received_bytes[USB_MESSAGE_BYTE_BUFFER_SIZE];
 
-  // setup system manager commands injection
+  // setup system reset callback
   commands_register_system_reset(firm_system_reset_cb, NULL);
   
   for (;;) {

@@ -4,6 +4,19 @@
 #include "usbd_cdc_if.h"
 #include "usbd_def.h"
 
+#include "FreeRTOS.h"
+#include "queue.h"
+#include "task.h"
+
+osThreadId_t transmit_task_handle;
+const osThreadAttr_t transmitTask_attributes = {
+  .name = "transmitTask",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t)osPriorityBelowNormal1,
+};
+
+QueueHandle_t transmit_queue;
+
 static void transmit_send_to_queue(TransmitFrame_t *transmit_frame) {
   xQueueSend(transmit_queue, transmit_frame, portMAX_DELAY);
 }

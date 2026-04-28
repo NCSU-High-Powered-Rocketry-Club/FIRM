@@ -1,13 +1,22 @@
 #include "filter_data_task.h"
 
 #include "sensor_task.h"
+#include "system_state.h"
 
 #include "error_state_kalman_filter.h"
 #include "eskf_functions.h"
+#include "FreeRTOS.h"
+#include "task.h"
 #include <string.h>
 
+osThreadId_t filter_data_task_handle;
+const osThreadAttr_t filterDataTask_attributes = {
+  .name = "filterDataTask",
+  .stack_size = 4096 * 4,
+  .priority = (osPriority_t)osPriorityLow,
+};
+
 void filter_data_task(void *argument) {
-  (void)argument;
 
   ESKF eskf;
   memset(&eskf, 0, sizeof(ESKF));
@@ -41,6 +50,7 @@ void filter_data_task(void *argument) {
       setup = false;
 
       (void)eskf_init(&eskf);
+      system_state_set(SYSTEM_STATE_LIVE);
 
       last_time = (float)latest_data_packet.timestamp_seconds - 0.005F;
     }
@@ -85,8 +95,9 @@ void filter_data_task(void *argument) {
 
     memcpy(&latest_data_packet.est_position_z_meters, eskf.x_nom, ESKF_NOMINAL_DIM * sizeof(float));
 
-    (void)xEventGroupWaitBits(sensors_collected,
-                              BMP581_TASK_BIT | ICM45686_TASK_BIT | MMC5983MA_TASK_BIT, pdTRUE,
-                              pdTRUE, portMAX_DELAY);
+    (void)xEventGroupWaitBits(sensor_collected_group,
+                  SENSOR_COLLECTED_BAROMETER_BIT | SENSOR_COLLECTED_IMU_BIT |
+                    SENSOR_COLLECTED_MAGNETOMETER_BIT,
+                  pdTRUE, pdTRUE, portMAX_DELAY);
   }
 }

@@ -1,9 +1,9 @@
 #include "commands.h"
+#include "mocking_handler.h"
 
 static CommandSystemResetFn g_system_reset_fn = NULL;
 static void *g_system_reset_ctx = NULL;
 static void (*queue_send)(TransmitFrame_t *transmit_frame) = NULL;
-static bool (*sys_manager_send_cmd)(Identifiers_t id) = NULL;
 
 static uint16_t clamp_u16(uint16_t value, uint16_t min_value, uint16_t max_value) {
   if (value < min_value)
@@ -32,10 +32,6 @@ void commands_register_system_reset(CommandSystemResetFn fn, void *ctx) {
 
 void commands_set_response_queue(void (*queue_send_fn)(TransmitFrame_t *transmit_frame)) {
   queue_send = queue_send_fn;
-}
-
-void commands_set_sys_manager_send_cmd_fn(bool (*sys_manager_send_fn)(Identifiers_t id)) {
-  sys_manager_send_cmd = sys_manager_send_fn;
 }
 
 void dispatch_command(const uint8_t *command_bytes) {
@@ -92,13 +88,7 @@ void dispatch_command(const uint8_t *command_bytes) {
     break;
 
   case ID_MOCK_REQUEST:
-    if (sys_manager_send_cmd != NULL) {
-      if (sys_manager_send_cmd(ID_MOCK_REQUEST)) {
-        send_response(ID_MOCK_REQUEST, (uint8_t []){true}, 1);
-      } else {
-        send_response(ID_MOCK_REQUEST, (uint8_t []){false}, 1);
-      }
-    }
+    send_response(ID_MOCK_REQUEST, (uint8_t[]){mocking_handler_start_mock()}, 1);
     break;
 
   case ID_SET_MAG_CALIBRATON: {
@@ -122,13 +112,7 @@ void dispatch_command(const uint8_t *command_bytes) {
     break;
 
   case ID_CANCEL_REQUEST:
-    if (sys_manager_send_cmd != NULL) {
-      if (sys_manager_send_cmd(ID_CANCEL_REQUEST)) {
-        send_response(ID_CANCEL_REQUEST, (uint8_t []){true}, 1);
-      } else {
-        send_response(ID_CANCEL_REQUEST, (uint8_t []){false}, 1);
-      }
-    }
+    send_response(ID_CANCEL_REQUEST, (uint8_t[]){mocking_handler_cancel_mock()}, 1);
     break;
 
   default:

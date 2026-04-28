@@ -1,6 +1,6 @@
 #pragma once
 
-#include "task_runtime.h"
+#include "cmsis_os.h"
 
 extern osThreadId_t packetizer_task_handle;
 extern const osThreadAttr_t packetizerTask_attributes;

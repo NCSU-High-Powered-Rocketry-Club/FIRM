@@ -13,6 +13,4 @@ void commands_register_system_reset(CommandSystemResetFn fn, void *ctx);
 
 void commands_set_response_queue(void (*queue_send_fn)(TransmitFrame_t *transmit_frame));
 
-void commands_set_sys_manager_send_cmd_fn(bool (*sys_manager_send_fn)(Identifiers_t id));
-
 void dispatch_command(const uint8_t *command_bytes);

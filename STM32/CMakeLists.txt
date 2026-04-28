@@ -34,8 +34,7 @@ message("Build type: " ${CMAKE_BUILD_TYPE})
 enable_language(C ASM)
 
 # Create an executable object type
-add_executable(${CMAKE_PROJECT_NAME}
-    Core/Src/tasks/task_runtime.c)
+add_executable(${CMAKE_PROJECT_NAME})
 
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
@@ -95,6 +94,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/modules/commands.c
     Core/Src/modules/messages.c
     Core/Src/modules/mocking_handler.c
+    Core/Src/modules/system_state.c
 
     Core/Src/target/firm_v1_0.c
 

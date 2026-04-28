@@ -8,14 +8,26 @@
 #include "mmc5983ma_packet.h"
 #include "shared_data/identifiers.h"
 
+#include <stdbool.h>
 #include <stdint.h>
 
+typedef uint32_t (*MockTimeFn)(void);
+typedef int (*MockBarometerReadFn)(BMP581RawData_t *);
+typedef int (*MockImuReadFn)(ICM45686RawData_t *);
+typedef int (*MockMagnetometerReadFn)(MMC5983MARawData_t *);
+typedef int (*MockHighGReadFn)(ADXL371RawData_t *);
+
 typedef struct {
-  void (*set_time_fn)(uint32_t (*time_fn)(void));
-  void (*set_barometer_read_fn)(int (*read_fn)(BMP581RawData_t *));
-  void (*set_imu_read_fn)(int (*read_fn)(ICM45686RawData_t *));
-  void (*set_magnetometer_read_fn)(int (*read_fn)(MMC5983MARawData_t *));
-  void (*set_high_g_read_fn)(int (*read_fn)(ADXL371RawData_t *));
+  void (*set_time_fn)(MockTimeFn time_fn);
+  void (*set_barometer_read_fn)(MockBarometerReadFn read_fn);
+  void (*set_imu_read_fn)(MockImuReadFn read_fn);
+  void (*set_magnetometer_read_fn)(MockMagnetometerReadFn read_fn);
+  void (*set_high_g_read_fn)(MockHighGReadFn read_fn);
+  MockTimeFn (*get_time_fn)(void);
+  MockBarometerReadFn (*get_barometer_read_fn)(void);
+  MockImuReadFn (*get_imu_read_fn)(void);
+  MockMagnetometerReadFn (*get_magnetometer_read_fn)(void);
+  MockHighGReadFn (*get_high_g_read_fn)(void);
 } MockSensorTaskInjectFns_t;
 
 /**
@@ -39,6 +51,18 @@ void mocking_handler_configure_sensor_task_injection(const MockSensorTaskInjectF
  * @note Safe to call even if some callbacks are NULL.
  */
 void mocking_handler_inject_sensor_task_hooks(void);
+
+/**
+ * @brief Starts mock mode by injecting mock sensor callbacks.
+ * @return true if mock mode started; false otherwise.
+ */
+bool mocking_handler_start_mock(void);
+
+/**
+ * @brief Cancels mock mode and restores live sensor callbacks.
+ * @return true if mock mode was cancelled; false otherwise.
+ */
+bool mocking_handler_cancel_mock(void);
 
 /**
  * @brief Dispatches one mock message into the mock ring.

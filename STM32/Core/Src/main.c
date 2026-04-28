@@ -25,19 +25,29 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "task_runtime.h"
 #include "mode_indicator_task.h"
 #include "sensor_task.h"
 #include "filter_data_task.h"
 #include "packetizer_task.h"
 #include "transmit_task.h"
 #include "usb_read_data_task.h"
+#include "transmit_frame.h"
 #include "led.h"
 #include "logger.h"
+#include "mocking_handler.h"
+#include "sensor_manager.h"
 #include "settings_manager.h"
 #include "system_settings.h"
+#include "system_state.h"
 #include "targets.h"
 #include "firm_v1_0.h"
+
+#include "FreeRTOS.h"
+#include "event_groups.h"
+#include "queue.h"
+#include "semphr.h"
+#include "stream_buffer.h"
+#include "task.h"
 
 #include <bmp581.h>
 #include <icm45686.h>
@@ -58,6 +68,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
+#define MOCK_QUEUE_LENGTH 50U
 
 /* USER CODE END PD */
 
@@ -115,10 +127,88 @@ void StartupTask(void *argument);
 
 /* USER CODE BEGIN PFP */
 
+static bool mock_count_try_take(void *context);
+static bool mock_count_give(void *context);
+static size_t mock_count_get_count(void *context);
+static void mock_count_reset(void *context);
+static void firm_rtos_init(void);
+static void configure_mocking_injection(void);
+static uint32_t firm_time_cyccnt(void);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+static bool mock_count_try_take(void *context) {
+  return xSemaphoreTake((SemaphoreHandle_t)context, 0U) == pdTRUE;
+}
+
+static bool mock_count_give(void *context) {
+  return xSemaphoreGive((SemaphoreHandle_t)context) == pdTRUE;
+}
+
+static size_t mock_count_get_count(void *context) {
+  return (size_t)uxSemaphoreGetCount((SemaphoreHandle_t)context);
+}
+
+static void mock_count_reset(void *context) {
+  while (xSemaphoreTake((SemaphoreHandle_t)context, 0U) == pdTRUE) {
+  }
+}
+
+static uint32_t firm_time_cyccnt(void) {
+  return DWT->CYCCNT;
+}
+
+static void configure_mocking_injection(void) {
+  MockSensorTaskInjectFns_t inject_fns = {
+      .set_time_fn = set_time_fn,
+      .set_barometer_read_fn = set_barometer_read_fn,
+      .set_imu_read_fn = set_imu_read_fn,
+      .set_magnetometer_read_fn = set_magnetometer_read_fn,
+      .set_high_g_read_fn = set_high_g_read_fn,
+      .get_time_fn = sensor_manager_get_time_fn,
+      .get_barometer_read_fn = sensor_manager_get_barometer_read_fn,
+      .get_imu_read_fn = sensor_manager_get_imu_read_fn,
+      .get_magnetometer_read_fn = sensor_manager_get_magnetometer_read_fn,
+      .get_high_g_read_fn = sensor_manager_get_high_g_read_fn,
+  };
+
+  mocking_handler_configure_sensor_task_injection(&inject_fns);
+}
+
+static void firm_rtos_init(void) {
+  usb_rx_stream =
+      xStreamBufferCreate(USB_RX_STREAM_BUFFER_SIZE_BYTES, USB_RX_STREAM_TRIGGER_LEVEL_BYTES);
+  transmit_queue = xQueueCreate(TRANSMIT_QUEUE_LENGTH, sizeof(TransmitFrame_t));
+  sensor_event_group = xEventGroupCreate();
+  sensor_collected_group = xEventGroupCreate();
+
+  if (usb_rx_stream == NULL || transmit_queue == NULL || sensor_event_group == NULL ||
+      sensor_collected_group == NULL) {
+    Error_Handler();
+  }
+
+  memset(&latest_data_packet, 0, sizeof(latest_data_packet));
+
+  SemaphoreHandle_t mock_count_sem = xSemaphoreCreateCounting(MOCK_QUEUE_LENGTH, 0U);
+  if (mock_count_sem != NULL) {
+    MockRingCountSemaphore_t mock_counting_semaphore = {
+        .context = mock_count_sem,
+        .try_take = mock_count_try_take,
+        .give = mock_count_give,
+        .get_count = mock_count_get_count,
+        .reset = mock_count_reset,
+    };
+
+    uint32_t hclk_hz = HAL_RCC_GetHCLKFreq();
+    uint32_t hclk_mhz = (hclk_hz == 0U) ? 168U : (hclk_hz / 1000000U);
+    mocking_handler_init(&mock_counting_semaphore, hclk_mhz);
+  }
+
+  configure_mocking_injection();
+}
 
 /* USER CODE END 0 */
 
@@ -655,21 +745,25 @@ static void MX_GPIO_Init(void)
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
+  if (sensor_event_group == NULL) {
+    return;
+  }
+
   if (GPIO_Pin == BMP581_Interrupt_Pin) {
-    (void)xTaskNotifyFromISR(sensor_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits,
-                             &xHigherPriorityTaskWoken);
+    (void)xEventGroupSetBitsFromISR(sensor_event_group, SENSOR_EVENT_BAROMETER_READY,
+                                    &xHigherPriorityTaskWoken);
   }
   if (GPIO_Pin == ICM45686_Interrupt_Pin) {
-    (void)xTaskNotifyFromISR(sensor_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits,
-                             &xHigherPriorityTaskWoken);
+    (void)xEventGroupSetBitsFromISR(sensor_event_group, SENSOR_EVENT_IMU_READY,
+                                    &xHigherPriorityTaskWoken);
   }
   if (GPIO_Pin == MMC5983MA_Interrupt_Pin) {
-    (void)xTaskNotifyFromISR(sensor_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits,
-                             &xHigherPriorityTaskWoken);
+    (void)xEventGroupSetBitsFromISR(sensor_event_group, SENSOR_EVENT_MAGNETOMETER_READY,
+                                    &xHigherPriorityTaskWoken);
   }
   if (GPIO_Pin == ADXL371_Interrupt_Pin) {
-    (void)xTaskNotifyFromISR(sensor_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits,
-                             &xHigherPriorityTaskWoken);
+    (void)xEventGroupSetBitsFromISR(sensor_event_group, SENSOR_EVENT_HIGH_G_READY,
+                                    &xHigherPriorityTaskWoken);
   }
   portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
@@ -703,10 +797,14 @@ void StartupTask(void *argument)
 {
   /* USER CODE BEGIN StartupTask */
 
+  system_state_set(SYSTEM_STATE_BOOT);
+
   // We use DWT (Data Watchpoint and Trace unit) to get a high resolution free-running timer.
   CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
   DWT->CYCCNT = 0;
   DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+
+  set_time_fn(firm_time_cyccnt);
 
   // Ensure SPI chip-select lines default to not selected.
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // BMP581 CS pin

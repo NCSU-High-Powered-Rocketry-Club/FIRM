@@ -7,6 +7,7 @@ size_t parse_message_id(uint8_t identifier_byte) {
   case ID_GET_DEVICE_CONFIG:
   case ID_REBOOT:
   case ID_MOCK_REQUEST:
+  case ID_CANCEL_REQUEST:
   case ID_GET_CALIBRATION:
     return 0;
   case ID_SET_DEVICE_CONFIG:

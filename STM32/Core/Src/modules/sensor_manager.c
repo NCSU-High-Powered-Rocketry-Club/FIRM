@@ -34,8 +34,8 @@ void set_high_g_read_fn(int (*read_fn)(ADXL371RawData_t *)) {
   high_g_read_data = read_fn;
 }
 
-void sensor_collect_data(Sensors_t sensor, DataPacket_t *board_readings) {
-  uint32_t clock_cycles = get_time();
+void sensor_collect_data(Identifiers_t sensor, DataPacket_t *board_readings) {
+  uint32_t clock_cycles = (get_time != NULL) ? get_time() : 0U;
   // allocate bytes in the logger for the raw sensor data
   void *raw_data_storage = logger_malloc_raw_storage(sensor, clock_cycles);
 
@@ -61,4 +61,24 @@ void sensor_collect_data(Sensors_t sensor, DataPacket_t *board_readings) {
   }
 
   board_readings->timestamp_seconds = clock_cycle_counter_process(&clock_counter, clock_cycles);
+}
+
+uint32_t (*sensor_manager_get_time_fn(void))(void) {
+  return get_time;
+}
+
+int (*sensor_manager_get_barometer_read_fn(void))(BMP581RawData_t *) {
+  return barometer_read_data;
+}
+
+int (*sensor_manager_get_imu_read_fn(void))(ICM45686RawData_t *) {
+  return imu_read_data;
+}
+
+int (*sensor_manager_get_magnetometer_read_fn(void))(MMC5983MARawData_t *) {
+  return magnetometer_read_data;
+}
+
+int (*sensor_manager_get_high_g_read_fn(void))(ADXL371RawData_t *) {
+  return high_g_read_data;
 }
