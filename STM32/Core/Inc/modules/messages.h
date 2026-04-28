@@ -10,6 +10,6 @@
 
 #include <stddef.h>
 
-size_t parse_message_id(uint8_t identifier_byte);
+int parse_message_id(uint8_t identifier_byte);
 
 uint32_t dispatch_message(const uint8_t *message);

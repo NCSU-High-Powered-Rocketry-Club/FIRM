@@ -816,8 +816,6 @@ void StartupTask(void *argument)
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET); // MMC5983MA CS pin
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET); // ADXL371 CS pin
 
-  led_set_status(FIRM_UNINITIALIZED);
-
   HAL_Delay(100);
 
   // The scheduler is not running yet; prevent EXTI callbacks from notifying task handles.

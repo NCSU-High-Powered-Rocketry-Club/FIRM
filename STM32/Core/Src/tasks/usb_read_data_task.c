@@ -28,7 +28,7 @@ void usb_read_data(void *argument) {
   for (;;) {
     // read the identifier byte to determine payload length
     xStreamBufferReceive(usb_rx_stream, received_bytes, 1, portMAX_DELAY);
-    size_t payload_len = parse_message_id(received_bytes[0]);
+    int payload_len = parse_message_id(received_bytes[0]);
     if (payload_len == -1) // invalid ID
       continue;
 

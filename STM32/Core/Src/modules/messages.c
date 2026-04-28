@@ -1,6 +1,6 @@
 #include "messages.h"
 
-size_t parse_message_id(uint8_t identifier_byte) {
+int parse_message_id(uint8_t identifier_byte) {
   Identifiers_t id = (Identifiers_t)identifier_byte;
   switch (id) {
   case ID_GET_DEVICE_INFO:

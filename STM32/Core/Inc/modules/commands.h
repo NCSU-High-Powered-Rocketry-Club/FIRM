@@ -7,13 +7,6 @@
 #include <stdbool.h>
 #include <string.h>
 
-typedef enum {
-  FIRM_UNINITIALIZED,
-  FIRM_SETUP,
-  FIRM_LIVE,
-  FIRM_MOCK,
-} FIRMState_t;
-
 typedef void (*CommandSystemResetFn)(void *ctx);
 
 void commands_register_system_reset(CommandSystemResetFn fn, void *ctx);
