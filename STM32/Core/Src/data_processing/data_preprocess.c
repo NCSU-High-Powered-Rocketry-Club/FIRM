@@ -1,4 +1,5 @@
 #include "data_preprocess.h"
+#include "ina219_packet.h"
 #include "settings.h"
 
 // number of times the DWT timestamp has overflowed. This happens every ~25 seconds
@@ -212,4 +213,24 @@ void adxl371_convert_packet(SensorPacket *packet, DataPacket *result_packet) {
   //         accel_x_float * calibrationSettings.adxl371_accel.scale_multiplier[2] +
   //         accel_y_float * calibrationSettings.adxl371_accel.scale_multiplier[5] +
   //         accel_z_float * calibrationSettings.adxl371_accel.scale_multiplier[8];
+}
+
+void ina219_convert_packet(SensorPacket *packet, DataPacket *result_packet){
+    // get the current timestamp of the packet in seconds using the DWT counter
+  result_packet->timestamp_seconds = update_dwt_timestamp(packet->timestamp);
+  
+  int current_lsb = 2.5/(2^15);
+  int power_lsb = 0.04096/(current_lsb*.01);
+
+  int32_t shunt_voltage_binary,bus_voltage_binary, current_binary, power_binary;
+
+  shunt_voltage_binary = (int32_t)((int16_t)packet->packet.ina219_packet.shunt_voltage)<<3;
+
+  bus_voltage_binary = (int32_t)((int16_t)packet->packet.ina219_packet.bus_voltage);
+
+  current_binary = (int32_t)((int16_t)packet->packet.ina219_packet.current);
+
+  power_binary = (int32_t)((int16_t)packet->packet.ina219_packet.power);
+
+  
 }

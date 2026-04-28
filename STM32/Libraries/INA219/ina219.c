@@ -42,7 +42,7 @@ static HAL_StatusTypeDef write_registers(uint8_t reg_addr, uint16_t data);
 
 //Since max expected current is 2.5A, the current_lsb is 1/(2)^15
 //Shunt resistor is .01 ohms. So according to the data sheet, the calibration calc is 
-//53687 
+//53687
 static const uint8_t configuration = 0x00; //config defaults to 399F
 static const uint8_t shunt_voltage = 0x01;
 static const uint8_t bus_voltage = 0x02;

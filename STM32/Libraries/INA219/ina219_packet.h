@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 /**
- * @brief magnetometer data packet structur for the INA219.
+ * @brief data packet structur for the INA219.
  */
 typedef struct{
     uint16_t shunt_voltage;

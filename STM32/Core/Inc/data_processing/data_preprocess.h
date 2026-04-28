@@ -1,4 +1,5 @@
 #pragma once
+#include "ina219_packet.h"
 #include "settings.h"
 #include <adxl371_packet.h>
 #include <bmp581_packet.h>
@@ -12,6 +13,7 @@ typedef struct {
     ICM45686Packet_t icm45686_packet;
     MMC5983MAPacket_t mmc5983ma_packet;
     ADXL371Packet_t adxl371_packet;
+    INA219Packet_t ina219_packet;
   } packet;
 } SensorPacket;
 
@@ -69,5 +71,16 @@ void mmc5983ma_convert_packet(SensorPacket *packet, DataPacket *result_packet);
  *                      will be stored
  */
 void icm45686_convert_packet(SensorPacket *packet, DataPacket *result_packet);
+
+/**
+ * @brief Converts raw INA219 data to SI units
+ *
+ * @note Acceleration converted to g's, angular rate converted to radians per second
+ *
+ * @param packet Pointer to an INA219Packet_t structure containing raw INA219 sensor data
+ * @param result_packet Pointer to a DataPacket where the result of the preprocessor
+ *                      will be stored
+ */
+void ina219_convert_packet(SensorPacket *packet, DataPacket *result_packet);
 
 void adxl371_convert_packet(SensorPacket *packet, DataPacket *result_packet);

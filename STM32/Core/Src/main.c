@@ -199,6 +199,7 @@ int main(void)
       osThreadNew(system_manager_task, NULL, &systemManagerTask_attributes);
   firm_mode_indicator_task_handle =
       osThreadNew(firm_mode_indicator_task, NULL, &modeIndicatorTask_attributes);
+  ina219_task_handle = osThreadNew(collect_ina219_data_task, NULL, &ina219Task_attributes);
   bmp581_task_handle = osThreadNew(collect_bmp581_data_task, NULL, &bmp581Task_attributes);
   icm45686_task_handle = osThreadNew(collect_icm45686_data_task, NULL, &icm45686Task_attributes);
   mmc5983ma_task_handle = osThreadNew(collect_mmc5983ma_data_task, NULL, &mmc5983maTask_attributes);

@@ -1,5 +1,6 @@
 #include "firm_tasks.h"
 #include "bmp581_packet.h"
+#include "cmsis_os2.h"
 #include "firm_fsm.h"
 #include "icm45686_packet.h"
 #include "ina219.h"
@@ -19,6 +20,7 @@ osThreadId_t system_manager_task_handle;
 osThreadId_t firm_mode_indicator_task_handle;
 osThreadId_t bmp581_task_handle;
 osThreadId_t icm45686_task_handle;
+osThreadId_t ina219_task_handle;
 osThreadId_t mmc5983ma_task_handle;
 osThreadId_t adxl371_task_handle;
 osThreadId_t filter_data_task_handle;
@@ -35,6 +37,7 @@ QueueHandle_t transmit_queue;
 QueueHandle_t system_request_queue;
 QueueHandle_t mode_indicator_command_queue;
 QueueHandle_t bmp581_command_queue;
+QueueHandle_t ina219_command_queue;
 QueueHandle_t icm45686_command_queue;
 QueueHandle_t mmc5983ma_command_queue;
 QueueHandle_t adxl371_command_queue;
@@ -80,6 +83,12 @@ const osThreadAttr_t adxl371Task_attributes = {
     .stack_size = 256 * 4,
     .priority = (osPriority_t)osPriorityHigh,
 };
+const osThreadAttr_t ina219Task_attributes = {
+  .name = "ina219Task",
+  .stack_size = 256*4,
+  .priority = (osPriority_t)osPriorityLow1,
+};
+
 const osThreadAttr_t filterDataTask_attributes = {
     .name = "filterDataTask",
     .stack_size = 4096 * 4,
@@ -199,6 +208,7 @@ int initialize_firm(SPIHandles *spi_handles_ptr, I2CHandles *i2c_handles_ptr,
     Error_Handler();
     return 1;
   }
+
 
   // set up settings module with flash chip
   if (settings_init(spi_handles_ptr->hspi1, GPIOC, GPIO_PIN_4)) {
@@ -459,6 +469,46 @@ void collect_icm45686_data_task(void *argument) {
       if (do_mock) {
         xTaskNotifyGive(mock_packet_handler_handle);
       }
+    }
+  }
+}
+
+void collect_ina219_data_task(void *argument){
+  const TickType_t max_wait = MAX_WAIT_TIME(INA219_POLL_RATE_HZ);
+  TaskCommandOption cmd_status;
+
+  for(;;){
+    xQueueReceive(ina219_command_queue,&cmd_status,0);
+
+    uint32_t notify_value = 0U;
+    if (xTaskNotifyWait(0U, 0xFFFFFFFFUL, &notify_value, max_wait) == pdTRUE) {
+      bool do_mock =
+          (cmd_status == TASKCMD_MOCK) && ((notify_value & SENSOR_NOTIFY_MOCK_BIT) != 0U);
+      bool do_live = (cmd_status != TASKCMD_MOCK) && ((notify_value & SENSOR_NOTIFY_ISR_BIT) != 0U);
+      if (!do_mock && !do_live) {
+        continue;
+      }
+      osMutexAcquire(sensorDataMutexHandle, osWaitForever);
+      void *ina219_storage = logger_malloc_packet(sizeof(INA219Packet_t) + 5);
+      if (ina219_storage == NULL) {
+        osMutexRelease(sensorDataMutexHandle);
+        continue;
+      }
+      SensorPacket *ina219_packet = (SensorPacket *)((uint8_t *)ina219_storage + 1);
+      int err = 0;
+
+      err = ina219_read_data(&ina219_packet->packet.ina219_packet);
+      uint32_t clock_cycle_count = DWT->CYCCNT;
+      memcpy(ina219_packet->timestamp, &clock_cycle_count,
+            sizeof(ina219_packet->timestamp));
+
+      if (!err) {
+        logger_write_entry('V', sizeof(INA219Packet_t));
+        ina219_convert_packet(ina219_packet, (DataPacket *)&data_packet.data);
+
+      }
+      osMutexRelease(sensorDataMutexHandle);
+
     }
   }
 }

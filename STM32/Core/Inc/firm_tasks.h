@@ -15,6 +15,7 @@
 #include <bmp581.h>
 #include <icm45686.h>
 #include <mmc5983ma.h>
+#include <ina219.h>
 
 #include "FreeRTOS.h"
 #include "cmsis_os.h"
@@ -27,6 +28,7 @@
 #define ICM45686_POLL_RATE_HZ 400
 #define MMC5983MA_POLL_RATE_HZ 225
 #define ADXL371_POLL_RATE_HZ 160
+#define INA219_POLL_RATE_HZ 10
 // bitmask for the sensor tasks (only ones used in kalman filter)
 // TODO: include ADXL in kalman filter
 #define BMP581_TASK_BIT (1 << 0)
@@ -50,6 +52,7 @@ extern osThreadId_t bmp581_task_handle;
 extern osThreadId_t icm45686_task_handle;
 extern osThreadId_t mmc5983ma_task_handle;
 extern osThreadId_t adxl371_task_handle;
+extern osThreadId_t ina219_task_handle;
 extern osThreadId_t packetizer_task_handle;
 extern osThreadId_t transmit_task_handle;
 extern osThreadId_t usb_read_task_handle;
@@ -70,6 +73,7 @@ extern const osThreadAttr_t bmp581Task_attributes;
 extern const osThreadAttr_t icm45686Task_attributes;
 extern const osThreadAttr_t mmc5983maTask_attributes;
 extern const osThreadAttr_t adxl371Task_attributes;
+extern const osThreadAttr_t ina219Task_attributes;
 extern const osThreadAttr_t packetizerTask_attributes;
 extern const osThreadAttr_t transmitTask_attributes;
 extern const osThreadAttr_t usbReadTask_attributes;
@@ -155,6 +159,7 @@ void collect_bmp581_data_task(void *argument);
 void collect_icm45686_data_task(void *argument);
 void collect_mmc5983ma_data_task(void *argument);
 void collect_adxl371_data_task(void *argument);
+void collect_ina219_data_task(void *argument);
 void packetizer_task(void *argument);
 void filter_data_task(void *argument);
 void transmit_data(void *argument);

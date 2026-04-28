@@ -25,6 +25,7 @@ typedef enum {
   MOCKID_MMC5983MA = 'M',
   MOCKID_ADXL371 = 'A',
   MOCKID_SETTINGS = 'H',
+  MOCKID_INA219 ='V',
 } MockPacketID;
 
 /**
