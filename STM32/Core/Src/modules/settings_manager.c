@@ -1,0 +1,96 @@
+#include "settings_manager.h"
+#include "system_settings.h"
+
+#define FIRM_DEFAULT_DEVICE_NAME "FIRM Device"
+#define SETTINGS_WRITE_DEFAULT 0
+
+#if SETTINGS_WRITE_DEFAULT == 1
+static int settings_write_defaults(void);
+#endif
+
+static SystemSettings_t FIRMSystemSettings = {0};
+
+static int settings_write_new_version(void);
+
+int settings_manager_init(void) {
+#if SETTINGS_WRITE_DEFAULT == 1
+  if (settings_write_defaults())
+    return 1;
+#endif
+  if (settings_read_from_storage(&FIRMSystemSettings))
+    return 1;
+
+  // uid validation
+  uint64_t uid = settings_read_storage_uid();
+  if (uid != FIRMSystemSettings.device_uid) {
+    // Settings initialization failed, device may need to be configured
+    return 1;
+  }
+  // firmware version overwrite
+  return settings_write_new_version();
+}
+
+int settings_write_calibration(Calibration_t *accel_calibration, Calibration_t *gyro_calibration,
+                               Calibration_t *mag_calibration, Calibration_t *high_g_calibration) {
+  if (accel_calibration == NULL && gyro_calibration == NULL && mag_calibration == NULL &&
+      high_g_calibration == NULL) {
+    return 1;
+  }
+
+  // Sets only the calibration fields that are provided
+  if (accel_calibration != NULL) {
+    FIRMSystemSettings.accel_cal = *accel_calibration;
+  }
+  if (gyro_calibration != NULL) {
+    FIRMSystemSettings.gyro_cal = *gyro_calibration;
+  }
+  if (mag_calibration != NULL) {
+    FIRMSystemSettings.mag_cal = *mag_calibration;
+  }
+  if (high_g_calibration != NULL) {
+    FIRMSystemSettings.high_g_cal = *high_g_calibration;
+  }
+  return settings_write_to_storage(&FIRMSystemSettings);
+}
+
+int settings_write_firm_settings(SystemSettings_t *settings) {
+  if (settings == NULL)
+    return 1;
+  FIRMSystemSettings = *settings;
+  return settings_write_to_storage(&FIRMSystemSettings);
+}
+
+const SystemSettings_t *get_settings(void) { return (const SystemSettings_t *)&FIRMSystemSettings; }
+
+static int settings_write_new_version(void) {
+  if (strcmp(FIRMSystemSettings.firmware_version, FIRM_FIRMWARE_VERSION) != 0) {
+    strcpy(FIRMSystemSettings.firmware_version, FIRM_FIRMWARE_VERSION);
+    return settings_write_firm_settings(&FIRMSystemSettings);
+  }
+  return 0;
+}
+
+#if SETTINGS_WRITE_DEFAULT == 1
+static int settings_write_defaults(void) {
+  SystemSettings_t default_settings = {0};
+
+  // default calibration is 0.0 offset, and scale factor matrix is the identity matrix
+  for (int i = 0; i < 3; i++) {
+    default_settings.accel_cal.scale_matrix[3 * i + i] = 1.0F;
+    default_settings.gyro_cal.scale_matrix[3 * i + i] = 1.0F;
+    default_settings.mag_cal.scale_matrix[3 * i + i] = 1.0F;
+    default_settings.high_g_cal.scale_matrix[3 * i + i] = 1.0F;
+  }
+
+  default_settings.device_uid = settings_read_storage_uid();
+  default_settings.usb_transfer_enabled = true;
+  default_settings.uart_transfer_enabled = false;
+  default_settings.i2c_transfer_enabled = false;
+  default_settings.spi_transfer_enabled = false;
+  strcpy(default_settings.device_name, FIRM_DEFAULT_DEVICE_NAME);
+  strcpy(default_settings.firmware_version, FIRM_FIRMWARE_VERSION);
+  default_settings.frequency_hz = 100;
+
+  return settings_write_firm_settings(&default_settings);
+}
+#endif

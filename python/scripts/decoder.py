@@ -5,7 +5,7 @@ import os
 import struct
 import sys
 
-DECODER_LOG_VERSION = "FIRM LOG v1.3"
+DECODER_LOG_VERSION = "FIRM LOG v1.4"
 
 # identifier for each packet type
 BMP581_ID = 'B'
@@ -22,7 +22,7 @@ ADXL371_SIZE = 6
 # fallback scale factor when header value is missing or zero
 DEFAULT_ADXL371_SCALE_FACTOR = 10.24
 
-# header order
+# header order. values are number of bytes that each element takes up in the binary log file, used for parsing header
 HEADER_SIZE_TEXT = 14 # size of the "FIRM LOG vx.x" text
 HEADER_UID_SIZE = 8
 HEADER_DEVICE_NAME_LEN = 32
@@ -136,11 +136,7 @@ class Decoder:
         firmware_b = file.read(FIRMWARE_VERSION_LEN)
         # the frequency that data is being transmitted
         frequency_b = file.read(FREQUENCY_LEN)
-        # Calculate padding needed to align to 8-byte boundary
-        header_before_padding = HEADER_UID_SIZE + HEADER_DEVICE_NAME_LEN + HEADER_COMM_SIZE + FIRMWARE_VERSION_LEN + FREQUENCY_LEN
-        padding_bytes = (8 - (header_before_padding % 8)) % 8
-        if padding_bytes > 0:
-            file.read(padding_bytes)
+
         calibration_b = file.read(HEADER_CAL_SIZE)
 
         self.uid = struct.unpack("<Q", uid_b)[0]

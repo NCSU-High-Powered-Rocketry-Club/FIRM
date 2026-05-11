@@ -6,8 +6,9 @@
  */
 
 #pragma once
-#include "usb_device.h"
 #include <stdint.h>
+#include <string.h>
+#include "stm32f4xx_hal.h"
 
 /**
  * @brief Reads data from a sensor address

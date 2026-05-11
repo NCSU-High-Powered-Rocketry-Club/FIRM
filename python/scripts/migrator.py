@@ -22,6 +22,8 @@ V10_TEXT = b'FIRM LOG v1.0\n'
 V11_TEXT = b'FIRM LOG v1.1\n'
 V12_TEXT = b'FIRM LOG v1.2\n'
 V13_TEXT = b'FIRM LOG v1.3\n'
+V14_TEXT = b'FIRM LOG v1.4\n'
+
 
 V10_TIMESTAMP_BYTES = 3  # big endian
 V11_TIMESTAMP_BYTES = 3  # little endian
@@ -53,6 +55,14 @@ V13_CAL_BYTES = 192
 V13_NUM_SCALE_FACTORS = 6
 V13_TIMESTAMP_BYTES = 4
 
+V14_UID_SIZE = 8
+V14_DEVICE_NAME_LEN = 32
+V14_PROTOCOL_BOOL_BYTES = 4
+V14_FIRMWARE_VERSION_LEN = 8
+V14_FREQUENCY_LEN = 2
+V14_CAL_BYTES = 192
+V14_NUM_SCALE_FACTORS = 6
+V14_TIMESTAMP_BYTES = 4
 
 def _mmc5983ma_bins(binary_packet: bytes) -> Tuple[int, int, int]:
     # Keep bit extraction identical to decoder.py
@@ -431,6 +441,44 @@ def convert_v1_2_to_v1_3(src, dst) -> None:
     )
 
 
+def convert_v1_3_to_v1_4(src, dst) -> None:
+    """Convert a v1.2 log to v1.3 by appending ADXL371 calibration and scale factor."""
+    src_header_text = src.read(LOG_HEADER_TEXT_SIZE)
+    if src_header_text != V13_TEXT:
+        return
+
+    dst.write(V14_TEXT)
+
+    # Copy header fields unchanged through padding
+    uid_b = src.read(V13_UID_SIZE)
+    dst.write(uid_b)
+    device_name_b = src.read(V13_DEVICE_NAME_LEN)
+    dst.write(device_name_b)
+    comms_b = src.read(V13_PROTOCOL_BOOL_BYTES)
+    dst.write(comms_b)
+    firmware_b = src.read(V13_FIRMWARE_VERSION_LEN)
+    dst.write(firmware_b)
+    frequency_b = src.read(V13_FREQUENCY_LEN)
+    dst.write(frequency_b)
+    src.read(V13_PADDING_BYTES)  # consume padding
+
+
+    # Copy existing 3-sensor calibration, then append ADXL371 defaults
+    cal_bytes = src.read(V13_CAL_BYTES)
+    dst.write(cal_bytes)
+
+    scale_factor_bytes = src.read(V13_NUM_SCALE_FACTORS * 4)
+    dst.write(scale_factor_bytes)
+
+    # Copy packets verbatim (timestamp format unchanged between v1.2 and v1.3)
+    copy_packets_no_timestamp_swap(
+        src,
+        dst,
+        src_timestamp_bytes=V13_TIMESTAMP_BYTES,
+        dst_timestamp_bytes=V14_TIMESTAMP_BYTES,
+    )
+
+
 # migrates a log file to have little-endian timestamp bytes
 def new_file( path ):
     # define source(s) and destination(s) files ( for testing )
@@ -442,36 +490,49 @@ def new_file( path ):
         with open( path, 'rb' ) as src, open( dst_file, "wb" ) as dst:
             # read header version
             header_text = src.read( LOG_HEADER_TEXT_SIZE )
-
-            if( header_text == V13_TEXT ):
-                # v1.3 stays as-is
+            
+            if( header_text == V14_TEXT ):
+                # already current, just copy
                 src.seek(0)
                 shutil.copyfileobj(src, dst)
                 return
 
-            if( header_text == V12_TEXT ):
-                # Incremental: v1.2 -> v1.3
+            if( header_text == V13_TEXT ):
+                # v1.3 -> v1.4
                 src.seek(0)
-                convert_v1_2_to_v1_3(src, dst)
+                convert_v1_3_to_v1_4(src, dst)
+                return
+
+            if( header_text == V12_TEXT ):
+                # v1.2 -> v1.3 -> v1.4
+                with tempfile.TemporaryFile(mode="w+b") as tmp:
+                    src.seek(0)
+                    convert_v1_2_to_v1_3(src, tmp)
+                    tmp.seek(0)
+                    convert_v1_3_to_v1_4(tmp, dst)
                 return
 
             if( header_text == V11_TEXT ):
-                # Incremental: v1.1 -> v1.2 -> v1.3
-                with tempfile.TemporaryFile(mode="w+b") as tmp:
+                # v1.1 -> v1.2 -> v1.3 -> v1.4
+                with tempfile.TemporaryFile(mode="w+b") as tmp1, tempfile.TemporaryFile(mode="w+b") as tmp2:
                     src.seek(0)
-                    convert_v1_1_to_v1_2(src, tmp)
-                    tmp.seek(0)
-                    convert_v1_2_to_v1_3(tmp, dst)
+                    convert_v1_1_to_v1_2(src, tmp1)
+                    tmp1.seek(0)
+                    convert_v1_2_to_v1_3(tmp1, tmp2)
+                    tmp2.seek(0)
+                    convert_v1_3_to_v1_4(tmp2, dst)
                 return
 
             if( header_text == V10_TEXT ):
-                # Incremental: v1.0 -> v1.1 -> v1.2 -> v1.3
-                with tempfile.TemporaryFile(mode="w+b") as tmp1, tempfile.TemporaryFile(mode="w+b") as tmp2:
+                # v1.0 -> v1.1 -> v1.2 -> v1.3 -> v1.4
+                with tempfile.TemporaryFile(mode="w+b") as tmp1, tempfile.TemporaryFile(mode="w+b") as tmp2, tempfile.TemporaryFile(mode="w+b") as tmp3:
                     convert_to_v1_1(src, tmp1, header_text)
                     tmp1.seek(0)
                     convert_v1_1_to_v1_2(tmp1, tmp2)
                     tmp2.seek(0)
-                    convert_v1_2_to_v1_3(tmp2, dst)
+                    convert_v1_2_to_v1_3(tmp2, tmp3)
+                    tmp3.seek(0)
+                    convert_v1_3_to_v1_4(tmp3, dst)
                 return
 
             return

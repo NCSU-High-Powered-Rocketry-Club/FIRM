@@ -25,11 +25,39 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "firm_tasks.h"
+#include "mode_indicator_task.h"
+#include "sensor_task.h"
+#include "filter_data_task.h"
+#include "packetizer_task.h"
+#include "transmit_task.h"
+#include "usb_read_data_task.h"
+#include "transmit_frame.h"
+#include "led.h"
+#include "logger.h"
+#include "mocking_handler.h"
+#include "sensor_manager.h"
+#include "settings_manager.h"
+#include "system_settings.h"
+#include "system_state.h"
+#include "targets.h"
+#include "firm_v1_0.h"
+
+#include "FreeRTOS.h"
+#include "event_groups.h"
+#include "queue.h"
+#include "semphr.h"
+#include "stream_buffer.h"
+#include "task.h"
+
+#include <bmp581.h>
+#include <icm45686.h>
+#include <mmc5983ma.h>
+#include <adxl371.h>
 
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+
 
 /* USER CODE END Includes */
 
@@ -40,6 +68,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
+#define MOCK_QUEUE_LENGTH 50U
 
 /* USER CODE END PD */
 
@@ -68,14 +98,14 @@ osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
   .stack_size = 256 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityRealtime1,
 };
 /* Definitions for startupTask */
 osThreadId_t startupTaskHandle;
 const osThreadAttr_t startupTask_attributes = {
   .name = "startupTask",
   .stack_size = 256 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityRealtime,
 };
 /* USER CODE BEGIN PV */
 
@@ -97,10 +127,86 @@ void StartupTask(void *argument);
 
 /* USER CODE BEGIN PFP */
 
+static bool mock_count_try_take(void *context);
+static bool mock_count_give(void *context);
+static size_t mock_count_get_count(void *context);
+static void mock_count_reset(void *context);
+static void firm_rtos_init(void);
+static void configure_mocking_injection(void);
+static uint32_t firm_time_cyccnt(void);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+static bool mock_count_try_take(void *context) {
+  return xSemaphoreTake((SemaphoreHandle_t)context, 0U) == pdTRUE;
+}
+
+static bool mock_count_give(void *context) {
+  return xSemaphoreGive((SemaphoreHandle_t)context) == pdTRUE;
+}
+
+static size_t mock_count_get_count(void *context) {
+  return (size_t)uxSemaphoreGetCount((SemaphoreHandle_t)context);
+}
+
+static void mock_count_reset(void *context) {
+  while (xSemaphoreTake((SemaphoreHandle_t)context, 0U) == pdTRUE) {
+  }
+}
+
+static uint32_t firm_time_cyccnt(void) {
+  return DWT->CYCCNT;
+}
+
+static void configure_mocking_injection(void) {
+  MockSensorTaskInjectFns_t inject_fns = {
+      .set_time_fn = set_time_fn,
+      .set_barometer_read_fn = set_barometer_read_fn,
+      .set_imu_read_fn = set_imu_read_fn,
+      .set_magnetometer_read_fn = set_magnetometer_read_fn,
+      .set_high_g_read_fn = set_high_g_read_fn,
+      .get_time_fn = sensor_manager_get_time_fn,
+      .get_barometer_read_fn = sensor_manager_get_barometer_read_fn,
+      .get_imu_read_fn = sensor_manager_get_imu_read_fn,
+      .get_magnetometer_read_fn = sensor_manager_get_magnetometer_read_fn,
+      .get_high_g_read_fn = sensor_manager_get_high_g_read_fn,
+  };
+
+  mocking_handler_configure_sensor_task_injection(&inject_fns);
+}
+
+static void firm_rtos_init(void) {
+  usb_rx_stream =
+      xStreamBufferCreate(USB_RX_STREAM_BUFFER_SIZE_BYTES, USB_RX_STREAM_TRIGGER_LEVEL_BYTES);
+  transmit_queue = xQueueCreate(TRANSMIT_QUEUE_LENGTH, sizeof(TransmitFrame_t));
+  sensor_event_group = xEventGroupCreate();
+  sensor_collected_group = xEventGroupCreate();
+
+  if (usb_rx_stream == NULL || transmit_queue == NULL || sensor_event_group == NULL ||
+      sensor_collected_group == NULL) {
+    Error_Handler();
+  }
+
+  SemaphoreHandle_t mock_count_sem = xSemaphoreCreateCounting(MOCK_QUEUE_LENGTH, 0U);
+  if (mock_count_sem != NULL) {
+    MockRingCountSemaphore_t mock_counting_semaphore = {
+        .context = mock_count_sem,
+        .try_take = mock_count_try_take,
+        .give = mock_count_give,
+        .get_count = mock_count_get_count,
+        .reset = mock_count_reset,
+    };
+
+    uint32_t hclk_hz = HAL_RCC_GetHCLKFreq();
+    uint32_t hclk_mhz = (hclk_hz == 0U) ? 168U : (hclk_hz / 1000000U);
+    mocking_handler_init(&mock_counting_semaphore, hclk_mhz);
+  }
+
+  configure_mocking_injection();
+}
 
 /* USER CODE END 0 */
 
@@ -144,26 +250,13 @@ int main(void)
   MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
 
-  SPIHandles spi_handles = {
-      .hspi1 = &hspi1,
-      .hspi2 = &hspi2,
-      .hspi3 = &hspi3,
-  };
-  I2CHandles i2c_handles = {
-      .hi2c1 = &hi2c1,
-      .hi2c2 = &hi2c2,
-  };
-  DMAHandles dma_handles = {
-      .hdma_sdio_rx = &hdma_sdio_rx,
-      .hdma_sdio_tx = &hdma_sdio_tx,
-  };
-  UARTHandles uart_handles = {
-      .huart1 = &huart1,
-  };
-
-  if (initialize_firm(&spi_handles, &i2c_handles, &dma_handles, &uart_handles)) {
+  if (firm_init_hardware())
     Error_Handler();
-  };
+
+  // global instance of the data packet that contains raw sensor readings and filtered data. This
+  // single instance will be passed into multiple different tasks to read and modify.
+  // TODO: this obviously has synchronization concerns. I'm kinda just ignoring them.
+  DataPacket_t global_data_packet = {0};
 
   /* USER CODE END 2 */
 
@@ -171,7 +264,6 @@ int main(void)
   osKernelInitialize();
 
   /* USER CODE BEGIN RTOS_MUTEX */
-  sensorDataMutexHandle = osMutexNew(&sensorDataMutex_attributes);
 
   /* USER CODE END RTOS_MUTEX */
 
@@ -195,26 +287,17 @@ int main(void)
   startupTaskHandle = osThreadNew(StartupTask, NULL, &startupTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  system_manager_task_handle =
-      osThreadNew(system_manager_task, NULL, &systemManagerTask_attributes);
   firm_mode_indicator_task_handle =
       osThreadNew(firm_mode_indicator_task, NULL, &modeIndicatorTask_attributes);
-  bmp581_task_handle = osThreadNew(collect_bmp581_data_task, NULL, &bmp581Task_attributes);
-  icm45686_task_handle = osThreadNew(collect_icm45686_data_task, NULL, &icm45686Task_attributes);
-  mmc5983ma_task_handle = osThreadNew(collect_mmc5983ma_data_task, NULL, &mmc5983maTask_attributes);
-  adxl371_task_handle = osThreadNew(collect_adxl371_data_task, NULL, &adxl371Task_attributes);
-  packetizer_task_handle = osThreadNew(packetizer_task, NULL, &packetizerTask_attributes);
-  filter_data_task_handle = osThreadNew(filter_data_task, NULL, &filterDataTask_attributes);
+  sensor_task_handle = osThreadNew(sensor_task, &global_data_packet, &sensorTask_attributes);
+  packetizer_task_handle = osThreadNew(packetizer_task, &global_data_packet, &packetizerTask_attributes);
+  filter_data_task_handle = osThreadNew(filter_data_task, &global_data_packet, &filterDataTask_attributes);
   transmit_task_handle = osThreadNew(transmit_data, NULL, &transmitTask_attributes);
   usb_read_task_handle = osThreadNew(usb_read_data, NULL, &usbReadTask_attributes);
-  mock_packet_handler_handle = osThreadNew(mock_packet_handler, NULL, &mockPacketTask_attributes);
 
-  if (system_manager_task_handle == NULL || firm_mode_indicator_task_handle == NULL ||
-      mmc5983ma_task_handle == NULL || icm45686_task_handle == NULL || bmp581_task_handle == NULL ||
-      adxl371_task_handle == NULL ||
+  if (firm_mode_indicator_task_handle == NULL || sensor_task_handle == NULL ||
       filter_data_task_handle == NULL || packetizer_task_handle == NULL ||
-      transmit_task_handle == NULL || usb_read_task_handle == NULL ||
-      mock_packet_handler_handle == NULL) {
+      transmit_task_handle == NULL || usb_read_task_handle == NULL) {
     Error_Handler();
   }
   /* USER CODE END RTOS_THREADS */
@@ -655,7 +738,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void blink() { HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET); }
 
 /**
  * @brief ISR for interrupt pins
@@ -666,21 +748,25 @@ void blink() { HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET); }
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
+  if (sensor_event_group == NULL) {
+    return;
+  }
+
   if (GPIO_Pin == BMP581_Interrupt_Pin) {
-    (void)xTaskNotifyFromISR(bmp581_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits,
-                             &xHigherPriorityTaskWoken);
+    (void)xEventGroupSetBitsFromISR(sensor_event_group, SENSOR_EVENT_BAROMETER_READY,
+                                    &xHigherPriorityTaskWoken);
   }
   if (GPIO_Pin == ICM45686_Interrupt_Pin) {
-    (void)xTaskNotifyFromISR(icm45686_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits,
-                             &xHigherPriorityTaskWoken);
+    (void)xEventGroupSetBitsFromISR(sensor_event_group, SENSOR_EVENT_IMU_READY,
+                                    &xHigherPriorityTaskWoken);
   }
   if (GPIO_Pin == MMC5983MA_Interrupt_Pin) {
-    (void)xTaskNotifyFromISR(mmc5983ma_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits,
-                             &xHigherPriorityTaskWoken);
+    (void)xEventGroupSetBitsFromISR(sensor_event_group, SENSOR_EVENT_MAGNETOMETER_READY,
+                                    &xHigherPriorityTaskWoken);
   }
-  if (GPIO_Pin == ADXL371_Interrupt_Pin && adxl371_task_handle != NULL) {
-    (void)xTaskNotifyFromISR(adxl371_task_handle, SENSOR_NOTIFY_ISR_BIT, eSetBits,
-                             &xHigherPriorityTaskWoken);
+  if (GPIO_Pin == ADXL371_Interrupt_Pin) {
+    (void)xEventGroupSetBitsFromISR(sensor_event_group, SENSOR_EVENT_HIGH_G_READY,
+                                    &xHigherPriorityTaskWoken);
   }
   portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
@@ -699,9 +785,7 @@ void StartDefaultTask(void *argument)
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
-  for (;;) {
-    osDelay(1);
-  }
+  vTaskDelete(NULL);
   /* USER CODE END 5 */
 }
 
@@ -715,48 +799,75 @@ void StartDefaultTask(void *argument)
 void StartupTask(void *argument)
 {
   /* USER CODE BEGIN StartupTask */
-  // Setup the SD card
-  FRESULT res = logger_init(&hdma_sdio_tx);
-  if (res) {
-    serialPrintStr("Failed to initialized the logger (SD card)");
+
+  system_state_set(SYSTEM_STATE_BOOT);
+
+  // We use DWT (Data Watchpoint and Trace unit) to get a high resolution free-running timer.
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+  DWT->CYCCNT = 0;
+  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+
+  set_time_fn(firm_time_cyccnt);
+
+  // Ensure SPI chip-select lines default to not selected.
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // BMP581 CS pin
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // ICM45686 CS pin
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET); // flash chip CS pin
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET); // MMC5983MA CS pin
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET); // ADXL371 CS pin
+
+  HAL_Delay(100);
+
+  // The scheduler is not running yet; prevent EXTI callbacks from notifying task handles.
+  HAL_NVIC_DisableIRQ(EXTI0_IRQn);
+  HAL_NVIC_DisableIRQ(EXTI1_IRQn);
+  HAL_NVIC_DisableIRQ(EXTI2_IRQn);
+  HAL_NVIC_DisableIRQ(EXTI3_IRQn);
+
+  if (icm45686_init()) {
+    led_set_status(IMU_FAIL);
     Error_Handler();
   }
 
-  // get scale factor values for each sensor to put in header
-  HeaderFields header_fields = {
-      bmp581_get_temp_scale_factor(),
-      bmp581_get_pressure_scale_factor(),
-      icm45686_get_accel_scale_factor(),
-      icm45686_get_gyro_scale_factor(),
-      mmc5983ma_get_magnetic_field_scale_factor(),
-      adxl371_get_accel_scale_factor(),
-  };
+  if (mmc5983ma_init()) {
+    led_set_status(MMC5983MA_FAIL);
+    Error_Handler();
+  }
 
-  logger_write_header(&header_fields);
+  if (bmp581_init()) {
+    led_set_status(BMP581_FAIL);
+    Error_Handler();
+  }
 
-  // the IMU runs into issues when the fifo is full at the very beginning, causing the interrupt
-  // to be pulled back low too fast, and the ISR doesn't catch it for whatever reason. Doing
-  // this initial read will prevent that.
-  // ICM45686Packet_t imu_packet;
-  // icm45686_read_data(&imu_packet);
-  // MMC5983MAPacket_t mag_packet;
-  // mmc5983ma_read_data(&mag_packet, &magnetometer_flip);
+  if (adxl371_init()) {
+    led_set_status(HIGH_G_FAIL);
+    Error_Handler();
+  }
+  
+  // set up the settings manager
+  if (settings_manager_init()) {
+    led_set_status(FLASH_CHIP_FAIL);
+    Error_Handler();
+  }
 
-  // even though we call this function in settings setup, it somehow breaks settings
-  // when you try to write to it during rtos. So we have to call this again.
-  w25q128jv_set_spi_settings(&hspi1, GPIOC, GPIO_PIN_4);
-  set_spi_icm(&hspi2, GPIOB, GPIO_PIN_9);
-  set_spi_bmp(&hspi2, GPIOC, GPIO_PIN_2);
-  set_spi_mmc(&hspi2, GPIOC, GPIO_PIN_7);
-  set_spi_adxl(&hspi2, GPIOA, GPIO_PIN_8);
+  // setup logger with the sensor data sizes
+  logger_set_sensor_info(sizeof(BMP581RawData_t), sizeof(ICM45686RawData_t),
+                         sizeof(MMC5983MARawData_t), sizeof(ADXL371RawData_t));
+
+  // Open a new log and emit the metadata header.
+  if (create_log()) {
+    Error_Handler();
+  }
+  if (logger_write_header(*get_settings())) {
+    Error_Handler();
+  }
 
   // re-enable ISR's so that interrupts can trigger the sensor tasks to run
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);
   HAL_NVIC_EnableIRQ(EXTI1_IRQn);
   HAL_NVIC_EnableIRQ(EXTI2_IRQn);
   HAL_NVIC_EnableIRQ(EXTI3_IRQn);
-  SystemRequest boot = SYSREQ_SETUP;
-  xQueueSend(system_request_queue, &boot, 0);
+
   vTaskDelete(NULL);
   /* USER CODE END StartupTask */
 }
