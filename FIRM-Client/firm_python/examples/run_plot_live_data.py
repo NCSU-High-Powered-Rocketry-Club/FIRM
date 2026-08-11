@@ -88,8 +88,7 @@ def main(argv: List[str]) -> int:
 
     # One series per field.
     series_by_field: Dict[str, Series] = {
-        field: Series(x=deque(maxlen=MAX_POINTS), y=deque(maxlen=MAX_POINTS))
-        for field in FIELDS
+        field: Series(x=deque(maxlen=MAX_POINTS), y=deque(maxlen=MAX_POINTS)) for field in FIELDS
     }
 
     start_packet_ts: Optional[float] = None
@@ -191,8 +190,7 @@ def main(argv: List[str]) -> int:
                         # Trim to rolling window.
                         while (
                             kalman_update_times
-                            and kalman_time - kalman_update_times[0]
-                            > KALMAN_WINDOW_SECONDS
+                            and kalman_time - kalman_update_times[0] > KALMAN_WINDOW_SECONDS
                         ):
                             kalman_update_times.popleft()
 
