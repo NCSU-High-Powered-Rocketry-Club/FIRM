@@ -25,6 +25,8 @@ int parse_message_id(uint8_t identifier_byte) {
     return sizeof(uint32_t) + sizeof(MMC5983MARawData_t);
   case ID_HIGH_G_ACCELEROMETER:
     return sizeof(uint32_t) + sizeof(ADXL371RawData_t);
+  case ID_MOCK_HEADER:
+    return sizeof(SystemSettings_t);
   case ID_DATA_PACKET:
   default:
     return -1;

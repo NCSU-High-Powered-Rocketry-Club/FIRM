@@ -64,12 +64,12 @@ void *logger_storage_malloc_capacity(size_t bytes_needed) {
 
   if (current_offset + bytes_needed > storage_interface.buffer_size) {
     // buffer full, swap is needed
-    if (!can_write_sector() || storage_interface.write_sector(current_buffer, storage_interface.buffer_size)) {
-      return NULL;
-    }
     // pad the remaining unused bytes at the end of the full buffer with zeroes
     size_t bytes_remaining = storage_interface.buffer_size - current_offset;
     memset(current_buffer + current_offset, 0, bytes_remaining);
+    if (!can_write_sector() || storage_interface.write_sector(current_buffer, storage_interface.buffer_size)) {
+      return NULL;
+    }
     swap_buffers(); // swap buffers
   }
 

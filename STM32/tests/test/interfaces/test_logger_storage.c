@@ -1,11 +1,13 @@
 #include <unity.h>
 
+#include <stdio.h>
 #include <string.h>
 
 #include "fake_logger.h"
 #include "logger_storage.h"
 
 #define TEST_SECTOR_SIZE 16U
+#define TEST_LOG_FILENAME "logger_storage_test.frm"
 
 static uint8_t buffer_a[TEST_SECTOR_SIZE];
 static uint8_t buffer_b[TEST_SECTOR_SIZE];
@@ -28,7 +30,7 @@ void setUp(void) {
   };
 
   TEST_ASSERT_EQUAL_INT(0, logger_storage_init(&logger_interface));
-  TEST_ASSERT_EQUAL_INT(0, logger_create_file("logger_storage_test.frm", 1024U));
+  TEST_ASSERT_EQUAL_INT(0, logger_create_file(TEST_LOG_FILENAME, 1024U));
 }
 
 void tearDown(void) { fake_logger_cleanup_logs(); }
@@ -90,4 +92,32 @@ void test_double_buffering_swaps_back_after_standby_overflow(void) {
   memset(third, 0x73, 9U);
   TEST_ASSERT_EQUAL_HEX8(0x73, buffer_a[0]);
   TEST_ASSERT_EQUAL_HEX8(0x62, buffer_b[0]);
+}
+
+void test_overflow_flushes_zero_padded_tail_to_file(void) {
+  uint8_t *first = logger_storage_malloc_capacity(12U);
+
+  TEST_ASSERT_NOT_NULL(first);
+
+  memset(first, 0x33, 12U);
+
+  uint8_t *second = logger_storage_malloc_capacity(5U);
+  TEST_ASSERT_NOT_NULL(second);
+
+  memset(second, 0x44, 5U);
+
+  FILE *log_file = fopen("test/logs/" TEST_LOG_FILENAME, "rb");
+  TEST_ASSERT_NOT_NULL(log_file);
+
+  uint8_t sector[TEST_SECTOR_SIZE] = {0};
+  TEST_ASSERT_EQUAL_UINT16(TEST_SECTOR_SIZE,
+                           (uint16_t)fread(sector, 1U, sizeof(sector), log_file));
+  fclose(log_file);
+
+  TEST_ASSERT_EQUAL_HEX8(0x33, sector[0]);
+  TEST_ASSERT_EQUAL_HEX8(0x33, sector[11]);
+  TEST_ASSERT_EQUAL_HEX8(0x00, sector[12]);
+  TEST_ASSERT_EQUAL_HEX8(0x00, sector[13]);
+  TEST_ASSERT_EQUAL_HEX8(0x00, sector[14]);
+  TEST_ASSERT_EQUAL_HEX8(0x00, sector[15]);
 }
