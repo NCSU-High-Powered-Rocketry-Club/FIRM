@@ -35,9 +35,7 @@ class CalibrationValues:
         float, float, float, float, float, float, float, float, float
     ]
     imu_gyroscope_offsets: tuple[float, float, float]
-    imu_gyroscope_scale_matrix: tuple[
-        float, float, float, float, float, float, float, float, float
-    ]
+    imu_gyroscope_scale_matrix: tuple[float, float, float, float, float, float, float, float, float]
     magnetometer_offsets: tuple[float, float, float]
     magnetometer_scale_matrix: tuple[
         float, float, float, float, float, float, float, float, float
@@ -202,9 +200,7 @@ class FIRMClient:
     def get_device_info(self, timeout_seconds: float = 5.0) -> DeviceInfo | None: ...
     """Request device info and wait up to timeout_seconds."""
 
-    def get_device_config(
-        self, timeout_seconds: float = 5.0
-    ) -> DeviceConfig | None: ...
+    def get_device_config(self, timeout_seconds: float = 5.0) -> DeviceConfig | None: ...
     """Request device configuration and wait up to timeout_seconds."""
 
     def set_device_config(
@@ -219,9 +215,7 @@ class FIRMClient:
     def set_magnetometer_calibration(
         self,
         offsets: tuple[float, float, float],
-        scale_matrix: tuple[
-            float, float, float, float, float, float, float, float, float
-        ],
+        scale_matrix: tuple[float, float, float, float, float, float, float, float, float],
         timeout_seconds: float = 5.0,
     ) -> bool: ...
     """Set magnetometer calibration and wait up to timeout_seconds for acknowledgement."""
@@ -229,20 +223,14 @@ class FIRMClient:
     def set_imu_calibration(
         self,
         accel_offsets: tuple[float, float, float],
-        accel_scale_matrix: tuple[
-            float, float, float, float, float, float, float, float, float
-        ],
+        accel_scale_matrix: tuple[float, float, float, float, float, float, float, float, float],
         gyro_offsets: tuple[float, float, float],
-        gyro_scale_matrix: tuple[
-            float, float, float, float, float, float, float, float, float
-        ],
+        gyro_scale_matrix: tuple[float, float, float, float, float, float, float, float, float],
         timeout_seconds: float = 5.0,
     ) -> bool: ...
     """Set IMU calibration and wait up to timeout_seconds for acknowledgement."""
 
-    def get_calibration(
-        self, timeout_seconds: float = 5.0
-    ) -> CalibrationValues | None: ...
+    def get_calibration(self, timeout_seconds: float = 5.0) -> CalibrationValues | None: ...
     """Request calibration values and wait up to timeout_seconds."""
 
     def cancel(self, timeout_seconds: float = 5.0) -> bool: ...
@@ -265,9 +253,7 @@ class FIRMClient:
     def is_mock_log_streaming(self) -> bool: ...
     """True if a mock log stream is currently running."""
 
-    def stop_mock_log_stream(
-        self, cancel_device: bool = True, join: bool = True
-    ) -> int | None: ...
+    def stop_mock_log_stream(self, cancel_device: bool = True, join: bool = True) -> int | None: ...
     """Stop the async mock log stream. Optionally cancel the device."""
 
     def run_and_apply_magnetometer_calibration(
