@@ -10,6 +10,9 @@ export default defineConfig(({ command }) => {
   return {
     base: command === "serve" ? "/" : prodBase,
     plugins: [tailwindcss(), reactRouter(), tsconfigPaths()],
+    resolve: {
+      preserveSymlinks: true,
+    },
     optimizeDeps: {
       exclude: ["firm-client"],
     },

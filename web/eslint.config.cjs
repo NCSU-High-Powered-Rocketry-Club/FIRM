@@ -47,6 +47,8 @@ module.exports = [
 
       "no-undef": "off",
       "no-unused-vars": "off",
+      "react/jsx-uses-react": "off",
+      "react/react-in-jsx-scope": "off",
       "@typescript-eslint/no-unused-vars": [
         "warn",
         {
