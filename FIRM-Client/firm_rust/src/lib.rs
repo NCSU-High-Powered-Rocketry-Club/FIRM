@@ -9,7 +9,6 @@ use firm_core::data_parser::SerialParser;
 use firm_core::firm_packets::{
     CalibrationValues, DeviceConfig, DeviceInfo, DeviceProtocol, FIRMResponse, ProcessedFIRMData,
 };
-use firm_core::framed_packet::Framed;
 use firm_core::log_parsing::LogParser;
 use serialport::SerialPort;
 use std::collections::VecDeque;
@@ -168,13 +167,8 @@ impl FIRMClient {
             while running_clone.load(Ordering::Relaxed) {
                 // Drain pending command packets first and write them to the port.
                 while let Ok(cmd) = command_receiver.try_recv() {
+                    parser.expect_response(cmd.command_type());
                     let cmd_bytes = cmd.to_bytes();
-                    // let hex = cmd_bytes
-                    //     .iter()
-                    //     .map(|b| format!("{:02X}", b))
-                    //     .collect::<Vec<_>>()
-                    //     .join(" ");
-                    // println!("Command packet bytes: {hex}");
                     if let Err(e) = port.write_all(&cmd_bytes) {
                         let _ = error_sender.send(e.to_string());
                         running_clone.store(false, Ordering::Relaxed);
@@ -186,13 +180,6 @@ impl FIRMClient {
                 // Then drain pending mock packets and write them to the port.
                 while let Ok(packet) = mock_receiver.try_recv() {
                     let packet_bytes = packet.to_bytes();
-                    // let hex = packet_bytes
-                    //     .iter()
-                    //     .map(|b| format!("{:02X}", b))
-                    //     .collect::<Vec<_>>()
-                    //     .join(" ");
-                    // println!("Mock packet bytes: {hex}");
-
                     if let Err(e) = port.write_all(&packet_bytes) {
                         let _ = error_sender.send(e.to_string());
                         running_clone.store(false, Ordering::Relaxed);
@@ -812,7 +799,7 @@ fn stream_mock_log_file_worker(
     let mut header = vec![0u8; HEADER_TOTAL_SIZE];
     file.read_exact(&mut header)?;
 
-    // Send the log header to the device, framed as a mock packet.
+    // Send the log header to the device as a mock message.
     let header_packet = FIRMLogPacket::new(FIRMLogPacketType::HeaderPacket, header.clone());
     mock_sender
         .send(header_packet)
@@ -959,16 +946,9 @@ impl Drop for FIRMClient {
 
 #[cfg(test)]
 mod tests {
-    use firm_core::{
-        constants::{
-            command::{
-                DEVICE_ID_LENGTH, DEVICE_NAME_LENGTH, FIRMCommand, FIRMWARE_VERSION_LENGTH,
-                FREQUENCY_LENGTH,
-            },
-            packet::PacketHeader,
-        },
-        firm_packets::FIRMResponsePacket,
-        framed_packet::FramedPacket,
+    use firm_core::constants::command::{
+        DEVICE_CONFIG_PAYLOAD_LENGTH, DEVICE_ID_LENGTH, DEVICE_NAME_LENGTH,
+        FIRM_DATA_PAYLOAD_LENGTH, FIRMCommand, FIRMWARE_VERSION_LENGTH, FREQUENCY_LENGTH,
     };
 
     use super::*;
@@ -1006,12 +986,15 @@ mod tests {
 
         let timestamp_seconds = 1.5f64;
 
-        let mut payload = vec![0u8; 120];
+        let mut payload = vec![0u8; FIRM_DATA_PAYLOAD_LENGTH];
         payload[0..8].copy_from_slice(&timestamp_seconds.to_le_bytes());
         payload[8..12].copy_from_slice(&25.0f32.to_le_bytes());
+        payload[72..76].copy_from_slice(&1.0f32.to_le_bytes());
 
-        let mocked_packet = FramedPacket::new(PacketHeader::Data, 0, payload);
-        device.inject_framed_packet(mocked_packet);
+        device.inject_data_packet(&payload);
+        let mut following_payload = payload.clone();
+        following_payload[0..8].copy_from_slice(&2.0f64.to_le_bytes());
+        device.inject_data_packet(&following_payload);
 
         // Need to give some time for the background thread to read the data
         let packets = client
@@ -1028,15 +1011,19 @@ mod tests {
 
         let payload = [1u8];
 
-        let bytes = FramedPacket::new(
-            PacketHeader::Response,
-            FIRMCommand::SetDeviceConfig.to_u16(),
-            payload.to_vec(),
-        )
-        .to_bytes();
-        let response_packet = FIRMResponsePacket::from_bytes(&bytes).unwrap();
-
-        device.inject_framed_packet(response_packet.frame().clone());
+        client
+            .send_command(FIRMCommandPacket::new(
+                FIRMCommand::SetDeviceConfig,
+                vec![0; DEVICE_CONFIG_PAYLOAD_LENGTH],
+            ))
+            .unwrap();
+        assert_eq!(
+            device
+                .wait_for_command_identifier(Duration::from_millis(100))
+                .unwrap(),
+            Some(FIRMCommand::SetDeviceConfig.to_u8().into())
+        );
+        device.inject_response(FIRMCommand::SetDeviceConfig, &payload);
 
         let packet = client
             .get_response_packets(Some(Duration::from_millis(100)))
@@ -1066,12 +1053,7 @@ mod tests {
 
         // Prepare the response packet to be injected
         let response_payload = [1u8]; // Acknowledgement byte
-        let response_packet = FramedPacket::new(
-            PacketHeader::Response,
-            FIRMCommand::SetDeviceConfig.to_u16(),
-            response_payload.to_vec(),
-        );
-        device.inject_framed_packet(response_packet);
+        device.inject_response(FIRMCommand::SetDeviceConfig, &response_payload);
 
         // Send the set device config command
         let result = client.set_device_config(
@@ -1097,12 +1079,7 @@ mod tests {
         payload[DEVICE_ID_LENGTH..DEVICE_ID_LENGTH + FIRMWARE_VERSION_LENGTH]
             .copy_from_slice(&fw_bytes);
 
-        let response_packet = FramedPacket::new(
-            PacketHeader::Response,
-            FIRMCommand::GetDeviceInfo.to_u16(),
-            payload,
-        );
-        device.inject_framed_packet(response_packet);
+        device.inject_response(FIRMCommand::GetDeviceInfo, &payload);
 
         let result = client.get_device_info(Duration::from_millis(100));
 
@@ -1124,19 +1101,15 @@ mod tests {
         let frequency: u16 = 100;
         let protocol = DeviceProtocol::UART;
 
-        let mut payload = vec![0u8; DEVICE_NAME_LENGTH + FREQUENCY_LENGTH + 1];
+        let mut payload = vec![0u8; DEVICE_CONFIG_PAYLOAD_LENGTH];
         let name_bytes = str_to_bytes::<DEVICE_NAME_LENGTH>(name);
-        payload[0..DEVICE_NAME_LENGTH].copy_from_slice(&name_bytes);
-        payload[DEVICE_NAME_LENGTH..DEVICE_NAME_LENGTH + FREQUENCY_LENGTH]
-            .copy_from_slice(&frequency.to_le_bytes());
-        payload[DEVICE_NAME_LENGTH + FREQUENCY_LENGTH] = 2;
+        payload[0..FREQUENCY_LENGTH].copy_from_slice(&frequency.to_le_bytes());
+        payload[FREQUENCY_LENGTH..FREQUENCY_LENGTH + DEVICE_NAME_LENGTH]
+            .copy_from_slice(&name_bytes);
+        payload[FREQUENCY_LENGTH + DEVICE_NAME_LENGTH] = 1;
+        payload[FREQUENCY_LENGTH + DEVICE_NAME_LENGTH + 1] = 1;
 
-        let response_packet = FramedPacket::new(
-            PacketHeader::Response,
-            FIRMCommand::GetDeviceConfig.to_u16(),
-            payload,
-        );
-        device.inject_framed_packet(response_packet);
+        device.inject_response(FIRMCommand::GetDeviceConfig, &payload);
 
         let result = client.get_device_config(Duration::from_millis(100));
 
@@ -1162,6 +1135,8 @@ mod tests {
             imu_gyroscope_scale_matrix: [2.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 2.0],
             magnetometer_offsets: [7.0, 8.0, 9.0],
             magnetometer_scale_matrix: [3.0, 0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0, 3.0],
+            high_g_offsets: [10.0, 11.0, 12.0],
+            high_g_scale_matrix: [4.0, 0.0, 0.0, 0.0, 4.0, 0.0, 0.0, 0.0, 4.0],
         };
 
         let mut payload: Vec<u8> = Vec::new();
@@ -1183,13 +1158,14 @@ mod tests {
         for v in expected.magnetometer_scale_matrix {
             payload.extend_from_slice(&v.to_le_bytes());
         }
+        for v in expected.high_g_offsets {
+            payload.extend_from_slice(&v.to_le_bytes());
+        }
+        for v in expected.high_g_scale_matrix {
+            payload.extend_from_slice(&v.to_le_bytes());
+        }
 
-        let response_packet = FramedPacket::new(
-            PacketHeader::Response,
-            FIRMCommand::GetCalibration.to_u16(),
-            payload,
-        );
-        device.inject_framed_packet(response_packet);
+        device.inject_response(FIRMCommand::GetCalibration, &payload);
 
         let result = client.get_calibration(Duration::from_millis(100));
 
@@ -1202,12 +1178,7 @@ mod tests {
         client.start();
 
         let response_payload = [1u8];
-        let response_packet = FramedPacket::new(
-            PacketHeader::Response,
-            FIRMCommand::Cancel.to_u16(),
-            response_payload.to_vec(),
-        );
-        device.inject_framed_packet(response_packet);
+        device.inject_response(FIRMCommand::Cancel, &response_payload);
 
         let result = client.cancel(Duration::from_millis(100));
 

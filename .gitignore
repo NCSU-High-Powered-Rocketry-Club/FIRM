@@ -71,6 +71,9 @@ mx.scratch
 /STM32/CMakeFiles
 /STM32/CMakeCache.txt
 /STM32/build.ninja
+/STM32/.ninja_deps
+/STM32/.ninja_log
+/STM32/FIRM.lst
 cmake_install.cmake
 /STM32/compile_commands.json
 

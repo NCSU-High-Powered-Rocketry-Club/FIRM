@@ -18,15 +18,13 @@ int settings_storage_set_partition(StoragePartition_t partition) {
 int settings_write_to_storage(SystemSettings_t *settings) {
   if (settings == NULL || settings_interface.write_settings == NULL)
     return 1;
-  settings_interface.write_settings(active_partition, (uint8_t *)settings, sizeof(SystemSettings_t));
-  return 0;
+  return settings_interface.write_settings(active_partition, (uint8_t *)settings, sizeof(SystemSettings_t));
 }
 
 int settings_read_from_storage(SystemSettings_t *settings) {
   if (settings == NULL || settings_interface.read_settings == NULL)
     return 1;
-  settings_interface.read_settings(active_partition, (uint8_t *)settings, sizeof(SystemSettings_t));
-  return 0;
+  return settings_interface.read_settings(active_partition, (uint8_t *)settings, sizeof(SystemSettings_t));
 }
 
 uint64_t settings_read_storage_uid(void) {

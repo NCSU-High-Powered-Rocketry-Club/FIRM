@@ -20,6 +20,23 @@ const RESPONSE_TIMEOUT_MS = 5000;
 export interface FIRMConnectOptions {
   /** Serial baud rate (default: 2000000). */
   baudRate?: number;
+  /** Preselected serial port from requestPort(). */
+  port?: WebSerialPortLike;
+}
+
+interface WebSerialPortLike {
+  open(options: { baudRate: number }): Promise<void>;
+  close(): Promise<void>;
+  readable: {
+    getReader(): ReadableStreamDefaultReader<Uint8Array>;
+  } | null;
+  writable: {
+    getWriter(): WritableStreamDefaultWriter<Uint8Array>;
+  } | null;
+}
+
+interface WebSerialNavigator extends Navigator {
+  readonly serial: { requestPort(): Promise<WebSerialPortLike> };
 }
 
 export interface MockStreamOptions {
@@ -41,8 +58,7 @@ export class FIRMClient {
   private dataParser: FIRMDataParser;
 
   /** Serial port (Web Serial API). Kept so we can close/reconnect cleanly. */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private port: any | null = null;
+  private port: WebSerialPortLike | null = null;
 
   /** Subscribers for raw incoming serial bytes. */
   private rawBytesListeners: ((bytes: Uint8Array) => void)[] = [];
@@ -87,7 +103,9 @@ export class FIRMClient {
       } else {
         target[fn]();
       }
-    } catch {}
+    } catch {
+      // Serial cleanup is best-effort when a device has already disconnected.
+    }
   }
 
   /**
@@ -98,14 +116,14 @@ export class FIRMClient {
    */
   static async connect(options: FIRMConnectOptions = {}): Promise<FIRMClient> {
     if (!('serial' in navigator)) throw new Error('Web Serial API not available');
+    const baudRate = options.baudRate ?? 2000000;
+    const port = options.port ?? (await (navigator as WebSerialNavigator).serial.requestPort());
+
     await init();
     const dataParser = new FIRMDataParser();
-    const baudRate = options.baudRate ?? 2000000;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const port = await (navigator as any).serial.requestPort();
     await port.open({ baudRate });
-    const reader = port.readable.getReader();
-    const writer = port.writable.getWriter();
+    const reader = port.readable!.getReader();
+    const writer = port.writable!.getWriter();
     const firm = new FIRMClient(dataParser);
     firm.port = port;
     firm.reader = reader;
@@ -214,7 +232,11 @@ export class FIRMClient {
     matcher: (res: FIRMResponse) => T | undefined,
     timeout = RESPONSE_TIMEOUT_MS,
   ): Promise<T | null> {
-    await this.sendBytes(buildCmd());
+    const command = buildCmd();
+    if (command.length === 0 || !this.dataParser.expect_response(command[0])) {
+      throw new Error('Command does not have a recognized response identifier');
+    }
+    await this.sendBytes(command);
     try {
       return await this.waitForResponse(matcher, timeout);
     } catch {
@@ -235,7 +257,9 @@ export class FIRMClient {
 
     if (speed <= 0) throw new Error('speed must be > 0');
 
-    await this.sendBytes(FIRMCommandBuilder.build_mock());
+    const mockCommand = FIRMCommandBuilder.build_mock();
+    this.dataParser.expect_response(mockCommand[0]);
+    await this.sendBytes(mockCommand);
     const ok = await this.waitForResponse(
       (res) => ('Mock' in res ? res.Mock : undefined),
       startTimeoutMs,
@@ -280,19 +304,19 @@ export class FIRMClient {
       sent += await this.drainMockPacketsBatched(parser, realtime, speed, 0, 10);
     }
 
-    return sent;  
+    return sent;
   }
 
-  /** Sends multiple frames as a single byte array. */
-  private async sendBatch(frames: Uint8Array[]): Promise<void> {
+  /** Sends multiple messages as a single byte array. */
+  private async sendBatch(messages: Uint8Array[]): Promise<void> {
     let total = 0;
-    for (const f of frames) total += f.length;
+    for (const message of messages) total += message.length;
 
     const out = new Uint8Array(total);
     let off = 0;
-    for (const f of frames) {
-      out.set(f, off);
-      off += f.length;
+    for (const message of messages) {
+      out.set(message, off);
+      off += message.length;
     }
 
     await this.sendBytes(out);
@@ -310,17 +334,19 @@ export class FIRMClient {
 
     const popOne = () => {
       if (staged.length > 0) return staged.shift()!;
-      const pkt = parser.get_packet_with_delay() as
-        | { bytes: Uint8Array; delaySeconds: number }
-        | null;
+      const pkt = parser.get_packet_with_delay() as {
+        bytes: Uint8Array;
+        delaySeconds: number;
+      } | null;
       return pkt ?? null;
     };
 
     const fillUntil = (n: number) => {
       while (staged.length < n) {
-        const pkt = parser.get_packet_with_delay() as
-          | { bytes: Uint8Array; delaySeconds: number }
-          | null;
+        const pkt = parser.get_packet_with_delay() as {
+          bytes: Uint8Array;
+          delaySeconds: number;
+        } | null;
         if (!pkt) break;
         staged.push(pkt);
       }

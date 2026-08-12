@@ -35,13 +35,11 @@ class CalibrationValues:
         float, float, float, float, float, float, float, float, float
     ]
     imu_gyroscope_offsets: tuple[float, float, float]
-    imu_gyroscope_scale_matrix: tuple[
-        float, float, float, float, float, float, float, float, float
-    ]
+    imu_gyroscope_scale_matrix: tuple[float, float, float, float, float, float, float, float, float]
     magnetometer_offsets: tuple[float, float, float]
-    magnetometer_scale_matrix: tuple[
-        float, float, float, float, float, float, float, float, float
-    ]
+    magnetometer_scale_matrix: tuple[float, float, float, float, float, float, float, float, float]
+    high_g_offsets: tuple[float, float, float]
+    high_g_scale_matrix: tuple[float, float, float, float, float, float, float, float, float]
 
 class FIRMDataPacket:
     """Represents a data packet received from the FIRM device."""
@@ -89,6 +87,13 @@ class FIRMDataPacket:
     magnetic_field_z_microteslas: float
     """Magnetometer reading for Z-axis in micro-Teslas."""
 
+    high_g_accel_x_gs: float
+    """High-g accelerometer reading for X-axis in Gs."""
+    high_g_accel_y_gs: float
+    """High-g accelerometer reading for Y-axis in Gs."""
+    high_g_accel_z_gs: float
+    """High-g accelerometer reading for Z-axis in Gs."""
+
     est_position_z_meters: float
     """Estimated position along the Z-axis in meters."""
 
@@ -121,6 +126,9 @@ class FIRMDataPacket:
         magnetic_field_x_microteslas: float,
         magnetic_field_y_microteslas: float,
         magnetic_field_z_microteslas: float,
+        high_g_accel_x_gs: float,
+        high_g_accel_y_gs: float,
+        high_g_accel_z_gs: float,
         est_position_z_meters: float,
         est_velocity_z_meters_per_s: float,
         est_quaternion_w: float,
@@ -188,9 +196,7 @@ class FIRMClient:
     def get_device_info(self, timeout_seconds: float = 5.0) -> DeviceInfo | None: ...
     """Request device info and wait up to timeout_seconds."""
 
-    def get_device_config(
-        self, timeout_seconds: float = 5.0
-    ) -> DeviceConfig | None: ...
+    def get_device_config(self, timeout_seconds: float = 5.0) -> DeviceConfig | None: ...
     """Request device configuration and wait up to timeout_seconds."""
 
     def set_device_config(
@@ -205,9 +211,7 @@ class FIRMClient:
     def set_magnetometer_calibration(
         self,
         offsets: tuple[float, float, float],
-        scale_matrix: tuple[
-            float, float, float, float, float, float, float, float, float
-        ],
+        scale_matrix: tuple[float, float, float, float, float, float, float, float, float],
         timeout_seconds: float = 5.0,
     ) -> bool: ...
     """Set magnetometer calibration and wait up to timeout_seconds for acknowledgement."""
@@ -215,20 +219,14 @@ class FIRMClient:
     def set_imu_calibration(
         self,
         accel_offsets: tuple[float, float, float],
-        accel_scale_matrix: tuple[
-            float, float, float, float, float, float, float, float, float
-        ],
+        accel_scale_matrix: tuple[float, float, float, float, float, float, float, float, float],
         gyro_offsets: tuple[float, float, float],
-        gyro_scale_matrix: tuple[
-            float, float, float, float, float, float, float, float, float
-        ],
+        gyro_scale_matrix: tuple[float, float, float, float, float, float, float, float, float],
         timeout_seconds: float = 5.0,
     ) -> bool: ...
     """Set IMU calibration and wait up to timeout_seconds for acknowledgement."""
 
-    def get_calibration(
-        self, timeout_seconds: float = 5.0
-    ) -> CalibrationValues | None: ...
+    def get_calibration(self, timeout_seconds: float = 5.0) -> CalibrationValues | None: ...
     """Request calibration values and wait up to timeout_seconds."""
 
     def cancel(self, timeout_seconds: float = 5.0) -> bool: ...
@@ -251,9 +249,7 @@ class FIRMClient:
     def is_mock_log_streaming(self) -> bool: ...
     """True if a mock log stream is currently running."""
 
-    def stop_mock_log_stream(
-        self, cancel_device: bool = True, join: bool = True
-    ) -> int | None: ...
+    def stop_mock_log_stream(self, cancel_device: bool = True, join: bool = True) -> int | None: ...
     """Stop the async mock log stream. Optionally cancel the device."""
 
     def run_and_apply_magnetometer_calibration(

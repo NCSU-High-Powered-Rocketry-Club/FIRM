@@ -1,6 +1,5 @@
 #include "error_state_kalman_filter.h"
 #include "eskf_functions.h"
-#include "firm_fsm.h"
 #include "led.h"
 #include "settings_manager.h"
 #include <math.h>

@@ -35,6 +35,13 @@ export interface FIRMPacket {
   /** Magnetometer reading for Z-axis in micro-Teslas. */
   magnetic_field_z_microteslas: number;
 
+  /** High-g accelerometer reading for X-axis in Gs. */
+  high_g_accel_x_gs: number;
+  /** High-g accelerometer reading for Y-axis in Gs. */
+  high_g_accel_y_gs: number;
+  /** High-g accelerometer reading for Z-axis in Gs. */
+  high_g_accel_z_gs: number;
+
   /** Estimated position along the Z-axis in meters. */
   est_position_z_meters: number;
 
@@ -55,7 +62,6 @@ export interface FIRMPacket {
 
   /** Total tilt angle from +Z based on raw acceleration in degrees. */
   est_tilt_angle_degrees: number;
-
 }
 
 export enum DeviceProtocol {
@@ -113,6 +119,8 @@ export interface CalibrationValues {
     number,
     number,
   ];
+  high_g_offsets: [number, number, number];
+  high_g_scale_matrix: [number, number, number, number, number, number, number, number, number];
 }
 
 export type FIRMResponse =
@@ -125,4 +133,3 @@ export type FIRMResponse =
   | { Mock: boolean }
   | { Cancel: boolean }
   | { Error: string };
-

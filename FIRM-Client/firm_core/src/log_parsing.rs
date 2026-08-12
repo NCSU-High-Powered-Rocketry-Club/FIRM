@@ -2,7 +2,6 @@ use alloc::collections::VecDeque;
 use alloc::vec::Vec;
 
 use crate::client_packets::FIRMLogPacket;
-use crate::constants::log_parsing::FIRMLogPacketType;
 use crate::constants::log_parsing::*;
 
 pub struct LogParser {
@@ -59,7 +58,7 @@ impl LogParser {
 
     /// Feeds a new chunk of bytes into the parser.
     ///
-    /// Parses as many log packets as possible and enqueues framed log packets.
+    /// Parses as many log packets as possible and enqueues raw STM32 messages.
     ///
     /// This code is just copied from the Python decoder script.
     pub fn parse_bytes(&mut self, chunk: &[u8]) {
@@ -166,12 +165,9 @@ impl LogParser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::framed_packet::Framed;
 
     fn make_header() -> Vec<u8> {
-        let mut header = Vec::new();
-        header.resize(HEADER_TOTAL_SIZE, 0u8);
-        header
+        vec![0; HEADER_TOTAL_SIZE]
     }
 
     fn make_log_packet_bytes(id: u8, clock_count: u32, raw_len: usize) -> Vec<u8> {
@@ -200,7 +196,7 @@ mod tests {
             log_packet.payload().len(),
             LOG_PACKET_TIMESTAMP_SIZE + ICM45686_SIZE
         );
-        assert_eq!(log_packet.len() as usize, log_packet.payload().len());
+        assert_eq!(log_packet.len(), log_packet.payload().len());
         assert_eq!(
             &log_packet.payload()[0..LOG_PACKET_TIMESTAMP_SIZE],
             &[0x01, 0x00, 0x00, 0x00]
@@ -289,12 +285,11 @@ mod tests {
             log_packet.payload().len(),
             LOG_PACKET_TIMESTAMP_SIZE + ADXL371_SIZE
         );
-        assert_eq!(log_packet.len() as usize, log_packet.payload().len());
+        assert_eq!(log_packet.len(), log_packet.payload().len());
         assert_eq!(
             &log_packet.payload()[0..LOG_PACKET_TIMESTAMP_SIZE],
             &[0x78, 0x56, 0x34, 0x12]
         );
         assert!(parser.get_packet_and_time_delay().is_none());
-        
     }
 }

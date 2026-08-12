@@ -110,11 +110,9 @@ class Decoder:
                 data = self.convert_adxl371(bytes)
                 self.adxl371_data.append(data)
                 return True
-
             # if not an ID byte, most likely garbage data at end of file
             return False
         except:
-
             # hit end of file
             return False
 
@@ -155,13 +153,13 @@ class Decoder:
         self.mag_cal = calibrations[24 : 36]
         self.adxl371_cal = calibrations[36 : 48]
 
-        scale_factor_format = '<' + ('f' * HEADER_NUM_SCALE_FACTORS)
-        scale_factor_bytes = file.read(HEADER_NUM_SCALE_FACTORS * 4)
-        scale_factors = struct.unpack(scale_factor_format, scale_factor_bytes)
-        self.bmp581_scale_factors = scale_factors[0 : 2]
-        self.icm45686_scale_factors = scale_factors[2 : 4]
-        self.mmc5983ma_scale_factor = scale_factors[4]
-        self.adxl371_scale_factor = scale_factors[5]
+        # scale_factor_format = '<' + ('f' * HEADER_NUM_SCALE_FACTORS)
+        # scale_factor_bytes = file.read(HEADER_NUM_SCALE_FACTORS * 4)
+        # scale_factors = struct.unpack(scale_factor_format, scale_factor_bytes)
+        self.bmp581_scale_factors = [65536, 64]
+        self.icm45686_scale_factors = [16384, 131.072]
+        self.mmc5983ma_scale_factor = 163.84
+        self.adxl371_scale_factor = 10.24
 
         if self.adxl371_scale_factor == 0:
             self.adxl371_scale_factor = DEFAULT_ADXL371_SCALE_FACTOR
@@ -227,7 +225,6 @@ class Decoder:
         accel_x_bin = twos_complement(accel_x_bin, 12)
         accel_y_bin = twos_complement(accel_y_bin, 12)
         accel_z_bin = twos_complement(accel_z_bin, 12)
-
         data = [
             self.timestamp_seconds,
             accel_x_bin / self.adxl371_scale_factor,

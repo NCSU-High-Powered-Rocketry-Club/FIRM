@@ -1,11 +1,9 @@
 use firm_core::constants::command::{
-    NUMBER_OF_CALIBRATION_OFFSETS, NUMBER_OF_CALIBRATION_SCALE_MATRIX_ELEMENTS,
+    FIRMCommand, NUMBER_OF_CALIBRATION_OFFSETS, NUMBER_OF_CALIBRATION_SCALE_MATRIX_ELEMENTS,
 };
-use firm_core::constants::packet::PacketHeader;
 use firm_core::firm_packets::{
     CalibrationValues, DeviceConfig, DeviceInfo, DeviceProtocol, ProcessedFIRMData,
 };
-use firm_core::framed_packet::FramedPacket;
 use firm_rust::FIRMClient as RustFirmClient;
 use firm_rust::mock_serial::MockDeviceHandle as RustMockDeviceHandle;
 use pyo3::prelude::*;
@@ -316,9 +314,10 @@ impl FIRMClient {
 
 #[pymethods]
 impl MockDeviceHandle {
-    fn inject_response(&self, identifier: u16, payload: Vec<u8>) {
-        let packet = FramedPacket::new(PacketHeader::Response, identifier, payload);
-        self.inner.inject_framed_packet(packet);
+    fn inject_response(&self, identifier: u8, payload: Vec<u8>) -> PyResult<()> {
+        let command = FIRMCommand::from_u8(identifier).map_err(py_io_err)?;
+        self.inner.inject_response(command, &payload);
+        Ok(())
     }
 
     #[pyo3(signature = (timeout_seconds))]

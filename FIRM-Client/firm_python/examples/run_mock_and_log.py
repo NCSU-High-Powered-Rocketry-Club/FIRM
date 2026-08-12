@@ -47,9 +47,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Stream a mock FIRM log file asynchronously and save FIRM output packets to CSV"
     )
-    parser.add_argument(
-        "port", help='Serial port name (e.g., "COM8" or "/dev/ttyACM0")'
-    )
+    parser.add_argument("port", help='Serial port name (e.g., "COM8" or "/dev/ttyACM0")')
     parser.add_argument("log_path", help="Path to the FIRM log file to stream")
     parser.add_argument("--out", required=True, help="Output CSV path")
     parser.add_argument(
@@ -142,9 +140,7 @@ def main() -> int:
 
                     # Drain window after stream ends
                     if mock_finished_wall is not None:
-                        if time.time() - mock_finished_wall >= float(
-                            args.drain_seconds
-                        ):
+                        if time.time() - mock_finished_wall >= float(args.drain_seconds):
                             break
 
                     time.sleep(0.001)
@@ -156,9 +152,7 @@ def main() -> int:
             # Ensure the mock stream is stopped and (optionally) joined.
             # join=True blocks until the mock thread exits and returns packet count.
             try:
-                sent_packets = client.stop_mock_log_stream(
-                    cancel_device=True, join=True
-                )
+                sent_packets = client.stop_mock_log_stream(cancel_device=True, join=True)
             except Exception:
                 # If something goes wrong (e.g. already stopped), just proceed.
                 sent_packets = sent_packets

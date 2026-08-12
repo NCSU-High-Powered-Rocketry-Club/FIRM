@@ -1,7 +1,4 @@
-use firm_core::constants::packet::{
-    CRC_SIZE, HEADER_SIZE, IDENTIFIER_SIZE, LENGTH_SIZE, MIN_PACKET_SIZE,
-};
-use firm_core::framed_packet::FramedPacket;
+use firm_core::constants::command::{DATA_PACKET_ID, FIRMCommand};
 use serialport::{ClearBuffer, DataBits, FlowControl, Parity, SerialPort, StopBits};
 use std::collections::VecDeque;
 use std::io::{self, Read, Write};
@@ -32,7 +29,7 @@ impl MockDeviceHandle {
         }
     }
 
-    /// Waits for a framed command and returns its identifier, or None on timeout.
+    /// Waits for a raw `[id][payload]` command and returns its identifier, or None on timeout.
     pub fn wait_for_command_identifier(&self, timeout: Duration) -> io::Result<Option<u16>> {
         let deadline = Instant::now() + timeout;
         let mut command_buffer = self.command_buffer.lock().unwrap();
@@ -46,24 +43,13 @@ impl MockDeviceHandle {
                 }
             }
 
-            if command_buffer.len() >= MIN_PACKET_SIZE {
-                let len_start = HEADER_SIZE + IDENTIFIER_SIZE;
-                if command_buffer.len() >= len_start + LENGTH_SIZE {
-                    let payload_len = u32::from_le_bytes(
-                        command_buffer[len_start..len_start + LENGTH_SIZE]
-                            .try_into()
-                            .unwrap(),
-                    ) as usize;
-                    let frame_len =
-                        HEADER_SIZE + IDENTIFIER_SIZE + LENGTH_SIZE + payload_len + CRC_SIZE;
-                    if command_buffer.len() >= frame_len {
-                        let frame = FramedPacket::from_bytes(&command_buffer[..frame_len])
-                            .map_err(|e| {
-                                io::Error::new(io::ErrorKind::InvalidData, format!("{e:?}"))
-                            })?;
-                        command_buffer.drain(..frame_len);
-                        return Ok(Some(frame.identifier()));
-                    }
+            if let Some(&identifier) = command_buffer.first() {
+                let command = FIRMCommand::from_u8(identifier)
+                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("{e:?}")))?;
+                let message_len = 1 + command.command_payload_len();
+                if command_buffer.len() >= message_len {
+                    command_buffer.drain(..message_len);
+                    return Ok(Some(identifier as u16));
                 }
             }
 
@@ -74,11 +60,24 @@ impl MockDeviceHandle {
         }
     }
 
-    /// Injects one framed data packet into the client's read stream.
-    pub fn inject_framed_packet(&self, mocked_packet: FramedPacket) {
-        let bytes = mocked_packet.to_bytes();
+    /// Injects raw bytes into the client's read stream.
+    pub fn inject_bytes(&self, bytes: &[u8]) {
         let mut queue = self.state.device_to_client.lock().unwrap();
-        queue.extend(bytes);
+        queue.extend(bytes.iter().copied());
+    }
+
+    pub fn inject_data_packet(&self, payload: &[u8]) {
+        let mut bytes = Vec::with_capacity(1 + payload.len());
+        bytes.push(DATA_PACKET_ID);
+        bytes.extend_from_slice(payload);
+        self.inject_bytes(&bytes);
+    }
+
+    pub fn inject_response(&self, command: FIRMCommand, payload: &[u8]) {
+        let mut bytes = Vec::with_capacity(1 + payload.len());
+        bytes.push(command.to_u8());
+        bytes.extend_from_slice(payload);
+        self.inject_bytes(&bytes);
     }
 }
 
