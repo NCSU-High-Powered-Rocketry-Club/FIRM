@@ -37,13 +37,9 @@ class CalibrationValues:
     imu_gyroscope_offsets: tuple[float, float, float]
     imu_gyroscope_scale_matrix: tuple[float, float, float, float, float, float, float, float, float]
     magnetometer_offsets: tuple[float, float, float]
-    magnetometer_scale_matrix: tuple[
-        float, float, float, float, float, float, float, float, float
-    ]
+    magnetometer_scale_matrix: tuple[float, float, float, float, float, float, float, float, float]
     high_g_offsets: tuple[float, float, float]
-    high_g_scale_matrix: tuple[
-        float, float, float, float, float, float, float, float, float
-    ]
+    high_g_scale_matrix: tuple[float, float, float, float, float, float, float, float, float]
 
 class FIRMDataPacket:
     """Represents a data packet received from the FIRM device."""

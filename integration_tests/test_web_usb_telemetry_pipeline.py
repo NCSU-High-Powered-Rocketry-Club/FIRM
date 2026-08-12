@@ -127,9 +127,7 @@ def test_web_client_parses_raw_stm32_usb_telemetry(tmp_path: Path) -> None:
     if not CLIENT_DIST_INDEX.exists():
         pytest.skip("TypeScript client dist is missing; build FIRM-Client first.")
 
-    next_message = build_stm32_data_message(
-        timestamp=43.0, temperature=26.0, pressure=100_000.0
-    )
+    next_message = build_stm32_data_message(timestamp=43.0, temperature=26.0, pressure=100_000.0)
     stream = build_stm32_data_message() + next_message[:9]
     packet = parse_message_in_web_client(stream, tmp_path)
 

@@ -111,15 +111,24 @@ def compile_stm32_harness(build_dir: Path) -> Path:
     )
 
     include_args = [
-        "-I", str(STM32_CORE_ROOT / "Inc"),
-        "-I", str(STM32_CORE_ROOT / "Inc" / "modules"),
-        "-I", str(STM32_CORE_ROOT / "Inc" / "shared_data"),
-        "-I", str(STM32_CORE_ROOT / "Inc" / "data_processing"),
-        "-I", str(STM32_CORE_ROOT / "Inc" / "interfaces"),
-        "-I", str(REPO_ROOT / "STM32" / "Libraries" / "BMP581"),
-        "-I", str(REPO_ROOT / "STM32" / "Libraries" / "ICM45686"),
-        "-I", str(REPO_ROOT / "STM32" / "Libraries" / "MMC5983MA"),
-        "-I", str(REPO_ROOT / "STM32" / "Libraries" / "ADXL371"),
+        "-I",
+        str(STM32_CORE_ROOT / "Inc"),
+        "-I",
+        str(STM32_CORE_ROOT / "Inc" / "modules"),
+        "-I",
+        str(STM32_CORE_ROOT / "Inc" / "shared_data"),
+        "-I",
+        str(STM32_CORE_ROOT / "Inc" / "data_processing"),
+        "-I",
+        str(STM32_CORE_ROOT / "Inc" / "interfaces"),
+        "-I",
+        str(REPO_ROOT / "STM32" / "Libraries" / "BMP581"),
+        "-I",
+        str(REPO_ROOT / "STM32" / "Libraries" / "ICM45686"),
+        "-I",
+        str(REPO_ROOT / "STM32" / "Libraries" / "MMC5983MA"),
+        "-I",
+        str(REPO_ROOT / "STM32" / "Libraries" / "ADXL371"),
     ]
     subprocess.run(
         [
