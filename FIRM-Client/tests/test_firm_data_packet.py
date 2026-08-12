@@ -19,6 +19,9 @@ def test_firm_data_packet_constructor() -> None:
         10.0,
         11.0,
         12.0,
+        0.0,
+        0.0,
+        0.0,
         15.0,
         18.0,
         19.0,
@@ -39,6 +42,9 @@ def test_firm_data_packet_constructor() -> None:
     assert packet.magnetic_field_x_microteslas == 10.0
     assert packet.magnetic_field_y_microteslas == 11.0
     assert packet.magnetic_field_z_microteslas == 12.0
+    assert packet.high_g_accel_x_gs == 0.0
+    assert packet.high_g_accel_y_gs == 0.0
+    assert packet.high_g_accel_z_gs == 0.0
     assert packet.est_position_z_meters == 15.0
     assert packet.est_velocity_z_meters_per_s == 18.0
     assert packet.est_quaternion_w == 19.0
@@ -92,6 +98,9 @@ def test_firm_data_packet_default_zero() -> None:
     assert firm_data_packet.magnetic_field_x_microteslas == 0.0
     assert firm_data_packet.magnetic_field_y_microteslas == 0.0
     assert firm_data_packet.magnetic_field_z_microteslas == 0.0
+    assert firm_data_packet.high_g_accel_x_gs == 0.0
+    assert firm_data_packet.high_g_accel_y_gs == 0.0
+    assert firm_data_packet.high_g_accel_z_gs == 0.0
     assert firm_data_packet.est_position_z_meters == 0.0
     assert firm_data_packet.est_velocity_z_meters_per_s == 0.0
     assert firm_data_packet.est_quaternion_w == 1.0
@@ -135,6 +144,9 @@ def test_firm_data_packet_as_dict() -> None:
         magnetic_field_x_microteslas=10.0,
         magnetic_field_y_microteslas=11.0,
         magnetic_field_z_microteslas=12.0,
+        high_g_accel_x_gs=0.0,
+        high_g_accel_y_gs=0.0,
+        high_g_accel_z_gs=0.0,
         est_position_z_meters=15.0,
         est_velocity_z_meters_per_s=18.0,
         est_quaternion_w=19.0,

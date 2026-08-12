@@ -1,7 +1,6 @@
 use firm_core::client_packets::{FIRMCommandPacket, FIRMLogPacket};
 use firm_core::constants::log_parsing::{FIRMLogPacketType, HEADER_PARSE_DELAY, HEADER_TOTAL_SIZE};
 use firm_core::data_parser::SerialParser;
-use firm_core::framed_packet::Framed;
 use firm_core::log_parsing::LogParser;
 use serialport::SerialPort;
 use std::fs::File;

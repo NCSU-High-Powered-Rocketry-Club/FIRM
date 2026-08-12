@@ -91,7 +91,7 @@ try {
 
   const server = http.createServer((req, res) => {
     // Basic static file server
-    const safePath = path.normalize(req.url).replace(/^(\.\.[\/\\])+/, '');
+    const safePath = path.normalize(req.url).replace(/^(\.\.[/\\])+/, '');
     let filePath = path.join(__dirname, safePath === '/' ? 'test_packed.html' : safePath);
 
     // Allow serving from the simulated package

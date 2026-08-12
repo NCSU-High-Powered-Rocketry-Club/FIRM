@@ -6,7 +6,7 @@ A modular Rust library for parsing FIRM data packets, with bindings for Python a
 
 The project is organized as a Cargo workspace with the following crates:
 
-- **`firm_core`**: The core `no_std` crate containing the packet parser, CRC logic, and data structures. This is the foundation for all other crates and can be used in embedded environments.
+- **`firm_core`**: The core `no_std` crate containing the raw USB message parser and data structures. This is the foundation for all other crates and can be used in embedded environments.
 - **`firm_rust`**: A high-level Rust API that uses `serialport` to read from a serial device and provides a threaded client for receiving packets.
 - **`firm_python`**: Python bindings for the Rust client.
 - **`firm_typescript`**: WebAssembly bindings and TypeScript code for using the parser in web applications.

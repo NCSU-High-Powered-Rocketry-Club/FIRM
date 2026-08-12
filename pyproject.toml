@@ -41,6 +41,7 @@ classifiers = [
 [dependency-groups]
 dev = [
     "pre-commit",
+    "pytest",
     "ruff>=0.14.1",
     "ty>=0.0.1a23",
 ]
@@ -80,3 +81,8 @@ select = ["E", "F", "I", "PL", "UP", "RUF", "PTH", "C4", "B", "PIE", "SIM", "RET
           "G", "ISC", "PT", "ASYNC", "TCH", "SLOT", "PERF", "PYI", "FLY", "AIR", "RUF022",
           "RUF023", "Q", "INP", "W", "YTT", "DTZ", "ARG", "T20", "FURB", "DOC", "TRY", 
           "D100", "D101", "D102", "D103", "D300", "D418", "D419", "S"]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: end-to-end integration tests for the mocked USB pipeline",
+]

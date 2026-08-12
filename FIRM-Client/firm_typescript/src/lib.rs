@@ -1,11 +1,10 @@
 use firm_core::client_packets::{FIRMCommandPacket, FIRMLogPacket};
 use firm_core::constants::command::{
-    NUMBER_OF_CALIBRATION_OFFSETS, NUMBER_OF_CALIBRATION_SCALE_MATRIX_ELEMENTS,
+    FIRMCommand, NUMBER_OF_CALIBRATION_OFFSETS, NUMBER_OF_CALIBRATION_SCALE_MATRIX_ELEMENTS,
 };
 use firm_core::constants::log_parsing::{FIRMLogPacketType, HEADER_TOTAL_SIZE};
 use firm_core::data_parser::SerialParser;
 use firm_core::firm_packets::{DeviceConfig, DeviceProtocol};
-use firm_core::framed_packet::Framed;
 use firm_core::log_parsing::LogParser;
 use js_sys::{Object, Reflect, Uint8Array};
 use serde::Serialize;
@@ -171,6 +170,14 @@ impl FIRMDataParser {
     #[wasm_bindgen]
     pub fn parse_bytes(&mut self, data: &[u8]) {
         self.inner.parse_bytes(data);
+    }
+
+    #[wasm_bindgen]
+    pub fn expect_response(&mut self, identifier: u8) -> bool {
+        let Ok(command) = FIRMCommand::from_u8(identifier) else {
+            return false;
+        };
+        self.inner.expect_response(command)
     }
 
     #[wasm_bindgen]

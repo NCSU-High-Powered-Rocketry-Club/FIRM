@@ -19,6 +19,18 @@ export default [
     },
   },
   {
-    ignores: ['firm_typescript/pkg/', 'firm_typescript/typescript/dist/', 'node_modules/'],
+    files: ['firm_typescript/examples/**/*.js'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
+  {
+    ignores: [
+      '.venv/',
+      'firm_typescript/pkg/',
+      'firm_typescript/typescript/dist/',
+      'node_modules/',
+      'target/',
+    ],
   },
 ];

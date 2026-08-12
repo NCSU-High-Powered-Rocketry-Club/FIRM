@@ -2,7 +2,6 @@ use clap::Parser;
 use firm_core::client_packets::FIRMLogPacket;
 use firm_core::constants::log_parsing::FIRMLogPacketType;
 use firm_core::constants::log_parsing::HEADER_TOTAL_SIZE;
-use firm_core::framed_packet::Framed;
 use firm_core::log_parsing::LogParser;
 use std::fs::File;
 use std::io::Read;
@@ -60,7 +59,7 @@ fn main() -> ExitCode {
             total_delay += delay_s;
             let bytes = pkt.to_bytes();
             let parsed = FIRMLogPacket::from_bytes(&bytes)
-                .expect("failed to parse bytes we just serialized (header/len/crc mismatch)");
+                .expect("failed to parse the ID-plus-payload message we just serialized");
             assert_eq!(parsed.payload(), pkt.payload());
 
             count_total += 1;
@@ -84,7 +83,7 @@ fn main() -> ExitCode {
     }
 
     println!(
-        "OK: total={count_total} B={count_bmp} I={count_imu} M={count_mag} A={count_high_g} delay_s={total_delay:.6} (round-trip header/len/crc verified)"
+        "OK: total={count_total} B={count_bmp} I={count_imu} M={count_mag} A={count_high_g} delay_s={total_delay:.6} (ID-plus-payload round trip verified)"
     );
 
     ExitCode::SUCCESS

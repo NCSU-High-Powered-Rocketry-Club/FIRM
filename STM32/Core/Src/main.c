@@ -35,6 +35,7 @@
 #include "led.h"
 #include "logger.h"
 #include "mocking_handler.h"
+#include "packets.h"
 #include "sensor_manager.h"
 #include "settings_manager.h"
 #include "system_settings.h"
@@ -108,6 +109,8 @@ const osThreadAttr_t startupTask_attributes = {
   .priority = (osPriority_t) osPriorityRealtime,
 };
 /* USER CODE BEGIN PV */
+
+static DataPacket_t global_data_packet = {0};
 
 /* USER CODE END PV */
 
@@ -252,11 +255,6 @@ int main(void)
 
   if (firm_init_hardware())
     Error_Handler();
-
-  // global instance of the data packet that contains raw sensor readings and filtered data. This
-  // single instance will be passed into multiple different tasks to read and modify.
-  // TODO: this obviously has synchronization concerns. I'm kinda just ignoring them.
-  DataPacket_t global_data_packet = {0};
 
   /* USER CODE END 2 */
 

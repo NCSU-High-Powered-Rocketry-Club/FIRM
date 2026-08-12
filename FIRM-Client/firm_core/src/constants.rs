@@ -1,95 +1,100 @@
-pub mod packet {
-    /// Header is stored as two little-endian u16s on the wire.
-    pub const HEADER_SIZE: usize = 2;
-    pub const IDENTIFIER_SIZE: usize = 2;
-    pub const LENGTH_SIZE: usize = 4;
-    pub const CRC_SIZE: usize = 2;
-
-    pub const MIN_PACKET_SIZE: usize = HEADER_SIZE + IDENTIFIER_SIZE + LENGTH_SIZE + CRC_SIZE;
-
-    /// First u16 in the framed header.
-    #[repr(u16)]
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub enum PacketHeader {
-        Data = 0xA55A,
-        Response = 0x5AA5,
-        LogSensor = 0x6BB6,
-        Command = 0xB66B,
-    }
-
-    impl PacketHeader {
-        pub const fn as_u16(self) -> u16 {
-            self as u16
-        }
-
-        pub const fn from_u16(v: u16) -> Option<Self> {
-            match v {
-                x if x == PacketHeader::Data as u16 => Some(PacketHeader::Data),
-                x if x == PacketHeader::Response as u16 => Some(PacketHeader::Response),
-                x if x == PacketHeader::LogSensor as u16 => Some(PacketHeader::LogSensor),
-                x if x == PacketHeader::Command as u16 => Some(PacketHeader::Command),
-                _ => None,
-            }
-        }
-    }
-}
-
 pub mod command {
-    use crate::framed_packet::FrameError;
+    use crate::wire_packet::PacketError;
 
-    #[repr(u16)]
+    #[repr(u8)]
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum FIRMCommand {
-        GetDeviceInfo = 0x0001,
-        GetDeviceConfig = 0x0002,
-        SetDeviceConfig = 0x0003,
-        Reboot = 0x0004,
-        Mock = 0x0005,
-        SetMagnetometerCalibration = 0x0006,
-        SetIMUCalibration = 0x0007,
-        GetCalibration = 0x0008,
-        Cancel = 0x00FF,
+        GetDeviceInfo = 0x02,
+        GetDeviceConfig = 0x03,
+        SetDeviceConfig = 0x04,
+        Reboot = 0x05,
+        Mock = 0x06,
+        SetMagnetometerCalibration = 0x07,
+        SetIMUCalibration = 0x08,
+        GetCalibration = 0x09,
+        Cancel = 0x0A,
     }
 
     impl FIRMCommand {
-        pub const fn to_u16(self) -> u16 {
-            self as u16
+        pub const fn to_u8(self) -> u8 {
+            self as u8
         }
 
-        pub const fn from_u16(identifier: u16) -> Result<Self, FrameError> {
+        pub const fn from_u8(identifier: u8) -> Result<Self, PacketError> {
             match identifier {
-                id if id == FIRMCommand::GetDeviceInfo.to_u16() => Ok(FIRMCommand::GetDeviceInfo),
-                id if id == FIRMCommand::GetDeviceConfig.to_u16() => {
+                id if id == FIRMCommand::GetDeviceInfo.to_u8() => Ok(FIRMCommand::GetDeviceInfo),
+                id if id == FIRMCommand::GetDeviceConfig.to_u8() => {
                     Ok(FIRMCommand::GetDeviceConfig)
                 }
-                id if id == FIRMCommand::SetDeviceConfig.to_u16() => {
+                id if id == FIRMCommand::SetDeviceConfig.to_u8() => {
                     Ok(FIRMCommand::SetDeviceConfig)
                 }
-                id if id == FIRMCommand::Reboot.to_u16() => Ok(FIRMCommand::Reboot),
-                id if id == FIRMCommand::Mock.to_u16() => Ok(FIRMCommand::Mock),
-                id if id == FIRMCommand::SetMagnetometerCalibration.to_u16() => {
+                id if id == FIRMCommand::Reboot.to_u8() => Ok(FIRMCommand::Reboot),
+                id if id == FIRMCommand::Mock.to_u8() => Ok(FIRMCommand::Mock),
+                id if id == FIRMCommand::SetMagnetometerCalibration.to_u8() => {
                     Ok(FIRMCommand::SetMagnetometerCalibration)
                 }
-                id if id == FIRMCommand::SetIMUCalibration.to_u16() => {
+                id if id == FIRMCommand::SetIMUCalibration.to_u8() => {
                     Ok(FIRMCommand::SetIMUCalibration)
                 }
-                id if id == FIRMCommand::GetCalibration.to_u16() => Ok(FIRMCommand::GetCalibration),
-                id if id == FIRMCommand::Cancel.to_u16() => Ok(FIRMCommand::Cancel),
-                _ => Err(FrameError::UnknownIdentifier(identifier)),
+                id if id == FIRMCommand::GetCalibration.to_u8() => Ok(FIRMCommand::GetCalibration),
+                id if id == FIRMCommand::Cancel.to_u8() => Ok(FIRMCommand::Cancel),
+                _ => Err(PacketError::UnknownIdentifier(identifier)),
+            }
+        }
+
+        pub const fn command_payload_len(self) -> usize {
+            match self {
+                Self::GetDeviceInfo
+                | Self::GetDeviceConfig
+                | Self::Reboot
+                | Self::Mock
+                | Self::GetCalibration
+                | Self::Cancel => 0,
+                Self::SetDeviceConfig => DEVICE_CONFIG_PAYLOAD_LENGTH,
+                Self::SetMagnetometerCalibration => CALIBRATION_PAYLOAD_LENGTH,
+                Self::SetIMUCalibration => IMU_CALIBRATION_PAYLOAD_LENGTH,
+            }
+        }
+
+        pub const fn response_payload_len(self) -> Option<usize> {
+            match self {
+                Self::GetDeviceInfo => Some(DEVICE_INFO_PAYLOAD_LENGTH),
+                Self::GetDeviceConfig => Some(DEVICE_CONFIG_PAYLOAD_LENGTH),
+                Self::SetDeviceConfig
+                | Self::Mock
+                | Self::SetMagnetometerCalibration
+                | Self::SetIMUCalibration
+                | Self::Cancel => Some(ACKNOWLEDGEMENT_PAYLOAD_LENGTH),
+                Self::GetCalibration => Some(ALL_CALIBRATIONS_PAYLOAD_LENGTH),
+                Self::Reboot => None,
             }
         }
     }
 
-    pub const CRC_LENGTH: usize = 2;
+    pub const IDENTIFIER_LENGTH: usize = 1;
     pub const DEVICE_NAME_LENGTH: usize = 32;
     pub const DEVICE_ID_LENGTH: usize = 8;
     pub const FIRMWARE_VERSION_LENGTH: usize = 8;
     pub const FREQUENCY_LENGTH: usize = 2;
+    pub const MIN_DEVICE_FREQUENCY_HZ: u16 = 1;
+    pub const MAX_DEVICE_FREQUENCY_HZ: u16 = 1000;
+    pub const COMMUNICATION_FLAGS_LENGTH: usize = 4;
+    pub const ACKNOWLEDGEMENT_PAYLOAD_LENGTH: usize = 1;
+    pub const DEVICE_INFO_PAYLOAD_LENGTH: usize = DEVICE_ID_LENGTH + FIRMWARE_VERSION_LENGTH;
+    pub const DEVICE_CONFIG_PAYLOAD_LENGTH: usize =
+        FREQUENCY_LENGTH + DEVICE_NAME_LENGTH + COMMUNICATION_FLAGS_LENGTH;
+    pub const DATA_PACKET_ID: u8 = 0x01;
+    pub const FIRM_DATA_PAYLOAD_LENGTH: usize = 8 + 20 * 4;
+    pub const FIRM_DATA_MESSAGE_LENGTH: usize = IDENTIFIER_LENGTH + FIRM_DATA_PAYLOAD_LENGTH;
     pub const NUMBER_OF_CALIBRATION_OFFSETS: usize = 3;
     pub const NUMBER_OF_CALIBRATION_SCALE_MATRIX_ELEMENTS: usize = 9;
     pub const CALIBRATION_OFFSETS_LENGTH: usize = NUMBER_OF_CALIBRATION_OFFSETS * 4;
     pub const CALIBRATION_SCALE_MATRIX_LENGTH: usize =
         NUMBER_OF_CALIBRATION_SCALE_MATRIX_ELEMENTS * 4;
+    pub const CALIBRATION_PAYLOAD_LENGTH: usize =
+        CALIBRATION_OFFSETS_LENGTH + CALIBRATION_SCALE_MATRIX_LENGTH;
+    pub const ALL_CALIBRATIONS_PAYLOAD_LENGTH: usize = CALIBRATION_PAYLOAD_LENGTH * 4;
 
     /// IMU calibration includes both accelerometer and gyroscope calibration.
     ///
@@ -101,7 +106,6 @@ pub mod command {
 }
 
 pub mod log_parsing {
-    use crate::constants::packet::PacketHeader;
     use std::time::Duration;
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -143,31 +147,29 @@ pub mod log_parsing {
         LOG_PACKET_META.iter().find(|m| m.id == id)
     }
 
-    pub const LOG_SENSOR_PACKET_HEADER: u16 = PacketHeader::LogSensor as u16;
-    /// Log sensor packet type identifier stored in the second u16 header field.
-    #[repr(u16)]
+    /// One-byte identifier placed at the start of each mock sensor message.
+    #[repr(u8)]
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum FIRMLogPacketType {
-        HeaderPacket = HEADER_ID as u16,
-        BarometerPacket = BMP581_ID as u16,
-        IMUPacket = ICM45686_ID as u16,
-        MagnetometerPacket = MMC5983MA_ID as u16,
-        HighGPacket = ADXL371_ID as u16,
+        HeaderPacket = HEADER_ID,
+        BarometerPacket = BMP581_ID,
+        IMUPacket = ICM45686_ID,
+        MagnetometerPacket = MMC5983MA_ID,
+        HighGPacket = ADXL371_ID,
     }
 
     impl FIRMLogPacketType {
-        pub const fn as_u16(self) -> u16 {
-            self as u16
+        pub const fn as_u8(self) -> u8 {
+            self as u8
         }
 
-        // TODO: make Result
-        pub const fn from_u16(v: u16) -> Option<Self> {
+        pub const fn from_u8(v: u8) -> Option<Self> {
             match v {
-                v if v == Self::HeaderPacket as u16 => Some(Self::HeaderPacket),
-                v if v == Self::BarometerPacket as u16 => Some(Self::BarometerPacket),
-                v if v == Self::IMUPacket as u16 => Some(Self::IMUPacket),
-                v if v == Self::MagnetometerPacket as u16 => Some(Self::MagnetometerPacket),
-                v if v == Self::HighGPacket as u16 => Some(Self::HighGPacket),
+                v if v == Self::HeaderPacket as u8 => Some(Self::HeaderPacket),
+                v if v == Self::BarometerPacket as u8 => Some(Self::BarometerPacket),
+                v if v == Self::IMUPacket as u8 => Some(Self::IMUPacket),
+                v if v == Self::MagnetometerPacket as u8 => Some(Self::MagnetometerPacket),
+                v if v == Self::HighGPacket as u8 => Some(Self::HighGPacket),
                 _ => None,
             }
         }
@@ -199,17 +201,14 @@ pub mod log_parsing {
     pub const HEADER_COMM_SIZE: usize = 4; // 1 byte usb, 1 byte uart, 1 byte spi, 1 byte i2c
     pub const HEADER_FIRMWARE_VERSION_SIZE: usize = 8; // "vX.X.X.X"
     pub const HEADER_FREQUENCY_SIZE: usize = 2;
-    pub const HEADER_CAL_SIZE: usize = (3 + 9) * 4 * 4; // (offsets + 3x3 matrix) * 4 sensors * 4 bytes
-    pub const HEADER_NUM_SCALE_FACTOR_SIZE: usize = 6 * 4; // 6 floats
-
+    pub const HEADER_CAL_SIZE: usize = 4 * (3 + 9) * 4; // 4 calibration blocks, each 3 offsets + 3x3 matrix
     pub const HEADER_TOTAL_SIZE: usize = HEADER_SIZE_TEXT
         + HEADER_UID_SIZE
         + HEADER_DEVICE_NAME_LEN
         + HEADER_COMM_SIZE
         + HEADER_FIRMWARE_VERSION_SIZE
         + HEADER_FREQUENCY_SIZE
-        + HEADER_CAL_SIZE
-        + HEADER_NUM_SCALE_FACTOR_SIZE;
+        + HEADER_CAL_SIZE;
 
     pub const HEADER_PARSE_DELAY: Duration = Duration::from_millis(100);
 }

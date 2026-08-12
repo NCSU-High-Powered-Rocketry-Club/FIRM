@@ -42,6 +42,10 @@ class CalibrationValues:
     magnetometer_scale_matrix: tuple[
         float, float, float, float, float, float, float, float, float
     ]
+    high_g_offsets: tuple[float, float, float]
+    high_g_scale_matrix: tuple[
+        float, float, float, float, float, float, float, float, float
+    ]
 
 class FIRMDataPacket:
     """Represents a data packet received from the FIRM device."""
@@ -89,6 +93,13 @@ class FIRMDataPacket:
     magnetic_field_z_microteslas: float
     """Magnetometer reading for Z-axis in micro-Teslas."""
 
+    high_g_accel_x_gs: float
+    """High-g accelerometer reading for X-axis in Gs."""
+    high_g_accel_y_gs: float
+    """High-g accelerometer reading for Y-axis in Gs."""
+    high_g_accel_z_gs: float
+    """High-g accelerometer reading for Z-axis in Gs."""
+
     est_position_z_meters: float
     """Estimated position along the Z-axis in meters."""
 
@@ -121,6 +132,9 @@ class FIRMDataPacket:
         magnetic_field_x_microteslas: float,
         magnetic_field_y_microteslas: float,
         magnetic_field_z_microteslas: float,
+        high_g_accel_x_gs: float,
+        high_g_accel_y_gs: float,
+        high_g_accel_z_gs: float,
         est_position_z_meters: float,
         est_velocity_z_meters_per_s: float,
         est_quaternion_w: float,
