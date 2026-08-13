@@ -9,8 +9,12 @@ authors = [
 requires-python = ">=3.10,<3.14"
 license = "MIT"
 dependencies = [
+    "dash>=2.16",
     "msgspec>=0.19.0",
+    "numpy>=2.0",
     "pandas>=2.3.3",
+    "plotly>=5.20",
+    "polars>=1.30",
     "pyserial>=3.5",
     "pyyaml>=6.0.3",
 ]
@@ -37,6 +41,9 @@ classifiers = [
 "Homepage" = "https://ncsurocketry.org"
 "Bug Tracker" = "https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM/issues"
 "Source Code" = "https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM/"
+
+[project.scripts]
+firm-eskf = "firm.eskf_lab.cli:main"
 
 [dependency-groups]
 dev = [
@@ -81,6 +88,14 @@ select = ["E", "F", "I", "PL", "UP", "RUF", "PTH", "C4", "B", "PIE", "SIM", "RET
           "G", "ISC", "PT", "ASYNC", "TCH", "SLOT", "PERF", "PYI", "FLY", "AIR", "RUF022",
           "RUF023", "Q", "INP", "W", "YTT", "DTZ", "ARG", "T20", "FURB", "DOC", "TRY", 
           "D100", "D101", "D102", "D103", "D300", "D418", "D419", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+"python/firm/eskf_lab/*.py" = ["TRY003"]
+"python/firm/eskf_lab/cli.py" = ["T201"]
+"python/firm/eskf_lab/native.py" = ["S603", "TRY300"]
+"python/firm/eskf_lab/profile.py" = ["TRY004"]
+"python/firm/eskf_lab/visualize.py" = ["PLC0415"]
+"eskf_lab/tests/*.py" = ["S101"]
 
 [tool.pytest.ini_options]
 markers = [

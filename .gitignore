@@ -103,3 +103,10 @@ CMakeCache.txt
 
 trace*.bin
 trace*.json
+
+# ESKF desktop lab: launch data and generated artifacts are intentionally local.
+/eskf_lab/datasets/*
+!/eskf_lab/datasets/README.md
+/eskf_lab/cache/
+/eskf_lab/results/
+/eskf_lab/build/
