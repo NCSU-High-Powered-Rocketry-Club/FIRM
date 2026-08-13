@@ -45,6 +45,7 @@ eskf_lab/datasets/my-launch/
   ICM45686_data.csv
   MMC5983MA_data.csv
   ADXL371_data.csv
+  rocket_properties.json    # optional; enables HPRM apogee prediction
   LOG12.FRM                 # ignored
   Calibration/             # ignored
 ```
@@ -54,12 +55,29 @@ The metadata preamble is detected automatically. Column mappings and filenames l
 uses different names. Unmapped columns are retained with a sensor prefix, so they can immediately
 be selected in plots.
 
+When `rocket_properties.json` is present, it must contain:
+
+```json
+{
+  "rocket": {
+    "rocket_Cd": 0.393,
+    "rocket_dry_mass_kg": 16.601,
+    "rocket_cross_sectional_area_m2": 0.0182414692475
+  }
+}
+```
+
+The lab then runs HPRM's one-dimensional RK45 apogee predictor from the ESKF altitude and vertical
+velocity during the coast-to-apogee portion of the replay. The resulting
+`hprm_predicted_apogee_m` column is included in the default dashboard and report plots. Datasets
+without the optional file have no HPRM column or graph.
+
 ## Commands
 
 ```text
 firm-eskf list
 firm-eskf prepare [DATASET ...] [--force]
-firm-eskf run [DATASET ...] [--force-prepare]
+firm-eskf run [DATASET ...] [--force-prepare] [--force]
 firm-eskf test
 firm-eskf inspect RESULT
 firm-eskf plot RESULT [--columns COLUMN ...] [--open]
@@ -69,6 +87,11 @@ firm-eskf serve [RESULT] [--port 8050]
 
 `RESULT` can be a `result.parquet` path, a run directory, or a dataset name. A dataset name selects
 its latest run. `inspect` lists every available raw and filter column.
+
+`run --force` bypasses the native ESKF tests and replays the filter even if those tests would fail.
+It is intended for deliberately testing broken or experimental filter changes. The older,
+equivalent spelling `--skip-native-tests` remains supported. This does not rebuild input caches;
+use `--force-prepare` separately when that is required.
 
 `serve` starts a dashboard whose column selector lazily reads only the requested Parquet fields.
 With no `RESULT`, it opens every dataset's latest run in a single browser dashboard. Each dataset
@@ -91,6 +114,10 @@ browser receives a manageable number of points. When both are selected,
 The filter uses IMU, barometer, and magnetometer data. High-g accelerometer values are aligned and
 retained for comparisons but are not passed to the current ESKF because
 `STM32/Core/Src/tasks/filter_data_task.c` does not use that sensor.
+
+The CSV preamble's accelerometer, gyroscope, magnetometer, and high-g calibration values are
+applied before alignment. Each calibrated three-axis row is computed as `(raw - offsets) * matrix`,
+with the nine matrix values interpreted in row-major order.
 
 Sensor files have independent timestamps. The magnetometer is the slowest required stream in FIRM
 logs, so its samples form the update clock. Each replay row uses the most recent IMU, barometer,

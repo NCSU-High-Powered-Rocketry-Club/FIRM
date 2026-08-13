@@ -52,5 +52,33 @@ int main(void) {
       }
     }
   }
+
+  /* A selectively decoupled pressure gain is no longer the optimal Kalman
+   * gain.  Its covariance update must still preserve positive semidefiniteness.
+   */
+  for (int i = 0; i < ESKF_ERROR_DIM * ESKF_ERROR_DIM; ++i) {
+    eskf.P[i] = 0.0F;
+  }
+  eskf.P[ESKF_DPOS_Z * ESKF_ERROR_DIM + ESKF_DPOS_Z] = 1.0F;
+  eskf.P[ESKF_DPOS_Z * ESKF_ERROR_DIM + ESKF_DVEL_Z] = 0.99F;
+  eskf.P[ESKF_DVEL_Z * ESKF_ERROR_DIM + ESKF_DPOS_Z] = 0.99F;
+  eskf.P[ESKF_DVEL_Z * ESKF_ERROR_DIM + ESKF_DVEL_Z] = 1.0F;
+  for (int i = ESKF_DTHETA_X; i <= ESKF_DTHETA_Z; ++i) {
+    eskf.P[i * ESKF_ERROR_DIM + i] = 1e-3F;
+  }
+  eskf.x_nom[ESKF_POS_Z] = 0.0F;
+  eskf.x_nom[ESKF_VEL_Z] = 100.0F;
+  eskf_set_measurement(&eskf, measurement);
+  eskf_update(&eskf);
+
+  const float position_velocity_determinant =
+      eskf.P[ESKF_DPOS_Z * ESKF_ERROR_DIM + ESKF_DPOS_Z] *
+          eskf.P[ESKF_DVEL_Z * ESKF_ERROR_DIM + ESKF_DVEL_Z] -
+      eskf.P[ESKF_DPOS_Z * ESKF_ERROR_DIM + ESKF_DVEL_Z] *
+          eskf.P[ESKF_DVEL_Z * ESKF_ERROR_DIM + ESKF_DPOS_Z];
+  if (position_velocity_determinant < -1e-6F) {
+    fprintf(stderr, "pressure decoupling made covariance indefinite\n");
+    return 1;
+  }
   return 0;
 }

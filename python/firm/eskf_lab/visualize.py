@@ -20,11 +20,13 @@ DEFAULT_COLUMNS = (
     "raw_baro_altitude_m",
     "eskf_position_z_m",
     "eskf_velocity_z_mps",
+    "hprm_predicted_apogee_m",
     "imu_accel_z_g",
     "high_g_accel_z_g",
     "eskf_pressure_coupling",
 )
 ALTITUDE_COLUMNS = ("raw_baro_altitude_m", "eskf_position_z_m")
+SUBPLOT_TITLES = {"hprm_predicted_apogee_m": "HPRM predicted apogee (m)"}
 DATASET_TAB_STYLE = {
     "boxSizing": "border-box",
     "flex": "1 1 240px",
@@ -96,7 +98,7 @@ def _subplot_groups(columns: Sequence[str]) -> list[tuple[str, list[str]]]:
             groups.append(("Altitude (m)", list(ALTITUDE_COLUMNS)))
             consumed.update(ALTITUDE_COLUMNS)
         else:
-            groups.append((column, [column]))
+            groups.append((SUBPLOT_TITLES.get(column, column), [column]))
             consumed.add(column)
     return groups
 

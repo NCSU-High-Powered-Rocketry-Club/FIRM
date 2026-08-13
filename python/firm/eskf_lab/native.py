@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import polars as pl
 
+from .apogee import HPRM_APOGEE_COLUMN, add_hprm_apogee_predictions
 from .dataset import PreparedDataset, safe_name
 from .paths import LAB_ROOT, REPO_ROOT
 
@@ -206,6 +207,18 @@ def calculate_metrics(frame: pl.DataFrame, replay_seconds: float) -> dict[str, A
                 if raw_roughness > 0.0
                 else None,
             }
+    if HPRM_APOGEE_COLUMN in frame.columns:
+        predictions = frame[HPRM_APOGEE_COLUMN].to_numpy()
+        prediction_mask = np.isfinite(predictions)
+        metrics["hprm_apogee_prediction"] = {
+            "rows": int(prediction_mask.sum()),
+            "first_m": _finite(float(predictions[prediction_mask][0]))
+            if prediction_mask.any()
+            else None,
+            "last_m": _finite(float(predictions[prediction_mask][-1]))
+            if prediction_mask.any()
+            else None,
+        }
     return metrics
 
 
@@ -241,6 +254,7 @@ def run_replay(
     )
     if result.is_empty():
         raise RuntimeError("native output did not match any prepared timestamps")
+    result, apogee_prediction = add_hprm_apogee_predictions(result, prepared.dataset_path)
 
     parquet_path = directory / "result.parquet"
     result.write_parquet(parquet_path, compression="zstd", statistics=True)
@@ -263,6 +277,9 @@ def run_replay(
         "rows": result.height,
         "columns": result.columns,
         "replay_seconds": replay_seconds,
+        "hprm_apogee_prediction": (
+            apogee_prediction.to_dict() if apogee_prediction is not None else None
+        ),
     }
     metadata_path = directory / "run.json"
     metadata_path.write_text(

@@ -64,7 +64,11 @@ def _parser() -> argparse.ArgumentParser:
     run_parser.add_argument("datasets", nargs="*", help="dataset names or paths; defaults to all")
     run_parser.add_argument("--force-prepare", action="store_true", help="rebuild input caches")
     run_parser.add_argument(
-        "--skip-native-tests", action="store_true", help="skip CTest before replay"
+        "--force",
+        "--skip-native-tests",
+        dest="skip_native_tests",
+        action="store_true",
+        help="build and replay even when the native ESKF tests would fail",
     )
     run_parser.set_defaults(handler=_command_run)
 
@@ -152,6 +156,8 @@ def _command_prepare(args: argparse.Namespace, profile: DatasetProfile) -> int:
 def _command_run(args: argparse.Namespace, profile: DatasetProfile) -> int:
     paths = _dataset_paths(args.datasets, args, profile)
     print("Building the native production-source ESKF ...", flush=True)
+    if args.skip_native_tests:
+        print("  WARNING: native ESKF tests bypassed by --force", flush=True)
     executable = build_native(args.build_dir, run_tests=not args.skip_native_tests)
     print(f"  {executable}")
     for path in paths:

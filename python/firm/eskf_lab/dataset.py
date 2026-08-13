@@ -18,7 +18,7 @@ import polars as pl
 if TYPE_CHECKING:
     from .profile import DatasetProfile, SensorProfile
 
-CACHE_FORMAT_VERSION = 1
+CACHE_FORMAT_VERSION = 2
 INPUT_MAGIC = b"FIRMIN01"
 INPUT_VERSION = 1
 INITIALIZATION_SECONDS = 2.0
@@ -39,6 +39,30 @@ REPLAY_COLUMNS = (
     "high_g_accel_z_g",
 )
 REQUIRED_COLUMNS = tuple(column for column in REPLAY_COLUMNS if not column.startswith("high_g_"))
+CALIBRATION_SPECS = {
+    "imu": (
+        (
+            "ICM45686 Acceleration Calibration",
+            ("imu_accel_x_g", "imu_accel_y_g", "imu_accel_z_g"),
+        ),
+        (
+            "ICM45686 Gyroscope Calibration",
+            ("imu_gyro_x_dps", "imu_gyro_y_dps", "imu_gyro_z_dps"),
+        ),
+    ),
+    "magnetometer": (
+        (
+            "MMC5983MA Magnetometer Calibration",
+            ("mag_x_ut", "mag_y_ut", "mag_z_ut"),
+        ),
+    ),
+    "high_g": (
+        (
+            "ADXL371 Acceleration Calibration",
+            ("high_g_accel_x_g", "high_g_accel_y_g", "high_g_accel_z_g"),
+        ),
+    ),
+}
 INPUT_RECORD_DTYPE = np.dtype(
     [("timestamp", "<f8"), ("values", "<f4", (len(REPLAY_COLUMNS),))], align=False
 )
@@ -109,6 +133,47 @@ def _header_and_metadata(path: Path) -> tuple[int, dict[str, str]]:
     raise ValueError(f"could not find the timestamp header in {path}")
 
 
+def _calibration_values(path: Path, metadata: dict[str, str], name: str) -> tuple[float, ...]:
+    raw = metadata.get(name)
+    if raw is None:
+        raise ValueError(f"{path.name} is missing {name!r}")
+    try:
+        values = tuple(float(value.strip()) for value in raw.split(",") if value.strip())
+    except ValueError as error:
+        raise ValueError(f"{path.name} has non-numeric values in {name!r}") from error
+    if len(values) != 12 or not all(math.isfinite(value) for value in values):
+        raise ValueError(
+            f"{path.name} must provide 3 offsets and 9 finite matrix values for {name!r}"
+        )
+    return values
+
+
+def _apply_sensor_calibrations(
+    frame: pl.LazyFrame,
+    path: Path,
+    sensor_name: str,
+    metadata: dict[str, str],
+) -> pl.LazyFrame:
+    for calibration_name, columns in CALIBRATION_SPECS.get(sensor_name, ()):
+        values = _calibration_values(path, metadata, calibration_name)
+        offsets = values[:3]
+        matrix = values[3:]
+        adjusted = [
+            pl.col(column) - offset for column, offset in zip(columns, offsets, strict=True)
+        ]
+        frame = frame.with_columns(
+            [
+                (
+                    adjusted[0] * matrix[output_axis]
+                    + adjusted[1] * matrix[3 + output_axis]
+                    + adjusted[2] * matrix[6 + output_axis]
+                ).alias(columns[output_axis])
+                for output_axis in range(3)
+            ]
+        )
+    return frame
+
+
 def _source_fingerprint(dataset: Path, profile: DatasetProfile) -> tuple[str, list[dict[str, Any]]]:
     digest = hashlib.sha256()
     digest.update(f"eskf-cache-v{CACHE_FORMAT_VERSION}\0".encode())
@@ -156,6 +221,7 @@ def _scan_sensor(path: Path, sensor: SensorProfile) -> tuple[pl.LazyFrame, dict[
         .sort("timestamp")
         .unique(subset=["timestamp"], keep="last", maintain_order=True)
     )
+    frame = _apply_sensor_calibrations(frame, path, sensor.name, metadata)
     return frame, metadata
 
 
@@ -257,6 +323,7 @@ def prepare_dataset(
         "fingerprint": fingerprint,
         "profile": str(profile.path),
         "profile_version": profile.version,
+        "calibration_applied": True,
         "firmware_version": firmware,
         "rows": frame.height,
         "start_time_seconds": float(frame["timestamp"][0]),

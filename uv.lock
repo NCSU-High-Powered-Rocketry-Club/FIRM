@@ -230,6 +230,7 @@ version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "dash" },
+    { name = "hprm" },
     { name = "msgspec" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
@@ -257,6 +258,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "dash", specifier = ">=2.16" },
+    { name = "hprm", specifier = ">=0.2.0" },
     { name = "msgspec", specifier = ">=0.19.0" },
     { name = "numpy", specifier = ">=2.0" },
     { name = "pandas", specifier = ">=2.3.3" },
@@ -290,6 +292,26 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/26/00/35d85dcce6c57fdc871f3867d465d780f302a175ea360f62533f12b27e2b/flask-3.1.3.tar.gz", hash = "sha256:0ef0e52b8a9cd932855379197dd8f94047b359ca0a78695144304cb45f87c9eb", size = 759004, upload-time = "2026-02-19T05:00:57.678Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7f/9c/34f6962f9b9e9c71f6e5ed806e0d0ff03c9d1b0b2340088a0cf4bce09b18/flask-3.1.3-py3-none-any.whl", hash = "sha256:f4bcbefc124291925f1a26446da31a5178f9483862233b23c0c96a20701f670c", size = 103424, upload-time = "2026-02-19T05:00:56.027Z" },
+]
+
+[[package]]
+name = "hprm"
+version = "0.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ba/56/61f26a815e9181e943fdaf43edc36ad84d30eb0902a393652197622312bb/hprm-0.2.0.tar.gz", hash = "sha256:542485e903f33a57892af5169a0446e2a1ba651c22f3312e5a743570692bb462", size = 195798, upload-time = "2026-06-20T05:19:46.907Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/89/b4/651117e8e2c741882958ef86adb75053ca7257b2404bc199cf3af9b9a7c5/hprm-0.2.0-cp310-cp310-manylinux_2_31_aarch64.whl", hash = "sha256:bd0825ef500380838f5258678cdbb773f47ea0850d696f4d15a08e7f54de081f", size = 292878, upload-time = "2026-06-20T05:19:49.446Z" },
+    { url = "https://files.pythonhosted.org/packages/78/79/a6fd4e4043f4e97a6be1f0656bd0a97904a585dc743b86c1779ec95c85a0/hprm-0.2.0-cp310-cp310-manylinux_2_31_x86_64.whl", hash = "sha256:c85bee7fe9be009b355bb9e538c4b61b2323d204a7277e4e1d73661b2e1911a4", size = 302577, upload-time = "2026-06-20T08:37:14.922Z" },
+    { url = "https://files.pythonhosted.org/packages/46/7e/e29b20f37da9d22abe994b785802b2d92bbb4ca96a6d099454549bb1b07f/hprm-0.2.0-cp310-cp310-win_amd64.whl", hash = "sha256:bcf3a9435ce257c45df7de9ac603847b3a0140d8e8d9a4951fb01a525f8efcad", size = 185191, upload-time = "2026-06-20T05:19:40.716Z" },
+    { url = "https://files.pythonhosted.org/packages/bc/bf/ec6259320636a694306cbd4e687ee9b77b966036dff51e28568abfbef6e9/hprm-0.2.0-cp311-cp311-manylinux_2_31_aarch64.whl", hash = "sha256:a2230863236e7907ae373adc6f2188bfefa0afbe6d13b3e66a955bfaf1bb245f", size = 292770, upload-time = "2026-06-20T05:19:45.049Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/92/9e512d7af6e16f1de88163d265856bd68997df8417b8f682fe6934ec7496/hprm-0.2.0-cp311-cp311-manylinux_2_31_x86_64.whl", hash = "sha256:8884e78c36f2785fae84a88790a707d426f0cf9aff30b727efa53f95c2199baa", size = 302170, upload-time = "2026-06-20T08:36:51.936Z" },
+    { url = "https://files.pythonhosted.org/packages/08/33/be89e2539090a2acbb174e584ccad2e4a10eb0b8d826b64643260a2e29cb/hprm-0.2.0-cp311-cp311-win_amd64.whl", hash = "sha256:012ba654c19ed0d77eb60ad7612e3bb7fe019f8f2d696a22b04c4d1b70068e95", size = 184670, upload-time = "2026-06-20T05:19:48.388Z" },
+    { url = "https://files.pythonhosted.org/packages/ce/6a/7d68e6ef808eabdbba66d6f887875c223b75dd7881dcd21e479b457b9989/hprm-0.2.0-cp312-cp312-manylinux_2_31_aarch64.whl", hash = "sha256:ce8c08caa678efb47b5523586d175340a7e76e9fb5e6e5f10fb831afe48f9fdd", size = 291561, upload-time = "2026-06-20T05:19:50.934Z" },
+    { url = "https://files.pythonhosted.org/packages/86/ca/752457b83f8f16253a7a073cfdaf9c7cc503d5989320fc5634ac95c2aee5/hprm-0.2.0-cp312-cp312-manylinux_2_31_x86_64.whl", hash = "sha256:92f07f1664a1b3738ff73e9bb10005a8793ce3872f354a570dcdc3f06f0a68f3", size = 299678, upload-time = "2026-06-20T08:36:50.746Z" },
+    { url = "https://files.pythonhosted.org/packages/73/06/a677d942fd5c0b2f98744760346aea14ede319099f625f92eeb7ea6a6247/hprm-0.2.0-cp312-cp312-win_amd64.whl", hash = "sha256:9585c228c00d60a465d644bd4f6365d583e41041c02de3b41901e5c77cf7d614", size = 183359, upload-time = "2026-06-20T05:19:43.095Z" },
+    { url = "https://files.pythonhosted.org/packages/6e/8c/336ef1658e7f1df4fe4ae35f4ba2cfd598956ada228a21440ab63b411c41/hprm-0.2.0-cp313-cp313-manylinux_2_31_aarch64.whl", hash = "sha256:8cad200810bf3e73e96020f848de81843cc3993b9ab45fd2995ae04035b55eca", size = 290811, upload-time = "2026-06-20T05:20:54.213Z" },
+    { url = "https://files.pythonhosted.org/packages/f8/d1/c6b4b8cc32ed50517d473fae987512831d04144d29bce95b1b10b3c4c0ba/hprm-0.2.0-cp313-cp313-manylinux_2_31_x86_64.whl", hash = "sha256:c7fea33185085f00713d43af5249d2b791be388017f0281d635f4063d0bfcd09", size = 299338, upload-time = "2026-06-20T08:36:48.36Z" },
+    { url = "https://files.pythonhosted.org/packages/50/d6/3116b00e991ed8d91e22d367dd2325e18287193aef5fde18349187a7e4d7/hprm-0.2.0-cp313-cp313-win_amd64.whl", hash = "sha256:2109e8c82959a835f9dec137935882591acb21fc3ac8fe10ff9ec33d2b3c8451", size = 182418, upload-time = "2026-06-20T05:19:52.288Z" },
 ]
 
 [[package]]
