@@ -126,7 +126,11 @@ static int test_magnetometer_measurement_jacobian(void) {
   float state[ESKF_NOMINAL_DIM] = {125.0F, 0.0F};
   rotvec_to_quat(orientation, &state[ESKF_QUAT_W]);
   float rotation_data[9];
-  memcpy(rotation_data, eskf_v2_R_mag_to_board, sizeof(rotation_data));
+  for (int row = 0; row < 3; ++row) {
+    for (int column = 0; column < 3; ++column) {
+      rotation_data[row * 3 + column] = eskf_v2_R_mag_to_board[column * 3 + row];
+    }
+  }
   matrix_instance_f32 rotation = {3, 3, rotation_data};
 
   float jacobian[ESKF_MEASUREMENT_DIM * ESKF_ERROR_DIM];

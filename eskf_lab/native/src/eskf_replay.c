@@ -231,10 +231,7 @@ int main(int argc, char **argv) {
       }
       result.values[OUTPUT_RAW_BARO_ALTITUDE] =
           pressure_to_altitude(record.values[INPUT_PRESSURE], eskf.initial_pressure);
-      const float speed = fabsf(eskf.x_nom[ESKF_VEL_Z]);
-      result.values[OUTPUT_PRESSURE_COUPLING] =
-          1.0F /
-          (1.0F + expf(ESKF_PV_COUPLING_SHARPNESS * (speed - ESKF_PV_COUPLING_SPEED)));
+      result.values[OUTPUT_PRESSURE_COUPLING] = eskf.pressure_coupling;
       const float *q = &eskf.x_nom[ESKF_QUAT_W];
       result.values[OUTPUT_QUAT_NORM] =
           sqrtf(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]);

@@ -15,7 +15,11 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import polars as pl
 
-from .apogee import HPRM_APOGEE_COLUMN, add_hprm_apogee_predictions
+from .apogee import (
+    HPRM_APOGEE_COLUMN,
+    HPRM_COAST_TRANSITION_SECONDS,
+    add_hprm_apogee_predictions,
+)
 from .dataset import PreparedDataset, safe_name
 from .paths import LAB_ROOT, REPO_ROOT
 
@@ -210,7 +214,7 @@ def calculate_metrics(frame: pl.DataFrame, replay_seconds: float) -> dict[str, A
     if HPRM_APOGEE_COLUMN in frame.columns:
         predictions = frame[HPRM_APOGEE_COLUMN].to_numpy()
         prediction_mask = np.isfinite(predictions)
-        metrics["hprm_apogee_prediction"] = {
+        hprm_metrics: dict[str, Any] = {
             "rows": int(prediction_mask.sum()),
             "first_m": _finite(float(predictions[prediction_mask][0]))
             if prediction_mask.any()
@@ -219,6 +223,97 @@ def calculate_metrics(frame: pl.DataFrame, replay_seconds: float) -> dict[str, A
             if prediction_mask.any()
             else None,
         }
+        if prediction_mask.any():
+            first_prediction_time = float(timestamp[np.flatnonzero(prediction_mask)[0]])
+            steady_mask = prediction_mask & (
+                timestamp >= first_prediction_time + HPRM_COAST_TRANSITION_SECONDS
+            )
+            if steady_mask.any():
+                steady_predictions = predictions[steady_mask]
+                final_prediction = float(predictions[prediction_mask][-1])
+                final_errors = np.abs(steady_predictions - final_prediction)
+                hprm_metrics["post_transition"] = {
+                    "allowance_seconds": HPRM_COAST_TRANSITION_SECONDS,
+                    "rows": int(steady_mask.sum()),
+                    "mean_m": _finite(float(np.mean(steady_predictions))),
+                    "min_m": _finite(float(np.min(steady_predictions))),
+                    "max_m": _finite(float(np.max(steady_predictions))),
+                    "range_m": _finite(float(np.ptp(steady_predictions))),
+                    "final_prediction_reference_m": _finite(final_prediction),
+                    "max_abs_error_from_final_m": _finite(float(np.max(final_errors))),
+                    "within_15m_percent": _finite(float(np.mean(final_errors <= 15.0) * 100.0)),
+                }
+
+                prediction_indices = np.flatnonzero(prediction_mask)
+                last_prediction_index = int(prediction_indices[-1])
+                coast_velocity_steps = np.diff(
+                    velocity[int(prediction_indices[0]) : last_prediction_index + 1]
+                )
+                if coast_velocity_steps.size:
+                    hprm_metrics["coast_velocity_behavior"] = {
+                        "max_abs_step_mps": _finite(
+                            float(np.max(np.abs(coast_velocity_steps)))
+                        ),
+                        "max_increase_step_mps": _finite(float(np.max(coast_velocity_steps))),
+                        "increases_over_0_5_mps": int((coast_velocity_steps > 0.5).sum()),
+                    }
+
+                if "eskf_pressure_coupling" in frame.columns:
+                    pressure_coupling = frame["eskf_pressure_coupling"].to_numpy()
+                    # Stay well above the 20 m/s sigmoid transition so the
+                    # maximum represents the coast floor, not near-apogee
+                    # pressure recoupling.
+                    high_speed_coast = prediction_mask & (velocity > 40.0)
+                    if high_speed_coast.any():
+                        nominal_coast_coupling = float(np.max(pressure_coupling[high_speed_coast]))
+                        reliable_pressure = high_speed_coast & (
+                            pressure_coupling >= 0.95 * nominal_coast_coupling
+                        )
+                        unreliable_indices = np.flatnonzero(
+                            high_speed_coast & ~reliable_pressure
+                        )
+                        reliable_indices = np.flatnonzero(reliable_pressure)
+                        sustained_rejection = (
+                            unreliable_indices.size > 0
+                            and timestamp[unreliable_indices[-1]] - first_prediction_time >= 0.5
+                        )
+                        if (
+                            nominal_coast_coupling > 0.0
+                            and reliable_indices.size
+                            and sustained_rejection
+                        ):
+                            start_index = int(reliable_indices[0])
+                            if unreliable_indices.size:
+                                after_last_unreliable = reliable_indices[
+                                    reliable_indices > unreliable_indices[-1]
+                                ]
+                                if after_last_unreliable.size:
+                                    start_index = int(after_last_unreliable[0])
+                            reacquired = predictions[start_index : last_prediction_index + 1]
+                            reacquired = reacquired[np.isfinite(reacquired)]
+                            if reacquired.size:
+                                reacquired_errors = np.abs(reacquired - final_prediction)
+                                hprm_metrics["after_pressure_reacquisition"] = {
+                                    "note": (
+                                        "Filter pressure reliability recovery; this does not "
+                                        "necessarily indicate physical airbrake retraction."
+                                    ),
+                                    "timestamp_seconds": _finite(float(timestamp[start_index])),
+                                    "seconds_after_first_prediction": _finite(
+                                        float(timestamp[start_index] - first_prediction_time)
+                                    ),
+                                    "rows": int(reacquired.size),
+                                    "mean_m": _finite(float(np.mean(reacquired))),
+                                    "min_m": _finite(float(np.min(reacquired))),
+                                    "max_m": _finite(float(np.max(reacquired))),
+                                    "max_abs_error_from_final_m": _finite(
+                                        float(np.max(reacquired_errors))
+                                    ),
+                                    "within_15m_percent": _finite(
+                                        float(np.mean(reacquired_errors <= 15.0) * 100.0)
+                                    ),
+                                }
+        metrics["hprm_apogee_prediction"] = hprm_metrics
     return metrics
 
 

@@ -13,6 +13,7 @@ from firm.eskf_lab.apogee import (
     add_hprm_apogee_predictions,
     load_rocket_properties,
 )
+from firm.eskf_lab.native import calculate_metrics
 from firm.eskf_lab.visualize import make_figure, select_default_columns
 
 if TYPE_CHECKING:
@@ -68,11 +69,10 @@ def test_hprm_prediction_uses_eskf_coast_state(tmp_path: Path) -> None:
     predictions = result[HPRM_APOGEE_COLUMN]
 
     assert summary is not None
-    assert summary.prediction_rows == 2
-    assert summary.first_prediction_timestamp_seconds == 3.0
+    assert summary.prediction_rows == 1
+    assert summary.first_prediction_timestamp_seconds == 4.0
     assert summary.last_prediction_timestamp_seconds == 4.0
-    assert predictions[:3].is_nan().all()
-    assert predictions[3] > frame["eskf_position_z_m"][3]
+    assert predictions[:4].is_nan().all()
     assert predictions[4] > frame["eskf_position_z_m"][4]
     assert math.isnan(predictions[5])
 
@@ -114,3 +114,25 @@ def test_prediction_is_a_default_plot_column(tmp_path: Path) -> None:
     assert "HPRM predicted apogee (m)" in [
         annotation.text for annotation in figure.layout.annotations
     ]
+
+
+def test_metrics_summarize_predictions_after_coast_transition() -> None:
+    """Metrics quantify the stable prediction window against the final prediction."""
+    frame = pl.DataFrame(
+        {
+            "timestamp": [0.0, 1.0, 2.0, 3.0],
+            "eskf_position_z_m": [0.0, 1.0, 2.0, 3.0],
+            "eskf_velocity_z_mps": [3.0, 2.0, 1.0, 0.0],
+            "raw_baro_altitude_m": [0.0, 1.0, 2.0, 3.0],
+            "eskf_quaternion_norm": [1.0, 1.0, 1.0, 1.0],
+            HPRM_APOGEE_COLUMN: [math.nan, 103.0, 101.0, 100.0],
+        }
+    )
+
+    prediction_metrics = calculate_metrics(frame, 1.0)["hprm_apogee_prediction"]
+    steady = prediction_metrics["post_transition"]
+
+    assert steady["rows"] == 2
+    assert steady["range_m"] == pytest.approx(1.0)
+    assert steady["max_abs_error_from_final_m"] == pytest.approx(1.0)
+    assert steady["within_15m_percent"] == pytest.approx(100.0)

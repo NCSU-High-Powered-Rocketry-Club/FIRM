@@ -21,6 +21,9 @@ ROCKET_PROPERTIES_FILENAME = "rocket_properties.json"
 HPRM_APOGEE_COLUMN = "hprm_predicted_apogee_m"
 TAKEOFF_VELOCITY_MPS = 10.0
 HPRM_DT_MAX_SECONDS = 1.0
+HPRM_COAST_TRANSITION_SECONDS = 0.5
+COAST_MINIMUM_VELOCITY_DROP_MPS = 1.0
+COAST_CONFIRMATION_SECONDS = 0.1
 
 
 @dataclass(frozen=True)
@@ -119,6 +122,7 @@ def add_hprm_apogee_predictions(
     in_motor_burn = False
     in_coast = False
     maximum_velocity = -math.inf
+    coast_candidate_timestamp: float | None = None
     started = time.perf_counter()
 
     for index, (altitude, velocity) in enumerate(zip(altitudes, velocities, strict=True)):
@@ -132,6 +136,18 @@ def add_hprm_apogee_predictions(
         if not in_coast:
             if velocity >= maximum_velocity:
                 maximum_velocity = velocity
+                coast_candidate_timestamp = None
+                continue
+            if maximum_velocity - velocity < COAST_MINIMUM_VELOCITY_DROP_MPS:
+                coast_candidate_timestamp = None
+                continue
+            if coast_candidate_timestamp is None:
+                coast_candidate_timestamp = float(timestamps[index])
+                continue
+            if (
+                float(timestamps[index]) - coast_candidate_timestamp
+                < COAST_CONFIRMATION_SECONDS
+            ):
                 continue
             in_coast = True
         if velocity <= 0.0:

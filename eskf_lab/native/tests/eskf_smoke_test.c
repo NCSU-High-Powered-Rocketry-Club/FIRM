@@ -53,6 +53,55 @@ int main(void) {
     }
   }
 
+  /* Launch requires a sustained upward motor impulse and an independent
+   * barometric rise.  A handling shock with a fixed pressure reference must
+   * leave the estimator in its constrained standby phase. */
+  const float motor_control[6] = {0.0F, 0.0F, 8.0F, 0.0F, 0.0F, 0.0F};
+  for (int i = 0; i < 25; ++i) {
+    eskf_predict(&eskf, motor_control, 0.01F);
+    eskf_set_measurement(&eskf, measurement);
+    eskf_update(&eskf);
+  }
+  if (eskf.launched) {
+    fprintf(stderr, "fixed-pressure handling shock falsely detected launch\n");
+    return 1;
+  }
+  eskf_predict(&eskf, control, 0.01F);
+  eskf_set_measurement(&eskf, measurement);
+  eskf_update(&eskf);
+
+  const float launch_measurement[4] = {101300.0F, 20.0F, 5.0F, 40.0F};
+  for (int i = 0; i < 25 && !eskf.launched; ++i) {
+    eskf_predict(&eskf, motor_control, 0.01F);
+    eskf_set_measurement(&eskf, launch_measurement);
+    eskf_update(&eskf);
+  }
+  if (!eskf.launched) {
+    fprintf(stderr, "confirmed motor impulse and pressure rise missed launch\n");
+    return 1;
+  }
+
+  /* After apogee, a sustained stationary IMU and pressure signal produces a
+   * zero-velocity update. */
+  eskf.coast_detected = 1U;
+  eskf.apogee_detected = 1U;
+  eskf.apogee_altitude = 10.0F;
+  eskf.x_nom[ESKF_POS_Z] = 10.0F;
+  eskf.x_nom[ESKF_VEL_Z] = -1.0F;
+  eskf.pressure_disturbed = 0U;
+  eskf.pressure_reliability = 1.0F;
+  eskf.filtered_pressure_altitude = 0.0F;
+  eskf.landed_stationary_time_seconds = 0.0F;
+  for (int i = 0; i < 400; ++i) {
+    eskf_predict(&eskf, control, 0.01F);
+    eskf_set_measurement(&eskf, measurement);
+    eskf_update(&eskf);
+  }
+  if (!eskf.landed || fabsf(eskf.x_nom[ESKF_VEL_Z]) > 1e-6F) {
+    fprintf(stderr, "stationary post-apogee state did not zero velocity\n");
+    return 1;
+  }
+
   /* A selectively decoupled pressure gain is no longer the optimal Kalman
    * gain.  Its covariance update must still preserve positive semidefiniteness.
    */
@@ -66,6 +115,10 @@ int main(void) {
   for (int i = ESKF_DTHETA_X; i <= ESKF_DTHETA_Z; ++i) {
     eskf.P[i * ESKF_ERROR_DIM + i] = 1e-3F;
   }
+  eskf.launched = 1U;
+  eskf.coast_detected = 1U;
+  eskf.apogee_detected = 0U;
+  eskf.landed = 0U;
   eskf.x_nom[ESKF_POS_Z] = 0.0F;
   eskf.x_nom[ESKF_VEL_Z] = 100.0F;
   eskf_set_measurement(&eskf, measurement);
