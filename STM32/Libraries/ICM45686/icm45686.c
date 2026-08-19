@@ -146,6 +146,9 @@ int icm45686_init(void) {
   write_ireg_register(IPREG_SYS1, (uint16_t)ipreg_sys1_reg_166, 0b00001011);
   // turn interpolator and FIR filter off for acceleration
   write_ireg_register(IPREG_SYS2, (uint16_t)ipreg_sys2_reg_123, 0b00010100);
+  // gyro and accel LPF filter
+  write_ireg_register(IPREG_SYS1, (uint16_t)0xAC, 0b00000001);
+  write_ireg_register(IPREG_SYS2, (uint16_t)0x83, 0b00000001);
   // verify ireg read/write works
   uint8_t result = 0;
   read_ireg_register(IPREG_SYS2, (uint16_t)ipreg_sys2_reg_123, &result);

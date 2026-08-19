@@ -90,7 +90,7 @@ void eskf_error_jacobian(const float *x_nom, const float *u, float dt,
 
   // directly compute the 3rd row of the rotation matrix from the quaternion
   float r31 = 2.0F * (qx * qz - qw * qy);
-  float r32 = 2.0F * (qw * qz + qw * qx);
+  float r32 = 2.0F * (qy * qz + qw * qx);
   float r33 = 1.0F - 2.0F * (qx * qx + qy * qy);
 
   // row 2: δv̇_z = (a_board_ms2 * r_3) * dt
@@ -111,8 +111,9 @@ void eskf_error_jacobian(const float *x_nom, const float *u, float dt,
   F_d_data[20 + 3] = -wx * dt;
 }
 
-void eskf_measurement_function(const float *x_nom, float init_pressure, const float *mag_world,
-                               const matrix_instance_f32 *R_mag, float *z_pred) {
+void eskf_measurement_function(const float x_nom[ESKF_NOMINAL_DIM], float init_pressure,
+                               const float mag_world[3], const matrix_instance_f32 *R_mag,
+                               float z_pred[ESKF_MEASUREMENT_DIM]) {
   // outputs predicted measurement: pressure + mag (in sensor frame)
   float altitude_meters = x_nom[ESKF_POS_Z];
 
