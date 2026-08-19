@@ -251,9 +251,7 @@ def calculate_metrics(frame: pl.DataFrame, replay_seconds: float) -> dict[str, A
                 )
                 if coast_velocity_steps.size:
                     hprm_metrics["coast_velocity_behavior"] = {
-                        "max_abs_step_mps": _finite(
-                            float(np.max(np.abs(coast_velocity_steps)))
-                        ),
+                        "max_abs_step_mps": _finite(float(np.max(np.abs(coast_velocity_steps)))),
                         "max_increase_step_mps": _finite(float(np.max(coast_velocity_steps))),
                         "increases_over_0_5_mps": int((coast_velocity_steps > 0.5).sum()),
                     }
@@ -269,9 +267,7 @@ def calculate_metrics(frame: pl.DataFrame, replay_seconds: float) -> dict[str, A
                         reliable_pressure = high_speed_coast & (
                             pressure_coupling >= 0.95 * nominal_coast_coupling
                         )
-                        unreliable_indices = np.flatnonzero(
-                            high_speed_coast & ~reliable_pressure
-                        )
+                        unreliable_indices = np.flatnonzero(high_speed_coast & ~reliable_pressure)
                         reliable_indices = np.flatnonzero(reliable_pressure)
                         sustained_rejection = (
                             unreliable_indices.size > 0

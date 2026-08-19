@@ -144,10 +144,7 @@ def add_hprm_apogee_predictions(
             if coast_candidate_timestamp is None:
                 coast_candidate_timestamp = float(timestamps[index])
                 continue
-            if (
-                float(timestamps[index]) - coast_candidate_timestamp
-                < COAST_CONFIRMATION_SECONDS
-            ):
+            if float(timestamps[index]) - coast_candidate_timestamp < COAST_CONFIRMATION_SECONDS:
                 continue
             in_coast = True
         if velocity <= 0.0:
