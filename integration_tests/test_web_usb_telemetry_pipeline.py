@@ -12,7 +12,6 @@ from pathlib import Path
 import pytest
 
 # Assertions are the intended pytest API.
-# ruff: noqa: S101
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]

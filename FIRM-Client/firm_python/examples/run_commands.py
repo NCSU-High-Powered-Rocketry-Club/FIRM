@@ -1,4 +1,5 @@
 import argparse
+
 import firm_client
 
 TIMEOUT = 0.1
@@ -35,5 +36,6 @@ print(
 device_config = client.get_device_config(timeout_seconds=RESPONSE_TIMEOUT)
 if device_config:
     print(
-        f"Name: {device_config.name}, Frequency: {device_config.frequency}, Protocol: {device_config.protocol}"
+        f"Name: {device_config.name}, Frequency: {device_config.frequency},"
+        f"Protocol:\n{device_config.protocol}"
     )

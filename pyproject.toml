@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [
     { name = "High Powered Rocketry Club", email = "ncsurocketry@gmail.com"}
 ]
-requires-python = ">=3.10,<3.14"
+requires-python = ">=3.10,<=3.15"
 license = "MIT"
 dependencies = [
     "dash>=2.16",
@@ -35,7 +35,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    # "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.14",
 ]
 
 [project.urls]
@@ -85,7 +85,8 @@ exclude = ["scripts", "_calibration.py"]
 
 [tool.ruff.lint]
 typing-extensions = false
-ignore = ["PLR2004", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PERF203"]
+# TODO: UP035 should not be ignored
+ignore = ["PLR2004", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PERF203", "UP035", "PYI021", "PYI048", "PYI020", "T201", "S101", "D100", "D103", "D101"]
 select = ["E", "F", "I", "PL", "UP", "RUF", "PTH", "C4", "B", "PIE", "SIM", "RET", "RSE",
           "G", "ISC", "PT", "ASYNC", "TCH", "SLOT", "PERF", "PYI", "FLY", "AIR", "RUF022",
           "RUF023", "Q", "INP", "W", "YTT", "DTZ", "ARG", "T20", "FURB", "DOC", "TRY", 

@@ -1,8 +1,8 @@
 import inspect
 import math
 
-from firm_client import FIRMDataPacket
 import pytest
+from firm_client import FIRMDataPacket
 
 
 def test_firm_data_packet_constructor() -> None:

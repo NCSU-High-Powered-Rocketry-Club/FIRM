@@ -1,7 +1,7 @@
 """End-to-end STM32 C -> Web/WASM client device-info test."""
 
 # Assertions, local subprocesses, and descriptive exception messages are intentional here.
-# ruff: noqa: S101, S603, TRY003
+# ruff: noqa: S603, TRY003
 
 from __future__ import annotations
 

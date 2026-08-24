@@ -1,6 +1,6 @@
 import argparse
-from firm_client import FIRMClient
 
+from firm_client import FIRMClient
 
 # uv run .\firm_python\examples\run_set_calibration.py COM12
 

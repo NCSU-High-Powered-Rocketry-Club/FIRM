@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 from firm_client import FIRMClient
 
 

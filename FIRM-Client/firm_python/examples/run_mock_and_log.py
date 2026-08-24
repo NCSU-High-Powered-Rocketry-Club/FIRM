@@ -1,13 +1,13 @@
 import argparse
+import contextlib
 import csv
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from firm_client import FIRMClient
 
-
-# uv run  .\firm_python\examples\run_mock_and_log.py --out output.csv COM8 "C:\Users\jackg\Downloads\gov_work_launch_1_ab (1).FRM"
+# uv run  .\firm_python\examples\run_mock_and_log.py --out output.csv COM8 "C:\gov_work.FRM"
 
 TIMEOUT_SECONDS_DEFAULT = 0.5
 START_TIMEOUT_SECONDS_DEFAULT = 5.0
@@ -17,7 +17,7 @@ CHUNK_SIZE_DEFAULT = 80_000
 DRAIN_SECONDS_DEFAULT = 1.0
 
 
-FIELDS: List[str] = [
+FIELDS: list[str] = [
     "timestamp_seconds",
     "temperature_celsius",
     "pressure_pascals",
@@ -39,7 +39,7 @@ FIELDS: List[str] = [
 ]
 
 
-def _row_from_packet(pkt: Any) -> Dict[str, Any]:
+def _row_from_packet(pkt: Any) -> dict[str, Any]:
     return {f: getattr(pkt, f) for f in FIELDS}
 
 
@@ -99,17 +99,15 @@ def main() -> int:
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     total_rows = 0
-    sent_packets: Optional[int] = None
-    mock_finished_wall: Optional[float] = None
+    sent_packets: int | None = None
+    mock_finished_wall: float | None = None
 
     start_wall = time.time()
 
     with FIRMClient(args.port, args.baud_rate, args.timeout_seconds) as client:
         # Best-effort drain (doesn't matter if empty)
-        try:
+        with contextlib.suppress(Exception):
             client.get_data_packets(block=True)
-        except Exception:
-            pass
 
         print("Starting async mock stream...")
         client.start_mock_log_stream(
@@ -134,14 +132,14 @@ def main() -> int:
                         total_rows += 1
 
                     # Detect stream end
-                    if not client.is_mock_log_streaming():
-                        if mock_finished_wall is None:
-                            mock_finished_wall = time.time()
+                    if not client.is_mock_log_streaming() and mock_finished_wall is None:
+                        mock_finished_wall = time.time()
 
                     # Drain window after stream ends
-                    if mock_finished_wall is not None:
-                        if time.time() - mock_finished_wall >= float(args.drain_seconds):
-                            break
+                    if mock_finished_wall is not None and time.time() - mock_finished_wall >= float(
+                        args.drain_seconds
+                    ):
+                        break
 
                     time.sleep(0.001)
 
@@ -151,11 +149,8 @@ def main() -> int:
         finally:
             # Ensure the mock stream is stopped and (optionally) joined.
             # join=True blocks until the mock thread exits and returns packet count.
-            try:
+            with contextlib.suppress(Exception):
                 sent_packets = client.stop_mock_log_stream(cancel_device=True, join=True)
-            except Exception:
-                # If something goes wrong (e.g. already stopped), just proceed.
-                sent_packets = sent_packets
 
     elapsed = time.time() - start_wall
     print(f"Wrote {total_rows} FIRM output packets to: {out_path}")

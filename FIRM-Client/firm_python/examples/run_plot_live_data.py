@@ -4,14 +4,23 @@ import sys
 import time
 from collections import deque
 from dataclasses import dataclass
-from typing import Deque, Dict, List, Optional, Tuple
+
+try:
+    import matplotlib.pyplot as plt
+    from matplotlib.animation import FuncAnimation
+except Exception as exc:  # pragma: no cover
+    print(
+        "matplotlib is required for this example. Install with: uv add matplotlib\n"
+        f"Import error: {exc}",
+        file=sys.stderr,
+    )
 
 from firm_client import FIRMClient
 
 DEFAULT_PORT = "COM12"
 DEFAULT_BAUD_RATE = 2_000_000
 
-FIELDS: List[str] = [
+FIELDS: list[str] = [
     "raw_acceleration_x_gs",
     "raw_acceleration_y_gs",
     "raw_acceleration_z_gs",
@@ -28,7 +37,7 @@ MAX_POINTS = 4_000
 
 USE_PACKET_TIMESTAMP = True
 
-KALMAN_FIELDS: List[str] = [
+KALMAN_FIELDS: list[str] = [
     "est_position_z_meters",
     "est_velocity_z_meters_per_s",
     "est_quaternion_w",
@@ -46,11 +55,11 @@ KALMAN_WINDOW_SECONDS = 5.0
 
 @dataclass(frozen=True)
 class Series:
-    x: Deque[float]
-    y: Deque[float]
+    x: deque[float]
+    y: deque[float]
 
 
-def _try_get_float(obj: object, attr: str) -> Optional[float]:
+def _try_get_float(obj: object, attr: str) -> float | None:
     value = getattr(obj, attr, None)
     if value is None:
         return None
@@ -60,7 +69,7 @@ def _try_get_float(obj: object, attr: str) -> Optional[float]:
         return None
 
 
-def _parse_args(argv: List[str]) -> Tuple[str, int]:
+def _parse_args(argv: list[str]) -> tuple[str, int]:
     port = DEFAULT_PORT
     baud = DEFAULT_BAUD_RATE
 
@@ -72,42 +81,28 @@ def _parse_args(argv: List[str]) -> Tuple[str, int]:
     return port, baud
 
 
-def main(argv: List[str]) -> int:
-    try:
-        import matplotlib.pyplot as plt
-        from matplotlib.animation import FuncAnimation
-    except Exception as exc:  # pragma: no cover
-        print(
-            "matplotlib is required for this example. Install with: uv add matplotlib\n"
-            f"Import error: {exc}",
-            file=sys.stderr,
-        )
-        return 2
-
+def main(argv: list[str]) -> int:
     port, baud_rate = _parse_args(argv)
 
     # One series per field.
-    series_by_field: Dict[str, Series] = {
+    series_by_field: dict[str, Series] = {
         field: Series(x=deque(maxlen=MAX_POINTS), y=deque(maxlen=MAX_POINTS)) for field in FIELDS
     }
 
-    start_packet_ts: Optional[float] = None
+    start_packet_ts: float | None = None
     start_wall_ts = time.time()
 
-    kalman_last_snapshot: Optional[Dict[str, float]] = None
-    kalman_update_times: Deque[float] = deque()
+    kalman_last_snapshot: dict[str, float] | None = None
+    kalman_update_times: deque[float] = deque()
     kalman_total_updates = 0
 
     # Matplotlib setup.
     n = max(1, len(FIELDS))
     fig, axes = plt.subplots(n, 1, sharex=True, figsize=(10, max(4, 2.2 * n)))
-    if n == 1:
-        axes_list = [axes]
-    else:
-        axes_list = list(axes)
+    axes_list = [axes] if n == 1 else list(axes)
 
     lines = {}
-    for ax, field in zip(axes_list, FIELDS):
+    for ax, field in zip(axes_list, FIELDS, strict=False):
         (line,) = ax.plot([], [], lw=1)
         lines[field] = line
         ax.set_ylabel(field)
@@ -159,7 +154,7 @@ def main(argv: List[str]) -> int:
                 # Kalman update detection (based on estimated fields changing).
                 # Use packet timestamp when available; otherwise wall clock.
                 kalman_time = pkt_ts if pkt_ts is not None else time.time()
-                current_snapshot: Dict[str, float] = {}
+                current_snapshot: dict[str, float] = {}
                 for field in KALMAN_FIELDS:
                     value = _try_get_float(pkt, field)
                     if value is None:
@@ -235,10 +230,11 @@ def main(argv: List[str]) -> int:
                 status.set_text(
                     f"Port={port}  Baud={baud_rate}  Fields={len(FIELDS)}  "
                     f"Total packets={last_rx_count}  "
-                    f"Kalman≈{kalman_hz:.2f} Hz (updates={kalman_total_updates}, window={KALMAN_WINDOW_SECONDS:.0f}s)"
+                    f"Kalman≈{kalman_hz:.2f} Hz (updates={kalman_total_updates},\n"
+                    "window={KALMAN_WINDOW_SECONDS:.0f}s)"
                 )
 
-            return list(lines.values()) + [status]
+            return [*list(lines.values()), status]
 
         anim = FuncAnimation(fig, _update, interval=REFRESH_MS, blit=False)
 

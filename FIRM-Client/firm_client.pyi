@@ -1,8 +1,6 @@
-from __future__ import annotations
-
 from enum import IntEnum
 from types import TracebackType
-from typing import ClassVar, Optional, Type
+from typing import ClassVar
 
 __version__: str
 
@@ -139,21 +137,18 @@ class FIRMDataPacket:
         """
         Initialize a new immutable FIRMDataPacket. All fields are required.
         """
-        ...
 
     @staticmethod
-    def default_zero() -> "FIRMDataPacket":
+    def default_zero() -> FIRMDataPacket:
         """
         Creates a packet with zeroed values (and identity quaternion).
         """
-        ...
 
     def as_dict(self) -> dict[str, float]:
         """
         Converts the packet to a standard Python dictionary.
         Returns a copy of the data.
         """
-        ...
 
 class MockDeviceHandle:
     """Handle for controlling an in-process mock device."""
@@ -256,7 +251,7 @@ class FIRMClient:
         self,
         collection_duration_seconds: float,
         apply_timeout_seconds: float = 5.0,
-    ) -> Optional[bool]: ...
+    ) -> bool | None: ...
     """Run magnetometer calibration procedure and sets the constants on the device."""
 
     def is_running(self) -> bool: ...
@@ -267,7 +262,7 @@ class FIRMClient:
 
     def __exit__(
         self,
-        exc_type: Type[BaseException] | None,
+        exc_type: type[BaseException] | None,
         exc_value: BaseException | None,
         traceback: TracebackType | None,
     ) -> None: ...
