@@ -1,9 +1,9 @@
 # FIRM ESKF desktop lab
 
 This tool compiles the production STM32 error-state Kalman filter sources as a fast native
-desktop executable, aligns decoded launch sensor CSVs, replays them through the filter, and
-writes compressed Parquet results for analysis and plotting. It does not reimplement the filter
-math in Python.
+desktop executable, aligns manager-built sensor Parquet, replays it through the filter, and writes
+compressed Parquet results for analysis and plotting. It does not reimplement the filter math in
+Python.
 
 ## Quick start
 
@@ -11,19 +11,20 @@ From the repository root:
 
 ```powershell
 uv sync
+uv run firm-log ingest --launch my-launch --recording primary --flight LOG1.FRM --mag-cal LOG2.FRM --hardware new
+uv run firm-log build my-launch/primary
 uv run firm-eskf list
-uv run firm-eskf run my-launch
+uv run firm-eskf run my-launch/primary
 uv run firm-eskf serve
 ```
 
-With no dataset names, `prepare` and `run` process every complete directory under
-`eskf_lab/datasets`:
+With no dataset names, `prepare` and `run` process every current recording in `flight_data`:
 
 ```powershell
 uv run firm-eskf run
 ```
 
-The first run converts and aligns the large CSV files. Later runs reuse the cached Parquet and
+The first run aligns the native-rate Parquet files. Later runs reuse the aligned Parquet and
 binary input, so changing ESKF C code normally requires only an incremental native compile and
 replay.
 
@@ -34,26 +35,29 @@ uv run firm-eskf run
 uv run firm-eskf serve
 ```
 
-## Dataset format
+## Managed recording format
 
-Each launch directory must contain the four decoded top-level files shown below. The raw `.FRM`
-file and `Calibration/` directory are deliberately ignored.
+ESKF discovers only current recordings under the repository's `flight_data` manager. It does not
+scan or fall back to `eskf_lab/datasets`; those legacy files are intentionally left in place while
+the new archive starts empty. Until a recording has been ingested and built, `list` is empty and
+`prepare`, `run`, and no-argument `serve` report that managed data is unavailable.
 
 ```text
-eskf_lab/datasets/my-launch/
-  BMP581_data.csv
-  ICM45686_data.csv
-  MMC5983MA_data.csv
-  ADXL371_data.csv
-  rocket_properties.json    # optional; enables HPRM apogee prediction
-  LOG12.FRM                 # ignored
-  Calibration/             # ignored
+flight_data/launches/my-launch/recordings/primary/
+  recording.yaml
+  originals/flight.frm
+  originals/magnetometer-calibration.frm
+  derived/flight/current.frm
+  decoded/barometer.parquet
+  decoded/imu.parquet
+  decoded/magnetometer.parquet
+  decoded/high-g.parquet
 ```
 
-The metadata preamble is detected automatically. Column mappings and filenames live in
-`eskf_lab/config/default.toml`; copy that profile and pass `--profile PATH` if a future decoder
-uses different names. Unmapped columns are retained with a sensor prefix, so they can immediately
-be selected in plots.
+The manager writes stable corrected column names and keeps raw and uncalibrated fields alongside
+them. ESKF retains those extra fields with a sensor prefix so they remain selectable in plots.
+Manager outputs are always expressed in the new-hardware sensor frame, including migrated legacy
+recordings, so ESKF replay consistently uses the current hardware orientation matrices.
 
 When `rocket_properties.json` is present, it must contain:
 
@@ -115,9 +119,9 @@ The filter uses IMU, barometer, and magnetometer data. High-g accelerometer valu
 retained for comparisons but are not passed to the current ESKF because
 `STM32/Core/Src/tasks/filter_data_task.c` does not use that sensor.
 
-The CSV preamble's accelerometer, gyroscope, magnetometer, and high-g calibration values are
-applied before alignment. Each calibrated three-axis row is computed as `(raw - offsets) * matrix`,
-with the nine matrix values interpreted in row-major order.
+The manager resolves the recording's effective accelerometer, gyroscope, magnetometer, and high-g
+calibration before writing Parquet. ESKF consumes those corrected columns directly while retaining
+the raw and uncalibrated columns for inspection.
 
 Sensor files have independent timestamps. The magnetometer is the slowest required stream in FIRM
 logs, so its samples form the update clock. Each replay row uses the most recent IMU, barometer,
@@ -151,12 +155,11 @@ the raw sensor traces to diagnose the configuration or model behavior that prece
 
 ## Generated files
 
-All datasets and generated artifacts are ignored by Git:
+Generated ESKF artifacts are ignored by Git:
 
 - `eskf_lab/cache`: aligned Parquet and compact replay input
 - `eskf_lab/results`: timestamped result Parquet, metadata, metrics, and plots
 - `eskf_lab/build`: native CMake build
 
-Delete a dataset's cache or use `prepare --force` after changing its profile. Source file size and
-modification time automatically invalidate stale data caches; CMake automatically rebuilds changed
-filter sources.
+Delete a recording's cache or use `prepare --force` to rebuild it. The manager build fingerprint
+automatically invalidates stale data caches; CMake automatically rebuilds changed filter sources.

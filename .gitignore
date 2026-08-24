@@ -110,3 +110,10 @@ trace*.json
 /eskf_lab/cache/
 /eskf_lab/results/
 /eskf_lab/build/
+
+# Managed flight archive. Manifests and documentation stay visible to Git, while
+# acquired and generated data remains under the team's existing storage workflow.
+/flight_data/launches/**/originals/
+/flight_data/launches/**/derived/
+/flight_data/launches/**/decoded/
+/flight_data/launches/**/.index/

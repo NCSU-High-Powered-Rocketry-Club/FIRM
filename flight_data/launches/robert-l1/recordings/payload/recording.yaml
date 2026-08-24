@@ -1,0 +1,59 @@
+schema_version: 2
+launch_id: robert-l1
+recording_id: payload
+created_utc: '2026-08-22T19:19:43.977248+00:00'
+source_hardware: old
+sources:
+  flight:
+    path: originals/flight.frm
+    source_filename: robert_l1.FRM
+    sha256: 928cd9710cdf1a2d1c97504ad80b7ee9a0b7ae2463109ff55f767d1c132e171c
+    size_bytes: 200000000
+    log_version: '1.2'
+trim_window: null
+trim_proposals: {}
+calibration_override: null
+build:
+  status: current
+  fingerprint: e3da8f66f6b9f02106ec46fa28844a9d0ef9ee09c72e006ca88e30d831a3f167
+  target_log_version: '1.4'
+  source_hardware: old
+  target_hardware: new
+  created_utc: '2026-08-22T21:27:12.457930+00:00'
+  metadata: derived/build.json
+  artifacts:
+    flight_log:
+      status: current
+      path: derived/flight/current.frm
+      sha256: 45d8aea03ba4a0a43d99ae5a38c6d435deec8365d17cc1bd21c0543af69d2d39
+      size_bytes: 41537076
+    effective_calibration:
+      status: current
+      path: derived/effective-calibration.yaml
+      sha256: 63b5611d233933b33b6e54b2d22d7f2f4c42f3086e9dd47e9d5746f1690457c5
+      size_bytes: 1032
+    build_metadata:
+      status: current
+      path: derived/build.json
+      sha256: 48e826a8034b30459a99dd3a135d4184cd2054e7383a4ea578b93ac39b948d48
+      size_bytes: 1513
+    barometer:
+      status: current
+      path: decoded/barometer.parquet
+      sha256: 54615f797a85947025551e47a459a28783d0e17700e8ffc305dac9d44d6af199
+      size_bytes: 25623017
+    imu:
+      status: current
+      path: decoded/imu.parquet
+      sha256: 4af8de5bc2adee8f85a477db2be9872e152d50aadcbc859fb1449d8fbaa8820e
+      size_bytes: 83352564
+    magnetometer:
+      status: current
+      path: decoded/magnetometer.parquet
+      sha256: 6db71385dcbb411403e739fe6c2390911889b88894ca50bed0c7dc22dd095541
+      size_bytes: 11786448
+    high-g:
+      status: current
+      path: decoded/high-g.parquet
+      sha256: 40c98a17c580239ef76d2660d2541a1b5fbed817b868d74fb4e86c90776e8b9b
+      size_bytes: 2297

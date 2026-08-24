@@ -45,6 +45,7 @@ classifiers = [
 
 [project.scripts]
 firm-eskf = "firm.eskf_lab.cli:main"
+firm-log = "firm.flight_data.cli:main"
 
 [dependency-groups]
 dev = [
@@ -92,11 +93,14 @@ select = ["E", "F", "I", "PL", "UP", "RUF", "PTH", "C4", "B", "PIE", "SIM", "RET
 
 [tool.ruff.lint.per-file-ignores]
 "python/firm/eskf_lab/*.py" = ["TRY003"]
+"python/firm/flight_data/*.py" = ["D102", "D103", "TC001", "TC003", "TRY003", "TRY004"]
+"python/firm/flight_data/cli.py" = ["T201"]
 "python/firm/eskf_lab/cli.py" = ["T201"]
 "python/firm/eskf_lab/native.py" = ["S603", "TRY300"]
 "python/firm/eskf_lab/profile.py" = ["TRY004"]
 "python/firm/eskf_lab/visualize.py" = ["PLC0415"]
 "eskf_lab/tests/*.py" = ["S101"]
+"integration_tests/test_*.py" = ["S101"]
 
 [tool.pytest.ini_options]
 markers = [

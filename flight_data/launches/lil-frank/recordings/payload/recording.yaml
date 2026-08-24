@@ -1,0 +1,77 @@
+schema_version: 2
+launch_id: lil-frank
+recording_id: payload
+created_utc: '2026-08-22T19:49:25.810089+00:00'
+source_hardware: old
+sources:
+  flight:
+    path: originals/flight.frm
+    source_filename: 2025-11-15-lil_frank_launch.TXT
+    sha256: 849678f6338374e2df7ee68b6088a00d6c5306fff6f75a7f7b654b8b52650ea6
+    size_bytes: 200000000
+    log_version: '1.0'
+  magnetometer_calibration:
+    path: originals/magnetometer-calibration.frm
+    source_filename: lil_frank_calibration_data.TXT
+    sha256: a4b26cc75e614bd76d49435ee34be4a66cf3d0f158916cdae369c23602b993c5
+    size_bytes: 200000000
+    log_version: '1.0'
+trim_window: null
+trim_proposals: {}
+calibration_override:
+  path: overrides/calibration.yaml
+  sha256: f57e54a7ea9475dae6bf7fc505455db0e1cb570d3d62621e34b86320607a6a2b
+build:
+  status: current
+  fingerprint: 0fcf4202c1ae0126798a7d1de2a3660be2e916983aa53e9f779bf7a0a8827da8
+  target_log_version: '1.4'
+  source_hardware: old
+  target_hardware: new
+  created_utc: '2026-08-22T21:17:05.612295+00:00'
+  metadata: derived/build.json
+  artifacts:
+    flight_log:
+      status: current
+      path: derived/flight/current.frm
+      sha256: 8f8d6c2c27c635bb665ac784ddec09153aa7eac4671869b246da5779751dc97d
+      size_bytes: 79482353
+    effective_calibration:
+      status: current
+      path: derived/effective-calibration.yaml
+      sha256: ef67ddec1ebde2254476f1d7ae6dc159a1fe1a14d5482bfada4eb4bc0269f081
+      size_bytes: 836
+    build_metadata:
+      status: current
+      path: derived/build.json
+      sha256: 3394b76f3513030d0ec066c8372edbaea125656fcf89ca7b9f7968aa1c40701b
+      size_bytes: 1865
+    barometer:
+      status: current
+      path: decoded/barometer.parquet
+      sha256: e05b41681f08d9c2ecd2acad27dd069d64a26918f4fa0752277814740df33850
+      size_bytes: 47367118
+    imu:
+      status: current
+      path: decoded/imu.parquet
+      sha256: 4de950c95ab5294e419a050c073ce3b3a8b14bfcebd34056360b9f5827dace2c
+      size_bytes: 110665505
+    magnetometer:
+      status: current
+      path: decoded/magnetometer.parquet
+      sha256: 00d689e2ba07acfbce9ccd5c4a850564d0b36e62aca4ead49ed8342b52740ee8
+      size_bytes: 26617528
+    high-g:
+      status: current
+      path: decoded/high-g.parquet
+      sha256: 0815462708ae7f0ca14c6182f0a98ac3ca054e318fefb090b57f7af21111ba14
+      size_bytes: 2361
+    magnetometer_calibration_log:
+      status: current
+      path: derived/magnetometer-calibration/current.frm
+      sha256: 0e1817da773ff4d54f0d8448a71d82d153891134c06c32f2441ab48bdb1b1dd7
+      size_bytes: 8436607
+    magnetometer_calibration:
+      status: current
+      path: decoded/magnetometer-calibration.parquet
+      sha256: 1c8b15a433043f6e08b147d80eafabc45f5811b7d018809e9d2f6f91e51b7df6
+      size_bytes: 3466490

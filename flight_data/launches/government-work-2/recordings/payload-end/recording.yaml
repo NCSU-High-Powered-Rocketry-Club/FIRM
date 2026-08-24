@@ -1,0 +1,59 @@
+schema_version: 2
+launch_id: government-work-2
+recording_id: payload-end
+created_utc: '2026-08-22T19:31:01.119011+00:00'
+source_hardware: old
+sources:
+  flight:
+    path: originals/flight.frm
+    source_filename: LOG18.FRM
+    sha256: 24994cf09c703cf13ed3665bb2777c691efe0023ffc0adeaf4ef7a5ea785d857
+    size_bytes: 200000000
+    log_version: '1.2'
+trim_window: null
+trim_proposals: {}
+calibration_override: null
+build:
+  status: current
+  fingerprint: 1079a4da4946b2c478f507209a8c0a347c9d3010cae8f0dfd55565fc9acc3923
+  target_log_version: '1.4'
+  source_hardware: old
+  target_hardware: new
+  created_utc: '2026-08-22T20:46:10.248056+00:00'
+  metadata: derived/build.json
+  artifacts:
+    flight_log:
+      status: current
+      path: derived/flight/current.frm
+      sha256: 780917ac283aef1c13c1dbe7c176428a5f0bf0a4fe7f87c5b729c4e589bcf2b2
+      size_bytes: 20131385
+    effective_calibration:
+      status: current
+      path: derived/effective-calibration.yaml
+      sha256: 8f6a2ef52917da96bec0f0785f410be2167e9b0286c21baadd07f4440930b45d
+      size_bytes: 1231
+    build_metadata:
+      status: current
+      path: derived/build.json
+      sha256: b52a016dd2f31ee5b01fbaa136812168b39e2cd2bc90a0ab9044bdd587e9f07b
+      size_bytes: 1523
+    barometer:
+      status: current
+      path: decoded/barometer.parquet
+      sha256: 08c84c7405d951c9e17909551dbf2764bb3bf9ba5e9829233bb1cce3985787b2
+      size_bytes: 12358608
+    imu:
+      status: current
+      path: decoded/imu.parquet
+      sha256: b3e99f9a5ededd954200a7fdf4955cd71450d5b239ad2f93c5a55c82cac54670
+      size_bytes: 49574037
+    magnetometer:
+      status: current
+      path: decoded/magnetometer.parquet
+      sha256: 0b31dc57e4ff2fc855b84013844c7ccddc5f06ba036b0bc0ec4f51628498277f
+      size_bytes: 7354408
+    high-g:
+      status: current
+      path: decoded/high-g.parquet
+      sha256: 91ebfa8fc3b18f0d9801c67c9e2cb03664de72541cc44335185c1032072af0cc
+      size_bytes: 2309

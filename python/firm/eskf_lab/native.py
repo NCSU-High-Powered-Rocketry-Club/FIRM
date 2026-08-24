@@ -316,9 +316,7 @@ def calculate_metrics(frame: pl.DataFrame, replay_seconds: float) -> dict[str, A
 def _result_directory(results_root: Path, prepared: PreparedDataset, source_hash: str) -> Path:
     timestamp = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%S.%fZ")
     return (
-        results_root.resolve()
-        / safe_name(prepared.dataset_path.name)
-        / f"{timestamp}-{source_hash[:8]}"
+        results_root.resolve() / safe_name(prepared.dataset_id) / f"{timestamp}-{source_hash[:8]}"
     )
 
 
@@ -356,7 +354,7 @@ def run_replay(
     metadata: dict[str, Any] = {
         "format_version": 1,
         "created_utc": datetime.now(tz=UTC).isoformat(),
-        "dataset": prepared.dataset_path.name,
+        "dataset": prepared.dataset_id,
         "prepared_fingerprint": prepared.metadata["fingerprint"],
         "prepared_metadata": str(prepared.metadata_path),
         "firmware_version": prepared.metadata["firmware_version"],

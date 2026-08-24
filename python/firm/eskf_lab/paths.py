@@ -16,7 +16,7 @@ def find_repo_root() -> Path:
 
 REPO_ROOT = find_repo_root()
 LAB_ROOT = REPO_ROOT / "eskf_lab"
-DEFAULT_DATASETS_DIR = LAB_ROOT / "datasets"
+DEFAULT_FLIGHT_DATA_DIR = REPO_ROOT / "flight_data"
 DEFAULT_CACHE_DIR = LAB_ROOT / "cache"
 DEFAULT_RESULTS_DIR = LAB_ROOT / "results"
 DEFAULT_BUILD_DIR = LAB_ROOT / "build" / "native"
