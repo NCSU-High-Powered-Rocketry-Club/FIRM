@@ -10,18 +10,21 @@ from typing import TYPE_CHECKING
 
 import polars as pl
 
+from firm.flight_data import Archive, Recording
+
 from .dataset import (
     PreparedDataset,
     discover_datasets,
     human_size,
     prepare_dataset,
     resolve_dataset,
+    safe_name,
 )
 from .native import build_native, run_replay
 from .paths import (
     DEFAULT_BUILD_DIR,
     DEFAULT_CACHE_DIR,
-    DEFAULT_DATASETS_DIR,
+    DEFAULT_FLIGHT_DATA_DIR,
     DEFAULT_PROFILE,
     DEFAULT_RESULTS_DIR,
 )
@@ -33,7 +36,7 @@ if TYPE_CHECKING:
 
 
 def _add_common_paths(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--datasets-dir", type=Path, default=DEFAULT_DATASETS_DIR)
+    parser.add_argument("--flight-data-dir", type=Path, default=DEFAULT_FLIGHT_DATA_DIR)
     parser.add_argument("--cache-dir", type=Path, default=DEFAULT_CACHE_DIR)
     parser.add_argument("--results-dir", type=Path, default=DEFAULT_RESULTS_DIR)
     parser.add_argument("--build-dir", type=Path, default=DEFAULT_BUILD_DIR)
@@ -51,7 +54,7 @@ def _parser() -> argparse.ArgumentParser:
     list_parser = subparsers.add_parser("list", help="list usable launch datasets")
     list_parser.set_defaults(handler=_command_list)
 
-    prepare_parser = subparsers.add_parser("prepare", help="cache and align launch CSV files")
+    prepare_parser = subparsers.add_parser("prepare", help="cache and align managed Parquet data")
     prepare_parser.add_argument(
         "datasets", nargs="*", help="dataset names or paths; defaults to all"
     )
@@ -112,20 +115,22 @@ def _parser() -> argparse.ArgumentParser:
 
 def _dataset_paths(
     values: Sequence[str], args: argparse.Namespace, profile: DatasetProfile
-) -> list[Path]:
+) -> list[Recording]:
     if values:
-        return [resolve_dataset(value, args.datasets_dir, profile) for value in values]
-    paths = discover_datasets(args.datasets_dir, profile)
+        return [resolve_dataset(value, args.flight_data_dir, profile) for value in values]
+    paths = discover_datasets(args.flight_data_dir, profile)
     if not paths:
-        raise FileNotFoundError(f"no datasets found under {args.datasets_dir.resolve()}")
+        raise FileNotFoundError(
+            "no current managed recordings; ingest and build data with 'firm-log' first"
+        )
     return paths
 
 
 def _prepare(
-    path: Path, args: argparse.Namespace, profile: DatasetProfile, *, force: bool
+    recording: Recording, args: argparse.Namespace, profile: DatasetProfile, *, force: bool
 ) -> PreparedDataset:
-    print(f"Preparing {path.name} ...", flush=True)
-    prepared = prepare_dataset(path, profile, args.cache_dir, force=force)
+    print(f"Preparing {recording.dataset_id} ...", flush=True)
+    prepared = prepare_dataset(recording, profile, args.cache_dir, force=force)
     size = prepared.parquet_path.stat().st_size + prepared.replay_path.stat().st_size
     print(
         f"  {prepared.metadata['rows']:,} replay rows, "
@@ -135,34 +140,35 @@ def _prepare(
 
 
 def _command_list(args: argparse.Namespace, profile: DatasetProfile) -> int:
-    paths = discover_datasets(args.datasets_dir, profile)
-    if not paths:
-        print(f"No complete datasets found under {args.datasets_dir.resolve()}")
-        return 0
-    for path in paths:
-        total_size = sum(
-            (path / sensor.filename).stat().st_size for sensor in profile.sensors.values()
+    recordings = discover_datasets(args.flight_data_dir, profile)
+    if not recordings:
+        print(
+            "No current managed recordings are available. "
+            "Use 'firm-log ingest' and 'firm-log build' first."
         )
-        print(f"{path.name:<32} {human_size(total_size):>12}  {path}")
+        return 0
+    for recording in recordings:
+        total_size = sum(path.stat().st_size for path in recording.decoded_dir.glob("*.parquet"))
+        print(f"{recording.dataset_id:<40} {human_size(total_size):>12}  {recording.path}")
     return 0
 
 
 def _command_prepare(args: argparse.Namespace, profile: DatasetProfile) -> int:
-    for path in _dataset_paths(args.datasets, args, profile):
-        _prepare(path, args, profile, force=args.force)
+    for recording in _dataset_paths(args.datasets, args, profile):
+        _prepare(recording, args, profile, force=args.force)
     return 0
 
 
 def _command_run(args: argparse.Namespace, profile: DatasetProfile) -> int:
-    paths = _dataset_paths(args.datasets, args, profile)
+    recordings = _dataset_paths(args.datasets, args, profile)
     print("Building the native production-source ESKF ...", flush=True)
     if args.skip_native_tests:
         print("  WARNING: native ESKF tests bypassed by --force", flush=True)
     executable = build_native(args.build_dir, run_tests=not args.skip_native_tests)
     print(f"  {executable}")
-    for path in paths:
-        prepared = _prepare(path, args, profile, force=args.force_prepare)
-        print(f"Replaying {path.name} ...", flush=True)
+    for recording in recordings:
+        prepared = _prepare(recording, args, profile, force=args.force_prepare)
+        print(f"Replaying {recording.dataset_id} ...", flush=True)
         result = run_replay(prepared, executable, args.results_dir)
         metrics = json.loads(result.metrics_path.read_text())
         rate = metrics.get("rows_per_second")
@@ -188,7 +194,7 @@ def _resolve_result(value: str, results_dir: Path) -> Path:
         return path.resolve()
     if path.is_dir() and (path / "result.parquet").is_file():
         return (path / "result.parquet").resolve()
-    dataset_dir = results_dir.resolve() / value
+    dataset_dir = results_dir.resolve() / safe_name(value)
     latest_path = dataset_dir / "latest.json"
     if latest_path.is_file():
         latest = json.loads(latest_path.read_text())
@@ -279,6 +285,10 @@ def _command_compare(args: argparse.Namespace, _profile: DatasetProfile) -> int:
 
 
 def _command_serve(args: argparse.Namespace, _profile: DatasetProfile) -> int:
+    if not args.result and not Archive(args.flight_data_dir).recordings(current_only=True):
+        raise FileNotFoundError(
+            "no current managed recordings; ingest and build data with 'firm-log' first"
+        )
     results = (
         {args.result: _resolve_result(args.result, args.results_dir)}
         if args.result

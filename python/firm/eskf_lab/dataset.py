@@ -1,4 +1,4 @@
-"""Fast preparation of decoded FIRM launch datasets."""
+"""Fast preparation of manager-built FIRM flight recordings."""
 
 from __future__ import annotations
 
@@ -9,16 +9,20 @@ import re
 import struct
 import time
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import polars as pl
 
-if TYPE_CHECKING:
-    from .profile import DatasetProfile, SensorProfile
+from firm.flight_data import Archive, Recording
+from firm.flight_data.archive import sha256_file
+from firm.flight_data.formats import TARGET_HARDWARE, LogReader
 
-CACHE_FORMAT_VERSION = 2
+if TYPE_CHECKING:
+    from pathlib import Path
+
+
+CACHE_FORMAT_VERSION = 4
 INPUT_MAGIC = b"FIRMIN01"
 INPUT_VERSION = 1
 INITIALIZATION_SECONDS = 2.0
@@ -39,39 +43,18 @@ REPLAY_COLUMNS = (
     "high_g_accel_z_g",
 )
 REQUIRED_COLUMNS = tuple(column for column in REPLAY_COLUMNS if not column.startswith("high_g_"))
-CALIBRATION_SPECS = {
-    "imu": (
-        (
-            "ICM45686 Acceleration Calibration",
-            ("imu_accel_x_g", "imu_accel_y_g", "imu_accel_z_g"),
-        ),
-        (
-            "ICM45686 Gyroscope Calibration",
-            ("imu_gyro_x_dps", "imu_gyro_y_dps", "imu_gyro_z_dps"),
-        ),
-    ),
-    "magnetometer": (
-        (
-            "MMC5983MA Magnetometer Calibration",
-            ("mag_x_ut", "mag_y_ut", "mag_z_ut"),
-        ),
-    ),
-    "high_g": (
-        (
-            "ADXL371 Acceleration Calibration",
-            ("high_g_accel_x_g", "high_g_accel_y_g", "high_g_accel_z_g"),
-        ),
-    ),
-}
 INPUT_RECORD_DTYPE = np.dtype(
     [("timestamp", "<f8"), ("values", "<f4", (len(REPLAY_COLUMNS),))], align=False
 )
+SENSOR_NAMES = ("barometer", "imu", "magnetometer", "high_g")
+CANONICAL_REPLAY_FIRMWARE_VERSION = "v2.0.0"
 
 
 @dataclass(frozen=True)
 class PreparedDataset:
-    """Paths and metadata for a prepared launch dataset."""
+    """Paths and metadata for a prepared manager recording."""
 
+    dataset_id: str
     dataset_path: Path
     cache_path: Path
     parquet_path: Path
@@ -86,178 +69,104 @@ def safe_name(value: str) -> str:
     return name or "dataset"
 
 
-def discover_datasets(datasets_dir: Path, profile: DatasetProfile) -> list[Path]:
-    """Find direct child directories containing all four required sensor CSVs."""
-    datasets_dir = datasets_dir.resolve()
-    if not datasets_dir.is_dir():
-        return []
-    filenames = {sensor.filename for sensor in profile.sensors.values()}
-    return sorted(
-        (
-            child
-            for child in datasets_dir.iterdir()
-            if child.is_dir() and all((child / filename).is_file() for filename in filenames)
-        ),
-        key=lambda item: item.name.casefold(),
-    )
+def discover_datasets(flight_data_root: Path, _profile: object | None = None) -> list[Recording]:
+    """Return only current recordings from the flight-data manager."""
+    return Archive(flight_data_root).recordings(current_only=True)
 
 
-def resolve_dataset(value: str, datasets_dir: Path, profile: DatasetProfile) -> Path:
-    """Resolve a dataset name or path and validate its expected files."""
-    supplied = Path(value).expanduser()
-    path = supplied if supplied.is_dir() else datasets_dir / value
-    path = path.resolve()
-    missing = [
-        sensor.filename
-        for sensor in profile.sensors.values()
-        if not (path / sensor.filename).is_file()
-    ]
-    if missing:
-        raise FileNotFoundError(f"{path} is missing required sensor files: {', '.join(missing)}")
-    return path
-
-
-def _header_and_metadata(path: Path) -> tuple[int, dict[str, str]]:
-    metadata: dict[str, str] = {}
-    with path.open("r", encoding="utf-8-sig", errors="replace", newline="") as handle:
-        for line_number, line in enumerate(handle):
-            stripped = line.strip()
-            first = stripped.split(",", 1)[0].strip().lower()
-            if first == "timestamp":
-                return line_number, metadata
-            if stripped and "," in stripped:
-                key, value = stripped.split(",", 1)
-                metadata[key.strip().rstrip(":")] = value.strip().rstrip(",")
-            if line_number >= 128:
-                break
-    raise ValueError(f"could not find the timestamp header in {path}")
-
-
-def _calibration_values(path: Path, metadata: dict[str, str], name: str) -> tuple[float, ...]:
-    raw = metadata.get(name)
-    if raw is None:
-        raise ValueError(f"{path.name} is missing {name!r}")
-    try:
-        values = tuple(float(value.strip()) for value in raw.split(",") if value.strip())
-    except ValueError as error:
-        raise ValueError(f"{path.name} has non-numeric values in {name!r}") from error
-    if len(values) != 12 or not all(math.isfinite(value) for value in values):
+def resolve_dataset(
+    value: str, flight_data_root: Path, _profile: object | None = None
+) -> Recording:
+    """Resolve and validate a manager recording."""
+    recording = Archive(flight_data_root).resolve(value)
+    if not recording.is_current:
         raise ValueError(
-            f"{path.name} must provide 3 offsets and 9 finite matrix values for {name!r}"
+            f"managed recording {recording.dataset_id} is not current; run "
+            f"'firm-log build {recording.dataset_id}'"
         )
-    return values
+    return recording
 
 
-def _apply_sensor_calibrations(
-    frame: pl.LazyFrame,
-    path: Path,
-    sensor_name: str,
-    metadata: dict[str, str],
-) -> pl.LazyFrame:
-    for calibration_name, columns in CALIBRATION_SPECS.get(sensor_name, ()):
-        values = _calibration_values(path, metadata, calibration_name)
-        offsets = values[:3]
-        matrix = values[3:]
-        adjusted = [
-            pl.col(column) - offset for column, offset in zip(columns, offsets, strict=True)
-        ]
-        frame = frame.with_columns(
-            [
-                (
-                    adjusted[0] * matrix[output_axis]
-                    + adjusted[1] * matrix[3 + output_axis]
-                    + adjusted[2] * matrix[6 + output_axis]
-                ).alias(columns[output_axis])
-                for output_axis in range(3)
-            ]
-        )
-    return frame
-
-
-def _source_fingerprint(dataset: Path, profile: DatasetProfile) -> tuple[str, list[dict[str, Any]]]:
+def _source_fingerprint(recording: Recording) -> tuple[str, list[dict[str, Any]]]:
+    manifest = recording.manifest
+    manager_fingerprint = manifest.get("build", {}).get("fingerprint")
+    if not isinstance(manager_fingerprint, str):
+        raise TypeError(f"{recording.dataset_id} has no current manager build fingerprint")
     digest = hashlib.sha256()
     digest.update(f"eskf-cache-v{CACHE_FORMAT_VERSION}\0".encode())
-    digest.update(profile.raw_bytes)
+    digest.update(manager_fingerprint.encode())
     sources: list[dict[str, Any]] = []
-    for name in sorted(profile.sensors):
-        path = dataset / profile.sensors[name].filename
-        stat = path.stat()
+    for sensor in SENSOR_NAMES:
+        filename = "high-g" if sensor == "high_g" else sensor
+        path = recording.parquet_path(filename)
         item = {
-            "sensor": name,
+            "sensor": sensor,
             "filename": path.name,
-            "size_bytes": stat.st_size,
-            "modified_ns": stat.st_mtime_ns,
+            "size_bytes": path.stat().st_size,
+            "sha256": sha256_file(path),
         }
         sources.append(item)
         digest.update(json.dumps(item, sort_keys=True).encode())
     return digest.hexdigest(), sources
 
 
-def _scan_sensor(path: Path, sensor: SensorProfile) -> tuple[pl.LazyFrame, dict[str, str]]:
-    header_line, metadata = _header_and_metadata(path)
-    frame = pl.scan_csv(
-        path,
-        skip_rows=header_line,
-        has_header=True,
-        infer_schema_length=10_000,
-        rechunk=False,
-        low_memory=False,
-    )
+def _scan_sensor(recording: Recording, sensor: str) -> pl.LazyFrame:
+    filename = "high-g" if sensor == "high_g" else sensor
+    path = recording.parquet_path(filename)
+    frame = pl.scan_parquet(path)
     source_columns = frame.collect_schema().names()
-    if sensor.timestamp not in source_columns:
-        raise ValueError(f"{path.name} has no {sensor.timestamp!r} timestamp column")
-    missing = sorted(set(sensor.columns) - set(source_columns))
+    if "timestamp_s" not in source_columns:
+        raise ValueError(f"{path.name} has no 'timestamp_s' column")
+    sensor_prefixes: str | tuple[str, ...] = {
+        "barometer": ("pressure_", "temperature_"),
+        "imu": "imu_",
+        "magnetometer": "mag_",
+        "high_g": "high_g_",
+    }[sensor]
+    missing = sorted(
+        column
+        for column in REPLAY_COLUMNS
+        if column.startswith(sensor_prefixes) and column not in source_columns
+    )
     if missing:
-        raise ValueError(f"{path.name} is missing configured columns: {', '.join(missing)}")
-
-    rename: dict[str, str] = {sensor.timestamp: "timestamp"}
-    rename.update(sensor.columns)
+        raise ValueError(f"{path.name} is missing canonical columns: {', '.join(missing)}")
+    rename: dict[str, str] = {"timestamp_s": "timestamp"}
     for column in source_columns:
-        if column not in rename:
-            rename[column] = f"{sensor.name}__{column}"
-    frame = (
+        if column == "timestamp_s" or column in REPLAY_COLUMNS:
+            continue
+        rename[column] = f"{sensor}__{column}"
+    return (
         frame.rename(rename)
         .with_columns(pl.col("timestamp").cast(pl.Float64))
         .sort("timestamp")
         .unique(subset=["timestamp"], keep="last", maintain_order=True)
     )
-    frame = _apply_sensor_calibrations(frame, path, sensor.name, metadata)
-    return frame, metadata
 
 
-def _aligned_frame(dataset: Path, profile: DatasetProfile) -> tuple[pl.LazyFrame, dict[str, str]]:
-    frames: dict[str, pl.LazyFrame] = {}
-    combined_metadata: dict[str, str] = {}
-    for name, sensor in profile.sensors.items():
-        frame, metadata = _scan_sensor(dataset / sensor.filename, sensor)
-        frames[name] = frame
-        if name == "imu":
-            combined_metadata = metadata
-
-    # A filter update needs fresh IMU, barometer, and magnetometer bits. The magnetometer is
-    # the slowest required stream in FIRM logs, so its timestamps are the replay clock and each
-    # update receives the latest values from the other sensors, matching the shared snapshot.
+def _aligned_frame(recording: Recording) -> pl.LazyFrame:
+    frames = {name: _scan_sensor(recording, name) for name in SENSOR_NAMES}
     aligned = frames["magnetometer"]
-    for name in ("imu", "barometer", "high_g"):
+    for name in ("imu", "barometer"):
         aligned = aligned.join_asof(frames[name], on="timestamp", strategy="backward")
-    aligned = aligned.drop_nulls(list(REQUIRED_COLUMNS)).sort("timestamp")
-    return aligned, combined_metadata
-
-
-def _firmware_version(metadata: dict[str, str]) -> str:
-    value = metadata.get("FIRM version", "v2.0.0").strip()
-    return value[:7] if value else "v2.0.0"
+    high_g_empty = frames["high_g"].select(pl.len()).collect(engine="streaming").item() == 0
+    if high_g_empty:
+        aligned = aligned.with_columns(
+            [
+                pl.lit(float("nan")).alias(name)
+                for name in REPLAY_COLUMNS
+                if name.startswith("high_g_")
+            ]
+        )
+    else:
+        aligned = aligned.join_asof(frames["high_g"], on="timestamp", strategy="backward")
+    return aligned.drop_nulls(list(REQUIRED_COLUMNS)).sort("timestamp")
 
 
 def _write_replay_binary(frame: pl.DataFrame, path: Path, firmware_version: str) -> None:
     columns: list[np.ndarray] = []
     for name in REPLAY_COLUMNS:
-        if name in frame.columns:
-            values = frame.get_column(name).cast(pl.Float32).fill_null(float("nan")).to_numpy()
-        else:
-            values = np.full(frame.height, np.nan, dtype=np.float32)
+        values = frame.get_column(name).cast(pl.Float32).fill_null(float("nan")).to_numpy()
         columns.append(np.asarray(values, dtype="<f4"))
-
     records = np.empty(frame.height, dtype=INPUT_RECORD_DTYPE)
     records["timestamp"] = frame.get_column("timestamp").to_numpy()
     records["values"] = np.column_stack(columns)
@@ -279,22 +188,26 @@ def _write_replay_binary(frame: pl.DataFrame, path: Path, firmware_version: str)
 
 
 def prepare_dataset(
-    dataset: Path,
-    profile: DatasetProfile,
+    recording: Recording,
+    _profile: object,
     cache_root: Path,
     *,
     force: bool = False,
 ) -> PreparedDataset:
-    """Align and cache one launch dataset as Parquet and native replay records."""
-    dataset = dataset.resolve()
-    fingerprint, sources = _source_fingerprint(dataset, profile)
-    cache_path = cache_root.resolve() / safe_name(dataset.name) / fingerprint[:16]
+    """Align and cache one current manager recording."""
+    if not isinstance(recording, Recording):
+        raise TypeError("ESKF datasets must be flight-data manager recordings")
+    if not recording.is_current:
+        raise ValueError(f"managed recording is not current: {recording.dataset_id}")
+    fingerprint, sources = _source_fingerprint(recording)
+    cache_path = cache_root.resolve() / safe_name(recording.dataset_id) / fingerprint[:16]
     parquet_path = cache_path / "aligned.parquet"
     replay_path = cache_path / "replay.bin"
     metadata_path = cache_path / "prepared.json"
     if not force and parquet_path.is_file() and replay_path.is_file() and metadata_path.is_file():
         return PreparedDataset(
-            dataset,
+            recording.dataset_id,
+            recording.path,
             cache_path,
             parquet_path,
             replay_path,
@@ -304,12 +217,11 @@ def prepare_dataset(
 
     cache_path.mkdir(parents=True, exist_ok=True)
     started = time.perf_counter()
-    lazy_frame, csv_metadata = _aligned_frame(dataset, profile)
-    frame = lazy_frame.collect(engine="streaming")
+    frame = _aligned_frame(recording).collect(engine="streaming")
     if frame.is_empty():
-        raise ValueError(f"{dataset} has no rows with all required ESKF sensor values")
-    firmware = _firmware_version(csv_metadata)
-
+        raise ValueError(f"{recording.dataset_id} has no aligned required sensor values")
+    source_firmware = LogReader(recording.flight_derived).header.firmware_version
+    firmware = CANONICAL_REPLAY_FIRMWARE_VERSION
     parquet_temporary = parquet_path.with_suffix(".parquet.tmp")
     frame.write_parquet(parquet_temporary, compression="zstd", statistics=True)
     parquet_temporary.replace(parquet_path)
@@ -318,13 +230,15 @@ def prepare_dataset(
     duration = float(frame["timestamp"][-1] - frame["timestamp"][0]) if frame.height > 1 else 0.0
     metadata: dict[str, Any] = {
         "cache_format_version": CACHE_FORMAT_VERSION,
-        "dataset": dataset.name,
-        "dataset_path": str(dataset),
+        "dataset": recording.dataset_id,
+        "dataset_path": str(recording.path),
         "fingerprint": fingerprint,
-        "profile": str(profile.path),
-        "profile_version": profile.version,
+        "manager_build_fingerprint": recording.manifest["build"]["fingerprint"],
         "calibration_applied": True,
         "firmware_version": firmware,
+        "source_firmware_version": source_firmware,
+        "source_hardware": recording.source_hardware,
+        "target_hardware": TARGET_HARDWARE,
         "rows": frame.height,
         "start_time_seconds": float(frame["timestamp"][0]),
         "end_time_seconds": float(frame["timestamp"][-1]),
@@ -336,7 +250,15 @@ def prepare_dataset(
     metadata_path.write_text(
         json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
-    return PreparedDataset(dataset, cache_path, parquet_path, replay_path, metadata_path, metadata)
+    return PreparedDataset(
+        recording.dataset_id,
+        recording.path,
+        cache_path,
+        parquet_path,
+        replay_path,
+        metadata_path,
+        metadata,
+    )
 
 
 def human_size(size: int) -> str:

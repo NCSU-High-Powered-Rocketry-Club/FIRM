@@ -1,0 +1,61 @@
+schema_version: 2
+launch_id: government-work-1
+recording_id: payload
+created_utc: '2026-08-22T19:45:57.806653+00:00'
+source_hardware: old
+sources:
+  flight:
+    path: originals/flight.frm
+    source_filename: raw_binary.TXT
+    sha256: 6ac022947df1691a20a9df6cd2db849feabb282f77204072b09efa2f725a4ec6
+    size_bytes: 200000000
+    log_version: '1.0'
+trim_window: null
+trim_proposals: {}
+calibration_override:
+  path: overrides/calibration.yaml
+  sha256: ca408c54f39ff4777ec97c44c12975a100facfb65782c23358bc2182cbdbd946
+build:
+  status: current
+  fingerprint: 0eac6adf8bc02f46ab7958da4928cad574123d672a80bf159d70fc14424ebc8e
+  target_log_version: '1.4'
+  source_hardware: old
+  target_hardware: new
+  created_utc: '2026-08-22T20:42:54.213083+00:00'
+  metadata: derived/build.json
+  artifacts:
+    flight_log:
+      status: current
+      path: derived/flight/current.frm
+      sha256: 675cb807a16d92a3181e8ce6e110bd858018c5b48cbae424e6330cacabe0a957
+      size_bytes: 37793239
+    effective_calibration:
+      status: current
+      path: derived/effective-calibration.yaml
+      sha256: 8847f32f971268b40b4c9a9095db98e0d5061e404b9b0da15dc6f2b3dfaa303f
+      size_bytes: 817
+    build_metadata:
+      status: current
+      path: derived/build.json
+      sha256: 3f44be800a0355701739ed34ffdf06c02f48fc80bfcfa4eab956e3087e006745
+      size_bytes: 1520
+    barometer:
+      status: current
+      path: decoded/barometer.parquet
+      sha256: 82161d69d5f5eac3098042fd4c51d91b74b16af49306b9de79a2a7ec621d5c63
+      size_bytes: 23528962
+    imu:
+      status: current
+      path: decoded/imu.parquet
+      sha256: e2b4bcbb01ca73f690c062c1d759f383c56d6438927ed3fd0a64464ce492993d
+      size_bytes: 56178885
+    magnetometer:
+      status: current
+      path: decoded/magnetometer.parquet
+      sha256: 812b512631cb0b97c34ae90dfd69e99105d1e4b60f620f005f774a2721dc71bd
+      size_bytes: 12581917
+    high-g:
+      status: current
+      path: decoded/high-g.parquet
+      sha256: e191ade7d3be40d92c159f9d86a2889986cffad836f36163aef434eca8f7678a
+      size_bytes: 2369
