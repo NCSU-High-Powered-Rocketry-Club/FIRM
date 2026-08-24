@@ -1,0 +1,41 @@
+version = 1
+
+[files]
+barometer = "BMP581_data.csv"
+imu = "ICM45686_data.csv"
+magnetometer = "MMC5983MA_data.csv"
+high_g = "ADXL371_data.csv"
+
+[sensors.barometer]
+timestamp = "timestamp"
+
+[sensors.barometer.columns]
+temperature = "temperature_c"
+pressure = "pressure_pa"
+
+[sensors.imu]
+timestamp = "timestamp"
+
+[sensors.imu.columns]
+accel_x = "imu_accel_x_g"
+accel_y = "imu_accel_y_g"
+accel_z = "imu_accel_z_g"
+gyro_x = "imu_gyro_x_dps"
+gyro_y = "imu_gyro_y_dps"
+gyro_z = "imu_gyro_z_dps"
+
+[sensors.magnetometer]
+timestamp = "timestamp"
+
+[sensors.magnetometer.columns]
+mag_x = "mag_x_ut"
+mag_y = "mag_y_ut"
+mag_z = "mag_z_ut"
+
+[sensors.high_g]
+timestamp = "timestamp"
+
+[sensors.high_g.columns]
+accel_x = "high_g_accel_x_g"
+accel_y = "high_g_accel_y_g"
+accel_z = "high_g_accel_z_g"

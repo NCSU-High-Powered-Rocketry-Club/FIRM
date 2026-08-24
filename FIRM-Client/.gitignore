@@ -1,0 +1,63 @@
+# ────────────────────────────────
+# Rust build artifacts
+# ────────────────────────────────
+/target
+/debug
+*.pdb
+**/*.rs.bk
+**/mutants.out*/
+
+# ────────────────────────────────
+# wasm-pack / WebAssembly builds
+# ────────────────────────────────
+/pkg
+# Keep your TS wrapper (in /ts), ignore wasm-pack's generated pkg entirely
+
+# ────────────────────────────────
+# Node / TypeScript
+# ────────────────────────────────
+/node_modules
+/typescript/dist/
+/typescript/dist/
+/*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Ignore compiled .js and .d.ts in TS output (they’re generated)
+typescript/dist/
+typescript/*.js
+typescript/*.d.ts
+
+# ────────────────────────────────
+# Editor / OS files
+# ────────────────────────────────
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ────────────────────────────────
+# Miscellaneous
+# ────────────────────────────────
+# Cargo lock file can be tracked or ignored depending on library vs binary crate
+# (recommended to keep if binary, ignore if published library)
+# Cargo.lock
+
+.vscode/*
+!.vscode/settings.json
+!.vscode/
+
+*.pyd
+
+__pycache__/
+
+node_modules/
+.venv/
+
+firm_typescript/pkg/
+firm_typescript/typescript/dist/
+firm_typescript/examples/temp_install/
+firm_typescript/examples/test_packed.html
+
+capture.csv

@@ -1,0 +1,13 @@
+[package]
+name = "firm_python"
+version = "1.2.1"
+edition = "2024"
+
+[lib]
+name = "firm_client"
+crate-type = ["cdylib"]
+
+[dependencies]
+firm_core = { path = "../firm_core", features = ["python"] }
+firm_rust = { path = "../firm_rust" }
+pyo3 = { version = "0.27.2", features = ["extension-module", "generate-import-lib"] }

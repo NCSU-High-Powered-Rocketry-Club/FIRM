@@ -6,14 +6,12 @@
 // LED status definitions
 // 3-bit status codes for the 3 LEDs Blue, Yellow, and Red - in order.
 typedef enum {
-  FIRM_UNINITIALIZED = 0b111,
   IMU_FAIL = 0b110,
   BMP581_FAIL = 0b101,
   MMC5983MA_FAIL = 0b100,
   FLASH_CHIP_FAIL = 0b011,
-  SD_CARD_FAIL = 0b010,
-  UKF_FAIL = 0b001,
-  FIRM_INITIALIZED = 0b000,
+  HIGH_G_FAIL = 0b010,
+  SD_FAIL = 0b001,
 } LED_Status;
 
 // Failed interrupt triggered LEDs:

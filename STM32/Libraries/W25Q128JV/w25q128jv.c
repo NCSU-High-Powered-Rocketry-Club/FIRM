@@ -80,8 +80,8 @@
  */
 #define W25Q128JV_DUMMY_BYTE                    0x00
 
-#define SUCCESSED                               1
-#define FAILED                                  0
+#define SUCCESSED                               0
+#define FAILED                                  1
 
 /*******************************************************************************
  * Porting Layer

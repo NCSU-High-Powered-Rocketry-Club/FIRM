@@ -1,0 +1,22 @@
+[package]
+name = "firm_core"
+version = "1.2.1"
+edition = "2024"
+license = "MIT"
+readme = "../README.md"
+repository = "https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM-Client"
+homepage = "https://ncsurocketry.org"
+description = "Core no_std library for FIRM Client in Rust"
+
+[dependencies]
+serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
+pyo3 = { version = "0.27.2", features = ["extension-module"], optional = true }
+pythonize = { version = "0.27", optional = true }
+wasm-bindgen = { version = "0.2.106", optional = true }
+field_names = "0.2"
+nalgebra = "0.34.1"
+
+[features]
+default = []
+python = ["dep:pyo3", "dep:pythonize"]
+wasm = ["dep:wasm-bindgen"]

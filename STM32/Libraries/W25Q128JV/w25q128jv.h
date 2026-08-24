@@ -19,16 +19,16 @@ uint32_t w25q128jv_read_JEDEC_ID(void);
  * @param uid pointer to buffer to store the Unique ID
  * @param length number of bytes to read
  * @return uint8_t
- *      1 - Success
- *      0 - Failed, the parameter 'bytes' is not 8.
+ *      0 - Success
+ *      1 - Failed, the parameter 'length' is not 8.
  */
 uint8_t w25q128jv_read_UID(uint8_t *uid, uint8_t length);
 
 /**
  * @brief Initialize w25q128jv
  * @return uint8_t
- *      1 - Success
- *      0 - Failed
+ *      0 - Success
+ *      1 - Failed
  */
 uint8_t w25q128jv_init(void);
 

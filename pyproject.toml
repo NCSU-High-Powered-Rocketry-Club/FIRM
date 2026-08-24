@@ -6,11 +6,16 @@ readme = "README.md"
 authors = [
     { name = "High Powered Rocketry Club", email = "ncsurocketry@gmail.com"}
 ]
-requires-python = ">=3.10,<3.14"
+requires-python = ">=3.10,<=3.15"
 license = "MIT"
 dependencies = [
+    "dash>=2.16",
+    "hprm>=0.2.0",
     "msgspec>=0.19.0",
+    "numpy>=2.0",
     "pandas>=2.3.3",
+    "plotly>=5.20",
+    "polars>=1.30",
     "pyserial>=3.5",
     "pyyaml>=6.0.3",
 ]
@@ -30,7 +35,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    # "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.14",
 ]
 
 [project.urls]
@@ -38,9 +43,14 @@ classifiers = [
 "Bug Tracker" = "https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM/issues"
 "Source Code" = "https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM/"
 
+[project.scripts]
+firm-eskf = "firm.eskf_lab.cli:main"
+firm-log = "firm.flight_data.cli:main"
+
 [dependency-groups]
 dev = [
     "pre-commit",
+    "pytest",
     "ruff>=0.14.1",
     "ty>=0.0.1a23",
 ]
@@ -75,8 +85,25 @@ exclude = ["scripts", "_calibration.py"]
 
 [tool.ruff.lint]
 typing-extensions = false
-ignore = ["PLR2004", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PERF203"]
+# TODO: UP035 should not be ignored
+ignore = ["PLR2004", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PERF203", "UP035", "PYI021", "PYI048", "PYI020", "T201", "S101", "D100", "D103", "D101"]
 select = ["E", "F", "I", "PL", "UP", "RUF", "PTH", "C4", "B", "PIE", "SIM", "RET", "RSE",
           "G", "ISC", "PT", "ASYNC", "TCH", "SLOT", "PERF", "PYI", "FLY", "AIR", "RUF022",
           "RUF023", "Q", "INP", "W", "YTT", "DTZ", "ARG", "T20", "FURB", "DOC", "TRY", 
           "D100", "D101", "D102", "D103", "D300", "D418", "D419", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+"python/firm/eskf_lab/*.py" = ["TRY003"]
+"python/firm/flight_data/*.py" = ["D102", "D103", "TC001", "TC003", "TRY003", "TRY004"]
+"python/firm/flight_data/cli.py" = ["T201"]
+"python/firm/eskf_lab/cli.py" = ["T201"]
+"python/firm/eskf_lab/native.py" = ["S603", "TRY300"]
+"python/firm/eskf_lab/profile.py" = ["TRY004"]
+"python/firm/eskf_lab/visualize.py" = ["PLC0415"]
+"eskf_lab/tests/*.py" = ["S101"]
+"integration_tests/test_*.py" = ["S101"]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: end-to-end integration tests for the mocked USB pipeline",
+]

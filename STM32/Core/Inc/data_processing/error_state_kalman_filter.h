@@ -24,6 +24,35 @@ typedef struct ESKF {
   // initial values/states
   float initial_pressure;
   float mag_world[3];
+  float standby_acceleration[3];
+  float standby_magnetic_field[3];
+  float gyro_bias[3];
+  float acceleration_norm_reference;
+  float last_acceleration_norm;
+  float last_angular_rate_norm;
+
+  // Autonomous flight-phase and pressure-reliability estimates.  These are
+  // deliberately outside the 5-state ESKF: they gate observations rather than
+  // model continuously evolving vehicle dynamics.
+  float launch_candidate_time_seconds;
+  float launch_candidate_velocity;
+  float landed_stationary_time_seconds;
+  float coast_time_seconds;
+  float last_dt_seconds;
+  float filtered_pressure_altitude;
+  float pressure_altitude_offset;
+  float pressure_recovery_time_seconds;
+  float pressure_reliable_time_seconds;
+  float pressure_reliability;
+  float pressure_coupling;
+  float apogee_altitude;
+  uint8_t launched;
+  uint8_t launch_candidate_active;
+  uint8_t standby_stationary;
+  uint8_t coast_detected;
+  uint8_t apogee_detected;
+  uint8_t landed;
+  uint8_t pressure_disturbed;
 
   // measurement vector (set before calling update)
   float z[ESKF_MEASUREMENT_DIM];
@@ -65,7 +94,7 @@ void eskf_accumulate(float pressure_raw, const float *accel_raw, const float *ma
  * @brief ESKF prediction step (nominal propagation + covariance).
  *
  * @param eskf Pointer to ESKF struct
- * @param u Control vector [accel(3), gyro(3)] — sensor frame, bias-subtracted
+ * @param u Control vector [accel(3), gyro(3)] — calibrated sensor frame
  * @param dt Time step in seconds
  */
 void eskf_predict(ESKF *eskf, const float u[ESKF_CONTROL_DIM], float dt);

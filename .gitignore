@@ -71,6 +71,9 @@ mx.scratch
 /STM32/CMakeFiles
 /STM32/CMakeCache.txt
 /STM32/build.ninja
+/STM32/.ninja_deps
+/STM32/.ninja_log
+/STM32/FIRM.lst
 cmake_install.cmake
 /STM32/compile_commands.json
 
@@ -95,11 +98,22 @@ cmake-build-debug
 cmake-build-release
 build/
 
-# tests
-/tests/build
-
 CMakeFiles/
 CMakeCache.txt
 
 trace*.bin
 trace*.json
+
+# ESKF desktop lab: launch data and generated artifacts are intentionally local.
+/eskf_lab/datasets/*
+!/eskf_lab/datasets/README.md
+/eskf_lab/cache/
+/eskf_lab/results/
+/eskf_lab/build/
+
+# Managed flight archive. Manifests and documentation stay visible to Git, while
+# acquired and generated data remains under the team's existing storage workflow.
+/flight_data/launches/**/originals/
+/flight_data/launches/**/derived/
+/flight_data/launches/**/decoded/
+/flight_data/launches/**/.index/
