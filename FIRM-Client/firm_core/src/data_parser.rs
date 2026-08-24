@@ -39,11 +39,7 @@ impl SerialParser {
     pub fn parse_bytes(&mut self, bytes: &[u8]) {
         self.serial_bytes.extend_from_slice(bytes);
 
-        loop {
-            let Some(&identifier) = self.serial_bytes.first() else {
-                break;
-            };
-
+        while let Some(&identifier) = self.serial_bytes.first() {
             let message_len = if identifier == DATA_PACKET_ID {
                 if !self.data_synchronized {
                     if let Some(offset) = self.find_valid_expected_response_offset() {

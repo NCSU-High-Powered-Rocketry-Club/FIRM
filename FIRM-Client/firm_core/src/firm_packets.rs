@@ -522,8 +522,10 @@ impl FIRMResponsePacket {
             | FIRMCommand::SetIMUCalibration
             | FIRMCommand::Cancel => matches!(payload, [0] | [1]),
             FIRMCommand::GetCalibration => payload
-                .chunks_exact(4)
-                .all(|bytes| f32::from_le_bytes(bytes.try_into().unwrap()).is_finite()),
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .all(|bytes| f32::from_le_bytes(*bytes).is_finite()),
             FIRMCommand::Reboot => false,
         }
     }
