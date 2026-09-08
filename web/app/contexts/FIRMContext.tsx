@@ -7,7 +7,7 @@ import React, {
   type ReactNode,
 } from "react";
 import { FIRM as FIRMClient } from "firm-client";
-import type { DeviceConfig, DeviceInfo, FIRMPacket } from "firm-client";
+import type { DeviceConfig, DeviceInfo, FIRMConnectOptions, FIRMPacket } from "firm-client";
 
 export type FIRMInstance = FIRMClient;
 
@@ -39,6 +39,29 @@ type FIRMContextValue = {
 
 const FIRMContext = createContext<FIRMContextValue | undefined>(undefined);
 
+const MAX_HEX_LOG_CHARS = 2000;
+const DATA_MESSAGE_ID = 0x01;
+const DATA_MESSAGE_LENGTH = 1 + 88;
+const RESPONSE_MESSAGE_LENGTHS: Readonly<Record<number, number>> = {
+  0x02: 1 + 16, // DeviceInfo_t
+  0x03: 1 + 38, // DeviceConfig_t
+  0x04: 1 + 1, // SetDeviceConfig acknowledgement
+  0x06: 1 + 1, // Mock acknowledgement
+  0x07: 1 + 1, // Magnetometer calibration acknowledgement
+  0x08: 1 + 1, // IMU calibration acknowledgement
+  0x09: 1 + 192, // Four Calibration_t values
+  0x0a: 1 + 1, // Cancel acknowledgement
+};
+
+type WebSerialPort = NonNullable<FIRMConnectOptions["port"]>;
+type NavigatorWithSerial = Navigator & {
+  serial: EventTarget & { requestPort(): Promise<WebSerialPort> };
+};
+
+function getWebSerial(): NavigatorWithSerial["serial"] {
+  return (navigator as NavigatorWithSerial).serial;
+}
+
 /**
  * Returns true if the event target is an element the user can type into.
  * Used to prevent global shortcuts from firing while typing.
@@ -62,6 +85,15 @@ function appendHexLog(prev: string, chunkHex: string, maxChars: number): string 
   const next = prev ? prev + "\n" + chunkHex : chunkHex;
   if (next.length <= maxChars) return next;
   return next.slice(next.length - maxChars);
+}
+
+function concatBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
+  if (a.length === 0) return b;
+  if (b.length === 0) return a;
+  const bytes = new Uint8Array(a.length + b.length);
+  bytes.set(a, 0);
+  bytes.set(b, a.length);
+  return bytes;
 }
 
 export function FIRMProvider({ children }: { children: ReactNode }) {
@@ -115,7 +147,7 @@ export function FIRMProvider({ children }: { children: ReactNode }) {
       disconnect();
     };
 
-    const serial = (navigator as unknown as { serial: EventTarget }).serial;
+    const serial = getWebSerial();
     if (!serial) return;
 
     serial.addEventListener("disconnect", handleNativeDisconnect);
@@ -159,12 +191,16 @@ export function FIRMProvider({ children }: { children: ReactNode }) {
       setHideDataPackets(false);
       setPauseByteStream(false);
 
-      const instance = await FIRMClient.connect({ baudRate: 115200 });
+      const port = await getWebSerial().requestPort();
+      const instance = await FIRMClient.connect({ baudRate: 115200, port });
       setFIRM(instance);
       setIsConnected(true);
 
       try {
-        const [info, cfg] = await Promise.all([instance.getDeviceInfo(), instance.getDeviceConfig()]);
+        const [info, cfg] = await Promise.all([
+          instance.getDeviceInfo(),
+          instance.getDeviceConfig(),
+        ]);
         setDeviceInfo(info);
         setDeviceConfig(cfg);
       } catch {
@@ -194,87 +230,42 @@ export function FIRMProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!firm) return;
 
-    const MAX_LOG_CHARS = 2000;
-
-    // Streaming filter state (kept in closure for chunk-boundary safety)
-    const DATA_HEADER = 0xa55a;
-    const RESPONSE_HEADER = 0x5aa5;
-    const HEADER_LEN = 2 + 2 + 4; // header + identifier + length
-    const CRC_LEN = 2;
-
     let buffer: Uint8Array<ArrayBufferLike> = new Uint8Array(0);
 
-    const readU16LE = (b: Uint8Array, off: number) => b[off] | (b[off + 1] << 8);
-    const readU32LE = (b: Uint8Array, off: number) =>
-      (b[off] | (b[off + 1] << 8) | (b[off + 2] << 16) | (b[off + 3] << 24)) >>> 0;
-
-    const concat = (a: Uint8Array, b: Uint8Array) => {
-      if (a.length === 0) return b;
-      if (b.length === 0) return a;
-      const out = new Uint8Array(a.length + b.length);
-      out.set(a, 0);
-      out.set(b, a.length);
-      return out;
-    };
-
-    const stripDataFrames = (chunk: Uint8Array): { forwarded: Uint8Array; strippedBytes: number } => {
-      // Fast path: filter disabled
+    const stripDataMessages = (chunk: Uint8Array): Uint8Array => {
       if (!hideDataPackets) {
         buffer = new Uint8Array(0);
-        return { forwarded: chunk, strippedBytes: 0 };
+        return chunk;
       }
 
-      buffer = concat(buffer, chunk);
+      buffer = concatBytes(buffer, chunk);
 
       const out: number[] = [];
-      let stripped = 0;
 
-      // We scan for known headers; when we don't have enough bytes to decide, we keep remainder in buffer
+      // Messages have no header/length/CRC: the leading ID determines a fixed total size.
       let i = 0;
       while (i < buffer.length) {
-        // Need at least 2 bytes to check a header
-        if (i + 2 > buffer.length) break;
-
-        const hdr = readU16LE(buffer, i);
-
-        // If this looks like a frame header, make sure we have full frame before acting
-        if (hdr === DATA_HEADER || hdr === RESPONSE_HEADER) {
-          if (i + HEADER_LEN > buffer.length) break; // wait for more
-
-          const payloadLen = readU32LE(buffer, i + 4);
-          const frameLen = HEADER_LEN + payloadLen + CRC_LEN;
-
-          if (payloadLen > 10_000_000) {
-            // Probably a false-positive header in random data; treat as plain bytes.
-            out.push(buffer[i]);
-            i += 1;
+        const id = buffer[i];
+        const messageLen =
+          id === DATA_MESSAGE_ID ? DATA_MESSAGE_LENGTH : RESPONSE_MESSAGE_LENGTHS[id];
+        if (messageLen !== undefined) {
+          if (i + messageLen > buffer.length) break;
+          if (id === DATA_MESSAGE_ID) {
+            i += messageLen;
             continue;
           }
-
-          if (i + frameLen > buffer.length) break; // wait for more
-
-          if (hdr === DATA_HEADER) {
-            // Drop full data frame
-            stripped += frameLen;
-            i += frameLen;
-            continue;
-          }
-
-          // Response frame: keep
-          for (let j = 0; j < frameLen; j++) out.push(buffer[i + j]);
-          i += frameLen;
+          for (let j = 0; j < messageLen; j++) out.push(buffer[i + j]);
+          i += messageLen;
           continue;
         }
 
-        // Not a recognized header => keep byte
+        // Unknown byte: preserve it for diagnostics and continue searching for an ID.
         out.push(buffer[i]);
         i += 1;
       }
 
-      // Keep remainder for next chunk
       buffer = buffer.slice(i);
-
-      return { forwarded: new Uint8Array(out), strippedBytes: stripped };
+      return new Uint8Array(out);
     };
 
     const unsubRx = firm.onRawBytes((bytes) => {
@@ -284,29 +275,21 @@ export function FIRMProvider({ children }: { children: ReactNode }) {
       // Pause affects RX display only.
       if (pauseByteStream) return;
 
-      const { forwarded } = stripDataFrames(bytes);
+      const forwarded = stripDataMessages(bytes);
 
       if (forwarded.length > 0) {
-        setRecentRxHex((prev) => appendHexLog(prev, bytesToHex(forwarded), MAX_LOG_CHARS));
+        setRecentRxHex((prev) => appendHexLog(prev, bytesToHex(forwarded), MAX_HEX_LOG_CHARS));
       }
     });
 
     const unsubTx = firm.onOutgoingBytes((bytes) => {
       setSentBytes((n) => n + bytes.length);
-      setRecentTxHex((prev) => appendHexLog(prev, bytesToHex(bytes), MAX_LOG_CHARS));
+      setRecentTxHex((prev) => appendHexLog(prev, bytesToHex(bytes), MAX_HEX_LOG_CHARS));
     });
 
     return () => {
-      try {
-        unsubRx();
-      } catch {
-        // best-effort cleanup; ignore
-      }
-      try {
-        unsubTx();
-      } catch {
-        // best-effort cleanup; ignore
-      }
+      unsubRx();
+      unsubTx();
     };
   }, [firm, hideDataPackets, pauseByteStream]);
 

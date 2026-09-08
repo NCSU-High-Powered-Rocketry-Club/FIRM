@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { Loader2, Save } from "lucide-react";
 import { useFIRM } from "~/contexts/FIRMContext";
-import type {CalibrationValues} from "firm-client";
+import type { CalibrationValues } from "firm-client";
 
 type CalibrationDraft = {
   offsets: [string, string, string];
@@ -265,14 +265,14 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
 
   const CalibrationBlock = useMemo(() => {
     const Comp = ({
-                    title,
-                    draft,
-                    setDraft,
-                    onApply,
-                    isApplying,
-                    status,
-                    error,
-                  }: {
+      title,
+      draft,
+      setDraft,
+      onApply,
+      isApplying,
+      status,
+      error,
+    }: {
       title: string;
       draft: CalibrationDraft;
       setDraft: React.Dispatch<React.SetStateAction<CalibrationDraft>>;
@@ -283,7 +283,9 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
     }) => (
       <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {title}
+          </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <button

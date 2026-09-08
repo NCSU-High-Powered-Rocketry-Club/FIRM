@@ -15,9 +15,7 @@ export function ConnectionBar() {
       >
         <span
           className={
-            isConnected
-              ? "h-2 w-2 rounded-full bg-green-500"
-              : "h-2 w-2 rounded-full bg-gray-500"
+            isConnected ? "h-2 w-2 rounded-full bg-green-500" : "h-2 w-2 rounded-full bg-gray-500"
           }
         />
         {isConnected ? "FIRM connected" : "No device connected"}

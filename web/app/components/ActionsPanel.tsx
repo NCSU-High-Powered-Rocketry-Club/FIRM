@@ -77,7 +77,9 @@ export function ActionsPanel() {
     try {
       // firm-client no longer exposes a built-in IMU calibration routine from the web client.
       // Use Developer Panel -> IMU Calibration to manually set offsets/matrix.
-      console.warn("IMU calibration routine is not available in this client build. Use manual setIMUCalibration.");
+      console.warn(
+        "IMU calibration routine is not available in this client build. Use manual setIMUCalibration.",
+      );
     } catch (err) {
       console.error("IMU Calibration error:", err);
     } finally {

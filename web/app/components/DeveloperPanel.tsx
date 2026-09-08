@@ -2,6 +2,24 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useFIRM } from "~/contexts/FIRMContext";
 import type { FIRMPacket } from "firm-client";
 
+const RX_IDENTIFIERS = new Set(["01", "02", "03", "04", "06", "07", "08", "09", "0a"]);
+const TX_IDENTIFIERS = new Set([
+  "02",
+  "03",
+  "04",
+  "05",
+  "06",
+  "07",
+  "08",
+  "09",
+  "0a",
+  "41",
+  "42",
+  "48",
+  "49",
+  "4d",
+]);
+
 function prettyBytes(n: number): string {
   const units = ["B", "KB", "MB", "GB"];
   let i = 0;
@@ -13,34 +31,24 @@ function prettyBytes(n: number): string {
   return `${i === 0 ? value : value.toFixed(2)} ${units[i]}`;
 }
 
-function renderHexWithHeaderHighlight(hex: string, pairs: Array<[string, string]>) {
-  // Highlights matching 2-byte header pairs (in the displayed byte order).
+function renderHexWithIdHighlight(hex: string, identifiers: ReadonlySet<string>) {
+  // Highlights known one-byte message identifiers.
   // hex is formatted as "aa bb cc" with optional newlines between chunks.
   const tokens = hex.split(/\s+/).filter(Boolean);
   const nodes: React.ReactNode[] = [];
 
-  const isHeaderPair = (a?: string, b?: string) => {
-    if (!a || !b) return false;
-    const aa = a.toLowerCase();
-    const bb = b.toLowerCase();
-    return pairs.some(([p0, p1]) => aa === p0 && bb === p1);
-  };
-
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i];
-    const next = tokens[i + 1];
-
-    if (isHeaderPair(t, next)) {
+    if (identifiers.has(t.toLowerCase())) {
       nodes.push(
         <span
           key={`h-${i}`}
           style={{ backgroundColor: "color-mix(in srgb, var(--color-theme) 12%, transparent)" }}
           className="rounded px-0.5"
         >
-          {t} {next}
+          {t}
         </span>,
       );
-      i += 1;
     } else {
       nodes.push(<span key={`b-${i}`}>{t}</span>);
     }
@@ -52,19 +60,11 @@ function renderHexWithHeaderHighlight(hex: string, pairs: Array<[string, string]
 }
 
 function highlightRx(hex: string) {
-  // RX highlights Data (0xA55A => 5a a5 LE) and Response (0x5AA5 => a5 5a LE)
-  return renderHexWithHeaderHighlight(hex, [
-    ["5a", "a5"],
-    ["a5", "5a"],
-  ]);
+  return renderHexWithIdHighlight(hex, RX_IDENTIFIERS);
 }
 
 function highlightTx(hex: string) {
-  // TX highlights LogSensor (0x6BB6 => b6 6b LE) and Command (0xB66B => 6b b6 LE)
-  return renderHexWithHeaderHighlight(hex, [
-    ["b6", "6b"],
-    ["6b", "b6"],
-  ]);
+  return renderHexWithIdHighlight(hex, TX_IDENTIFIERS);
 }
 
 export function DeveloperPanel({ visible }: { visible: boolean }) {
@@ -81,11 +81,11 @@ export function DeveloperPanel({ visible }: { visible: boolean }) {
     setPauseByteStream,
   } = useFIRM();
 
-  const rxRef = useRef<HTMLTextAreaElement | null>(null);
-  const txRef = useRef<HTMLTextAreaElement | null>(null);
+  const rxRef = useRef<HTMLPreElement | null>(null);
+  const txRef = useRef<HTMLPreElement | null>(null);
 
-  const [showPacketViewer, setShowPacketViewer] = useState<boolean>(true);
-  const [packetText, setPacketText] = useState<string>("Waiting for packets…");
+  const [showPacketViewer, setShowPacketViewer] = useState(true);
+  const [packetText, setPacketText] = useState("Waiting for packets…");
 
   const didInitialScrollRef = useRef(false);
 
@@ -128,12 +128,8 @@ export function DeveloperPanel({ visible }: { visible: boolean }) {
         return;
       }
 
-      try {
-        const text = JSON.stringify(pkt, null, 2);
-        setPacketText(text.length > MAX_CHARS ? text.slice(0, MAX_CHARS) + "\n…(truncated)" : text);
-      } catch {
-        setPacketText(String(pkt));
-      }
+      const text = JSON.stringify(pkt, null, 2);
+      setPacketText(text.length > MAX_CHARS ? text.slice(0, MAX_CHARS) + "\n…(truncated)" : text);
     }, UPDATE_MS);
 
     return () => window.clearInterval(id);
@@ -194,10 +190,7 @@ export function DeveloperPanel({ visible }: { visible: boolean }) {
             <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
               Recent received bytes (hex)
             </div>
-            <pre
-              ref={rxRef as unknown as React.RefObject<HTMLPreElement>}
-              className={hexBoxClassName + " whitespace-pre-wrap"}
-            >
+            <pre ref={rxRef} className={hexBoxClassName + " whitespace-pre-wrap"}>
               {rxHighlighted}
             </pre>
           </div>
@@ -216,10 +209,7 @@ export function DeveloperPanel({ visible }: { visible: boolean }) {
             <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
               Recent transmitted bytes (hex)
             </div>
-            <pre
-              ref={txRef as unknown as React.RefObject<HTMLPreElement>}
-              className={hexBoxClassName + " whitespace-pre-wrap"}
-            >
+            <pre ref={txRef} className={hexBoxClassName + " whitespace-pre-wrap"}>
               {txHighlighted}
             </pre>
           </div>
