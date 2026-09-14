@@ -39,6 +39,10 @@ typedef struct {
   float est_quaternion_x;
   float est_quaternion_y;
   float est_quaternion_z;
+  float shunt_voltage_volts;
+  float bus_voltage_volts;
+  float current_amps;
+  float power_watts;
 } DataPacket;
 
 /**

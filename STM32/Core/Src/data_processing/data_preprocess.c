@@ -219,12 +219,13 @@ void ina219_convert_packet(SensorPacket *packet, DataPacket *result_packet){
     // get the current timestamp of the packet in seconds using the DWT counter
   result_packet->timestamp_seconds = update_dwt_timestamp(packet->timestamp);
   
-  int current_lsb = 2.5/(2^15);
-  int power_lsb = 0.04096/(current_lsb*.01);
+  float current_lsb = 2.5/(32768);
+  float calibration = 0.04096/(current_lsb*.01);
+  float Power_LSB = 20*current_lsb;
 
   int32_t shunt_voltage_binary,bus_voltage_binary, current_binary, power_binary;
 
-  shunt_voltage_binary = (int32_t)((int16_t)packet->packet.ina219_packet.shunt_voltage)<<3;
+  shunt_voltage_binary = (int32_t)((int16_t)packet->packet.ina219_packet.shunt_voltage)>>3;
 
   bus_voltage_binary = (int32_t)((int16_t)packet->packet.ina219_packet.bus_voltage);
 
@@ -232,5 +233,10 @@ void ina219_convert_packet(SensorPacket *packet, DataPacket *result_packet){
 
   power_binary = (int32_t)((int16_t)packet->packet.ina219_packet.power);
 
+
+  result_packet->shunt_voltage_volts = shunt_voltage_binary * 10e-6f;
+  result_packet->bus_voltage_volts   = bus_voltage_binary * 4e-3f;
+  result_packet->current_amps        = current_binary * current_lsb;
+  result_packet->power_watts         = power_binary * Power_LSB;
   
 }

@@ -12,12 +12,14 @@ BMP581_ID = 'B'
 ICM45686_ID = 'I'
 MMC5983MA_ID = 'M'
 ADXL371_ID = 'A'
+INA219_ID ='V'
 
 # struct sizes in bytes (not counting timestamp and id bytes)
 BMP581_SIZE = 6
 ICM45686_SIZE = 15
 MMC5983MA_SIZE = 7
 ADXL371_SIZE = 6
+INA219_SIZE = 8
 
 # fallback scale factor when header value is missing or zero
 DEFAULT_ADXL371_SCALE_FACTOR = 10.24
@@ -44,12 +46,14 @@ class Decoder:
     icm45686_scale_factors = [0, 0] # acc, gyro
     mmc5983ma_scale_factor = 0 # magnetic field
     adxl371_scale_factor = 0 # high-g accel
+    ina219_scale_factor = [0, 0, 0, 0] #Shunt Volt, Bus Volt, Power, and Current
 
     # the data for each sensor
     bmp581_data = []
     icm45686_data = []
     mmc5983ma_data = []
     adxl371_data = []
+    ina219_data =[]
 
     # because we use clock cycle count for timestamp, and we expect the cycle count to
     # overflow every ~0.1 seconds, we handle the overflow in this file to make the timestamp
@@ -110,6 +114,11 @@ class Decoder:
                 data = self.convert_adxl371(bytes)
                 self.adxl371_data.append(data)
                 return True
+            if id_byte == ord(INA219_ID):
+                bytes = self.f.read(INA219_SIZE)
+                data = self.convert_ina219(bytes)
+                self.ina219_data.append(data)
+                return True
 
             # if not an ID byte, most likely garbage data at end of file
             return False
@@ -158,6 +167,7 @@ class Decoder:
         self.gyro_cal = calibrations[12 : 24]
         self.mag_cal = calibrations[24 : 36]
         self.adxl371_cal = calibrations[36 : 48]
+        self.ina219_cal = calibrations[48:60]
 
         scale_factor_format = '<' + ('f' * HEADER_NUM_SCALE_FACTORS)
         scale_factor_bytes = file.read(HEADER_NUM_SCALE_FACTORS * 4)
@@ -166,6 +176,7 @@ class Decoder:
         self.icm45686_scale_factors = scale_factors[2 : 4]
         self.mmc5983ma_scale_factor = scale_factors[4]
         self.adxl371_scale_factor = scale_factors[5]
+        self.ina219_scale_factor = scale_factors[6]
 
         if self.adxl371_scale_factor == 0:
             self.adxl371_scale_factor = DEFAULT_ADXL371_SCALE_FACTOR
@@ -240,6 +251,8 @@ class Decoder:
         ]
         return data
 
+    def convert_ina219(self, binary_packet):
+        return data
 def write_to_csv(data: pd.DataFrame, filename, decoder: Decoder):
     with open(filename, "w") as f:
         f.write(f"{decoder.device_name},{str(decoder.uid)}\n")

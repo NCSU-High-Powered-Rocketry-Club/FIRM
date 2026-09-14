@@ -212,7 +212,7 @@ int main(void)
 
   if (system_manager_task_handle == NULL || firm_mode_indicator_task_handle == NULL ||
       mmc5983ma_task_handle == NULL || icm45686_task_handle == NULL || bmp581_task_handle == NULL ||
-      adxl371_task_handle == NULL ||
+      adxl371_task_handle == NULL || ina219_task_handle == NULL ||
       filter_data_task_handle == NULL || packetizer_task_handle == NULL ||
       transmit_task_handle == NULL || usb_read_task_handle == NULL ||
       mock_packet_handler_handle == NULL) {
