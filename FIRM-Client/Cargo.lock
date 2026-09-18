@@ -242,7 +242,7 @@ dependencies = [
 
 [[package]]
 name = "firm_python"
-version = "1.2.1"
+version = "1.3.0"
 dependencies = [
  "firm_core",
  "firm_rust",
@@ -261,7 +261,7 @@ dependencies = [
 
 [[package]]
 name = "firm_typescript"
-version = "1.2.1"
+version = "1.3.0"
 dependencies = [
  "firm_core",
  "js-sys",
