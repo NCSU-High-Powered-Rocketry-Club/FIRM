@@ -387,6 +387,8 @@ extras = [
 dev = [
     { name = "maturin" },
     { name = "msgspec" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.4.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "ruff" },
@@ -408,6 +410,7 @@ provides-extras = ["extras"]
 dev = [
     { name = "maturin" },
     { name = "msgspec", specifier = ">=0.20.0" },
+    { name = "numpy" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "ruff" },
