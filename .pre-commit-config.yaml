@@ -8,7 +8,15 @@ repos:
     rev: v21.1.8
     hooks:
       - id: clang-format
-        files: ^Core/.*\.(c|h)$ # Only run on C source and header files
+        files: ^STM32/Core/.*\.(c|h)$
+        exclude: |
+          (?x)^(
+              STM32/Core/Src/system_stm32f4xx\.c|
+              STM32/Core/Src/sysmem\.c|
+              STM32/Core/Src/syscalls\.c|
+              STM32/Core/Inc/stm32f4xx_hal_conf\.h|
+              STM32/Core/Inc/FreeRTOSConfig\.h
+          )
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
@@ -25,7 +33,7 @@ repos:
       - id: clang-tidy
         args:
           [
-            "-p=STM32/build/FIRM-Configure-Debug",
+            "-p=build/firmware-debug",
             "--warnings-as-errors=*",
             "--checks=-readability-redundant-declaration",
             "--extra-arg=-ISTM32/Core/Inc",
