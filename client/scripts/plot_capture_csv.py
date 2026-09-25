@@ -1,7 +1,9 @@
 import sys
+
 import pandas as pd
-from dash import Dash, dcc, html, Input, Output
 import plotly.graph_objects as go
+from dash import Dash, Input, Output, dcc, html
+from plotly.subplots import make_subplots
 
 DEFAULT_X = "timestamp_seconds"
 
@@ -22,9 +24,7 @@ def downsample_df(df: pd.DataFrame, max_points: int | None) -> pd.DataFrame:
     return sampled
 
 
-def make_figure(
-    df: pd.DataFrame, x_col: str, y_cols: list[str], mode: str
-) -> go.Figure:
+def make_figure(df: pd.DataFrame, x_col: str, y_cols: list[str], mode: str) -> go.Figure:
     fig = go.Figure()
 
     if not y_cols:
@@ -45,16 +45,14 @@ def make_figure(
             title="Interactive CSV Plot (single chart)",
             template="plotly_white",
             height=700,
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
-            margin=dict(l=60, r=30, t=80, b=60),
+            legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "left", "x": 0},
+            margin={"l": 60, "r": 30, "t": 80, "b": 60},
             xaxis_title=x_col,
         )
         fig.update_yaxes(title_text="Value")
         return fig
 
     # Subplots mode (stacked)
-    from plotly.subplots import make_subplots
-
     rows = len(y_cols)
     fig = make_subplots(
         rows=rows,
@@ -76,7 +74,7 @@ def make_figure(
         title="Interactive CSV Plot (stacked subplots)",
         template="plotly_white",
         height=min(250 * rows + 150, 1400),
-        margin=dict(l=60, r=30, t=80, b=60),
+        margin={"l": 60, "r": 30, "t": 80, "b": 60},
     )
     fig.update_xaxes(title_text=x_col, row=rows, col=1)
     return fig
@@ -160,9 +158,7 @@ def main():
                             html.Div("Y columns (checkbox list)"),
                             dcc.Checklist(
                                 id="y-cols",
-                                options=[
-                                    {"label": c, "value": c} for c in y_candidates
-                                ],
+                                options=[{"label": c, "value": c} for c in y_candidates],
                                 value=default_selected,
                                 labelStyle={"display": "block", "margin": "2px 0"},
                                 inputStyle={"marginRight": "8px"},
@@ -262,22 +258,18 @@ def main():
             return go.Figure(), f"X column '{x_col}' not found."
 
         # Only plot numeric y columns that exist
-        y_cols = [
-            c for c in (y_cols or []) if c in df.columns and is_numeric_series(df[c])
-        ]
+        y_cols = [c for c in (y_cols or []) if c in df.columns and is_numeric_series(df[c])]
 
         # Downsample for speed
         dff = downsample_df(df, int(max_points) if max_points else None)
 
-        fig = make_figure(
-            dff, x_col, y_cols, "single" if mode == "single" else "stacked"
-        )
+        fig = make_figure(dff, x_col, y_cols, "single" if mode == "single" else "stacked")
 
         # Optionally add markers
         if "markers" in (show_markers or []):
             for tr in fig.data:
                 tr.mode = "lines+markers"
-                tr.marker = dict(size=4)
+                tr.marker = {"size": 4}
 
         # Improve hover
         fig.update_traces(

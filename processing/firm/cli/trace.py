@@ -6,23 +6,28 @@ import struct
 from pathlib import Path
 
 # Based on https://emlogic.no/2025/10/poor-mans-freertos-tracing/
+# Codes are the first two characters of pcTaskName, which freertos_trace.c copies
+# verbatim. Names must match the current osThreadAttr_t names plus the FreeRTOS
+# idle and timer-service tasks (configUSE_TIMERS is on).
 
 TASK_NAMES = [
     "defaultTask",
     "startupTask",
-    "systemManagerTask",
     "modeIndicatorTask",
-    "bmp581Task",
-    "icm45686Task",
-    "mmc5983maTask",
+    "sensorTask",
     "filterDataTask",
     "packetizerTask",
     "transmitTask",
     "usbReadTask",
-    "mockPacketTask",
     "IDLE",
+    "Tmr Svc",
 ]
+
+
+# First two characters are the on-wire code. A shorter map means two names collided.
 TASKS_BY_CODE = {name[:2]: name for name in TASK_NAMES}
+if len(TASKS_BY_CODE) != len(TASK_NAMES):
+    raise RuntimeError
 
 # Firmware ring buffer: EVENT_CAPACITY events of (2-char task code, u16 start, u16 end),
 # followed by the u32 total event count.
