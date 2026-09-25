@@ -240,7 +240,8 @@
   :placement: :end
   :flag: "-l${1}"
   :path_flag: "-L ${1}"
-  :system: []    # for example, you might list 'm' to grab the math library
+  :system:
+    - m # libm; macOS links it implicitly but Linux (CI) needs it for fmaxf/fabsf
   :test: []
   :release: []
 
