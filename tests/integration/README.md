@@ -1,10 +1,27 @@
-# Integration tests
+# Integration Tests
 
-Pytest coverage for pipelines that span packages: flight-data manager, mocked USB, and the TypeScript client.
+These are the original python test suites covering several pipelines:
+
+- the flight-data manager
+- Mock USB, 
+- web telemetry client.
+
+## Commands
 
 ```bash
-just test-python          # unit + manager tests (excludes @pytest.mark.integration)
-just test-integration     # Node + WASM + host C harness
+just test-python          # Fast unit + manager tests (skips @pytest.mark.integration)
+just test-integration     # Full integration suite (Node + WASM + host C harness)
+
 ```
 
-`@pytest.mark.integration` tests need Node.js, a host C compiler, and a built TypeScript client (`cd client && npm ci && npm run build`).
+### Prerequisites for `@pytest.mark.integration`:
+
+Integration tests require:
+
+* Node.js
+* Host C compiler
+* Built TypeScript client:
+
+```bash
+cd client && npm ci && npm run build
+```
