@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import polars as pl
+
 from firm.flight_data import Archive, Recording
 
 from .dataset import (

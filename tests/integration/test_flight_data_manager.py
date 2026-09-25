@@ -277,33 +277,24 @@ def test_empty_real_shape_cli_lists_no_data(
     assert yaml.safe_load((root / "archive.yaml").read_text())["schema_version"] == 1
 
 
-def test_listing_the_repository_archive_does_not_touch_legacy_datasets(
+def test_listing_the_repository_archive_is_read_only(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Listing the committed catalog must not mutate leftover ESKF lab datasets."""
-    repository = Path(__file__).resolve().parents[2]
-    legacy_root = repository / "processing" / "eskf_lab" / "datasets"
-    before = (
-        {
-            path.relative_to(legacy_root): _digest(path)
-            for path in legacy_root.rglob("*")
-            if path.is_file()
-        }
-        if legacy_root.is_dir()
-        else {}
-    )
-    assert main(["--archive", str(repository / "flight_data"), "list"]) == 0
-    capsys.readouterr()
-    after = (
-        {
-            path.relative_to(legacy_root): _digest(path)
-            for path in legacy_root.rglob("*")
-            if path.is_file()
-        }
-        if legacy_root.is_dir()
-        else {}
-    )
-    assert after == before
+    """Listing the committed catalog reports every recording and writes nothing."""
+    archive_root = Path(__file__).resolve().parents[2] / "flight_data"
+
+    def snapshot() -> dict[Path, str]:
+        return {path: _digest(path) for path in archive_root.rglob("*") if path.is_file()}
+
+    before = snapshot()
+    assert main(["--archive", str(archive_root), "list"]) == 0
+    listed = capsys.readouterr().out
+
+    assert snapshot() == before
+    recordings = Archive(archive_root).recordings()
+    assert recordings, "the committed catalog should contain recordings"
+    for recording in recordings:
+        assert recording.dataset_id in listed
 
 
 @pytest.mark.integration

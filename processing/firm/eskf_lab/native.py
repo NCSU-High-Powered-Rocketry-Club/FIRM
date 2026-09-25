@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import shutil
 import struct
 import subprocess
 import time
@@ -21,7 +20,7 @@ from .apogee import (
     add_hprm_apogee_predictions,
 )
 from .dataset import PreparedDataset, safe_name
-from .paths import LAB_ROOT, REPO_ROOT
+from .paths import REPO_ROOT
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -81,62 +80,30 @@ def _run_checked(command: list[str], *, cwd: Path = REPO_ROOT) -> subprocess.Com
         raise RuntimeError(f"command failed ({' '.join(command)}):\n{detail}") from error
 
 
-def _replay_candidates(build_dir: Path) -> list[Path]:
-    names = ("firm_eskf_replay.exe", "firm_eskf_replay")
-    nested = build_dir / "processing" / "eskf_lab" / "native"
-    roots = (build_dir, nested, build_dir / "Release", nested / "Release")
-    return [root / name for root in roots for name in names]
-
-
-def _find_replay(build_dir: Path) -> Path | None:
-    for candidate in _replay_candidates(build_dir):
-        if candidate.is_file():
-            return candidate
-    return None
+NATIVE_TARGETS = ("firm_eskf_replay", "firm_eskf_smoke_test", "firm_eskf_math_test")
 
 
 def build_native(build_dir: Path, *, run_tests: bool = True) -> Path:
     """Configure and incrementally build the native replay executable.
 
-    The default build dir is the repo-root ``host`` preset so firmware ESKF
-    sources are compiled once. A custom ``--build-dir`` still configures
-    ``processing/eskf_lab/native`` standalone.
+    Always uses the repo-root ``host`` CMake preset; ``build_dir`` overrides the
+    preset's binary directory (``build/host`` by default). Only the ESKF targets
+    are built.
     """
     build_dir = build_dir.resolve()
-    host_dir = (REPO_ROOT / "build" / "host").resolve()
-    if build_dir == host_dir:
-        if not (build_dir / "CMakeCache.txt").exists():
-            _run_checked(["cmake", "--preset", "host"])
-        _run_checked(["cmake", "--build", "--preset", "host"])
-        if run_tests:
-            _run_checked(["ctest", "--preset", "host", "-R", "firm_eskf_", "--output-on-failure"])
-    else:
-        build_dir.mkdir(parents=True, exist_ok=True)
-        native_source = LAB_ROOT / "native"
-        if not (build_dir / "CMakeCache.txt").exists():
-            command = [
-                "cmake",
-                "-S",
-                str(native_source),
-                "-B",
-                str(build_dir),
-                "-DCMAKE_BUILD_TYPE=Release",
-            ]
-            if shutil.which("ninja"):
-                command.extend(["-G", "Ninja"])
-            _run_checked(command)
-        _run_checked(["cmake", "--build", str(build_dir), "--config", "Release", "--parallel"])
-        if run_tests:
-            _run_checked(
-                ["ctest", "--test-dir", str(build_dir), "-C", "Release", "--output-on-failure"]
-            )
+    if not (build_dir / "CMakeCache.txt").exists():
+        _run_checked(["cmake", "--preset", "host", "-B", str(build_dir)])
+    _run_checked(["cmake", "--build", str(build_dir), "--parallel", "--target", *NATIVE_TARGETS])
+    if run_tests:
+        _run_checked(
+            ["ctest", "--test-dir", str(build_dir), "-R", "^firm_eskf_", "--output-on-failure"]
+        )
 
-    found = _find_replay(build_dir)
-    if found is not None:
-        return found
-    raise RuntimeError(
-        f"native build completed but no replay executable was found under {build_dir}"
-    )
+    for name in ("firm_eskf_replay", "firm_eskf_replay.exe"):
+        executable = build_dir / "bin" / name
+        if executable.is_file():
+            return executable
+    raise RuntimeError(f"native build completed but {build_dir / 'bin'} has no firm_eskf_replay")
 
 
 def filter_source_hash() -> str:

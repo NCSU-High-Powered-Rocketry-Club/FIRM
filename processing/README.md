@@ -26,12 +26,12 @@ uv run firm-eskf run my-launch/primary
 uv run firm-trace -i STM32/trace.bin -o trace.json
 ```
 
-See [eskf_lab/README.md](eskf_lab/README.md) for information on how to use the filter lab workflow.
+See [firm/eskf_lab/README.md](firm/eskf_lab/README.md) for information on how to use the filter lab workflow.
 
 ## Layout
 
 ```
 processing/
   firm/           log archive (`firm.flight_data`) and CLI entry points
-  eskf_lab/       Python lab + native CMake replay of STM32 ESKF sources
+  firm/eskf_lab/  Python lab + native CMake replay of STM32 ESKF sources
 ```

@@ -5,7 +5,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 
-get_filename_component(FIRM_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../.." ABSOLUTE)
+get_filename_component(FIRM_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../../.." ABSOLUTE)
 set(STM32_ROOT "${FIRM_ROOT}/STM32")
 
 add_library(firm_eskf_core STATIC
@@ -34,6 +34,8 @@ endif()
 
 add_executable(firm_eskf_replay src/eskf_replay.c)
 target_link_libraries(firm_eskf_replay PRIVATE firm_eskf_core)
+# Fixed location so `firm-eskf` finds the replay in <build dir>/bin.
+set_target_properties(firm_eskf_replay PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
 include(CTest)
 if(BUILD_TESTING)

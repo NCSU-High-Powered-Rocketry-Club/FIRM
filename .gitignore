@@ -101,11 +101,11 @@ trace*.bin
 trace*.json
 
 # ESKF desktop lab: launch data and generated artifacts are intentionally local.
-/processing/eskf_lab/datasets/*
-!/processing/eskf_lab/datasets/README.md
-/processing/eskf_lab/cache/
-/processing/eskf_lab/results/
-/processing/eskf_lab/build/
+/processing/firm/eskf_lab/datasets/*
+!/processing/firm/eskf_lab/datasets/README.md
+/processing/firm/eskf_lab/cache/
+/processing/firm/eskf_lab/results/
+/processing/firm/eskf_lab/build/
 
 # Managed flight archive. Manifests and documentation stay visible to Git, while
 # acquired and generated data remains under the team's existing storage workflow.

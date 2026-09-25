@@ -44,8 +44,8 @@ int main(void) {
       return 1;
     }
     for (int column = row + 1; column < ESKF_ERROR_DIM; ++column) {
-      const float difference = fabsf(eskf.P[row * ESKF_ERROR_DIM + column] -
-                                     eskf.P[column * ESKF_ERROR_DIM + row]);
+      const float difference =
+          fabsf(eskf.P[row * ESKF_ERROR_DIM + column] - eskf.P[column * ESKF_ERROR_DIM + row]);
       if (difference > 1e-5F) {
         fprintf(stderr, "covariance is not symmetric\n");
         return 1;
@@ -77,8 +77,7 @@ int main(void) {
     eskf_update(&eskf);
   }
   if (!eskf.launched) {
-    fprintf(stderr,
-            "confirmed motor impulse and pressure rise missed launch\n");
+    fprintf(stderr, "confirmed motor impulse and pressure rise missed launch\n");
     return 1;
   }
 

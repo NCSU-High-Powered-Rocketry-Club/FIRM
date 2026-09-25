@@ -90,11 +90,9 @@ lint-rust:
     cargo fmt --all -- --check
     cargo clippy {{cargo_host}} -- -D warnings
 
-# Host C sources added by this repo. STM32/Core is formatted by pre-commit on
-# edit. A full-tree --Werror over Core/ is not a CI gate until that tree is
-# clang-format clean.
+# Same pinned clang-format and file list as the pre-commit hook (.pre-commit-config.yaml).
 lint-clang:
-    clang-format --dry-run --Werror tests/protocol/firm_wire_layout_test.c processing/eskf_lab/native/src/*.c processing/eskf_lab/native/include/*.h processing/eskf_lab/native/tests/*.c
+    uv run pre-commit run clang-format --all-files --show-diff-on-failure
 
 # Local coverage of the firmware, host, rust, python, and lint CI jobs.
 # Skips integration (Node + wasm-pack); run `just test-integration` for that.

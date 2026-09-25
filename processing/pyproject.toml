@@ -1,12 +1,12 @@
 [project]
 name = "firm-hprc"
-version = "0.2.0"
+version = "0.3.0"
 description = "Filtered Inertial Rotation Module"
 readme = "README.md"
 authors = [
     { name = "High Powered Rocketry Club", email = "ncsurocketry@gmail.com"}
 ]
-requires-python = ">=3.10,<=3.15"
+requires-python = ">=3.10,<3.16"
 license = "MIT"
 dependencies = [
     "dash>=2.16",
@@ -47,7 +47,7 @@ usb = [
 ]
 
 [project.scripts]
-firm-eskf = "eskf_lab.cli:main"
+firm-eskf = "firm.eskf_lab.cli:main"
 firm-log = "firm.flight_data.cli:main"
 firm-reconstruct = "firm.flight_data.reconstruct:main"
 firm-trace = "firm.cli.trace:main"
@@ -57,11 +57,11 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["firm", "eskf_lab"]
+packages = ["firm"]
 
 [tool.hatch.build]
 exclude = [
-    "/eskf_lab/native",
-    "/eskf_lab/config",
-    "/eskf_lab/README.md",
+    "/firm/eskf_lab/native",
+    "/firm/eskf_lab/config",
+    "/firm/eskf_lab/README.md",
 ]

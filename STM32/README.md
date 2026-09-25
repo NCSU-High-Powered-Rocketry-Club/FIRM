@@ -16,9 +16,19 @@ This contains all of the STM32-based embedded code that runs on FIRM itself.
 
 6. Click the "Build" button on the bottom status bar to build the project.
 
-7. Run `uv sync`.
+7. From the repository root, run `just sync`.
 
 8. Run `uv run pre-commit install` to set up the git hook for automatic code formatting and linting, using `clang-format` & `clang-tidy`.
+
+9. Run `cmake --preset firmware-debug` from the repository root once. The `clang-tidy` hook reads
+   `build/firmware-debug/compile_commands.json`, which the VS Code extension's build (in
+   `STM32/build/`) does not create.
+
+## Unit tests
+
+Firmware unit tests live in `tests/` and run on your computer with [Ceedling](https://www.throwtheswitch.org/ceedling)
+(Unity + CMock). Install Ruby 3+ and `gem install ceedling -v 1.0.1`, then from the repository root run
+`just test-firmware` (or `ceedling test:all` inside `STM32/tests`).
 
 
 ## Building the project

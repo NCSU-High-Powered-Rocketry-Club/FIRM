@@ -14,10 +14,8 @@
 #define INPUT_FLOAT_COUNT 14U
 #define OUTPUT_FLOAT_COUNT 15U
 
-static const unsigned char INPUT_MAGIC[8] = {'F', 'I', 'R', 'M',
-                                             'I', 'N', '0', '1'};
-static const unsigned char OUTPUT_MAGIC[8] = {'F', 'I', 'R', 'M',
-                                              'O', 'U', 'T', '1'};
+static const unsigned char INPUT_MAGIC[8] = {'F', 'I', 'R', 'M', 'I', 'N', '0', '1'};
+static const unsigned char OUTPUT_MAGIC[8] = {'F', 'I', 'R', 'M', 'O', 'U', 'T', '1'};
 
 #pragma pack(push, 1)
 typedef struct {
@@ -74,21 +72,18 @@ static int write_exact(FILE *file, const void *source, size_t size) {
   return fwrite(source, 1U, size, file) == size ? 0 : -1;
 }
 
-static int read_header(FILE *input, uint64_t *count,
-                       double *initialization_seconds,
+static int read_header(FILE *input, uint64_t *count, double *initialization_seconds,
                        char firmware_version[9]) {
   unsigned char magic[8];
   uint32_t version = 0U;
   uint32_t record_size = 0U;
   char firmware[8];
 
-  if (read_exact(input, magic, sizeof(magic)) != 0 ||
-      memcmp(magic, INPUT_MAGIC, 8U) != 0 ||
+  if (read_exact(input, magic, sizeof(magic)) != 0 || memcmp(magic, INPUT_MAGIC, 8U) != 0 ||
       read_exact(input, &version, sizeof(version)) != 0 ||
       read_exact(input, &record_size, sizeof(record_size)) != 0 ||
       read_exact(input, count, sizeof(*count)) != 0 ||
-      read_exact(input, initialization_seconds,
-                 sizeof(*initialization_seconds)) != 0 ||
+      read_exact(input, initialization_seconds, sizeof(*initialization_seconds)) != 0 ||
       read_exact(input, firmware, sizeof(firmware)) != 0) {
     return -1;
   }
@@ -143,8 +138,7 @@ int main(int argc, char **argv) {
   uint64_t input_count = 0U;
   double initialization_seconds = 0.0;
   char firmware_version[9];
-  if (read_header(input, &input_count, &initialization_seconds,
-                  firmware_version) != 0) {
+  if (read_header(input, &input_count, &initialization_seconds, firmware_version) != 0) {
     fprintf(stderr, "invalid ESKF replay input header\n");
     fclose(input);
     return 2;
@@ -181,12 +175,11 @@ int main(int argc, char **argv) {
     if (record.timestamp > initialization_end) {
       break;
     }
-    eskf_accumulate(record.values[INPUT_PRESSURE],
-                    &record.values[INPUT_ACCEL_X], &record.values[INPUT_MAG_X]);
+    eskf_accumulate(record.values[INPUT_PRESSURE], &record.values[INPUT_ACCEL_X],
+                    &record.values[INPUT_MAG_X]);
     last_initial = record;
     ++accumulation_count;
-    if (input_index >= input_count ||
-        read_exact(input, &record, sizeof(record)) != 0) {
+    if (input_index >= input_count || read_exact(input, &record, sizeof(record)) != 0) {
       break;
     }
     ++input_index;
@@ -220,9 +213,8 @@ int main(int argc, char **argv) {
     const float dt = current_time - last_time;
     if (dt > 1e-6F) {
       const float control[ESKF_CONTROL_DIM] = {
-          record.values[INPUT_ACCEL_X], record.values[INPUT_ACCEL_Y],
-          record.values[INPUT_ACCEL_Z], record.values[INPUT_GYRO_X],
-          record.values[INPUT_GYRO_Y],  record.values[INPUT_GYRO_Z],
+          record.values[INPUT_ACCEL_X], record.values[INPUT_ACCEL_Y], record.values[INPUT_ACCEL_Z],
+          record.values[INPUT_GYRO_X],  record.values[INPUT_GYRO_Y],  record.values[INPUT_GYRO_Z],
       };
       const float measurement[ESKF_MEASUREMENT_DIM] = {
           record.values[INPUT_PRESSURE],
@@ -241,8 +233,8 @@ int main(int argc, char **argv) {
       for (size_t i = 0U; i < ESKF_ERROR_DIM; ++i) {
         result.values[OUTPUT_P_POSITION_Z + i] = eskf.P[i * ESKF_ERROR_DIM + i];
       }
-      result.values[OUTPUT_RAW_BARO_ALTITUDE] = pressure_to_altitude(
-          record.values[INPUT_PRESSURE], eskf.initial_pressure);
+      result.values[OUTPUT_RAW_BARO_ALTITUDE] =
+          pressure_to_altitude(record.values[INPUT_PRESSURE], eskf.initial_pressure);
       result.values[OUTPUT_PRESSURE_COUPLING] = eskf.pressure_coupling;
       const float *q = &eskf.x_nom[ESKF_QUAT_W];
       result.values[OUTPUT_QUAT_NORM] =
@@ -259,15 +251,13 @@ int main(int argc, char **argv) {
       ++output_count;
     }
 
-    if (input_index >= input_count ||
-        read_exact(input, &record, sizeof(record)) != 0) {
+    if (input_index >= input_count || read_exact(input, &record, sizeof(record)) != 0) {
       break;
     }
     ++input_index;
   }
 
-  if (fseek(output, 0L, SEEK_SET) != 0 ||
-      write_header(output, output_count) != 0) {
+  if (fseek(output, 0L, SEEK_SET) != 0 || write_header(output, output_count) != 0) {
     fprintf(stderr, "could not finalize output header\n");
     fclose(input);
     fclose(output);
@@ -279,8 +269,7 @@ int main(int argc, char **argv) {
   fprintf(stderr,
           "processed %llu rows after %llu initialization rows; %llu non-finite "
           "states\n",
-          (unsigned long long)output_count,
-          (unsigned long long)accumulation_count,
+          (unsigned long long)output_count, (unsigned long long)accumulation_count,
           (unsigned long long)nonfinite_count);
   return 0;
 }

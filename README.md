@@ -19,7 +19,7 @@ This repository holds the STM32 firmware (written in C), a USB client (Rust, wit
 |------|------------|
 | `STM32/` | Firmware (CubeMX / VS Code STM32 extension). Keep this name. |
 | `client/` | USB client crates and `firm-client` Python bindings |
-| `processing/` | Offline tools: `firm-hprc` (`firm` + `eskf_lab`) |
+| `processing/` | Offline tools: `firm-hprc` (`firm.flight_data`, `firm.eskf_lab`) |
 | `flight_data/` | Versioned flight-log archive (data only) |
 | `tests/` | Pytest and protocol C checks (firmware Unity tests live in `STM32/tests/`) |
 

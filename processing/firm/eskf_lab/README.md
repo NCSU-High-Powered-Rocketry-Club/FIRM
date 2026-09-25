@@ -38,7 +38,7 @@ uv run firm-eskf serve
 ## Managed recording format
 
 ESKF discovers only current recordings under the repository's `flight_data` manager. It does not
-scan or fall back to `processing/eskf_lab/datasets`; those legacy files are intentionally left in place while
+scan or fall back to `processing/firm/eskf_lab/datasets`; those legacy files are intentionally left in place while
 the new archive starts empty. Until a recording has been ingested and built, `list` is empty and
 `prepare`, `run`, and no-argument `serve` report that managed data is unavailable.
 
@@ -142,7 +142,7 @@ as ground truth.
 
 ## Reading results and warnings
 
-Each replay creates a timestamped directory under `processing/eskf_lab/results/<dataset>/` containing:
+Each replay creates a timestamped directory under `processing/firm/eskf_lab/results/<dataset>/` containing:
 
 - `result.parquet`: the aligned raw sensor fields, ESKF state, covariance diagonals, and diagnostics
 - `metrics.json`: speed, apogee, smoothness, and finite-state summary
@@ -157,8 +157,8 @@ the raw sensor traces to diagnose the configuration or model behavior that prece
 
 Generated ESKF artifacts are ignored by Git:
 
-- `processing/eskf_lab/cache`: aligned Parquet and compact replay input
-- `processing/eskf_lab/results`: timestamped result Parquet, metadata, metrics, and plots
+- `processing/firm/eskf_lab/cache`: aligned Parquet and compact replay input
+- `processing/firm/eskf_lab/results`: timestamped result Parquet, metadata, metrics, and plots
 - `build/host`: native CMake build (repo-root `host` preset)
 
 Delete a recording's cache or use `prepare --force` to rebuild it. The manager build fingerprint

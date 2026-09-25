@@ -29,7 +29,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Generic")
 endif()
 
 include(CTest)
-add_subdirectory(processing/eskf_lab/native)
+add_subdirectory(processing/firm/eskf_lab/native)
 
 if(BUILD_TESTING)
     add_executable(firm_wire_layout_test tests/protocol/firm_wire_layout_test.c)

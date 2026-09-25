@@ -2,7 +2,7 @@
 name = "firm"
 version = "0.2.0"
 description = "FIRM workspace: firmware, USB client, and post-flight processing"
-requires-python = ">=3.10,<=3.15"
+requires-python = ">=3.10,<3.16"
 license = "MIT"
 
 [tool.uv]
@@ -40,15 +40,15 @@ select = ["E", "F", "I", "PL", "UP", "RUF", "PTH", "C4", "B", "PIE", "SIM", "RET
           "D100", "D101", "D102", "D103", "D300", "D418", "D419", "S"]
 
 [tool.ruff.lint.per-file-ignores]
-"processing/eskf_lab/*.py" = ["TRY003"]
+"processing/firm/eskf_lab/*.py" = ["TRY003"]
 "processing/firm/flight_data/*.py" = ["D102", "D103", "TC001", "TC003", "TRY003", "TRY004"]
 "processing/firm/flight_data/cli.py" = ["T201"]
 "processing/firm/flight_data/reconstruct.py" = ["T201"]
-"processing/eskf_lab/cli.py" = ["T201"]
-"processing/eskf_lab/native.py" = ["S603", "TRY300"]
-"processing/eskf_lab/profile.py" = ["TRY004"]
-"processing/eskf_lab/visualize.py" = ["PLC0415"]
-"processing/firm/cli/trace.py" = ["PTH123", "T201", "PLR2004", "F841", "SIM115", "E501"]
+"processing/firm/eskf_lab/cli.py" = ["T201"]
+"processing/firm/eskf_lab/native.py" = ["S603", "TRY300"]
+"processing/firm/eskf_lab/profile.py" = ["TRY004"]
+"processing/firm/eskf_lab/visualize.py" = ["PLC0415"]
+"processing/firm/cli/trace.py" = ["T201"]
 "tests/processing/*.py" = ["S101", "TC003"]
 "tests/integration/test_*.py" = ["S101"]
 "client/tests/*.py" = ["S101"]

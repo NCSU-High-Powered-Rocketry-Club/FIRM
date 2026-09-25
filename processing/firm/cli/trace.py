@@ -3,10 +3,11 @@
 import argparse
 import json
 import struct
+from pathlib import Path
 
 # Based on https://emlogic.no/2025/10/poor-mans-freertos-tracing/
 
-names = [
+TASK_NAMES = [
     "defaultTask",
     "startupTask",
     "systemManagerTask",
@@ -21,14 +22,54 @@ names = [
     "mockPacketTask",
     "IDLE",
 ]
+TASKS_BY_CODE = {name[:2]: name for name in TASK_NAMES}
 
-mapping = {name[:2]: name for name in names}
+# Firmware ring buffer: EVENT_CAPACITY events of (2-char task code, u16 start, u16 end),
+# followed by the u32 total event count.
+EVENT_CAPACITY = 800
+EVENT_FORMAT = "<2sHH"
+EVENT_SIZE = struct.calcsize(EVENT_FORMAT)
+
+# Timer runs at the 168 MHz core clock divided by 256 and wraps at 16 bits.
+CLOCK_FREQUENCY_HZ = 168e6 / 2**8
+TIMER_WRAP_SECONDS = 2**16 / CLOCK_FREQUENCY_HZ
 
 
-def first_two_letter_to_name(code: str) -> str:
-    if code not in mapping:
+def task_name(code: str) -> str:
+    if code not in TASKS_BY_CODE:
         print(f"Unknown code: {code}")
-    return mapping.get(code, "unknown")
+    return TASKS_BY_CODE.get(code, "unknown")
+
+
+def convert(raw: bytes) -> list[dict[str, object]]:
+    (event_index,) = struct.unpack_from("<I", raw, EVENT_CAPACITY * EVENT_SIZE)
+    write_head = event_index % EVENT_CAPACITY
+    event_count = min(event_index, EVENT_CAPACITY)
+
+    events: list[dict[str, object]] = []
+    offset_seconds = 0.0
+    # Iterate the ring buffer in the order it was written.
+    for index in [*range(write_head, event_count), *range(write_head)]:
+        code, start_raw, end_raw = struct.unpack_from(EVENT_FORMAT, raw, index * EVENT_SIZE)
+        name = task_name(code.decode("utf8"))
+
+        start_us = (start_raw / CLOCK_FREQUENCY_HZ + offset_seconds) * 1e6
+        if start_raw > end_raw:
+            offset_seconds += TIMER_WRAP_SECONDS
+        end_us = (end_raw / CLOCK_FREQUENCY_HZ + offset_seconds) * 1e6
+
+        events.append(
+            {
+                "cat": "function",
+                "name": name,
+                "ph": "X",
+                "pid": 0,
+                "tid": TASK_NAMES.index(name) if name in TASK_NAMES else 0,
+                "ts": start_us,
+                "dur": end_us - start_us,
+            }
+        )
+    return events
 
 
 def main() -> None:
@@ -37,64 +78,9 @@ def main() -> None:
     parser.add_argument("-o", "--output", default="trace.json", help="Output trace .json file")
     args = parser.parse_args()
 
-    result = []
-    raw = open(args.input, "rb").read()
-
-    N = 800
-    (event_index,) = struct.unpack_from("<I", raw, N * 6)  # (each event is 24 bytes)
-    event_write_head = event_index % N
-    event_count = min(event_index, N)
-
-    clock_frequency = 168e6 / (2**8)  # 168 Mhz clock
-
-    last_t0 = 0
-    offset = 0
-
-    temp = 0
-
-    # Iterate ring buffer in the same order as it was written to.
-    for r in [range(event_write_head, event_count), range(event_write_head)]:
-        for index in r:
-            # name, t0_raw, t1_raw = struct.unpack_from("<16sII", raw, index*24)
-            code, t0_raw, t1_raw = struct.unpack_from("<2sHH", raw, index * 6)
-            name = first_two_letter_to_name(code.decode("utf8"))
-            # Overflow detection
-            # if t0_raw < last_t0:
-            #     offset += (2 ** 16) / clock_frequency
-            #     print("jumping")
-            # last_t0 = t0_raw
-
-            # print(code, t0_raw, t1_raw)
-
-            t0 = (t0_raw / clock_frequency + offset) * 1e6  # convert to microseconds
-            if t0_raw > t1_raw:
-                offset += (2**16) / clock_frequency
-                # result.append({ "cat":"function", "name":"Overflow", "ph":'X', "pid":0, "tid":99, "ts":t0, "dur":(t1-t0) })
-            t1 = (t1_raw / clock_frequency + offset) * 1e6  # convert to microseconds
-
-            # t0 = temp
-            # t1 = temp + 100
-            # temp += 200
-
-            # temp += 1
-            # if temp > 10:
-            #     break
-
-            # print(t0, t1, name)
-
-            tid = names.index(name) if name in names else 0
-            result.append(
-                {
-                    "cat": "function",
-                    "name": name,
-                    "ph": "X",
-                    "pid": 0,
-                    "tid": tid,
-                    "ts": t0,
-                    "dur": (t1 - t0),
-                }
-            )
-        json.dump(result, open(args.output, "w"))
+    events = convert(Path(args.input).read_bytes())
+    with Path(args.output).open("w", encoding="utf-8") as output:
+        json.dump(events, output)
 
 
 if __name__ == "__main__":

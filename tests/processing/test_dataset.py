@@ -5,9 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import polars as pl
-from eskf_lab.dataset import discover_datasets, prepare_dataset, resolve_dataset
-from eskf_lab.paths import DEFAULT_PROFILE
-from eskf_lab.profile import load_profile
+from firm.eskf_lab.dataset import discover_datasets, prepare_dataset, resolve_dataset
+from firm.eskf_lab.paths import DEFAULT_PROFILE
+from firm.eskf_lab.profile import load_profile
 from firm.flight_data import Archive, build_recording
 from firm.flight_data.calibration import set_calibration_override
 

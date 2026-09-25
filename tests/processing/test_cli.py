@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from eskf_lab.cli import _latest_results, _parser, main
+from firm.eskf_lab.cli import _latest_results, _parser, main
 
 from .flight_data_fixture import make_archive
 

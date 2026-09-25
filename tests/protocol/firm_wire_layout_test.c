@@ -27,8 +27,7 @@ int main(void) {
 
   /* DataPacket_t is one double timestamp plus 20 floats. */
   failed |= expect_size("DataPacket_t", sizeof(DataPacket_t), 8u + 20u * 4u);
-  failed |= expect_size("timestamp_seconds",
-                        offsetof(DataPacket_t, timestamp_seconds), 0u);
+  failed |= expect_size("timestamp_seconds", offsetof(DataPacket_t, timestamp_seconds), 0u);
 
   failed |= expect_id("ID_DATA_PACKET", ID_DATA_PACKET, 0x01);
   failed |= expect_id("ID_GET_DEVICE_INFO", ID_GET_DEVICE_INFO, 0x02);
