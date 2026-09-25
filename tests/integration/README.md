@@ -3,7 +3,8 @@
 End-to-end pytest suites:
 
 - `test_flight_data_manager.py`: ingest, migration, trimming, and staleness of the flight-log
-  archive on generated logs. Not marked `integration`, so it runs under `just test-python`.
+  archive on generated logs. Most cases run under `just test-python`;
+  `test_manager_output_is_accepted_by_rust_playback` is marked `integration`.
 - `test_get_device_info_pipeline.py`: the Web/WASM client talking to the real firmware command
   dispatch, compiled into `stm32_device_info_harness.c`.
 - `test_web_usb_telemetry_pipeline.py`: the browser client parsing raw STM32 USB telemetry.

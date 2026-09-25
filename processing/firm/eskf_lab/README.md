@@ -9,8 +9,8 @@ Python.
 
 From the repository root:
 
-```powershell
-uv sync
+```bash
+just sync
 uv run firm-log ingest --launch my-launch --recording primary --flight LOG1.FRM --mag-cal LOG2.FRM --hardware new
 uv run firm-log build my-launch/primary
 uv run firm-eskf list
@@ -20,7 +20,7 @@ uv run firm-eskf serve
 
 With no dataset names, `prepare` and `run` process every current recording in `flight_data`:
 
-```powershell
+```bash
 uv run firm-eskf run
 ```
 
@@ -30,7 +30,7 @@ replay.
 
 For the normal multi-launch workflow, run every dataset once and then use one tabbed dashboard:
 
-```powershell
+```bash
 uv run firm-eskf run
 uv run firm-eskf serve
 ```
@@ -101,7 +101,7 @@ With no `RESULT`, it opens every dataset's latest run in a single browser dashbo
 has a top-level tab; tabs have a minimum width and wrap to additional rows on smaller screens. Pass
 `RESULT` to serve only one dataset instead:
 
-```powershell
+```bash
 uv run firm-eskf serve
 uv run firm-eskf serve my-launch
 ```

@@ -48,7 +48,6 @@ From the **repository root**:
 
     ```bash
     just sync
-    cargo build -p firm_python
     ```
 
 3.  **Build WASM/TypeScript:**
@@ -76,7 +75,7 @@ just test-rust
 Add `firm_rust` to your `Cargo.toml`.
 
 ```rust
-use firm_rust::FirmClient;
+use firm_rust::FIRMClient;
 use std::{thread, time::Duration};
 
 fn main() {
@@ -84,8 +83,10 @@ fn main() {
     client.start();
 
     loop {
-        while let Ok(packet) = client.get_packets(Some(Duration::from_millis(100))) {
-            println!("{:#?}", packet);
+        while let Ok(packets) = client.get_data_packets(Some(Duration::from_millis(100))) {
+            for packet in packets {
+                println!("{:#?}", packet);
+            }
         }
     }
 }
@@ -103,7 +104,6 @@ This library supports Python 3.10 and above, including Python 3.14 free threaded
 
 ```python
 from firm_client import FIRMClient
-import time
 
 # Using context manager (automatically starts and stops)
 with FIRMClient("/dev/ttyUSB0", baud_rate=2_000_000, timeout=0.1) as client:
@@ -117,7 +117,14 @@ with FIRMClient("/dev/ttyUSB0", baud_rate=2_000_000, timeout=0.1) as client:
 
 ### Web (TypeScript)
 
-todo: Add usage example.
+```ts
+import { FIRM } from 'firm-client';
+
+const firm = await FIRM.connect();
+for await (const packet of firm.getDataPackets()) {
+  console.log(packet.timestamp_seconds, packet.raw_acceleration_x_gs);
+}
+```
 
 ## Publishing
 
@@ -125,11 +132,11 @@ This is mostly for maintainers, but here are the steps to publish each crate to 
 
 ### Rust API (crates.io)
 
-todo (idk actually know yet)
+These crates are not published to crates.io yet. Depend on them from this repository's Cargo workspace.
 
 ### Python Bindings (PyPI)
 
-We need to to first build wheels for each platform, right now the workflow is to do this locally
+We need to first build wheels for each platform, right now the workflow is to do this locally
 and then upload to PyPI. At the minimum, we build for Linux x86_64 and aarch64 for python versions
 3.10+, including free threaded wheels.
 

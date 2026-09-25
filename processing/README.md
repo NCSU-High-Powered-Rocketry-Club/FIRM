@@ -3,8 +3,8 @@
 Offline FIRM tools:
 
 - log archive management
-- ESKF replay,
-- FreeRTOS trace conversion.
+- ESKF replay
+- FreeRTOS trace conversion
 
 Install from this repository with `just sync` (or `uv sync --all-packages --extra usb --group dev` at the repo root). 
 

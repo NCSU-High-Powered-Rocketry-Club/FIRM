@@ -28,7 +28,6 @@ dev = [
 line-length = 100
 show-fixes = true
 target-version = "py310"
-exclude = ["scripts"]
 
 [tool.ruff.lint]
 typing-extensions = false

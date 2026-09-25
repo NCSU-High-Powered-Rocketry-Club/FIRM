@@ -26,10 +26,12 @@ This contains all of the STM32-based embedded code that runs on FIRM itself.
 
 ## Unit tests
 
-Firmware unit tests live in `tests/`. They are built for your computer with the repository's `host` CMake
-preset and use [utest.h](../third_party/utest). From the repository root run `just test-firmware`
+Firmware unit tests live in `STM32/tests/` (not the repository-root `tests/` directory). They are
+built for your computer with the repository's `host` CMake preset and use
+[utest.h](../third_party/utest). From the repository root run `just test-firmware`
 (or `ctest --preset host -L firmware`). Each test links only the production files listed for it in
-`tests/CMakeLists.txt`; anything else it needs is faked in the test file or in `tests/support/`.
+`STM32/tests/CMakeLists.txt`; anything else it needs is faked in the test file or in
+`STM32/tests/support/`.
 
 
 ## Building the project
