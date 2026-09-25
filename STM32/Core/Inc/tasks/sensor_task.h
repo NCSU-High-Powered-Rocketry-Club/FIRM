@@ -1,7 +1,7 @@
 #pragma once
 
-#include "sensor_manager.h"
 #include "packets.h"
+#include "sensor_manager.h"
 #include "shared_data/identifiers.h"
 
 #include "cmsis_os.h"
