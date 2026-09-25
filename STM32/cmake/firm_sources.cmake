@@ -3,6 +3,7 @@
 
 get_filename_component(FIRM_STM32_DIR "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 
+# Also add new files to FILTER_SOURCE_PATHS in processing/firm/eskf_lab/native.py.
 set(FIRM_ESKF_SOURCES
     "${FIRM_STM32_DIR}/Core/Src/data_processing/matrix_helper.c"
     "${FIRM_STM32_DIR}/Core/Src/data_processing/error_state_kalman_filter.c"

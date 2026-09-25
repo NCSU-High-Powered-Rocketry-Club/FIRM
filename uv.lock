@@ -16,9 +16,9 @@ resolution-markers = [
 
 [manifest]
 members = [
-    "firm",
     "firm-client",
     "firm-hprc",
+    "firm-workspace",
 ]
 
 [[package]]
@@ -558,33 +558,6 @@ wheels = [
 ]
 
 [[package]]
-name = "firm"
-version = "0.2.0"
-source = { virtual = "." }
-
-[package.dev-dependencies]
-dev = [
-    { name = "maturin" },
-    { name = "pre-commit" },
-    { name = "pytest" },
-    { name = "ruff" },
-    { name = "ty" },
-    { name = "ziglang" },
-]
-
-[package.metadata]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "maturin", specifier = ">=1.8" },
-    { name = "pre-commit" },
-    { name = "pytest" },
-    { name = "ruff", specifier = ">=0.14.1" },
-    { name = "ty", specifier = ">=0.0.1a23" },
-    { name = "ziglang" },
-]
-
-[[package]]
 name = "firm-client"
 source = { editable = "client" }
 
@@ -647,6 +620,33 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0.3" },
 ]
 provides-extras = ["usb"]
+
+[[package]]
+name = "firm-workspace"
+version = "0.2.0"
+source = { virtual = "." }
+
+[package.dev-dependencies]
+dev = [
+    { name = "maturin" },
+    { name = "pre-commit" },
+    { name = "pytest" },
+    { name = "ruff" },
+    { name = "ty" },
+    { name = "ziglang" },
+]
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "maturin", specifier = ">=1.8" },
+    { name = "pre-commit" },
+    { name = "pytest" },
+    { name = "ruff", specifier = ">=0.14.1" },
+    { name = "ty", specifier = ">=0.0.1a23" },
+    { name = "ziglang" },
+]
 
 [[package]]
 name = "flask"

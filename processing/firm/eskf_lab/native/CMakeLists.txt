@@ -23,6 +23,6 @@ target_link_libraries(firm_eskf_replay PRIVATE firm_eskf_core)
 set_target_properties(firm_eskf_replay PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
 if(BUILD_TESTING)
-    firm_add_c_test(firm_eskf_smoke_test SOURCES tests/eskf_smoke_test.c LIBS firm_eskf_core LABELS eskf)
-    firm_add_c_test(firm_eskf_math_test SOURCES tests/eskf_math_test.c LIBS firm_eskf_core LABELS eskf)
+    firm_add_c_test(test_eskf_smoke SOURCES tests/eskf_smoke_test.c LIBS firm_eskf_core LABELS eskf)
+    firm_add_c_test(test_eskf_math SOURCES tests/eskf_math_test.c LIBS firm_eskf_core LABELS eskf)
 endif()

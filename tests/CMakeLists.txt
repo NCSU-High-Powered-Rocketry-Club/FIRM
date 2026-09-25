@@ -1,4 +1,4 @@
-firm_add_c_test(firm_wire_layout_test SOURCES protocol/firm_wire_layout_test.c LABELS protocol)
+firm_add_c_test(test_wire_layout SOURCES protocol/firm_wire_layout_test.c LABELS protocol)
 
 # Real command dispatch behind a stdin/stdout pipe. Not a CTest test: the pytest
 # integration suite drives it (tests/integration/test_get_device_info_pipeline.py).
