@@ -325,7 +325,6 @@ def test_manager_output_is_accepted_by_rust_playback(tmp_path: Path) -> None:
         [
             cargo,
             "run",
-            "--offline",
             "-q",
             "-p",
             "firm_rust",
