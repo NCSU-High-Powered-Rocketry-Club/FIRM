@@ -1,11 +1,9 @@
 cmake_minimum_required(VERSION 3.22)
 
-# Two configure worlds that must not be mixed:
+# There are two configure areas that are very different:
 #   firmware-*  ARM GNU toolchain, add_subdirectory(STM32)
 #   host        native gcc/clang, ESKF CTest + protocol check + firmware Unity
-#
-# CLion: one profile per preset (firmware-debug and host). Do not point CMake
-# at STM32/ unless you are using the ST VS Code / CubeMX standalone project.
+
 
 option(FIRM_BUILD_FIRMWARE "Build STM32 firmware (requires the ARM GNU toolchain file)" OFF)
 
