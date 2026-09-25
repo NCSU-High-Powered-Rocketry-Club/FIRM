@@ -28,7 +28,7 @@ build-host:
 build-rust:
     cargo build {{cargo_host}}
 
-# Firmware Ceedling + host CTest + cargo + pytest. Collects every suite.
+# Host CTest (firmware Unity + ESKF + wire layout) + cargo + pytest.
 test:
     #!/usr/bin/env bash
     set +e
@@ -62,11 +62,11 @@ test:
     done
     exit "${failed}"
 
-test-firmware:
-    cd STM32/tests && ceedling test:all
+test-firmware: build-host
+    ctest --preset host --output-on-failure -R "^firmware_"
 
 test-host: build-host
-    ctest --preset host --output-on-failure -E "^firmware_ceedling$"
+    ctest --preset host --output-on-failure -E "^firmware_"
 
 test-rust:
     cargo test {{cargo_host}}

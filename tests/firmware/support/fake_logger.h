@@ -4,10 +4,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
-// Prepares fake logger backend state and ensures test/logs exists.
+// Prepares fake logger backend state and ensures logs/ exists.
 int fake_logger_init(void);
 
-// Closes active file (if any) and removes all files under test/logs.
+// Closes active file (if any) and removes all files under logs/.
 void fake_logger_cleanup_logs(void);
 
 bool fake_file_exists(const char *filename);

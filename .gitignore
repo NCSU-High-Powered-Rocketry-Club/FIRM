@@ -64,7 +64,6 @@ dkms.conf
 
 # FIRM code
 /STM32/build
-/STM32/tests/build/
 mx.scratch
 .vscode/*
 !.vscode/settings.json

@@ -106,7 +106,7 @@ void test_overflow_flushes_zero_padded_tail_to_file(void) {
 
   memset(second, 0x44, 5U);
 
-  FILE *log_file = fopen("test/logs/" TEST_LOG_FILENAME, "rb");
+  FILE *log_file = fopen("logs/" TEST_LOG_FILENAME, "rb");
   TEST_ASSERT_NOT_NULL(log_file);
 
   uint8_t sector[TEST_SECTOR_SIZE] = {0};

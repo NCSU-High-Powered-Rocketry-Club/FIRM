@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.22)
 
 # Two configure worlds that must not be mixed:
 #   firmware-*  ARM GNU toolchain, add_subdirectory(STM32)
-#   host        native gcc/clang, ESKF CTest + protocol check + optional Ceedling
+#   host        native gcc/clang, ESKF CTest + protocol check + firmware Unity
 #
 # CLion: one profile per preset (firmware-debug and host). Do not point CMake
 # at STM32/ unless you are using the ST VS Code / CubeMX standalone project.
@@ -38,14 +38,5 @@ if(BUILD_TESTING)
     )
     add_test(NAME firm_wire_layout_test COMMAND firm_wire_layout_test)
 
-    find_program(CEEDLING_EXECUTABLE ceedling)
-    if(CEEDLING_EXECUTABLE)
-        add_test(
-            NAME firmware_ceedling
-            COMMAND "${CEEDLING_EXECUTABLE}" test:all
-            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/STM32/tests"
-        )
-    else()
-        message(STATUS "ceedling not found; firmware_ceedling CTest is not registered")
-    endif()
+    add_subdirectory(tests/firmware)
 endif()

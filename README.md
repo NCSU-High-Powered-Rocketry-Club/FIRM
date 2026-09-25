@@ -21,7 +21,7 @@ This repository holds the STM32 firmware (written in C), a USB client (Rust, wit
 | `client/` | USB client crates and `firm-client` Python bindings |
 | `processing/` | Offline tools: `firm-hprc` (`firm` + `eskf_lab`) |
 | `flight_data/` | Versioned flight-log archive (data only) |
-| `tests/` | Pytest, protocol C checks. Firmware Unity tests stay in `STM32/tests/` |
+| `tests/` | Pytest, protocol C checks, firmware Unity (host CMake) |
 
 ## Setup
 
@@ -39,7 +39,7 @@ just sync
 
 ```bash
 just build          # firmware Debug ELF + host ESKF + cargo
-just test           # Ceedling + host CTest + cargo test + pytest (summary at the end)
+just test           # firmware Unity + host CTest + cargo test + pytest (summary at the end)
 just lint           # ruff, rustfmt, clippy, clang-format
 just ci             # sequential local coverage matching GitHub Actions
 ```
@@ -48,8 +48,8 @@ Useful splits:
 
 ```bash
 just build-firmware     # cmake --preset firmware-debug
-just test-host          # ESKF CTest + C header layout (not Ceedling)
-just test-firmware      # ceedling test:all in STM32/tests (needs Ruby + Ceedling)
+just test-host          # ESKF CTest + C header layout
+just test-firmware      # firmware Unity (host CMake)
 just test-python        # pytest, excluding @pytest.mark.integration
 just test-integration   # Node + WASM pipeline tests
 ```

@@ -30,7 +30,7 @@
         },
         {
             "name": "host",
-            "displayName": "Host (native ESKF + tests)",
+            "displayName": "Host (native ESKF + firmware Unity + tests)",
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/build/host",
             "cacheVariables": {
