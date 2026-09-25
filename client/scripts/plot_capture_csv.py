@@ -22,9 +22,7 @@ def downsample_df(df: pd.DataFrame, max_points: int | None) -> pd.DataFrame:
     return sampled
 
 
-def make_figure(
-    df: pd.DataFrame, x_col: str, y_cols: list[str], mode: str
-) -> go.Figure:
+def make_figure(df: pd.DataFrame, x_col: str, y_cols: list[str], mode: str) -> go.Figure:
     fig = go.Figure()
 
     if not y_cols:
@@ -160,9 +158,7 @@ def main():
                             html.Div("Y columns (checkbox list)"),
                             dcc.Checklist(
                                 id="y-cols",
-                                options=[
-                                    {"label": c, "value": c} for c in y_candidates
-                                ],
+                                options=[{"label": c, "value": c} for c in y_candidates],
                                 value=default_selected,
                                 labelStyle={"display": "block", "margin": "2px 0"},
                                 inputStyle={"marginRight": "8px"},
@@ -262,16 +258,12 @@ def main():
             return go.Figure(), f"X column '{x_col}' not found."
 
         # Only plot numeric y columns that exist
-        y_cols = [
-            c for c in (y_cols or []) if c in df.columns and is_numeric_series(df[c])
-        ]
+        y_cols = [c for c in (y_cols or []) if c in df.columns and is_numeric_series(df[c])]
 
         # Downsample for speed
         dff = downsample_df(df, int(max_points) if max_points else None)
 
-        fig = make_figure(
-            dff, x_col, y_cols, "single" if mode == "single" else "stacked"
-        )
+        fig = make_figure(dff, x_col, y_cols, "single" if mode == "single" else "stacked")
 
         # Optionally add markers
         if "markers" in (show_markers or []):
