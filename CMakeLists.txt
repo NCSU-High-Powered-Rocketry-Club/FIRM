@@ -2,7 +2,9 @@ cmake_minimum_required(VERSION 3.22)
 
 # There are two configure areas that are very different:
 #   firmware-*  ARM GNU toolchain, add_subdirectory(STM32)
-#   host        native gcc/clang, ESKF CTest + protocol check + firmware Unity
+#   host        native gcc/clang, ESKF CTest + protocol check
+#
+# Firmware unit tests use Ceedling in STM32/tests (`just test-firmware`).
 
 
 option(FIRM_BUILD_FIRMWARE "Build STM32 firmware (requires the ARM GNU toolchain file)" OFF)
@@ -35,6 +37,4 @@ if(BUILD_TESTING)
         "${CMAKE_SOURCE_DIR}/STM32/Core/Inc/shared_data"
     )
     add_test(NAME firm_wire_layout_test COMMAND firm_wire_layout_test)
-
-    add_subdirectory(tests/firmware)
 endif()

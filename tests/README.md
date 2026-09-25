@@ -2,7 +2,7 @@
 
 | Path                 | How to run                                               |
 |----------------------|----------------------------------------------------------|
-| `tests/firmware/`    | `just test-firmware` (host CMake + Unity)                |
+| `STM32/tests/`       | `just test-firmware` (Ceedling + Unity)                  |
 | `tests/integration/` | `just test-integration` (`pytest -m integration`)        |
 | `tests/processing/`  | `just test-python` (ESKF lab and flight-data unit tests) |
 | `tests/protocol/`    | `just test-host` (C header size and identifier checks)   |

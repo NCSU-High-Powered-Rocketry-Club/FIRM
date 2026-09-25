@@ -21,11 +21,11 @@ This repository holds the STM32 firmware (written in C), a USB client (Rust, wit
 | `client/` | USB client crates and `firm-client` Python bindings |
 | `processing/` | Offline tools: `firm-hprc` (`firm` + `eskf_lab`) |
 | `flight_data/` | Versioned flight-log archive (data only) |
-| `tests/` | Pytest, protocol C checks, firmware Unity (host CMake) |
+| `tests/` | Pytest and protocol C checks (firmware Unity tests live in `STM32/tests/`) |
 
 ## Setup
 
-Install [uv](https://docs.astral.sh/uv/), Rust, CMake, Ninja, and [just](https://github.com/casey/just). Clone the repo and sync Python packages:
+Install [uv](https://docs.astral.sh/uv/), Rust, CMake, Ninja, and [just](https://github.com/casey/just). Firmware unit tests also need Ruby 3+ and [Ceedling](https://www.throwtheswitch.org/ceedling) (`gem install ceedling -v 1.0.1`). Clone the repo and sync Python packages:
 
 ```bash
 git clone https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM.git
@@ -39,7 +39,7 @@ just sync
 
 ```bash
 just build          # firmware Debug ELF + host ESKF + cargo
-just test           # firmware Unity + host CTest + cargo test + pytest (summary at the end)
+just test           # Ceedling firmware tests + host CTest + cargo test + pytest (summary at the end)
 just lint           # ruff, rustfmt, clippy, clang-format
 just ci             # local firmware/host/rust/python/lint
 ```
@@ -49,7 +49,7 @@ Useful splits:
 ```bash
 just build-firmware     # cmake --preset firmware-debug
 just test-host          # ESKF CTest + C header layout
-just test-firmware      # firmware Unity (host CMake)
+just test-firmware      # firmware Unity tests (Ceedling, STM32/tests)
 just test-python        # pytest, excluding @pytest.mark.integration
 just test-integration   # Node + WASM pipeline tests
 ```

@@ -18,7 +18,7 @@
 #define MKDIR(path) mkdir((path), 0777)
 #endif
 
-#define FAKE_LOG_DIR "logs"
+#define FAKE_LOG_DIR "test/logs"
 #define FAKE_LOG_PATH_MAX 512
 
 // Single active file mirrors the embedded logger's currently open log file.

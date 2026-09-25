@@ -28,7 +28,7 @@ build-host:
 build-rust:
     cargo build {{cargo_host}}
 
-# Host CTest (firmware Unity + ESKF + wire layout) + cargo + pytest.
+# Ceedling firmware tests + host CTest (ESKF + wire layout) + cargo + pytest.
 test:
     #!/usr/bin/env bash
     set +e
@@ -62,11 +62,13 @@ test:
     done
     exit "${failed}"
 
-test-firmware: build-host
-    ctest --preset host --output-on-failure -R "^firmware_"
+# Firmware Unity tests via Ceedling (Ruby >= 3.0, `gem install ceedling -v 1.0.1`).
+[working-directory: 'STM32/tests']
+test-firmware:
+    ceedling test:all
 
 test-host: build-host
-    ctest --preset host --output-on-failure -E "^firmware_"
+    ctest --preset host --output-on-failure
 
 test-rust:
     cargo test {{cargo_host}}
