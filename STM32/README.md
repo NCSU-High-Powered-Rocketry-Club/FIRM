@@ -26,9 +26,10 @@ This contains all of the STM32-based embedded code that runs on FIRM itself.
 
 ## Unit tests
 
-Firmware unit tests live in `tests/` and run on your computer with [Ceedling](https://www.throwtheswitch.org/ceedling)
-(Unity + CMock). Install Ruby 3+ and `gem install ceedling -v 1.0.1`, then from the repository root run
-`just test-firmware` (or `ceedling test:all` inside `STM32/tests`).
+Firmware unit tests live in `tests/`. They are built for your computer with the repository's `host` CMake
+preset and use [utest.h](../third_party/utest). From the repository root run `just test-firmware`
+(or `ctest --preset host -L firmware`). Each test links only the production files listed for it in
+`tests/CMakeLists.txt`; anything else it needs is faked in the test file or in `tests/support/`.
 
 
 ## Building the project

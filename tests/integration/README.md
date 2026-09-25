@@ -19,7 +19,7 @@ just test-integration     # Full integration suite (Node + WASM + host C harness
 Integration tests require:
 
 * Node.js
-* Host C compiler
+* Host C toolchain (the harness is built by `just build-host`, which `just test-integration` runs)
 * Built TypeScript client:
 
 ```bash

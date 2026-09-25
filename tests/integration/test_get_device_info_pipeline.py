@@ -19,134 +19,22 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIRM_CLIENT_ROOT = REPO_ROOT / "client"
-STM32_CORE_ROOT = REPO_ROOT / "STM32" / "Core"
 TYPESCRIPT_DIST_INDEX = FIRM_CLIENT_ROOT / "firm_typescript" / "typescript" / "dist" / "index.js"
 
 GET_DEVICE_INFO_ID = 0x02
+# Must match kSettings in stm32_device_info_harness.c.
 DEVICE_UID = 0x1122334455667788
 FIRMWARE_VERSION = "v2.2.0"
 
 
-def compile_stm32_harness(build_dir: Path) -> Path:
-    """Compile real STM32 command dispatch with host-side dependency stubs."""
-    compiler = shutil.which("gcc") or shutil.which("clang")
-    if compiler is None:
-        raise RuntimeError("No C compiler found. Install gcc or clang to run the integration test.")
-
-    harness_c = build_dir / "stm32_device_info_harness.c"
-    harness_exe = build_dir / "stm32_device_info_harness.exe"
-    harness_c.write_text(
-        textwrap.dedent(
-            f"""
-            #include "commands.h"
-            #include "adxl371_packet.h"
-            #include "bmp581_packet.h"
-            #include "icm45686_packet.h"
-            #include "mmc5983ma_packet.h"
-            #include "modules/transmit_frame.h"
-            #include "shared_data/system_settings.h"
-
-            #include <stdbool.h>
-            #include <stdint.h>
-            #include <stdio.h>
-            #include <string.h>
-
-            static const SystemSettings_t kSettings = {{
-              .device_uid = {DEVICE_UID}ULL,
-              .device_name = "INTEGRATION_TEST_DEVICE",
-              .usb_transfer_enabled = true,
-              .firmware_version = "{FIRMWARE_VERSION}",
-              .frequency_hz = 100U,
-            }};
-
-            static uint8_t response[256];
-            static uint32_t response_len;
-
-            const SystemSettings_t *get_settings(void) {{ return &kSettings; }}
-            int settings_write_firm_settings(SystemSettings_t *settings) {{
-              (void)settings;
-              return 0;
-            }}
-            int settings_write_calibration(Calibration_t *accel, Calibration_t *gyro,
-                                           Calibration_t *mag, Calibration_t *high_g) {{
-              (void)accel; (void)gyro; (void)mag; (void)high_g;
-              return 0;
-            }}
-            bool mocking_handler_start_mock(void) {{ return false; }}
-            bool mocking_handler_cancel_mock(void) {{ return false; }}
-            uint32_t dispatch_mock_msg(const uint8_t *message) {{ (void)message; return 0U; }}
-            uint32_t mocking_handler_time_from_ring(void) {{ return 0U; }}
-            int mocking_handler_read_barometer(BMP581RawData_t *out) {{ (void)out; return 1; }}
-            int mocking_handler_read_imu(ICM45686RawData_t *out) {{ (void)out; return 1; }}
-            int mocking_handler_read_magnetometer(MMC5983MARawData_t *out) {{
-              (void)out;
-              return 1;
-            }}
-            int mocking_handler_read_high_g(ADXL371RawData_t *out) {{ (void)out; return 1; }}
-
-            static void capture_response(TransmitFrame_t *frame) {{
-              response_len = frame->payload_len;
-              memcpy(response, frame->payload, response_len);
-            }}
-
-            int main(void) {{
-              commands_set_response_queue(capture_response);
-              for (;;) {{
-                uint32_t command_len = 0U;
-                if (fread(&command_len, sizeof(command_len), 1U, stdin) != 1U) return 0;
-                if (command_len == 0U || command_len > 255U) return 1;
-                uint8_t command[255];
-                if (fread(command, 1U, command_len, stdin) != command_len) return 1;
-
-                response_len = 0U;
-                dispatch_command(command);
-                fwrite(&response_len, sizeof(response_len), 1U, stdout);
-                if (response_len > 0U) fwrite(response, 1U, response_len, stdout);
-                fflush(stdout);
-              }}
-            }}
-            """
-        ),
-        encoding="utf-8",
-    )
-
-    include_args = [
-        "-I",
-        str(STM32_CORE_ROOT / "Inc"),
-        "-I",
-        str(STM32_CORE_ROOT / "Inc" / "modules"),
-        "-I",
-        str(STM32_CORE_ROOT / "Inc" / "shared_data"),
-        "-I",
-        str(STM32_CORE_ROOT / "Inc" / "data_processing"),
-        "-I",
-        str(STM32_CORE_ROOT / "Inc" / "interfaces"),
-        "-I",
-        str(REPO_ROOT / "STM32" / "Libraries" / "BMP581"),
-        "-I",
-        str(REPO_ROOT / "STM32" / "Libraries" / "ICM45686"),
-        "-I",
-        str(REPO_ROOT / "STM32" / "Libraries" / "MMC5983MA"),
-        "-I",
-        str(REPO_ROOT / "STM32" / "Libraries" / "ADXL371"),
-    ]
-    subprocess.run(
-        [
-            compiler,
-            "-std=c99",
-            "-O0",
-            "-Wall",
-            "-Wextra",
-            str(harness_c),
-            str(STM32_CORE_ROOT / "Src" / "modules" / "commands.c"),
-            "-o",
-            str(harness_exe),
-            *include_args,
-        ],
-        check=True,
-        cwd=build_dir,
-    )
-    return harness_exe
+def find_stm32_harness() -> Path | None:
+    """Return the CMake-built command-dispatch harness (`just build-host`)."""
+    bin_dir = REPO_ROOT / "build" / "host" / "bin"
+    for directory in (bin_dir, bin_dir / "Release"):
+        for name in ("firm_device_info_harness", "firm_device_info_harness.exe"):
+            if (directory / name).exists():
+                return directory / name
+    return None
 
 
 @dataclass
@@ -276,7 +164,11 @@ def test_get_device_info_pipeline(tmp_path: Path) -> None:
     if node is None:
         pytest.skip("Node.js is required for the Web Serial integration test.")
 
-    bridge = RawUsbBridge(compile_stm32_harness(tmp_path))
+    harness = find_stm32_harness()
+    if harness is None:
+        pytest.skip("STM32 device-info harness is missing; run `just build-host` first.")
+
+    bridge = RawUsbBridge(harness)
     script = tmp_path / "device_info_pipeline.mjs"
     make_node_script(script, bridge.port)
     thread = threading.Thread(target=bridge.serve_once, daemon=True)

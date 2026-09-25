@@ -1,10 +1,11 @@
 #include "error_state_kalman_filter.h"
 #include "settings_manager_host.h"
+#include "utest.h"
 
 #include <math.h>
-#include <stdio.h>
 
-int main(void) {
+// One scenario: each phase starts from the filter state the previous phase left.
+UTEST(eskf_smoke, standby_launch_landing_and_covariance) {
   host_set_firmware_version("v2.0.0");
   const float acceleration[3] = {0.0F, 0.0F, 1.0F};
   const float magnetic_field[3] = {20.0F, 5.0F, 40.0F};
@@ -13,9 +14,7 @@ int main(void) {
   }
 
   ESKF eskf;
-  if (eskf_init(&eskf) != 0) {
-    return 1;
-  }
+  ASSERT_EQ(0, eskf_init(&eskf));
   const float control[6] = {0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F};
   const float measurement[4] = {101325.0F, 20.0F, 5.0F, 40.0F};
   for (int i = 0; i < 2000; ++i) {
@@ -26,30 +25,18 @@ int main(void) {
 
   float norm_squared = 0.0F;
   for (int i = ESKF_QUAT_W; i <= ESKF_QUAT_Z; ++i) {
-    if (!isfinite(eskf.x_nom[i])) {
-      fprintf(stderr, "non-finite quaternion state\n");
-      return 1;
-    }
+    ASSERT_TRUE_MSG(isfinite(eskf.x_nom[i]), "non-finite quaternion state");
     norm_squared += eskf.x_nom[i] * eskf.x_nom[i];
   }
-  if (!isfinite(eskf.x_nom[ESKF_POS_Z]) || !isfinite(eskf.x_nom[ESKF_VEL_Z]) ||
-      fabsf(sqrtf(norm_squared) - 1.0F) > 1e-3F) {
-    fprintf(stderr, "invalid steady-state ESKF result\n");
-    return 1;
-  }
+  ASSERT_TRUE_MSG(isfinite(eskf.x_nom[ESKF_POS_Z]), "invalid steady-state position");
+  ASSERT_TRUE_MSG(isfinite(eskf.x_nom[ESKF_VEL_Z]), "invalid steady-state velocity");
+  ASSERT_NEAR_MSG(1.0F, sqrtf(norm_squared), 1e-3F, "quaternion is not unit length");
   for (int row = 0; row < ESKF_ERROR_DIM; ++row) {
-    if (!isfinite(eskf.P[row * ESKF_ERROR_DIM + row]) ||
-        eskf.P[row * ESKF_ERROR_DIM + row] < 0.0F) {
-      fprintf(stderr, "invalid covariance diagonal\n");
-      return 1;
-    }
+    ASSERT_TRUE_MSG(isfinite(eskf.P[row * ESKF_ERROR_DIM + row]), "invalid covariance diagonal");
+    ASSERT_GE_MSG(eskf.P[row * ESKF_ERROR_DIM + row], 0.0F, "invalid covariance diagonal");
     for (int column = row + 1; column < ESKF_ERROR_DIM; ++column) {
-      const float difference =
-          fabsf(eskf.P[row * ESKF_ERROR_DIM + column] - eskf.P[column * ESKF_ERROR_DIM + row]);
-      if (difference > 1e-5F) {
-        fprintf(stderr, "covariance is not symmetric\n");
-        return 1;
-      }
+      ASSERT_NEAR_MSG(eskf.P[row * ESKF_ERROR_DIM + column], eskf.P[column * ESKF_ERROR_DIM + row],
+                      1e-5F, "covariance is not symmetric");
     }
   }
 
@@ -62,10 +49,7 @@ int main(void) {
     eskf_set_measurement(&eskf, measurement);
     eskf_update(&eskf);
   }
-  if (eskf.launched) {
-    fprintf(stderr, "fixed-pressure handling shock falsely detected launch\n");
-    return 1;
-  }
+  ASSERT_FALSE_MSG(eskf.launched, "fixed-pressure handling shock falsely detected launch");
   eskf_predict(&eskf, control, 0.01F);
   eskf_set_measurement(&eskf, measurement);
   eskf_update(&eskf);
@@ -76,10 +60,7 @@ int main(void) {
     eskf_set_measurement(&eskf, launch_measurement);
     eskf_update(&eskf);
   }
-  if (!eskf.launched) {
-    fprintf(stderr, "confirmed motor impulse and pressure rise missed launch\n");
-    return 1;
-  }
+  ASSERT_TRUE_MSG(eskf.launched, "confirmed motor impulse and pressure rise missed launch");
 
   /* After apogee, a sustained stationary IMU and pressure signal produces a
    * zero-velocity update. */
@@ -97,10 +78,9 @@ int main(void) {
     eskf_set_measurement(&eskf, measurement);
     eskf_update(&eskf);
   }
-  if (!eskf.landed || fabsf(eskf.x_nom[ESKF_VEL_Z]) > 1e-6F) {
-    fprintf(stderr, "stationary post-apogee state did not zero velocity\n");
-    return 1;
-  }
+  ASSERT_TRUE_MSG(eskf.landed, "stationary post-apogee state did not land");
+  ASSERT_NEAR_MSG(0.0F, eskf.x_nom[ESKF_VEL_Z], 1e-6F,
+                  "stationary post-apogee state did not zero velocity");
 
   /* A selectively decoupled pressure gain is no longer the optimal Kalman
    * gain.  Its covariance update must still preserve positive semidefiniteness.
@@ -129,9 +109,8 @@ int main(void) {
           eskf.P[ESKF_DVEL_Z * ESKF_ERROR_DIM + ESKF_DVEL_Z] -
       eskf.P[ESKF_DPOS_Z * ESKF_ERROR_DIM + ESKF_DVEL_Z] *
           eskf.P[ESKF_DVEL_Z * ESKF_ERROR_DIM + ESKF_DPOS_Z];
-  if (position_velocity_determinant < -1e-6F) {
-    fprintf(stderr, "pressure decoupling made covariance indefinite\n");
-    return 1;
-  }
-  return 0;
+  ASSERT_GE_MSG(position_velocity_determinant, -1e-6F,
+                "pressure decoupling made covariance indefinite");
 }
+
+UTEST_MAIN()

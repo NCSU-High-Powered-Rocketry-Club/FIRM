@@ -8,7 +8,7 @@ repos:
     rev: v21.1.8
     hooks:
       - id: clang-format
-        files: ^(STM32/Core|processing/firm/eskf_lab/native|tests/protocol)/.*\.(c|h)$
+        files: ^(STM32/Core|STM32/tests|processing/firm/eskf_lab/native|tests/protocol|tests/integration)/.*\.(c|h)$
         # CubeMX regenerates these. Formatting outside USER CODE blocks would be
         # reverted on every regeneration and is therefore pointless.
         exclude: |
@@ -81,6 +81,7 @@ repos:
               STM32/USB_DEVICE/|
               STM32/FATFS/|
               STM32/cmake/|
+              STM32/tests/|
               STM32/Core/Src/system_stm32f4xx\.c|
               STM32/Core/Src/sysmem\.c|
               STM32/Core/Src/syscalls\.c|

@@ -1,5 +1,3 @@
-#include <unity.h>
-
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -7,6 +5,7 @@
 
 #include "mocking_handler.h"
 #include "system_state.h"
+#include "utest.h"
 
 #define TEST_RING_CAPACITY 16U
 #define TEST_RING_INSTANCE_MAX_BYTES 64U
@@ -147,7 +146,11 @@ static void capture_high_g_setter(int (*read_fn)(ADXL371RawData_t *)) {
   captured_high_g_fn = read_fn;
 }
 
-void setUp(void) {
+struct mocking_handler {
+  int unused;
+};
+
+UTEST_F_SETUP(mocking_handler) {
   fake_semaphore_count = 0U;
   mocking_handler_init(&fake_count_semaphore, 1U);
   mocking_handler_reset_delay_state();
@@ -160,21 +163,21 @@ void setUp(void) {
   mocking_handler_configure_sensor_task_injection(NULL);
 }
 
-void tearDown(void) {}
+UTEST_F_TEARDOWN(mocking_handler) {}
 
-void test_dispatch_without_init_returns_zero_and_does_not_make_data_readable(void) {
+UTEST_F(mocking_handler, dispatch_without_init_returns_zero_and_does_not_make_data_readable) {
   uint8_t message[1U + sizeof(uint32_t) + sizeof(BMP581RawData_t)] = {0};
   message[0] = (uint8_t)ID_BAROMETER;
 
   // Ring is not initialized here; dispatch should be a no-op.
   mocking_handler_init(NULL, 0U);
-  TEST_ASSERT_EQUAL_UINT32(0U, dispatch_mock_msg(message));
+  ASSERT_EQ(0U, dispatch_mock_msg(message));
 
   BMP581RawData_t out = {0};
-  TEST_ASSERT_EQUAL_INT(1, mocking_handler_read_barometer(&out));
+  ASSERT_EQ(1, mocking_handler_read_barometer(&out));
 }
 
-void test_dispatch_and_read_matching_sensor_packet_succeeds(void) {
+UTEST_F(mocking_handler, dispatch_and_read_matching_sensor_packet_succeeds) {
   BMP581RawData_t expected = {0};
   memset(&expected, 0xA5, sizeof(expected));
 
@@ -186,14 +189,14 @@ void test_dispatch_and_read_matching_sensor_packet_succeeds(void) {
   memcpy(&message[1U + sizeof(uint32_t)], &expected, sizeof(expected));
 
   // First mock sample establishes the delay baseline and should report zero delay.
-  TEST_ASSERT_EQUAL_UINT32(0U, dispatch_mock_msg(message));
+  ASSERT_EQ(0U, dispatch_mock_msg(message));
 
   BMP581RawData_t out = {0};
-  TEST_ASSERT_EQUAL_INT(0, mocking_handler_read_barometer(&out));
-  TEST_ASSERT_EQUAL_MEMORY(&expected, &out, sizeof(expected));
+  ASSERT_EQ(0, mocking_handler_read_barometer(&out));
+  ASSERT_MEMEQ(&expected, &out, sizeof(expected));
 }
 
-void test_dispatch_returns_ms_delay_between_samples_using_counter_instance(void) {
+UTEST_F(mocking_handler, dispatch_returns_ms_delay_between_samples_using_counter_instance) {
   uint8_t message_a[1U + sizeof(uint32_t) + sizeof(ICM45686RawData_t)] = {0};
   uint8_t message_b[1U + sizeof(uint32_t) + sizeof(ICM45686RawData_t)] = {0};
   const uint32_t t0_cycles = 10000U;
@@ -205,14 +208,14 @@ void test_dispatch_returns_ms_delay_between_samples_using_counter_instance(void)
   memcpy(&message_a[1], &t0_cycles, sizeof(t0_cycles));
   memcpy(&message_b[1], &t1_cycles, sizeof(t1_cycles));
 
-  TEST_ASSERT_EQUAL_UINT32(0U, dispatch_mock_msg(message_a));
+  ASSERT_EQ(0U, dispatch_mock_msg(message_a));
   // Conversion path truncates double->uint32_t, so 3 ms nominal delta can be
   // observed as 2 ms on some hosts due to floating-point representation.
   uint32_t delay_ms = dispatch_mock_msg(message_b);
-  TEST_ASSERT_TRUE((delay_ms == 2U) || (delay_ms == 3U));
+  ASSERT_TRUE((delay_ms == 2U) || (delay_ms == 3U));
 }
 
-void test_time_callback_returns_front_timestamp_then_last_popped_when_empty(void) {
+UTEST_F(mocking_handler, time_callback_returns_front_timestamp_then_last_popped_when_empty) {
   ICM45686RawData_t imu = {0};
   imu.accX_H = 0xABU;
 
@@ -226,16 +229,16 @@ void test_time_callback_returns_front_timestamp_then_last_popped_when_empty(void
   dispatch_mock_msg(message);
 
   // While queued, time callback should return the timestamp at the ring head.
-  TEST_ASSERT_EQUAL_UINT32(timestamp_cycles, mocking_handler_time_from_ring());
+  ASSERT_EQ(timestamp_cycles, mocking_handler_time_from_ring());
 
   ICM45686RawData_t out = {0};
-  TEST_ASSERT_EQUAL_INT(0, mocking_handler_read_imu(&out));
+  ASSERT_EQ(0, mocking_handler_read_imu(&out));
 
   // After pop, callback should return last known timestamp for continuity.
-  TEST_ASSERT_EQUAL_UINT32(timestamp_cycles, mocking_handler_time_from_ring());
+  ASSERT_EQ(timestamp_cycles, mocking_handler_time_from_ring());
 }
 
-void test_read_wrong_sensor_type_fails_without_consuming_head_instance(void) {
+UTEST_F(mocking_handler, read_wrong_sensor_type_fails_without_consuming_head_instance) {
   MMC5983MARawData_t expected = {0};
   memset(&expected, 0x3C, sizeof(expected));
 
@@ -250,14 +253,14 @@ void test_read_wrong_sensor_type_fails_without_consuming_head_instance(void) {
 
   // Wrong reader must fail and leave queued data untouched.
   BMP581RawData_t wrong_out = {0};
-  TEST_ASSERT_EQUAL_INT(1, mocking_handler_read_barometer(&wrong_out));
+  ASSERT_EQ(1, mocking_handler_read_barometer(&wrong_out));
 
   MMC5983MARawData_t out = {0};
-  TEST_ASSERT_EQUAL_INT(0, mocking_handler_read_magnetometer(&out));
-  TEST_ASSERT_EQUAL_MEMORY(&expected, &out, sizeof(expected));
+  ASSERT_EQ(0, mocking_handler_read_magnetometer(&out));
+  ASSERT_MEMEQ(&expected, &out, sizeof(expected));
 }
 
-void test_dispatch_invalid_identifier_returns_zero_and_queues_nothing(void) {
+UTEST_F(mocking_handler, dispatch_invalid_identifier_returns_zero_and_queues_nothing) {
   uint8_t message[1U + sizeof(uint32_t)] = {0};
   const uint32_t timestamp_cycles = 2000U;
 
@@ -265,13 +268,13 @@ void test_dispatch_invalid_identifier_returns_zero_and_queues_nothing(void) {
   message[0] = (uint8_t)ID_MOCK_REQUEST;
   memcpy(&message[1], &timestamp_cycles, sizeof(timestamp_cycles));
 
-  TEST_ASSERT_EQUAL_UINT32(0U, dispatch_mock_msg(message));
+  ASSERT_EQ(0U, dispatch_mock_msg(message));
 
   ADXL371RawData_t out = {0};
-  TEST_ASSERT_EQUAL_INT(1, mocking_handler_read_high_g(&out));
+  ASSERT_EQ(1, mocking_handler_read_high_g(&out));
 }
 
-void test_inject_hooks_calls_registered_setters_with_mocking_handler_functions(void) {
+UTEST_F(mocking_handler, inject_hooks_calls_registered_setters_with_mocking_handler_functions) {
   MockSensorTaskInjectFns_t inject_fns = {
       .set_time_fn = capture_time_setter,
       .set_barometer_read_fn = capture_barometer_setter,
@@ -283,14 +286,14 @@ void test_inject_hooks_calls_registered_setters_with_mocking_handler_functions(v
   mocking_handler_configure_sensor_task_injection(&inject_fns);
   mocking_handler_inject_sensor_task_hooks();
 
-  TEST_ASSERT_EQUAL_PTR(mocking_handler_time_from_ring, captured_time_fn);
-  TEST_ASSERT_EQUAL_PTR(mocking_handler_read_barometer, captured_barometer_fn);
-  TEST_ASSERT_EQUAL_PTR(mocking_handler_read_imu, captured_imu_fn);
-  TEST_ASSERT_EQUAL_PTR(mocking_handler_read_magnetometer, captured_magnetometer_fn);
-  TEST_ASSERT_EQUAL_PTR(mocking_handler_read_high_g, captured_high_g_fn);
+  ASSERT_TRUE(mocking_handler_time_from_ring == captured_time_fn);
+  ASSERT_TRUE(mocking_handler_read_barometer == captured_barometer_fn);
+  ASSERT_TRUE(mocking_handler_read_imu == captured_imu_fn);
+  ASSERT_TRUE(mocking_handler_read_magnetometer == captured_magnetometer_fn);
+  ASSERT_TRUE(mocking_handler_read_high_g == captured_high_g_fn);
 }
 
-void test_configure_injection_null_clears_hooks(void) {
+UTEST_F(mocking_handler, configure_injection_null_clears_hooks) {
   MockSensorTaskInjectFns_t inject_fns = {
       .set_time_fn = capture_time_setter,
       .set_barometer_read_fn = capture_barometer_setter,
@@ -303,9 +306,11 @@ void test_configure_injection_null_clears_hooks(void) {
   mocking_handler_configure_sensor_task_injection(NULL);
   mocking_handler_inject_sensor_task_hooks();
 
-  TEST_ASSERT_NULL(captured_time_fn);
-  TEST_ASSERT_NULL(captured_barometer_fn);
-  TEST_ASSERT_NULL(captured_imu_fn);
-  TEST_ASSERT_NULL(captured_magnetometer_fn);
-  TEST_ASSERT_NULL(captured_high_g_fn);
+  ASSERT_TRUE(captured_time_fn == NULL);
+  ASSERT_TRUE(captured_barometer_fn == NULL);
+  ASSERT_TRUE(captured_imu_fn == NULL);
+  ASSERT_TRUE(captured_magnetometer_fn == NULL);
+  ASSERT_TRUE(captured_high_g_fn == NULL);
 }
+
+UTEST_MAIN()

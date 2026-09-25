@@ -30,7 +30,7 @@
         },
         {
             "name": "host",
-            "displayName": "Host (native ESKF + protocol tests)",
+            "displayName": "Host (native ESKF + all C tests)",
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/build/host",
             "cacheVariables": {

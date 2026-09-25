@@ -25,7 +25,7 @@ build-host:
 build-rust:
     cargo build --workspace
 
-# Ceedling firmware tests + host CTest (ESKF + wire layout) + cargo + pytest.
+# Every C test (CTest) + cargo + pytest.
 test:
     #!/usr/bin/env bash
     set +e
@@ -42,8 +42,7 @@ test:
         codes+=("${code}")
         return 0
     }
-    run_suite firmware just test-firmware
-    run_suite host just test-host
+    run_suite c just test-host
     run_suite rust just test-rust
     run_suite python just test-python
     echo
@@ -59,12 +58,13 @@ test:
     done
     exit "${failed}"
 
-# Firmware Unity tests via Ceedling (Ruby >= 3.0, `gem install ceedling -v 1.0.1`).
-test-firmware:
-    cd STM32/tests && ceedling test:all
-
+# Every C test: firmware unit tests, host ESKF, and wire layout (utest.h + CTest).
 test-host: build-host
-    ctest --preset host --output-on-failure
+    ctest --preset host
+
+# Only the firmware unit tests in STM32/tests.
+test-firmware: build-host
+    ctest --preset host -L firmware
 
 test-rust:
     cargo test --workspace
@@ -73,7 +73,7 @@ test-rust:
 test-python:
     uv run pytest -m "not integration"
 
-test-integration:
+test-integration: build-host
     uv run pytest -m integration
 
 lint: lint-ruff lint-rust lint-clang
@@ -90,6 +90,6 @@ lint-rust:
 lint-clang:
     uv run pre-commit run clang-format --all-files --show-diff-on-failure
 
-# Local coverage of the firmware, host, rust, python, and lint CI jobs.
+# Local coverage of the firmware, c-tests, rust, python, and lint CI jobs.
 # Skips integration (Node + wasm-pack); run `just test-integration` for that.
-ci: build-firmware test-firmware test-host test-rust test-python lint
+ci: build-firmware test-host test-rust test-python lint

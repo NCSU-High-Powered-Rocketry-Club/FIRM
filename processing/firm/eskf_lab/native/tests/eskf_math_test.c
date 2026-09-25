@@ -1,38 +1,27 @@
 #include "eskf_config.h"
 #include "eskf_functions.h"
+#include "utest.h"
 
-#include <math.h>
-#include <stdio.h>
 #include <string.h>
 
-static int close_enough(float actual, float expected, float tolerance, const char *label) {
-  if (!isfinite(actual) || fabsf(actual - expected) > tolerance) {
-    fprintf(stderr, "%s: expected %.9g, got %.9g\n", label, (double)expected, (double)actual);
-    return 0;
-  }
-  return 1;
-}
-
-static int test_known_nominal_motion(void) {
+UTEST(eskf_math, known_nominal_motion) {
   float identity_data[9] = {1.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 1.0F};
   matrix_instance_f32 identity = {3, 3, identity_data};
 
   float stationary_state[ESKF_NOMINAL_DIM] = {0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F};
   const float stationary_input[ESKF_CONTROL_DIM] = {0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F};
   eskf_nominal_predict(stationary_state, stationary_input, 0.1F, &identity);
-  if (!close_enough(stationary_state[ESKF_POS_Z], 0.0F, 1e-6F, "stationary position") ||
-      !close_enough(stationary_state[ESKF_VEL_Z], 0.0F, 1e-6F, "stationary velocity")) {
-    return 0;
-  }
+  ASSERT_NEAR_MSG(0.0F, stationary_state[ESKF_POS_Z], 1e-6F, "stationary position");
+  ASSERT_NEAR_MSG(0.0F, stationary_state[ESKF_VEL_Z], 1e-6F, "stationary velocity");
 
   float rotation_state[ESKF_NOMINAL_DIM] = {0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F};
   const float rotation_input[ESKF_CONTROL_DIM] = {0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 90.0F};
   eskf_nominal_predict(rotation_state, rotation_input, 1.0F, &identity);
-  return close_enough(rotation_state[ESKF_QUAT_W], SQRT2_INV, 1e-5F, "yaw quaternion w") &&
-         close_enough(rotation_state[ESKF_QUAT_Z], SQRT2_INV, 1e-5F, "yaw quaternion z");
+  ASSERT_NEAR_MSG(SQRT2_INV, rotation_state[ESKF_QUAT_W], 1e-5F, "yaw quaternion w");
+  ASSERT_NEAR_MSG(SQRT2_INV, rotation_state[ESKF_QUAT_Z], 1e-5F, "yaw quaternion z");
 }
 
-static int test_pressure_measurement_jacobian(void) {
+UTEST(eskf_math, pressure_measurement_jacobian) {
   const float initial_pressure = 101325.0F;
   const float mag_world[3] = {0.2F, 0.4F, 0.8F};
   const float identity[9] = {1.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 1.0F};
@@ -53,10 +42,10 @@ static int test_pressure_measurement_jacobian(void) {
   eskf_measurement_function(lower_state, initial_pressure, mag_world, &rotation, lower_measurement);
   eskf_measurement_function(upper_state, initial_pressure, mag_world, &rotation, upper_measurement);
   const float numerical = (upper_measurement[0] - lower_measurement[0]) / (2.0F * epsilon);
-  return close_enough(jacobian[0], numerical, 0.02F, "pressure measurement Jacobian");
+  ASSERT_NEAR_MSG(numerical, jacobian[0], 0.02F, "pressure measurement Jacobian");
 }
 
-static int test_velocity_error_jacobian(void) {
+UTEST(eskf_math, velocity_error_jacobian) {
   float identity_data[9] = {1.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 1.0F};
   matrix_instance_f32 identity = {3, 3, identity_data};
   const float orientation[3] = {0.4F, -0.3F, 0.7F};
@@ -92,15 +81,12 @@ static int test_velocity_error_jacobian(void) {
     eskf_nominal_predict(negative_state, input, dt, &identity);
     const float numerical =
         (positive_state[ESKF_VEL_Z] - negative_state[ESKF_VEL_Z]) / (2.0F * epsilon);
-    if (!close_enough(jacobian[ESKF_DVEL_Z * ESKF_ERROR_DIM + ESKF_DTHETA_X + axis], numerical,
-                      2e-4F, "velocity error Jacobian")) {
-      return 0;
-    }
+    ASSERT_NEAR_MSG(numerical, jacobian[ESKF_DVEL_Z * ESKF_ERROR_DIM + ESKF_DTHETA_X + axis], 2e-4F,
+                    "velocity error Jacobian");
   }
-  return 1;
 }
 
-static int test_magnetometer_measurement_jacobian(void) {
+UTEST(eskf_math, magnetometer_measurement_jacobian) {
   const float mag_world[3] = {0.2F, -0.5F, 0.84F};
   const float orientation[3] = {-0.5F, 0.2F, 0.6F};
   const float epsilon = 1e-3F;
@@ -146,19 +132,10 @@ static int test_magnetometer_measurement_jacobian(void) {
       const float numerical =
           (positive_measurement[1 + component] - negative_measurement[1 + component]) /
           (2.0F * epsilon);
-      if (!close_enough(jacobian[(1 + component) * ESKF_ERROR_DIM + ESKF_DTHETA_X + axis],
-                        numerical, 2e-4F, "magnetometer measurement Jacobian")) {
-        return 0;
-      }
+      ASSERT_NEAR_MSG(numerical, jacobian[(1 + component) * ESKF_ERROR_DIM + ESKF_DTHETA_X + axis],
+                      2e-4F, "magnetometer measurement Jacobian");
     }
   }
-  return 1;
 }
 
-int main(void) {
-  if (!test_known_nominal_motion() || !test_pressure_measurement_jacobian() ||
-      !test_velocity_error_jacobian() || !test_magnetometer_measurement_jacobian()) {
-    return 1;
-  }
-  return 0;
-}
+UTEST_MAIN()

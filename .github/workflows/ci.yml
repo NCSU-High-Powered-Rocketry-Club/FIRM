@@ -24,29 +24,15 @@ jobs:
       - name: Build firmware
         run: just build-firmware
 
-  firmware-tests:
-    name: firmware-tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: extractions/setup-just@v2
-      - uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: "3.3"
-      - name: Install Ceedling
-        run: gem install ceedling -v 1.0.1
-      - name: Firmware Unity tests (Ceedling)
-        run: just test-firmware
-
-  host-eskf:
-    name: host-eskf
+  c-tests:
+    name: c-tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: extractions/setup-just@v2
       - name: Install Ninja
         run: sudo apt-get update && sudo apt-get install -y ninja-build
-      - name: Host ESKF and wire-layout tests
+      - name: Firmware, ESKF, and wire-layout tests (CTest)
         run: just test-host
 
   rust:

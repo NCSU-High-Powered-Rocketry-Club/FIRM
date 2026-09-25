@@ -1,28 +1,13 @@
-cmake_minimum_required(VERSION 3.22)
-project(firm_eskf_host C)
-
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS ON)
-
-get_filename_component(FIRM_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../../.." ABSOLUTE)
-set(STM32_ROOT "${FIRM_ROOT}/STM32")
+# Host ESKF library and replay tool. Configured from the repo root (`host` preset).
 
 add_library(firm_eskf_core STATIC
-    "${STM32_ROOT}/Core/Src/data_processing/error_state_kalman_filter.c"
-    "${STM32_ROOT}/Core/Src/data_processing/eskf_functions.c"
-    "${STM32_ROOT}/Core/Src/data_processing/eskf_config.c"
-    "${STM32_ROOT}/Core/Src/data_processing/matrix_helper.c"
+    ${FIRM_ESKF_SOURCES}
     src/settings_manager_host.c
 )
 
 target_include_directories(firm_eskf_core PUBLIC
     include
-    "${STM32_ROOT}/Core/Inc"
-    "${STM32_ROOT}/Core/Inc/data_processing"
-    "${STM32_ROOT}/Core/Inc/interfaces"
-    "${STM32_ROOT}/Core/Inc/modules"
-    "${STM32_ROOT}/Core/Inc/shared_data"
+    ${FIRM_HOST_INCLUDE_DIRS}
 )
 
 if(MSVC)
@@ -37,13 +22,7 @@ target_link_libraries(firm_eskf_replay PRIVATE firm_eskf_core)
 # Fixed location so `firm-eskf` finds the replay in <build dir>/bin.
 set_target_properties(firm_eskf_replay PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
-include(CTest)
 if(BUILD_TESTING)
-    add_executable(firm_eskf_smoke_test tests/eskf_smoke_test.c)
-    target_link_libraries(firm_eskf_smoke_test PRIVATE firm_eskf_core)
-    add_test(NAME firm_eskf_smoke_test COMMAND firm_eskf_smoke_test)
-
-    add_executable(firm_eskf_math_test tests/eskf_math_test.c)
-    target_link_libraries(firm_eskf_math_test PRIVATE firm_eskf_core)
-    add_test(NAME firm_eskf_math_test COMMAND firm_eskf_math_test)
+    firm_add_c_test(firm_eskf_smoke_test SOURCES tests/eskf_smoke_test.c LIBS firm_eskf_core LABELS eskf)
+    firm_add_c_test(firm_eskf_math_test SOURCES tests/eskf_math_test.c LIBS firm_eskf_core LABELS eskf)
 endif()

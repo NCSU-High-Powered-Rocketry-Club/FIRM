@@ -18,4 +18,3 @@ typedef struct {
 } SPI_HandleTypeDef;
 
 void HAL_Delay(uint32_t Delay);
-
