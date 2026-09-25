@@ -7,6 +7,6 @@ export {
   type FIRMResponse,
   type DeviceInfo,
   type DeviceConfig,
-  type DeviceProtocol,
+  DeviceProtocol,
   type CalibrationValues,
 } from './types.js';

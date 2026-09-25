@@ -36,8 +36,10 @@ pub mod mock_serial;
 ///    client.start();
 ///
 ///    loop {
-///         while let Ok(packet) = client.get_packets(Some(Duration::from_millis(100))) {
-///             println!("{:#?}", packet);
+///         while let Ok(packets) = client.get_data_packets(Some(Duration::from_millis(100))) {
+///             for packet in packets {
+///                 println!("{:#?}", packet);
+///             }
 ///         }
 ///     }
 /// }
