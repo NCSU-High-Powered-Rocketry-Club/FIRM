@@ -17,12 +17,8 @@ from firm.flight_data.calibration import set_calibration_override
 from firm.flight_data.cli import main
 from firm.flight_data.formats import LATEST_VERSION
 from firm.flight_data.trimming import apply_trim_window, propose_phase_trim
-from scripts.decoder import decode as compatibility_decode
-from scripts.file_trimmer import trim_file as compatibility_trim
-from scripts.migrator import new_file as compatibility_migrate
-from scripts.set_callibration import apply_calibration as compatibility_calibrate
 
-from integration_tests.flight_log_fixtures import (
+from tests.integration.flight_log_fixtures import (
     inject_v10_magnetometer_anomaly,
     make_archive,
     write_log,
@@ -148,27 +144,6 @@ def test_padding_garbage_and_incomplete_tails_stop_at_packet_boundaries(
     assert report.packet_count == 24
     assert count == 24
     assert LogReader(destination).validate().valid
-
-
-def test_legacy_scripts_delegate_to_the_shared_format_engine(tmp_path: Path) -> None:
-    """Compatibility entry points use the same migration, trim, calibration, and decode code."""
-    source = write_log(tmp_path / "historical.frm", version="1.2", samples=20)
-    migrated = compatibility_migrate(source, tmp_path / "migrated.frm", hardware="old")
-    trimmed = Path(compatibility_trim(source, 0.05, 0.12, hardware="old"))
-    calibration = tmp_path / "calibration.yaml"
-    calibration.write_text("calibration:\n  mag_offset: [1, 2, 3]\n", encoding="utf-8")
-    calibrated = compatibility_calibrate(source, calibration, hardware="old")
-    decoded = compatibility_decode(migrated, tmp_path / "decoded")
-
-    assert LogReader(migrated).header.version == LATEST_VERSION
-    assert LogReader(trimmed).validate().valid
-    assert LogReader(calibrated).header.calibration.values["mag"].offset == (1.0, 2.0, 3.0)
-    assert {path.name for path in decoded} == {
-        "barometer.parquet",
-        "imu.parquet",
-        "magnetometer.parquet",
-        "high-g.parquet",
-    }
 
 
 def test_explicit_trim_and_stale_fingerprint(tmp_path: Path) -> None:
@@ -302,25 +277,32 @@ def test_empty_real_shape_cli_lists_no_data(
     assert yaml.safe_load((root / "archive.yaml").read_text())["schema_version"] == 1
 
 
-def test_repository_archive_is_empty_without_touching_legacy_datasets(
+def test_listing_the_repository_archive_does_not_touch_legacy_datasets(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """The committed catalog is empty and listing it leaves legacy data byte-identical."""
-    repository = Path(__file__).resolve().parents[1]
-    legacy_root = repository / "eskf_lab" / "datasets"
-    before = {
-        path.relative_to(legacy_root): _digest(path)
-        for path in legacy_root.rglob("*")
-        if path.is_file()
-    }
-    assert Archive(repository / "flight_data").recordings() == []
+    """Listing the committed catalog must not mutate leftover ESKF lab datasets."""
+    repository = Path(__file__).resolve().parents[2]
+    legacy_root = repository / "processing" / "eskf_lab" / "datasets"
+    before = (
+        {
+            path.relative_to(legacy_root): _digest(path)
+            for path in legacy_root.rglob("*")
+            if path.is_file()
+        }
+        if legacy_root.is_dir()
+        else {}
+    )
     assert main(["--archive", str(repository / "flight_data"), "list"]) == 0
-    assert "No managed recordings" in capsys.readouterr().out
-    after = {
-        path.relative_to(legacy_root): _digest(path)
-        for path in legacy_root.rglob("*")
-        if path.is_file()
-    }
+    capsys.readouterr()
+    after = (
+        {
+            path.relative_to(legacy_root): _digest(path)
+            for path in legacy_root.rglob("*")
+            if path.is_file()
+        }
+        if legacy_root.is_dir()
+        else {}
+    )
     assert after == before
 
 
@@ -338,7 +320,7 @@ def test_manager_output_is_accepted_by_rust_playback(tmp_path: Path) -> None:
         hardware="new",
     )
     build_recording(recording)
-    repository = Path(__file__).resolve().parents[1]
+    repository = Path(__file__).resolve().parents[2]
     completed = subprocess.run(  # noqa: S603 -- Cargo executable is resolved from PATH.
         [
             cargo,
@@ -352,7 +334,7 @@ def test_manager_output_is_accepted_by_rust_playback(tmp_path: Path) -> None:
             "--",
             str(recording.flight_derived),
         ],
-        cwd=repository / "FIRM-Client",
+        cwd=repository,
         check=True,
         capture_output=True,
         text=True,

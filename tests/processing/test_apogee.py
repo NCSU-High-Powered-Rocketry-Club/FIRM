@@ -8,13 +8,13 @@ from typing import TYPE_CHECKING
 
 import polars as pl
 import pytest
-from firm.eskf_lab.apogee import (
+from eskf_lab.apogee import (
     HPRM_APOGEE_COLUMN,
     add_hprm_apogee_predictions,
     load_rocket_properties,
 )
-from firm.eskf_lab.native import calculate_metrics
-from firm.eskf_lab.visualize import make_figure, select_default_columns
+from eskf_lab.native import calculate_metrics
+from eskf_lab.visualize import make_figure, select_default_columns
 
 if TYPE_CHECKING:
     from pathlib import Path

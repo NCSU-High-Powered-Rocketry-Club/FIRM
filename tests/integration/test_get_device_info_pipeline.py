@@ -17,8 +17,8 @@ from pathlib import Path
 
 import pytest
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-FIRM_CLIENT_ROOT = REPO_ROOT / "FIRM-Client"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+FIRM_CLIENT_ROOT = REPO_ROOT / "client"
 STM32_CORE_ROOT = REPO_ROOT / "STM32" / "Core"
 TYPESCRIPT_DIST_INDEX = FIRM_CLIENT_ROOT / "firm_typescript" / "typescript" / "dist" / "index.js"
 
@@ -271,7 +271,7 @@ def make_node_script(script_path: Path, bridge_port: int) -> None:
 def test_get_device_info_pipeline(tmp_path: Path) -> None:
     """Send and receive the raw one-ID-byte protocol without a translating bridge."""
     if not TYPESCRIPT_DIST_INDEX.exists():
-        pytest.skip("TypeScript client dist is missing; build FIRM-Client first.")
+        pytest.skip("TypeScript client dist is missing; build the client first.")
     node = shutil.which("node")
     if node is None:
         pytest.skip("Node.js is required for the Web Serial integration test.")

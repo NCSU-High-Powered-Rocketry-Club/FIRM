@@ -5,8 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import polars as pl
-from firm.eskf_lab.dataset import discover_datasets, prepare_dataset, resolve_dataset
-from firm.eskf_lab.profile import load_profile
+from eskf_lab.dataset import discover_datasets, prepare_dataset, resolve_dataset
+from eskf_lab.paths import DEFAULT_PROFILE
+from eskf_lab.profile import load_profile
 from firm.flight_data import Archive, build_recording
 from firm.flight_data.calibration import set_calibration_override
 
@@ -14,7 +15,7 @@ from .flight_data_fixture import make_archive, write_log
 
 
 def _profile() -> object:
-    return load_profile(Path(__file__).parents[1] / "config" / "default.toml")
+    return load_profile(DEFAULT_PROFILE)
 
 
 def _built_recording(tmp_path: Path):

@@ -14,10 +14,8 @@ import pytest
 # Assertions are the intended pytest API.
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-CLIENT_DIST_INDEX = (
-    REPO_ROOT / "FIRM-Client" / "firm_typescript" / "typescript" / "dist" / "index.js"
-)
+REPO_ROOT = Path(__file__).resolve().parents[2]
+CLIENT_DIST_INDEX = REPO_ROOT / "client" / "firm_typescript" / "typescript" / "dist" / "index.js"
 
 
 def build_stm32_data_message(
@@ -124,7 +122,7 @@ def parse_message_in_web_client(message: bytes, tmp_path: Path) -> dict[str, obj
 def test_web_client_parses_raw_stm32_usb_telemetry(tmp_path: Path) -> None:
     """Require the Web/WASM client to expose a raw STM32 telemetry message."""
     if not CLIENT_DIST_INDEX.exists():
-        pytest.skip("TypeScript client dist is missing; build FIRM-Client first.")
+        pytest.skip("TypeScript client dist is missing; build the client first.")
 
     next_message = build_stm32_data_message(timestamp=43.0, temperature=26.0, pressure=100_000.0)
     stream = build_stm32_data_message() + next_message[:9]
@@ -158,7 +156,7 @@ def test_web_client_parses_raw_stm32_usb_telemetry(tmp_path: Path) -> None:
 def test_web_client_resynchronizes_after_partial_stm32_telemetry(tmp_path: Path) -> None:
     """Do not decode a payload byte as an ID when attachment occurs mid-packet."""
     if not CLIENT_DIST_INDEX.exists():
-        pytest.skip("TypeScript client dist is missing; build FIRM-Client first.")
+        pytest.skip("TypeScript client dist is missing; build the client first.")
 
     # The first byte of this timestamp is 0x01. Simulate opening Web Serial after
     # the true packet ID has already passed, followed by one complete packet.
@@ -178,7 +176,7 @@ def test_web_client_resynchronizes_after_partial_stm32_telemetry(tmp_path: Path)
 def test_web_client_rejects_false_config_response_inside_telemetry(tmp_path: Path) -> None:
     """Ignore a response ID found in telemetry before the real configuration."""
     if not CLIENT_DIST_INDEX.exists():
-        pytest.skip("TypeScript client dist is missing; build FIRM-Client first.")
+        pytest.skip("TypeScript client dist is missing; build the client first.")
     node = shutil.which("node")
     if node is None:
         pytest.skip("Node.js is required for the Web/WASM integration test.")
