@@ -77,7 +77,8 @@ int main(void) {
     eskf_update(&eskf);
   }
   if (!eskf.launched) {
-    fprintf(stderr, "confirmed motor impulse and pressure rise missed launch\n");
+    fprintf(stderr,
+            "confirmed motor impulse and pressure rise missed launch\n");
     return 1;
   }
 

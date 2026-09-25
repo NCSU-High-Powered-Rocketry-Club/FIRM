@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import polars as pl
-
 from firm.flight_data import Archive, Recording
 from firm.flight_data.archive import sha256_file
 from firm.flight_data.formats import TARGET_HARDWARE, LogReader

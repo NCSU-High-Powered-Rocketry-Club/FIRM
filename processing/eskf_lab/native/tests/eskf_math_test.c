@@ -128,7 +128,8 @@ static int test_magnetometer_measurement_jacobian(void) {
   float rotation_data[9];
   for (int row = 0; row < 3; ++row) {
     for (int column = 0; column < 3; ++column) {
-      rotation_data[row * 3 + column] = eskf_v2_R_mag_to_board[column * 3 + row];
+      rotation_data[row * 3 + column] =
+          eskf_v2_R_mag_to_board[column * 3 + row];
     }
   }
   matrix_instance_f32 rotation = {3, 3, rotation_data};
