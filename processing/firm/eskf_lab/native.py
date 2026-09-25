@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 import struct
 import subprocess
 import time
@@ -80,29 +81,68 @@ def _run_checked(command: list[str], *, cwd: Path = REPO_ROOT) -> subprocess.Com
         raise RuntimeError(f"command failed ({' '.join(command)}):\n{detail}") from error
 
 
-NATIVE_TARGETS = ("firm_eskf_replay", "firm_eskf_smoke_test", "firm_eskf_math_test")
+NATIVE_TEST_TARGETS = ("firm_eskf_smoke_test", "firm_eskf_math_test")
 
 
 def build_native(build_dir: Path, *, run_tests: bool = True) -> Path:
     """Configure and incrementally build the native replay executable.
 
-    Always uses the repo-root ``host`` CMake preset; ``build_dir`` overrides the
-    preset's binary directory (``build/host`` by default). Only the ESKF targets
-    are built.
+    Uses the repo-root ``host`` CMake preset when Ninja is available; otherwise
+    configures the same cache variables with CMake's default generator.
+    ``build_dir`` overrides the preset's binary directory (``build/host`` by
+    default). Only the ESKF targets are built, and the test targets only when
+    ``run_tests`` is set.
     """
     build_dir = build_dir.resolve()
     if not (build_dir / "CMakeCache.txt").exists():
-        _run_checked(["cmake", "--preset", "host", "-B", str(build_dir)])
-    _run_checked(["cmake", "--build", str(build_dir), "--parallel", "--target", *NATIVE_TARGETS])
+        if shutil.which("ninja"):
+            _run_checked(["cmake", "--preset", "host", "-B", str(build_dir)])
+        else:
+            _run_checked(
+                [
+                    "cmake",
+                    "-S",
+                    str(REPO_ROOT),
+                    "-B",
+                    str(build_dir),
+                    "-DCMAKE_BUILD_TYPE=Release",
+                    "-DFIRM_BUILD_FIRMWARE=OFF",
+                    "-DBUILD_TESTING=ON",
+                ]
+            )
+    targets = ("firm_eskf_replay", *NATIVE_TEST_TARGETS) if run_tests else ("firm_eskf_replay",)
+    _run_checked(
+        [
+            "cmake",
+            "--build",
+            str(build_dir),
+            "--config",
+            "Release",
+            "--parallel",
+            "--target",
+            *targets,
+        ]
+    )
     if run_tests:
         _run_checked(
-            ["ctest", "--test-dir", str(build_dir), "-R", "^firm_eskf_", "--output-on-failure"]
+            [
+                "ctest",
+                "--test-dir",
+                str(build_dir),
+                "-C",
+                "Release",
+                "-R",
+                "^firm_eskf_",
+                "--output-on-failure",
+            ]
         )
 
-    for name in ("firm_eskf_replay", "firm_eskf_replay.exe"):
-        executable = build_dir / "bin" / name
-        if executable.is_file():
-            return executable
+    # Multi-config generators (Visual Studio) append the config to the output directory.
+    for directory in (build_dir / "bin", build_dir / "bin" / "Release"):
+        for name in ("firm_eskf_replay", "firm_eskf_replay.exe"):
+            executable = directory / name
+            if executable.is_file():
+                return executable
     raise RuntimeError(f"native build completed but {build_dir / 'bin'} has no firm_eskf_replay")
 
 

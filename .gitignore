@@ -66,7 +66,6 @@ dkms.conf
 /STM32/build
 mx.scratch
 .vscode/*
-!.vscode/settings.json
 !.vscode/c_cpp_properties.json
 /STM32/CMakeFiles
 /STM32/CMakeCache.txt
@@ -101,11 +100,21 @@ trace*.bin
 trace*.json
 
 # ESKF desktop lab: launch data and generated artifacts are intentionally local.
-/processing/firm/eskf_lab/datasets/*
-!/processing/firm/eskf_lab/datasets/README.md
+/processing/firm/eskf_lab/datasets/
 /processing/firm/eskf_lab/cache/
 /processing/firm/eskf_lab/results/
 /processing/firm/eskf_lab/build/
+
+# Pre-reorganization locations, kept so existing checkouts don't surface local data.
+/eskf_lab/datasets/
+/eskf_lab/cache/
+/eskf_lab/results/
+/eskf_lab/build/
+/python/scripts/*.TXT
+/python/scripts/*.csv
+/python/scripts/*.FRM
+/python/scripts/*.bak
+/python/scripts/*.yaml
 
 # Managed flight archive. Manifests and documentation stay visible to Git, while
 # acquired and generated data remains under the team's existing storage workflow.

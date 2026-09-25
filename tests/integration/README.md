@@ -23,5 +23,5 @@ Integration tests require:
 * Built TypeScript client:
 
 ```bash
-cd client && npm ci && npm run build
+cd client && npm ci
 ```

@@ -38,6 +38,8 @@ extras = [
 [tool.uv]
 cache-keys = [
     {file = "pyproject.toml"},
+    {file = "../Cargo.toml"},
+    {file = "../Cargo.lock"},
     {file = "firm_python/Cargo.toml"},
     {file = "firm_core/Cargo.toml"},
     {file = "firm_rust/Cargo.toml"},

@@ -144,7 +144,7 @@ and then upload to PyPI. At the minimum, we build for Linux x86_64 and aarch64 f
 .\compile.ps1
 ```
 
-This will create wheels in the `target/wheels` directory, for Python versions 3.10 to 3.14,
+This will create wheels in the repo-root `target/wheels` directory, for Python versions 3.10 to 3.14,
 for both x86_64 and aarch64.
 
 3. Make sure you also have a source distribution:
@@ -157,7 +157,7 @@ uv run maturin sdist
    organization on PyPI, so you have access to the project and can publish new versions.
 
 ```bash
-uv publish target/wheels/*
+uv publish ../target/wheels/*
 ```
 
 This will ask for PyPI credentials, make sure you get the token from the website.

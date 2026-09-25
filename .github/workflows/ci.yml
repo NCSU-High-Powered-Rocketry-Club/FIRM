@@ -119,6 +119,6 @@ jobs:
         run: just sync
       - name: Build TypeScript / WASM client
         working-directory: client
-        run: npm ci && npm run build
+        run: npm ci
       - name: pytest -m integration
         run: just test-integration

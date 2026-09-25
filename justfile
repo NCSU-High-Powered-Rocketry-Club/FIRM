@@ -4,9 +4,6 @@ set dotenv-load := false
 
 export CARGO_TERM_COLOR := "always"
 
-# wasm-bindgen cdylib; host cargo test/clippy cannot build it.
-cargo_host := "--workspace --exclude firm_typescript"
-
 default:
     @just --list
 
@@ -26,7 +23,7 @@ build-host:
     cmake --build --preset host
 
 build-rust:
-    cargo build {{cargo_host}}
+    cargo build --workspace
 
 # Ceedling firmware tests + host CTest (ESKF + wire layout) + cargo + pytest.
 test:
@@ -63,15 +60,14 @@ test:
     exit "${failed}"
 
 # Firmware Unity tests via Ceedling (Ruby >= 3.0, `gem install ceedling -v 1.0.1`).
-[working-directory: 'STM32/tests']
 test-firmware:
-    ceedling test:all
+    cd STM32/tests && ceedling test:all
 
 test-host: build-host
     ctest --preset host --output-on-failure
 
 test-rust:
-    cargo test {{cargo_host}}
+    cargo test --workspace
 
 # Default markers only. Integration tests that need Node live on `test-integration`.
 test-python:
@@ -88,7 +84,7 @@ lint-ruff:
 
 lint-rust:
     cargo fmt --all -- --check
-    cargo clippy {{cargo_host}} -- -D warnings
+    cargo clippy --workspace -- -D warnings
 
 # Same pinned clang-format and file list as the pre-commit hook (.pre-commit-config.yaml).
 lint-clang:
