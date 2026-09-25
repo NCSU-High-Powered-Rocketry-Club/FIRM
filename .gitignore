@@ -64,8 +64,11 @@ dkms.conf
 
 # FIRM code
 /STM32/build
+/STM32/tests/build/
 mx.scratch
 .vscode/*
+!.vscode/settings.json
+!.vscode/c_cpp_properties.json
 /STM32/CMakeFiles
 /STM32/CMakeCache.txt
 /STM32/build.ninja
@@ -75,12 +78,8 @@ mx.scratch
 cmake_install.cmake
 /STM32/compile_commands.json
 
-# log files in python/scripts folder
-python/scripts/*.TXT
-python/scripts/*.csv
-python/scripts/*.FRM
-python/scripts/*.bak
-python/scripts/*.yaml
+# Root Cargo workspace
+/target/
 
 # Python files:
 __pycache__/
@@ -103,11 +102,11 @@ trace*.bin
 trace*.json
 
 # ESKF desktop lab: launch data and generated artifacts are intentionally local.
-/eskf_lab/datasets/*
-!/eskf_lab/datasets/README.md
-/eskf_lab/cache/
-/eskf_lab/results/
-/eskf_lab/build/
+/processing/eskf_lab/datasets/*
+!/processing/eskf_lab/datasets/README.md
+/processing/eskf_lab/cache/
+/processing/eskf_lab/results/
+/processing/eskf_lab/build/
 
 # Managed flight archive. Manifests and documentation stay visible to Git, while
 # acquired and generated data remains under the team's existing storage workflow.
