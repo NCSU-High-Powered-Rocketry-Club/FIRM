@@ -41,7 +41,7 @@ just sync
 just build          # firmware Debug ELF + host ESKF + cargo
 just test           # firmware Unity + host CTest + cargo test + pytest (summary at the end)
 just lint           # ruff, rustfmt, clippy, clang-format
-just ci             # sequential local coverage matching GitHub Actions
+just ci             # local firmware/host/rust/python/lint
 ```
 
 Useful splits:
@@ -54,7 +54,7 @@ just test-python        # pytest, excluding @pytest.mark.integration
 just test-integration   # Node + WASM pipeline tests
 ```
 
-CI runs the same recipes as parallel jobs. Use `just --list` for the full set.
+CI runs those recipes as parallel jobs as well as a separate integration job (`just test-integration`) that needs Node and wasm-pack.
 
 ## CMake presets
 
@@ -76,7 +76,7 @@ uv run firm-trace -i STM32/trace.bin -o trace.json
 uv run firm-reconstruct --help
 ```
 
-Live USB uses `from firm_client import FIRMClient` (`uv sync --extra usb`), not `from firm import FIRM`.
+Live USB uses `from firm_client import FIRMClient` (`just sync`), not `from firm import FIRM`.
 
 ## Hardware
 

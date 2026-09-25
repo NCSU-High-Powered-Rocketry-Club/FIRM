@@ -94,5 +94,6 @@ lint-rust:
 lint-clang:
     clang-format --dry-run --Werror tests/protocol/firm_wire_layout_test.c processing/eskf_lab/native/src/*.c processing/eskf_lab/native/include/*.h processing/eskf_lab/native/tests/*.c
 
-# Sequential local coverage matching the GitHub Actions jobs.
+# Local coverage of the firmware, host, rust, python, and lint CI jobs.
+# Skips integration (Node + wasm-pack); run `just test-integration` for that.
 ci: build-firmware test-firmware test-host test-rust test-python lint
