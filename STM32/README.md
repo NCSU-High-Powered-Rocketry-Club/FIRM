@@ -57,7 +57,12 @@ To get a trace, debug the board with a ST-LINK. Pause execution, open up the `De
 
 The `>` is required for the command to be interpreted as a GDB command. This will save the trace to `STM32/trace.bin`.
 
-To format the trace, run `uv run .\python\scripts\convert_trace.py -i .\STM32\trace.bin -o trace.json` from the root of the repository.
+To format the trace, from the repository root run:
+
+```bash
+uv run firm-trace -i STM32/trace.bin -o trace.json
+```
+
 
 This will produce a json trace that can be visualized in [spall](https://gravitymoth.com/spall/spall.html) or [perfetto](https://ui.perfetto.dev)
 
