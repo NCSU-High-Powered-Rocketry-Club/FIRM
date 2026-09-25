@@ -588,7 +588,7 @@ provides-extras = ["extras"]
 
 [[package]]
 name = "firm-hprc"
-version = "0.3.0"
+version = "0.4.0"
 source = { editable = "processing" }
 dependencies = [
     { name = "dash" },
@@ -623,7 +623,7 @@ provides-extras = ["usb"]
 
 [[package]]
 name = "firm-workspace"
-version = "0.2.0"
+version = "0.0.0"
 source = { virtual = "." }
 
 [package.dev-dependencies]

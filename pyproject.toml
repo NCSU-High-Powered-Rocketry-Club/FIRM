@@ -1,6 +1,6 @@
 [project]
 name = "firm-workspace"
-version = "0.2.0"
+version = "0.0.0"
 description = "FIRM workspace: firmware, USB client, and post-flight processing"
 requires-python = ">=3.10,<3.16"
 license = "MIT"
