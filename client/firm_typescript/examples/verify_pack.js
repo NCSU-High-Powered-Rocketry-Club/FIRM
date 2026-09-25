@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 
 // --- CONFIGURATION ---
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT_DIR = path.resolve(__dirname, '../../'); // Go up to FIRM-Client root
+const ROOT_DIR = path.resolve(__dirname, '../../'); // client/ (npm package root)
 const TEMP_DIR = path.join(__dirname, 'temp_install'); // Where we fake the install
 const PORT = 8080;
 

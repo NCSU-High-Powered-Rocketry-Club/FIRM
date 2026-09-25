@@ -1,19 +1,17 @@
-# FIRM-Client
+# FIRM Client
 
-A modular Rust library for parsing FIRM data packets, with bindings for Python and WebAssembly.
+USB parser and client for FIRM, with Rust, Python, and WebAssembly bindings. This directory is a member of the repository Cargo workspace; run `cargo` from the **repository root**.
 
 ## Project Structure
 
-The project is organized as a Cargo workspace with the following crates:
-
 - **`firm_core`**: The core `no_std` crate containing the raw USB message parser and data structures. This is the foundation for all other crates and can be used in embedded environments.
 - **`firm_rust`**: A high-level Rust API that uses `serialport` to read from a serial device and provides a threaded client for receiving packets.
-- **`firm_python`**: Python bindings for the Rust client.
+- **`firm_python`**: Python bindings for the Rust client (`firm-client`).
 - **`firm_typescript`**: WebAssembly bindings and TypeScript code for using the parser in web applications.
 
 ## Philosophy
 
-The goal of FIRM-Client is to provide a single, efficient, and correct implementation of the FIRM parser that can be used across different ecosystems (Rust, Python, Web/JS, Embedded).
+The goal is a single, efficient implementation of the FIRM parser across Rust, Python, Web/JS, and embedded.
 By centralizing the parsing logic in `firm_core`, we ensure consistency and reduce code duplication.
 
 ## Building
@@ -30,48 +28,45 @@ By centralizing the parsing logic in `firm_core`, we ensure consistency and redu
 
 We assume that you are using a Unix-like environment (Linux or macOS).
 
-Windows users may need to adapt some commands (we will mention where this is the case), or use
-WSL (Windows Subsystem for Linux) for best compatibility.
+Windows users may need to adapt some commands, or use WSL.
 
 Make sure you have [Cargo](https://rustup.rs) and [uv](https://docs.astral.sh/uv/getting-started/installation/) installed.
 
 You would also need npm if you want to test the web/TypeScript bindings.
 Install it and Node.js here: https://nodejs.org/en/download/
 
-1.  **Build all Rust crates:**
+From the **repository root**:
+
+1.  **Build host Rust crates:**
 
     ```bash
-    cargo build
+    just build-rust
+    # or: cargo build --workspace --exclude firm_typescript
     ```
 
 2.  **Build Python bindings:**
 
     ```bash
+    just sync
     cargo build -p firm_python
-    uv sync
-    # or to build a wheel
-    uv run maturin build --release
     ```
 
 3.  **Build WASM/TypeScript:**
 
     ```bash
     cargo install wasm-pack
-    cd firm_typescript
+    cd client
     npm install
-    npm run clean
     npm run build
-
-    # For testing the code with examples/index.html
-    npx serve .
     ```
 
 ## Running Tests
 
-Ensure that you are in the FIRM-Client folder and run:
+From the repository root:
 
 ```bash
-cargo test
+just test-rust
+# or: cargo test --workspace --exclude firm_typescript
 ```
 
 ## Usage
@@ -183,4 +178,4 @@ This will ask for PyPI credentials, make sure you get the token from the website
 
 ## License
 
-Licensed under the MIT License. See `LICENSE` file for details.
+Licensed under the MIT License. See the repository `LICENSE` file for details.

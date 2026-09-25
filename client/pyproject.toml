@@ -5,10 +5,9 @@ build-backend = "maturin"
 [project]
 name = "firm-client"
 dynamic = ["version"]
-readme = "README.md"  # Todo: Make a python readme.md file
+readme = "README.md"
 description = "Python bindings for FIRM Client using Rust"
 license = "MIT"
-license-files = ["LICENSE"]
 requires-python = ">=3.10"
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -24,17 +23,7 @@ dependencies = []
 
 [project.urls]
 "Homepage" = "https://ncsurocketry.org"
-"Source" = "https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM-Client"
-
-[dependency-groups]
-dev = [
-    "msgspec>=0.20.0",
-    "pytest",
-    "maturin",
-    "ruff",
-    "pre-commit",
-    "ziglang"  # for maturin's zig support when cross-compiling
-]
+"Source" = "https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM"
 
 [project.optional-dependencies]
 extras = [
@@ -47,10 +36,13 @@ extras = [
 ]
 
 [tool.uv]
-# Rebuild package when any rust files change
-cache-keys = [{file = "pyproject.toml"}, {file = "Cargo.toml"}, {file = "**/*.rs"}]
-# Uncomment to build rust code in development mode (no optimizations, faster builds)
-# config-settings = { build-args = '--profile=dev' }
+cache-keys = [
+    {file = "pyproject.toml"},
+    {file = "firm_python/Cargo.toml"},
+    {file = "firm_core/Cargo.toml"},
+    {file = "firm_rust/Cargo.toml"},
+    {file = "**/*.rs"},
+]
 
 [tool.maturin]
 features = ["pyo3/extension-module"]
