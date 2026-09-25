@@ -148,7 +148,7 @@ Each replay creates a timestamped directory under `processing/eskf_lab/results/<
 - `metrics.json`: speed, apogee, smoothness, and finite-state summary
 - `run.json`: source/configuration provenance for reproducing the run
 
-`non-finite state values` means at least one ESKF state became `NaN` or `+/-Infinity`. This is a
+`non-finite state values` means that at least one ESKF state became `NaN` or `+/-Infinity`. This is a
 filter numerical-stability warning, not a CSV parsing warning. Once it happens, later calculations
 usually remain invalid. Use the last finite time region in the dashboard, covariance columns, and
 the raw sensor traces to diagnose the configuration or model behavior that preceded it.
