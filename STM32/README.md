@@ -16,9 +16,22 @@ This contains all of the STM32-based embedded code that runs on FIRM itself.
 
 6. Click the "Build" button on the bottom status bar to build the project.
 
-7. Run `uv sync`.
+7. From the repository root, run `just sync`.
 
 8. Run `uv run pre-commit install` to set up the git hook for automatic code formatting and linting, using `clang-format` & `clang-tidy`.
+
+9. Run `cmake --preset firmware-debug` from the repository root once. The `clang-tidy` hook reads
+   `build/firmware-debug/compile_commands.json`, which the VS Code extension's build (in
+   `STM32/build/`) does not create.
+
+## Unit tests
+
+Firmware unit tests live in `STM32/tests/` (not the repository-root `tests/` directory). They are
+built for your computer with the repository's `host` CMake preset and use
+[utest.h](../third_party/utest). From the repository root run `just test-firmware`
+(or `ctest --preset host -L firmware`). Each test links only the production files listed for it in
+`STM32/tests/CMakeLists.txt`; anything else it needs is faked in the test file or in
+`STM32/tests/support/`.
 
 
 ## Building the project
@@ -57,7 +70,12 @@ To get a trace, debug the board with a ST-LINK. Pause execution, open up the `De
 
 The `>` is required for the command to be interpreted as a GDB command. This will save the trace to `STM32/trace.bin`.
 
-To format the trace, run `uv run .\python\scripts\convert_trace.py -i .\STM32\trace.bin -o trace.json` from the root of the repository.
+To format the trace, from the repository root run:
+
+```bash
+uv run firm-trace -i STM32/trace.bin -o trace.json
+```
+
 
 This will produce a json trace that can be visualized in [spall](https://gravitymoth.com/spall/spall.html) or [perfetto](https://ui.perfetto.dev)
 

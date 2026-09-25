@@ -1,0 +1,66 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 22,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "firmware-debug",
+            "displayName": "Firmware Debug (ARM)",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/firmware-debug",
+            "toolchainFile": "${sourceDir}/STM32/cmake/gcc-arm-none-eabi.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "FIRM_BUILD_FIRMWARE": "ON"
+            }
+        },
+        {
+            "name": "firmware-release",
+            "displayName": "Firmware Release (ARM)",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/firmware-release",
+            "toolchainFile": "${sourceDir}/STM32/cmake/gcc-arm-none-eabi.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "FIRM_BUILD_FIRMWARE": "ON"
+            }
+        },
+        {
+            "name": "host",
+            "displayName": "Host (native ESKF + all C tests)",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/host",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "FIRM_BUILD_FIRMWARE": "OFF",
+                "BUILD_TESTING": "ON"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "firmware-debug",
+            "configurePreset": "firmware-debug"
+        },
+        {
+            "name": "firmware-release",
+            "configurePreset": "firmware-release"
+        },
+        {
+            "name": "host",
+            "configurePreset": "host"
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "host",
+            "configurePreset": "host",
+            "output": {
+                "outputOnFailure": true
+            }
+        }
+    ]
+}

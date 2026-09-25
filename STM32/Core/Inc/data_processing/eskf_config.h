@@ -11,7 +11,6 @@
  * Control       (6): accel(3), gyro(3) (sensor frame, g and deg/s)
  * ==================================================================== */
 
-
 /** Vector Dimensions */
 #define ESKF_NOMINAL_DIM 6
 #define ESKF_ERROR_DIM 5
@@ -93,14 +92,14 @@ extern const float eskf_q_diag[ESKF_ERROR_DIM];
 extern const float eskf_r_diag[ESKF_MEASUREMENT_DIM];
 
 /* Sensor-to-board rotation matrices (defined in eskf_config.c)
- *                                                                     
- * Three reference frames:                                             
+ *
+ * Three reference frames:
  *   sensor frame – each sensor IC's own coordinate axes, defined in datasheet
  *   board frame  – PCB body frame: +X forward, +Y left, +Z up (KiCad orientation to get forward)
  *   world frame  – intertial frame, quaternion state rotates from board to world
- *                                                                     
- * The following matrices handle sensor to board only. Board to world is        
- * determined by the ESKF quaternion state. 
+ *
+ * The following matrices handle sensor to board only. Board to world is
+ * determined by the ESKF quaternion state.
  */
 
 /* firmware v2 hardware (current PCB, FIRM v1.0) */

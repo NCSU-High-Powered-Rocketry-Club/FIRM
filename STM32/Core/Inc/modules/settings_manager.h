@@ -7,7 +7,6 @@
 #include <stdint.h>
 #include <string.h>
 
-
 /**
  * @brief sets up the settings manager by ensuring the storage has existing settings and
  * calibration data. If existing, saves to settings struct
@@ -28,7 +27,7 @@ int settings_manager_init();
  * @retval 0 on success, 1 on failure
  */
 int settings_write_calibration(Calibration_t *accel_calibration, Calibration_t *gyro_calibration,
-                                Calibration_t *mag_calibration, Calibration_t *high_g_calibration);
+                               Calibration_t *mag_calibration, Calibration_t *high_g_calibration);
 
 /**
  * @brief Writes the firm settings to the settings storage.
@@ -41,7 +40,7 @@ int settings_write_firm_settings(SystemSettings_t *firm_settings);
 /**
  * @brief Gets the singleton instance of the System Settings
  * @note this cannot be modified
- * 
+ *
  * @retval the SystemSettings_t struct
  */
 const SystemSettings_t *get_settings(void);

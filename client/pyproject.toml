@@ -1,0 +1,51 @@
+[build-system]
+requires = ["maturin>=1.8"]
+build-backend = "maturin"
+
+[project]
+name = "firm-client"
+dynamic = ["version"]
+readme = "README.md"
+description = "Python bindings for FIRM Client using Rust"
+license = "MIT"
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Rust",
+]
+dependencies = []
+
+[project.urls]
+"Homepage" = "https://ncsurocketry.org"
+"Source" = "https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM"
+
+[project.optional-dependencies]
+extras = [
+    "pandas>=2.0",
+    "plotly>=5.20",
+    "dash>=2.16",
+    "flask",
+    "matplotlib>=3.10.8",
+    "numpy",
+]
+
+[tool.uv]
+cache-keys = [
+    {file = "pyproject.toml"},
+    {file = "../Cargo.toml"},
+    {file = "../Cargo.lock"},
+    {file = "firm_python/Cargo.toml"},
+    {file = "firm_core/Cargo.toml"},
+    {file = "firm_rust/Cargo.toml"},
+    {file = "**/*.rs"},
+]
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
+manifest-path = "firm_python/Cargo.toml"

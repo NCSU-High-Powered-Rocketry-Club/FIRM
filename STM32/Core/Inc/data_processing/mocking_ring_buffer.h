@@ -17,18 +17,17 @@
  * @brief Injected counting semaphore operations used for instance count tracking.
  */
 typedef struct {
-	// Opaque handle supplied by caller.
-	void *context;
-	// Attempts to decrement count; returns false if count is zero.
-	bool (*try_take)(void *context);
-	// Increments count; returns true on success.
-	bool (*give)(void *context);
-	// Returns current count value.
-	size_t (*get_count)(void *context);
-	// Resets count to zero.
-	void (*reset)(void *context);
+  // Opaque handle supplied by caller.
+  void *context;
+  // Attempts to decrement count; returns false if count is zero.
+  bool (*try_take)(void *context);
+  // Increments count; returns true on success.
+  bool (*give)(void *context);
+  // Returns current count value.
+  size_t (*get_count)(void *context);
+  // Resets count to zero.
+  void (*reset)(void *context);
 } MockRingCountSemaphore_t;
-
 
 /**
  * @brief Reset ring indices and clear queued instance count.
