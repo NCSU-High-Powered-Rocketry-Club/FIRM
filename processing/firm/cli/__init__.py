@@ -1,1 +1,1 @@
-"""Console entry points for offline FIRM tools."""
+"""Console entrypoints for each of the offline FIRM tools."""
