@@ -65,7 +65,7 @@ def _try_get_float(obj: object, attr: str) -> float | None:
         return None
     try:
         return float(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 

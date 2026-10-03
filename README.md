@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM/actions/workflows/ci.yml/badge.svg)](https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.14%2B-blue.svg)](https://www.python.org/)
 [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org/)
 
 Filtered Inertial Rotation Module

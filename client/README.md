@@ -19,7 +19,7 @@ By centralizing the parsing logic in `firm_core`, we ensure consistency and redu
 ### Prerequisites
 
 - Rust (latest stable)
-- Python 3.11+ (for Python bindings)
+- Python 3.14+ (for Python bindings)
 - `maturin` (for building Python wheels)
 - `wasm-pack` (for building WASM)
 - Node.js/npm (for TypeScript)
@@ -100,7 +100,7 @@ You can install the library via pip (once published) or build from source.
 pip install firm-client
 ```
 
-This library supports Python 3.11 and above, including Python 3.14 free threaded.
+This library supports Python 3.14 and above, including the free-threaded build (3.14t).
 
 ```python
 from firm_client import FIRMClient
@@ -138,7 +138,7 @@ These crates are not published to crates.io yet. Depend on them from this reposi
 
 We need to first build wheels for each platform, right now the workflow is to do this locally
 and then upload to PyPI. At the minimum, we build for Linux x86_64 and aarch64 for python versions
-3.11+, including free threaded wheels.
+3.14 and 3.14t (free-threaded).
 
 1. Always bump the version in `firm_python/Cargo.toml` before publishing.
 
@@ -151,7 +151,7 @@ and then upload to PyPI. At the minimum, we build for Linux x86_64 and aarch64 f
 .\compile.ps1
 ```
 
-This will create wheels in the repo-root `target/wheels` directory, for Python versions 3.11 to 3.14,
+This will create wheels in the repo-root `target/wheels` directory, for Python 3.14 and 3.14t,
 for both x86_64 and aarch64.
 
 3. Make sure you also have a source distribution:
