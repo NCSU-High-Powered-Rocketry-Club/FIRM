@@ -41,7 +41,7 @@ From the repository root:
 
     ```bash
     just build-rust
-    # or: cargo build --workspace --exclude firm_typescript
+    # or: cargo build --workspace
     ```
 
 2.  Build Python bindings:
@@ -54,6 +54,7 @@ From the repository root:
 
     ```bash
     cargo install wasm-pack
+    rustup target add wasm32-unknown-unknown
     cd client
     npm install
     npm run build
@@ -65,7 +66,7 @@ From the repository root:
 
 ```bash
 just test-rust
-# or: cargo test --workspace --exclude firm_typescript
+# or: cargo test --workspace
 ```
 
 ## Usage
@@ -79,7 +80,8 @@ use firm_rust::FIRMClient;
 use std::{thread, time::Duration};
 
 fn main() {
-    let mut client = FIRMClient::new("/dev/ttyUSB0", 2_000_000, 0.1);
+    let mut client = FIRMClient::new("/dev/ttyUSB0", 2_000_000, 0.1)
+        .expect("failed to open serial port");
     client.start();
 
     loop {
@@ -94,7 +96,7 @@ fn main() {
 
 ### Python
 
-You can install the library via pip (once published) or build from source.
+Install the published package from PyPI, or build it from source with `just sync` (see above).
 
 ```bash
 pip install firm-client
@@ -136,23 +138,23 @@ These crates are not published to crates.io yet. Depend on them from this reposi
 
 ### Python Bindings (PyPI)
 
-We need to first build wheels for each platform, right now the workflow is to do this locally
-and then upload to PyPI. At the minimum, we build for Linux x86_64 and aarch64 for python versions
-3.14 and 3.14t (free-threaded).
+Wheels are built locally and then uploaded to PyPI. Each release covers Python 3.14 and 3.14t
+(free-threaded) on Linux x86_64, Linux aarch64, and Windows x86_64. Run every command in this section
+from the `client/` directory.
 
 1. Always bump the version in `firm_python/Cargo.toml` before publishing.
 
-2. Build the wheels 
+2. Build the wheels:
+
 ```bash
-# If you're on Linux
+# Linux or macOS (cross-compiles the Linux wheels with zig)
 ./compile.sh
 
-# If you're on Windows
+# Windows
 .\compile.ps1
 ```
 
-This will create wheels in the repo-root `target/wheels` directory, for Python 3.14 and 3.14t,
-for both x86_64 and aarch64.
+This creates the wheels in the repo-root `target/wheels` directory.
 
 3. Make sure you also have a source distribution:
 
@@ -171,6 +173,9 @@ This will ask for PyPI credentials, make sure you get the token from the website
 
 ### TypeScript Package (npm)
 
+Run these from the `client/` directory. Building needs `wasm-pack` and the `wasm32-unknown-unknown`
+Rust target (see the build instructions above).
+
 1. Always bump the version in `firm_typescript/Cargo.toml` and `package.json` before publishing. Make sure they match.
 
 2. Login to npm
@@ -180,8 +185,6 @@ This will ask for PyPI credentials, make sure you get the token from the website
 3. Publish it
 
 `npm publish`
-
-(Ensure the version in `package.json` is bumped before publishing.)
 
 ## License
 

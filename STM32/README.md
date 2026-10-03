@@ -4,40 +4,34 @@ This contains all of the STM32-based embedded code that runs on FIRM itself.
 ## Environment Setup
 
 1. Download the STM32CubeCLT from the [STMicroelectronics website](https://www.st.com/en/development-tools/stm32cubeclt.html) and install it on your machine.
+   It provides the ARM GNU toolchain, `STM32_Programmer_CLI`, and the ST-Link GDB server.
 
 2. Install the [STM32 VS Code Extension](https://marketplace.visualstudio.com/items?itemName=stmicroelectronics.stm32-vscode-extension).
 
 3. Restart VS Code.
 
 4. Open the STM32 folder of the repo in VS Code and use the extension to import the folder with the
-"Import CMake project" button.
+"Import CMake project" button. The import generates the local `.vscode/tasks.json` (flash tasks)
+and `.vscode/launch.json` (debug configurations) used below. Git ignores both files, so every
+clone has to be imported once.
 
 5. Configure your workspace by accepting the default settings from the pop-up messages in VS Code.
 
-6. Click the "Build" button on the bottom status bar to build the project.
+6. From the repository root, run `just sync`.
 
-7. From the repository root, run `just sync`.
+7. Run `uv run pre-commit install` to set up the git hook for automatic code formatting and linting, using `clang-format` & `clang-tidy`.
 
-8. Run `uv run pre-commit install` to set up the git hook for automatic code formatting and linting, using `clang-format` & `clang-tidy`.
-
-9. Run `cmake --preset firmware-debug` from the repository root once. The `clang-tidy` hook reads
+8. Run `cmake --preset firmware-debug` from the repository root once. The `clang-tidy` hook reads
    `build/firmware-debug/compile_commands.json`, which the VS Code extension's build (in
    `STM32/build/`) does not create.
 
-## Unit tests
-
-Firmware unit tests live in `STM32/tests/` (not the repository-root `tests/` directory). They are
-built for your computer with the repository's `host` CMake preset and use
-[utest.h](../third_party/utest). From the repository root run `just test-firmware`
-(or `ctest --preset host -L firmware`). Each test links only the production files listed for it in
-`STM32/tests/CMakeLists.txt`; anything else it needs is faked in the test file or in
-`STM32/tests/support/`.
-
-
 ## Building the project
 
-In VS Code, press `Ctrl+Shift+B` to bring up the build menu.
-Then click "CMake: build". You should see the build output in the terminal.
+In VS Code, click the "Build" button on the bottom status bar, or press `Ctrl+Shift+B` and select
+"CMake: build". You should see the build output in the terminal.
+
+From the command line (repository root), `just build-firmware` builds the same Debug ELF at
+`build/firmware-debug/STM32/FIRM.elf`.
 
 ## Flashing the firmware
 
@@ -47,8 +41,13 @@ To flash the firmware onto the STM32 microcontroller, follow these steps:
 
 2. Power FIRM via a USB-C cable or another power source.
 
-3. In VSCode, hit `Ctrl+Shift+P` to open the command palette. Then search for `Run Task` and select it. Then select the option which says to flash via SWD. 
+3. In VS Code, hit `Ctrl+Shift+P` to open the command palette. Then search for `Run Task` and select it. Then select the option which says to flash via SWD.
 
+Without VS Code, flash the ELF built by `just build-firmware` with the STM32CubeCLT programmer:
+
+```bash
+STM32_Programmer_CLI -c port=SWD -w build/firmware-debug/STM32/FIRM.elf -v -rst
+```
 
 ### Running the debugger
 
@@ -75,7 +74,6 @@ To format the trace, from the repository root run:
 ```bash
 uv run firm-trace -i STM32/trace.bin -o trace.json
 ```
-
 
 This will produce a json trace that can be visualized in [spall](https://gravitymoth.com/spall/spall.html) or [perfetto](https://ui.perfetto.dev)
 

@@ -37,9 +37,10 @@ uv run firm-eskf serve
 
 ## Managed recording format
 
-ESKF discovers only current recordings under the repository's `flight_data` manager. It does not
-scan or fall back to the legacy `eskf_lab/datasets` directory, and the new archive starts empty. Until a recording has been ingested and built, `list` is empty and
-`prepare`, `run`, and no-argument `serve` report that managed data is unavailable.
+ESKF discovers only current recordings under the repository's `flight_data` manager. A recording
+appears in `list` only after it has been ingested and built (`firm-log build`). If no recording is
+current, `list` is empty and `prepare`, `run`, and no-argument `serve` report that managed data is
+unavailable.
 
 ```text
 flight_data/launches/my-launch/recordings/primary/
@@ -58,7 +59,10 @@ them. ESKF retains those extra fields with a sensor prefix so they remain select
 Manager outputs are always expressed in the new-hardware sensor frame, including migrated legacy
 recordings, so ESKF replay consistently uses the current hardware orientation matrices.
 
-When `rocket_properties.json` is present, it must contain:
+A recording can optionally include a `rocket_properties.json` file in its recording directory
+(next to `recording.yaml`, for example
+`flight_data/launches/my-launch/recordings/primary/rocket_properties.json`). When present, it must
+contain:
 
 ```json
 {
@@ -83,10 +87,22 @@ firm-eskf prepare [DATASET ...] [--force]
 firm-eskf run [DATASET ...] [--force-prepare] [--force]
 firm-eskf test
 firm-eskf inspect RESULT
-firm-eskf plot RESULT [--columns COLUMN ...] [--open]
-firm-eskf compare RESULT RESULT [--columns COLUMN ...] [--open]
-firm-eskf serve [RESULT] [--port 8050]
+firm-eskf plot RESULT [--columns COLUMN ...] [--output HTML] [--max-points N] [--absolute-time] [--open]
+firm-eskf compare RESULT RESULT [RESULT ...] [--columns COLUMN ...] [--output HTML] [--max-points N] [--absolute-time] [--open]
+firm-eskf serve [RESULT] [--host HOST] [--port 8050] [--debug]
 ```
+
+Global options go before the subcommand and override the default locations:
+
+| Option              | Default                                    |
+|---------------------|--------------------------------------------|
+| `--flight-data-dir` | `flight_data`                              |
+| `--cache-dir`       | `processing/firm/eskf_lab/cache`           |
+| `--results-dir`     | `processing/firm/eskf_lab/results`         |
+| `--build-dir`       | `build/host`                               |
+| `--profile`         | `processing/firm/eskf_lab/config/default.toml` |
+
+For example, `uv run firm-eskf --results-dir /tmp/eskf-results run my-launch/primary`.
 
 `RESULT` can be a `result.parquet` path, a run directory, or a dataset name. A dataset name selects
 its latest run. `inspect` lists every available raw and filter column.

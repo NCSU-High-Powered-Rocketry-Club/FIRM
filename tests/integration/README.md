@@ -20,7 +20,15 @@ just test-integration     # Full integration suite (Node + WASM + host C harness
 
 - Node.js
 - Host C toolchain (the harness is built by `just build-host`, which `just test-integration` runs)
-- Built TypeScript client:
+- [`wasm-pack`](https://rustwasm.github.io/wasm-pack/) and the Rust WebAssembly target:
+
+```bash
+cargo install wasm-pack
+rustup target add wasm32-unknown-unknown
+```
+
+- Built TypeScript client (`npm ci` runs the `prepare` script, which builds the WASM package and
+  the TypeScript sources):
 
 ```bash
 cd client && npm ci

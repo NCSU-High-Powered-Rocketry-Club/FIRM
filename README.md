@@ -17,7 +17,7 @@ This repository holds the STM32 firmware (written in C), a USB client (Rust, wit
 
 | Path | What it is |
 |------|------------|
-| `STM32/` | Firmware (CubeMX / VS Code STM32 extension). Keep this name. |
+| `STM32/` | Firmware (CubeMX / VS Code STM32 extension) |
 | `client/` | USB client crates and `firm-client` Python bindings |
 | `processing/` | Offline tools: `firm-hprc` (`firm.flight_data`, `firm.eskf_lab`) |
 | `flight_data/` | Versioned flight-log archive (data only) |
@@ -25,13 +25,16 @@ This repository holds the STM32 firmware (written in C), a USB client (Rust, wit
 
 ## Setup
 
-Install [uv](https://docs.astral.sh/uv/), Rust, CMake, Ninja, and [just](https://github.com/casey/just). `just` is a command runner, so every `just <recipe>` below needs it on your `PATH`. Once uv is installed, the easiest way to get it on any OS is:
+Install [uv](https://docs.astral.sh/uv/), Rust, CMake, Ninja, a host C compiler, and [just](https://github.com/casey/just). Building the firmware (`just build`, `just build-firmware`, `just ci`) also needs the ARM GNU toolchain (`arm-none-eabi-gcc`) on your `PATH`. It comes with [STM32CubeCLT](https://www.st.com/en/development-tools/stm32cubeclt.html) (see [STM32/README.md](STM32/README.md)), or you can install the [Arm GNU Toolchain](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads) directly (CI uses 13.3.Rel1).
+
+`just` is a command runner, so every `just <recipe>` below needs it on your `PATH`. Once uv is installed, the easiest way to get it on any OS is:
 
 ```bash
 uv tool install rust-just
 ```
 
-Other options are `brew install just` (macOS), `winget install Casey.Just` (Windows), or `cargo install just`. See the [just install docs](https://just.systems/man/en/packages.html) for more. 
+Other options are `brew install just` (macOS), `winget install Casey.Just` (Windows), or `cargo install just`. See the [just install docs](https://just.systems/man/en/packages.html) for more.
+
 Clone the repo and sync Python packages:
 
 ```bash
@@ -63,7 +66,7 @@ uv run firm-trace -i STM32/trace.bin -o trace.json
 uv run firm-reconstruct --help
 ```
 
-Live USB uses `from firm_client import FIRMClient` (`just sync`), not `from firm import FIRM`.
+For live USB data from a connected FIRM, use `firm_client.FIRMClient`. See [client/README.md](client/README.md).
 
 ## Hardware
 
@@ -73,3 +76,5 @@ Live USB uses `from firm_client import FIRMClient` (`just sync`), not `from firm
 | STM32F405RGT6 | Microcontroller | [Datasheet](https://www.st.com/resource/en/datasheet/dm00037051.pdf)                                        |
 | MMC5983MA     | Magnetometer    | [Datasheet](https://media.digikey.com/pdf/Data%20Sheets/MEMSIC%20PDFs/MMC5983MA_RevA_4-3-19.pdf)            |
 | BMP581        | Pressure Sensor | [Datasheet](https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp581-ds004.pdf) |
+| ADXL371       | High-g Accelerometer | [Datasheet](https://www.analog.com/media/en/technical-documentation/data-sheets/adxl371.pdf)           |
+| W25Q128JV     | 128 Mbit SPI Flash | [Datasheet](https://www.winbond.com/resource-files/w25q128jv%20revf%2003272018%20plus.pdf)               |
