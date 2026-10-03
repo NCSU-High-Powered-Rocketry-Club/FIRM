@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM/actions/workflows/ci.yml/badge.svg)](https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org/)
 
 Filtered Inertial Rotation Module
@@ -25,7 +25,14 @@ This repository holds the STM32 firmware (written in C), a USB client (Rust, wit
 
 ## Setup
 
-Install [uv](https://docs.astral.sh/uv/), Rust, CMake, Ninja, and [just](https://github.com/casey/just). Clone the repo and sync Python packages:
+Install [uv](https://docs.astral.sh/uv/), Rust, CMake, Ninja, and [just](https://github.com/casey/just). `just` is a command runner, so every `just <recipe>` below needs it on your `PATH`. Once uv is installed, the easiest way to get it on any OS is:
+
+```bash
+uv tool install rust-just
+```
+
+Other options are `brew install just` (macOS), `winget install Casey.Just` (Windows), or `cargo install just`. See the [just install docs](https://just.systems/man/en/packages.html) for more. 
+Clone the repo and sync Python packages:
 
 ```bash
 git clone https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM.git
@@ -42,28 +49,8 @@ just build          # firmware Debug ELF + host ESKF + cargo
 just test           # all C tests (CTest) + cargo test + pytest (summary at the end)
 just lint           # ruff, rustfmt, clippy, clang-format
 just ci             # local firmware/host/rust/python/lint
+just --list         # list all just recipes including building/testing/linting individual targets
 ```
-
-Useful splits:
-
-```bash
-just build-firmware     # cmake --preset firmware-debug
-just test-host          # every C test: firmware, ESKF, wire layout (ctest --preset host)
-just test-firmware      # only the firmware unit tests (STM32/tests)
-just test-python        # pytest, excluding @pytest.mark.integration
-just test-integration   # Node + WASM pipeline tests
-```
-
-CI runs those recipes as parallel jobs as well as a separate integration job (`just test-integration`) that needs Node and wasm-pack.
-
-## CMake presets
-
-Configure from the **repository root**:
-
-- `firmware-debug` / `firmware-release` — ARM GNU, output in `build/firmware-*`
-- `host` — native ESKF replay and tests, output in `build/host`
-
-CLion: one CMake profile per preset. Do not point CMake at `STM32/` unless you are using the ST VS Code / CubeMX standalone project (`STM32/CMakePresets.json` is kept for that).
 
 ## Processing tools
 

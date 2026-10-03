@@ -19,7 +19,7 @@ By centralizing the parsing logic in `firm_core`, we ensure consistency and redu
 ### Prerequisites
 
 - Rust (latest stable)
-- Python 3.10+ (for Python bindings)
+- Python 3.11+ (for Python bindings)
 - `maturin` (for building Python wheels)
 - `wasm-pack` (for building WASM)
 - Node.js/npm (for TypeScript)
@@ -35,22 +35,22 @@ Make sure you have [Cargo](https://rustup.rs) and [uv](https://docs.astral.sh/uv
 You would also need npm if you want to test the web/TypeScript bindings.
 Install it and Node.js here: https://nodejs.org/en/download/
 
-From the **repository root**:
+From the repository root:
 
-1.  **Build host Rust crates:**
+1.  Build host Rust crates:
 
     ```bash
     just build-rust
     # or: cargo build --workspace --exclude firm_typescript
     ```
 
-2.  **Build Python bindings:**
+2.  Build Python bindings:
 
     ```bash
     just sync
     ```
 
-3.  **Build WASM/TypeScript:**
+3.  Build WASM/TypeScript:
 
     ```bash
     cargo install wasm-pack
@@ -100,7 +100,7 @@ You can install the library via pip (once published) or build from source.
 pip install firm-client
 ```
 
-This library supports Python 3.10 and above, including Python 3.14 free threaded.
+This library supports Python 3.11 and above, including Python 3.14 free threaded.
 
 ```python
 from firm_client import FIRMClient
@@ -138,7 +138,7 @@ These crates are not published to crates.io yet. Depend on them from this reposi
 
 We need to first build wheels for each platform, right now the workflow is to do this locally
 and then upload to PyPI. At the minimum, we build for Linux x86_64 and aarch64 for python versions
-3.10+, including free threaded wheels.
+3.11+, including free threaded wheels.
 
 1. Always bump the version in `firm_python/Cargo.toml` before publishing.
 
@@ -151,7 +151,7 @@ and then upload to PyPI. At the minimum, we build for Linux x86_64 and aarch64 f
 .\compile.ps1
 ```
 
-This will create wheels in the repo-root `target/wheels` directory, for Python versions 3.10 to 3.14,
+This will create wheels in the repo-root `target/wheels` directory, for Python versions 3.11 to 3.14,
 for both x86_64 and aarch64.
 
 3. Make sure you also have a source distribution:

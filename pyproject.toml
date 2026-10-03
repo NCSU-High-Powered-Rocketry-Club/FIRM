@@ -2,7 +2,7 @@
 name = "firm-workspace"
 version = "0.0.0"
 description = "FIRM workspace: firmware, USB client, and post-flight processing"
-requires-python = ">=3.10,<3.16"
+requires-python = ">=3.11,<3.16"
 license = "MIT"
 
 [tool.uv]
@@ -27,7 +27,7 @@ dev = [
 [tool.ruff]
 line-length = 100
 show-fixes = true
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 typing-extensions = false

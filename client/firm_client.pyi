@@ -1,6 +1,6 @@
 from enum import IntEnum
 from types import TracebackType
-from typing import ClassVar
+from typing import ClassVar, Self
 
 __version__: str
 
@@ -257,7 +257,7 @@ class FIRMClient:
     def is_running(self) -> bool: ...
     """True if the client reader thread is running."""
 
-    def __enter__(self) -> FIRMClient: ...
+    def __enter__(self) -> Self: ...
     """Context manager which calls start()."""
 
     def __exit__(

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import shutil
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -194,7 +194,7 @@ def build_recording(recording: Recording, request: BuildRequest | None = None) -
 
         effective_path = staging_derived / "effective-calibration.yaml"
         write_yaml_atomic(effective_path, calibration.to_mapping())
-        created = datetime.now(tz=timezone.utc).isoformat()
+        created = datetime.now(tz=UTC).isoformat()
         build_document: dict[str, Any] = {
             "schema_version": BUILD_SCHEMA_VERSION,
             "created_utc": created,

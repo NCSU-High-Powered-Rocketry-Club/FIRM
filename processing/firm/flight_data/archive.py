@@ -6,7 +6,7 @@ import hashlib
 import re
 import shutil
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -265,7 +265,7 @@ class Archive:
             if mag_cal_path is not None:
                 mag_destination = originals / "magnetometer-calibration.frm"
                 shutil.copyfile(mag_cal_path, mag_destination)
-            now = datetime.now(tz=timezone.utc).isoformat()
+            now = datetime.now(tz=UTC).isoformat()
             sources: dict[str, Any] = {
                 "flight": {
                     "path": "originals/flight.frm",

@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [
     { name = "High Powered Rocketry Club", email = "ncsurocketry@gmail.com"}
 ]
-requires-python = ">=3.10,<3.16"
+requires-python = ">=3.11,<3.16"
 license = "MIT"
 dependencies = [
     "dash>=2.16",
@@ -29,7 +29,6 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
