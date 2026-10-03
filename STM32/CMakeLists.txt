@@ -62,6 +62,8 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined library search paths
 )
 
+include(cmake/firm_sources.cmake)
+
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Libraries/BMP581/bmp581.c
@@ -79,10 +81,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/tasks/usb_read_data_task.c
     Core/Src/tasks/transmit_task.c
     
-    Core/Src/data_processing/matrix_helper.c
-    Core/Src/data_processing/error_state_kalman_filter.c
-    Core/Src/data_processing/eskf_functions.c
-    Core/Src/data_processing/eskf_config.c
+    ${FIRM_ESKF_SOURCES}
     Core/Src/data_processing/clock_cycle_count.c
     Core/Src/data_processing/mocking_ring_buffer.c
 

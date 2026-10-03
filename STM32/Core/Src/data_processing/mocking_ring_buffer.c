@@ -69,6 +69,4 @@ const void *mock_ring_peek(void) {
   return &ring_buffer[mock_buffer.tail];
 }
 
-size_t mock_ring_get_length(void) {
-  return count_semaphore.get_count(count_semaphore.context);
-}
+size_t mock_ring_get_length(void) { return count_semaphore.get_count(count_semaphore.context); }

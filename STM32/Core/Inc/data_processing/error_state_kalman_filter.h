@@ -120,5 +120,5 @@ void eskf_set_measurement(ESKF *eskf, const float *measurements);
  * @param R_mag 3x3 row-major: board frame → mag sensor rotation
  */
 void calculate_initial_orientation(const float *imu_accel, const float *mag_field,
-                                   const float *R_imu, const float *R_mag,
-                                  float *init_quaternion, float *mag_world_frame);
+                                   const float *R_imu, const float *R_mag, float *init_quaternion,
+                                   float *mag_world_frame);

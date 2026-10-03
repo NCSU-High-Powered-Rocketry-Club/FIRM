@@ -1,9 +1,8 @@
 #pragma once
-#include "targets.h"
 #include "main.h"
 #include "settings_storage.h"
+#include "targets.h"
 #include "w25q128jv.h"
-
 
 #if FIRM_HARDWARE_VERSION == VERSION_V1_0
 

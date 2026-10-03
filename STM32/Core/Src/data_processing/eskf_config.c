@@ -1,6 +1,5 @@
 #include "eskf_config.h"
 
-
 // clang-format off
 
 const float eskf_initial_state[ESKF_NOMINAL_DIM] = {

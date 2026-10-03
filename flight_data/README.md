@@ -25,9 +25,9 @@ flight_data/launches/<launch>/recordings/<recording>/
 
 Start by ingesting a pair of logs, then build their current artifacts:
 
-```powershell
-uv run firm-log ingest --launch jackpot-4 --recording airbrakes `
-  --flight C:\logs\LOG42.FRM --mag-cal C:\logs\LOG40.FRM --hardware new
+```bash
+uv run firm-log ingest --launch jackpot-4 --recording airbrakes \
+  --flight /path/to/LOG42.FRM --mag-cal /path/to/LOG40.FRM --hardware new
 uv run firm-log build jackpot-4/airbrakes
 uv run firm-eskf list
 ```

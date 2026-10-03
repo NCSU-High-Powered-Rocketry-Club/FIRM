@@ -1,11 +1,11 @@
 #pragma once
 
-#include "modules/commands.h"
-#include "modules/mocking_handler.h"
 #include "adxl371_packet.h"
 #include "bmp581_packet.h"
 #include "icm45686_packet.h"
 #include "mmc5983ma_packet.h"
+#include "modules/commands.h"
+#include "modules/mocking_handler.h"
 #include "shared_data/identifiers.h"
 #include "shared_data/system_settings.h"
 

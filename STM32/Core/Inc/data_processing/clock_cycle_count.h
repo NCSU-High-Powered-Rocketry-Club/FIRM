@@ -5,9 +5,9 @@
  * @brief Instance state for clock-cycle to seconds conversion.
  */
 typedef struct {
-	uint32_t dwt_overflow_count;
-	uint32_t last_cyccnt;
-	uint32_t clock_speed_hz;
+  uint32_t dwt_overflow_count;
+  uint32_t last_cyccnt;
+  uint32_t clock_speed_hz;
 } ClockCycleCounter_t;
 
 /**
