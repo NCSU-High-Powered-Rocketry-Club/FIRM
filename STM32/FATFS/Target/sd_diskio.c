@@ -67,6 +67,8 @@ See BSP_SD_ErrorCallback() and BSP_SD_AbortCallback() below
 /* USER CODE BEGIN disableSDInit */
 /* #define DISABLE_SD_INIT */
 uint32_t sd_FastWriteFlag = 0;
+extern SD_HandleTypeDef hsd;
+static volatile uint32_t sd_async_write = 0;
 /* USER CODE END disableSDInit */
 
 /*
@@ -401,6 +403,23 @@ DRESULT SD_read(BYTE lun, BYTE *buff, DWORD sector, UINT count)
 DRESULT SD_write(BYTE lun, const BYTE* buff, DWORD sector, UINT count) {
     DRESULT res = RES_ERROR;
     uint32_t timer;
+
+    // Logger buffers remain valid after return; initialization/metadata writes still wait.
+    if (sd_FastWriteFlag) {
+        if (buff == NULL || ((uintptr_t)buff & 3U) || count == 0U) {
+            return RES_PARERR;
+        }
+        if (HAL_SD_GetState(&hsd) != HAL_SD_STATE_READY ||
+            BSP_SD_GetCardState() != SD_TRANSFER_OK) {
+            return RES_NOTRDY;
+        }
+        sd_async_write = 1;
+        if (BSP_SD_WriteBlocks_DMA((uint32_t*)buff, sector, count) != MSD_OK) {
+            sd_async_write = 0;
+            return RES_ERROR;
+        }
+        return RES_OK;
+    }
 
 #if (osCMSIS < 0x20000U)
     osEvent event;
@@ -775,6 +794,10 @@ DRESULT SD_ioctl(BYTE lun, BYTE cmd, void *buff)
   */
 void BSP_SD_WriteCpltCallback(void)
 {
+  if (sd_async_write) {
+    sd_async_write = 0;
+    return;
+  }
 
   /*
    * No need to add an "osKernelRunning()" check here, as the SD_initialize()
