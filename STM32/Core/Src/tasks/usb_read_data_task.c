@@ -14,6 +14,22 @@ const osThreadAttr_t usbReadTask_attributes = {
 
 StreamBufferHandle_t usb_rx_stream;
 
+_Static_assert(USB_MESSAGE_BYTE_BUFFER_SIZE >= (1U + (sizeof(Calibration_t) * 2U)),
+               "USB command buffer must hold a complete IMU calibration command");
+
+static bool receive_exact(uint8_t *buffer, size_t length) {
+  size_t received_total = 0U;
+  while (received_total < length) {
+    size_t received = xStreamBufferReceive(usb_rx_stream, buffer + received_total,
+                                           length - received_total, portMAX_DELAY);
+    if (received == 0U) {
+      return false;
+    }
+    received_total += received;
+  }
+  return true;
+}
+
 static void firm_system_reset_cb(void *ctx) {
   (void)ctx;
   HAL_NVIC_SystemReset();
@@ -27,12 +43,16 @@ void usb_read_data(void *argument) {
   
   for (;;) {
     // read the identifier byte to determine payload length
-    xStreamBufferReceive(usb_rx_stream, received_bytes, 1, portMAX_DELAY);
+    if (!receive_exact(received_bytes, 1U))
+      continue;
     int payload_len = parse_message_id(received_bytes[0]);
     if (payload_len == -1) // invalid ID
       continue;
 
-    xStreamBufferReceive(usb_rx_stream, received_bytes + 1, payload_len, portMAX_DELAY);
+    if ((size_t)payload_len > (sizeof(received_bytes) - 1U))
+      continue;
+    if (!receive_exact(received_bytes + 1, (size_t)payload_len))
+      continue;
     uint32_t delay_ms = dispatch_message(received_bytes);
     if (delay_ms > 0U) {
       vTaskDelay(pdMS_TO_TICKS(delay_ms));

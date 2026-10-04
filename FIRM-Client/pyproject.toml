@@ -29,6 +29,7 @@ dependencies = []
 [dependency-groups]
 dev = [
     "msgspec>=0.20.0",
+    "numpy",
     "pytest",
     "maturin",
     "ruff",

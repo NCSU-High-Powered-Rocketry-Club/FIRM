@@ -56,6 +56,7 @@
 #include <adxl371.h>
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -111,6 +112,7 @@ const osThreadAttr_t startupTask_attributes = {
 /* USER CODE BEGIN PV */
 
 static DataPacket_t global_data_packet = {0};
+static Calibration_t startup_calibration_buffer;
 
 /* USER CODE END PV */
 
@@ -137,6 +139,7 @@ static void mock_count_reset(void *context);
 static void firm_rtos_init(void);
 static void configure_mocking_injection(void);
 static uint32_t firm_time_cyccnt(void);
+static void apply_stored_sensor_calibrations(void);
 
 /* USER CODE END PFP */
 
@@ -162,6 +165,33 @@ static void mock_count_reset(void *context) {
 
 static uint32_t firm_time_cyccnt(void) {
   return DWT->CYCCNT;
+}
+
+static void apply_stored_sensor_calibrations(void) {
+  const uint8_t *settings_bytes = (const uint8_t *)get_settings();
+
+  // SystemSettings_t is packed. Copy one calibration at a time into aligned static storage before
+  // passing it to a driver. Keeping this buffer out of StartupTask's stack is important: that task
+  // has a 1 KiB stack and runs several deeply nested hardware initialization routines.
+  memcpy(&startup_calibration_buffer, settings_bytes + offsetof(SystemSettings_t, accel_cal),
+         sizeof(startup_calibration_buffer));
+  icm45686_set_accel_calibration(startup_calibration_buffer.offset,
+                                 startup_calibration_buffer.scale_matrix);
+
+  memcpy(&startup_calibration_buffer, settings_bytes + offsetof(SystemSettings_t, gyro_cal),
+         sizeof(startup_calibration_buffer));
+  icm45686_set_gyro_calibration(startup_calibration_buffer.offset,
+                                startup_calibration_buffer.scale_matrix);
+
+  memcpy(&startup_calibration_buffer, settings_bytes + offsetof(SystemSettings_t, mag_cal),
+         sizeof(startup_calibration_buffer));
+  mmc5983ma_set_calibration(startup_calibration_buffer.offset,
+                            startup_calibration_buffer.scale_matrix);
+
+  memcpy(&startup_calibration_buffer, settings_bytes + offsetof(SystemSettings_t, high_g_cal),
+         sizeof(startup_calibration_buffer));
+  adxl371_set_calibration(startup_calibration_buffer.offset,
+                          startup_calibration_buffer.scale_matrix);
 }
 
 static void configure_mocking_injection(void) {
@@ -847,6 +877,9 @@ void StartupTask(void *argument)
     led_set_status(FLASH_CHIP_FAIL);
     Error_Handler();
   }
+
+  // Sensor drivers keep their active calibration in RAM, so load the values restored from flash.
+  apply_stored_sensor_calibrations();
 
   // setup logger with the sensor data sizes
   logger_set_sensor_info(sizeof(BMP581RawData_t), sizeof(ICM45686RawData_t),

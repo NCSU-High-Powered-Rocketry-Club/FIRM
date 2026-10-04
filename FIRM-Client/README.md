@@ -124,6 +124,19 @@ with FIRMClient("/dev/ttyUSB0", baud_rate=2_000_000, timeout=0.1) as client:
 
 todo: Add usage example.
 
+### IMU Fixture Calibration
+
+The interactive accelerometer and gyroscope-bias calibration utility uses the Python client and
+NumPy. From the `FIRM-Client` directory, run:
+
+```bash
+uv run --extra extras python scripts/calibrate_imu.py COM12
+```
+
+Replace `COM12` with the device's serial port. The utility checks for identity IMU calibration,
+guides the operator through all 26 numbered fixture sides, prints the fitted values, and asks before
+writing them to the device. It does not save captured samples or calibration results to disk.
+
 ## Publishing
 
 This is mostly for maintainers, but here are the steps to publish each crate to their respective package registries:
