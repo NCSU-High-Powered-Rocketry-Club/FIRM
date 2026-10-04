@@ -34,18 +34,19 @@ bool fatfs_sd_file_exists(const char *filename);
 int fatfs_sd_create_file(const char *filename, uint64_t size_bytes);
 
 /**
- * @brief Reports whether SDIO TX DMA is ready for another write.
+ * @brief Reports whether the previous DMA write is complete and the buffer can be reused.
  *
- * @retval true when DMA state is HAL_DMA_STATE_READY.
+ * @retval true when SDIO, TX DMA, and the card are ready.
  */
 bool fatfs_sd_is_write_ready(void);
 
 /**
  * @brief Writes one sector-sized chunk to the currently open file.
  * @note Uses sd_FastWriteFlag to keep DMA-backed FatFS writes fast.
+ *       Retains buffer until fatfs_sd_is_write_ready() returns true.
  *
- * @param buffer Data buffer to write.
- * @param len Number of bytes to write.
+ * @param buffer Word-aligned data buffer to write.
+ * @param len Number of bytes to write, a multiple of the 512-byte sector size.
  * @retval 0 on success, 1 on error.
  */
 int fatfs_sd_write_sector(const uint8_t *buffer, size_t len);
