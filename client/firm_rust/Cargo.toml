@@ -9,7 +9,7 @@ keywords = ["rocketry", "firm", "flight-computer", "no-std", "embedded"]
 edition = "2024"
 
 [dependencies]
-firm_core = { path = "../firm_core" }
+firm_core = { path = "../firm_core", version = "1.3.0" }
 serialport = { version = "4.8.1", default-features = false }
 anyhow = "1.0"
 

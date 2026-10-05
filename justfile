@@ -93,3 +93,61 @@ lint-clang:
 # Local coverage of the firmware, c-tests, rust, python, and lint CI jobs.
 # Skips integration (Node + wasm-pack); run `just test-integration` for that.
 ci: build-firmware test-host test-rust test-python lint
+
+# Set `dry_run=true` to pack and check without uploading (e.g. `just dry_run=true publish`).
+dry_run := "false"
+
+_publish_flag := if dry_run == "true" { "--dry-run" } else { "" }
+
+_cargo_publish_flag := if dry_run == "true" { "--dry-run --allow-dirty" } else { "" }
+
+# Zig-cross the Windows wheels except when already building on Windows.
+windows_wheel_zig := if os() == "windows" { "" } else { "--zig" }
+
+# firm-client wheels (Linux/Windows, CPython + free-threaded 3.14) and sdist.
+build-wheels:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    rm -rf target/wheels
+    build() {
+        local target="$1"
+        shift
+        uv run --directory client -p 3.14 -- maturin build --release -i 3.14t --compatibility pypi --target "${target}" "$@"
+        uv run --directory client -p 3.14 -- maturin build --release -i 3.14 --compatibility pypi --target "${target}" "$@"
+    }
+    build x86_64-unknown-linux-gnu --zig
+    build aarch64-unknown-linux-gnu --zig
+    build x86_64-pc-windows-msvc {{ windows_wheel_zig }}
+    uv run --directory client maturin sdist
+
+# PyPI: firm-client. Bump `client/firm_python/Cargo.toml` first.
+publish-pypi-client: build-wheels
+    uv publish {{ _publish_flag }} "target/wheels/*"
+
+# PyPI: firm-hprc. Bump `processing/pyproject.toml` first.
+publish-pypi-hprc:
+    uv build --package firm-hprc --out-dir target/pypi/firm-hprc --clear
+    uv publish {{ _publish_flag }} "target/pypi/firm-hprc/*"
+
+# PyPI: firm-client and firm-hprc.
+publish-pypi: publish-pypi-client publish-pypi-hprc
+
+# npm: firm-client (WASM + TypeScript). Bump `client/package.json` and `client/firm_typescript/Cargo.toml` first.
+[working-directory('client')]
+publish-npm:
+    npm publish {{ _publish_flag }}
+
+# crates.io: firm_core then firm_rust. Bump those crate versions first.
+# firm_rust dry-run needs the matching firm_core version on crates.io already.
+publish-crates:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cargo publish -p firm_core {{ _cargo_publish_flag }}
+    if [[ "{{ dry_run }}" == "true" ]]; then
+        echo "Skipping firm_rust dry-run (registry resolve needs firm_core on crates.io)."
+        exit 0
+    fi
+    cargo publish -p firm_rust
+
+# PyPI + npm + crates.io. Needs HPRC registry credentials; prefer `just dry_run=true publish` first.
+publish: publish-pypi publish-npm publish-crates

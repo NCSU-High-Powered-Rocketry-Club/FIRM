@@ -2,6 +2,7 @@
 name = "firm_python"
 version = "1.3.0"
 edition = "2024"
+publish = false
 
 [lib]
 name = "firm_client"
