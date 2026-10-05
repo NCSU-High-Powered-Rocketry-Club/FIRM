@@ -15,13 +15,13 @@ This repository holds the STM32 firmware (written in C), a USB client (Rust, wit
 
 ## Layout
 
-| Path | What it is |
-|------|------------|
-| `STM32/` | Firmware (CubeMX / VS Code STM32 extension) |
-| `client/` | USB client crates and `firm-client` Python bindings |
-| `processing/` | Offline tools: `firm-hprc` (`firm.flight_data`, `firm.eskf_lab`) |
-| `flight_data/` | Versioned flight-log archive (data only) |
-| `tests/` | Pytest and protocol C checks (firmware unit tests live in `STM32/tests/`) |
+| Path           | What it is                                                                   |
+|----------------|------------------------------------------------------------------------------|
+| `STM32/`       | Firmware (CubeMX / VS Code STM32 extension)                                  |
+| `client/`      | USB client crates, `firm-client` Python bindings, and WASM/TypeScript client |
+| `processing/`  | Offline tools: `firm-hprc` (`firm.flight_data`, `firm.eskf_lab`)             |
+| `flight_data/` | Versioned flight-log archive (data only)                                     |
+| `tests/`       | Pytest and protocol C checks (firmware unit tests live in `STM32/tests/`)    |
 
 ## Setup
 
@@ -52,6 +52,7 @@ just build          # firmware Debug ELF + host ESKF + cargo
 just test           # all C tests (CTest) + cargo test + pytest (summary at the end)
 just lint           # ruff, rustfmt, clippy, clang-format
 just ci             # local firmware/host/rust/python/lint
+just publish        # PyPI + npm + crates.io (see `just dry_run=true publish`)
 just --list         # list all just recipes including building/testing/linting individual targets
 ```
 
@@ -62,7 +63,7 @@ After running `just sync`:
 ```bash
 uv run firm-log --help
 uv run firm-eskf --help
-uv run firm-trace -i STM32/trace.bin -o trace.json
+uv run firm-trace --help
 uv run firm-reconstruct --help
 ```
 
@@ -70,11 +71,11 @@ For live USB data from a connected FIRM, use `firm_client.FIRMClient`. See [clie
 
 ## Hardware
 
-| Part Number   | Description     | Datasheet                                                                                                   |
-|---------------|-----------------|-------------------------------------------------------------------------------------------------------------|
-| ICM-45686     | 6 Axis IMU      | [Datasheet](https://www.mouser.com/catalog/specsheets/TDK_DS_000577_ICM_45686.pdf)                          |
-| STM32F405RGT6 | Microcontroller | [Datasheet](https://www.st.com/resource/en/datasheet/dm00037051.pdf)                                        |
-| MMC5983MA     | Magnetometer    | [Datasheet](https://media.digikey.com/pdf/Data%20Sheets/MEMSIC%20PDFs/MMC5983MA_RevA_4-3-19.pdf)            |
-| BMP581        | Pressure Sensor | [Datasheet](https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp581-ds004.pdf) |
-| ADXL371       | High-g Accelerometer | [Datasheet](https://www.analog.com/media/en/technical-documentation/data-sheets/adxl371.pdf)           |
-| W25Q128JV     | 128 Mbit SPI Flash | [Datasheet](https://www.winbond.com/resource-files/w25q128jv%20revf%2003272018%20plus.pdf)               |
+| Part Number   | Description          | Datasheet                                                                                                   |
+|---------------|----------------------|-------------------------------------------------------------------------------------------------------------|
+| ICM-45686     | 6 Axis IMU           | [Datasheet](https://www.mouser.com/catalog/specsheets/TDK_DS_000577_ICM_45686.pdf)                          |
+| STM32F405RGT6 | Microcontroller      | [Datasheet](https://www.st.com/resource/en/datasheet/dm00037051.pdf)                                        |
+| MMC5983MA     | Magnetometer         | [Datasheet](https://media.digikey.com/pdf/Data%20Sheets/MEMSIC%20PDFs/MMC5983MA_RevA_4-3-19.pdf)            |
+| BMP581        | Pressure Sensor      | [Datasheet](https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp581-ds004.pdf) |
+| ADXL371       | High-g Accelerometer | [Datasheet](https://www.analog.com/media/en/technical-documentation/data-sheets/adxl371.pdf)                |
+| W25Q128JV     | 128 Mbit SPI Flash   | [Datasheet](https://www.winbond.com/resource-files/w25q128jv%20revf%2003272018%20plus.pdf)                  |

@@ -44,8 +44,8 @@ Calibration overrides are written in the recording's original sensor frame; the 
 old-hardware accel and gyro overrides along with the calibration stored in the original header.
 
 Use `firm-log inspect`, `validate`, and `status` to audit recordings. Calibration changes use
-`firm-log calibration set`; explicit or reviewed phase trim windows use `firm-log trim`; `rebuild
---all` refreshes every stale recording. CSV remains an explicit export format rather than an
+`firm-log calibration set`; explicit or reviewed phase trim windows use `firm-log trim`; `firm-log
+rebuild --all` refreshes every stale recording. CSV remains an explicit export format rather than an
 authoritative artifact.
 
 Git tracks catalog manifests and documentation, but ignores acquired logs, derived logs, Parquet,

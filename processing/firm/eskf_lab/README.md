@@ -119,7 +119,7 @@ has a top-level tab; tabs have a minimum width and wrap to additional rows on sm
 
 ```bash
 uv run firm-eskf serve
-uv run firm-eskf serve my-launch
+uv run firm-eskf serve my-launch/primary
 ```
 
 `plot` writes a standalone HTML report for one run, while `compare` overlays the same selected

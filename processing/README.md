@@ -28,6 +28,16 @@ uv run firm-trace -i STM32/trace.bin -o trace.json
 
 See [firm/eskf_lab/README.md](firm/eskf_lab/README.md) for information on how to use the filter lab workflow.
 
+## Publishing
+
+Bump `version` in `pyproject.toml`, then from the repository root:
+
+```bash
+just publish-pypi-hprc
+```
+
+Use `just dry_run=true publish-pypi-hprc` to build without uploading. Requires maintainer permissions in the HPRC PyPI organization.
+
 ## Layout
 
 ```
