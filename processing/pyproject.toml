@@ -44,6 +44,7 @@ usb = [
 
 [project.scripts]
 firm-eskf = "firm.eskf_lab.cli:main"
+firm-imu-cal = "firm.cli.calibrate_imu:main"
 firm-log = "firm.flight_data.cli:main"
 firm-reconstruct = "firm.flight_data.reconstruct:main"
 firm-trace = "firm.cli.trace:main"

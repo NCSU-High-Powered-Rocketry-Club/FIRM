@@ -48,6 +48,7 @@ select = ["E", "F", "I", "PL", "UP", "RUF", "PTH", "C4", "B", "PIE", "SIM", "RET
 "processing/firm/eskf_lab/profile.py" = ["TRY004"]
 "processing/firm/eskf_lab/visualize.py" = ["PLC0415"]
 "processing/firm/cli/trace.py" = ["T201"]
+"processing/firm/cli/calibrate_imu.py" = ["T201"]
 "tests/processing/*.py" = ["S101", "TC003"]
 "tests/integration/test_*.py" = ["S101"]
 "client/tests/*.py" = ["S101"]
