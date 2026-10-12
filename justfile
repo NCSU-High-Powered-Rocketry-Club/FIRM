@@ -2,6 +2,9 @@
 
 set dotenv-load := false
 
+# Windows has no `sh`; run line recipes in PowerShell. Shebang (bash) recipes still need Git Bash.
+set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
+
 export CARGO_TERM_COLOR := "always"
 
 default:
