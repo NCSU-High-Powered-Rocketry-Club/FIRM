@@ -18,21 +18,10 @@
             }
         },
         {
-            "name": "firmware-release",
-            "displayName": "Firmware Release (ARM)",
+            "name": "native",
+            "displayName": "Native (ESKF and all C tests)",
             "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/firmware-release",
-            "toolchainFile": "${sourceDir}/STM32/cmake/gcc-arm-none-eabi.cmake",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release",
-                "FIRM_BUILD_FIRMWARE": "ON"
-            }
-        },
-        {
-            "name": "host",
-            "displayName": "Host (native ESKF + all C tests)",
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build/host",
+            "binaryDir": "${sourceDir}/build/native",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
                 "FIRM_BUILD_FIRMWARE": "OFF",
@@ -46,18 +35,14 @@
             "configurePreset": "firmware-debug"
         },
         {
-            "name": "firmware-release",
-            "configurePreset": "firmware-release"
-        },
-        {
-            "name": "host",
-            "configurePreset": "host"
+            "name": "native",
+            "configurePreset": "native"
         }
     ],
     "testPresets": [
         {
-            "name": "host",
-            "configurePreset": "host",
+            "name": "native",
+            "configurePreset": "native",
             "output": {
                 "outputOnFailure": true
             }

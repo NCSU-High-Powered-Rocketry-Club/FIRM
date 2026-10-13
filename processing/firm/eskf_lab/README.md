@@ -99,7 +99,7 @@ Global options go before the subcommand and override the default locations:
 | `--flight-data-dir` | `flight_data`                              |
 | `--cache-dir`       | `processing/firm/eskf_lab/cache`           |
 | `--results-dir`     | `processing/firm/eskf_lab/results`         |
-| `--build-dir`       | `build/host`                               |
+| `--build-dir`       | `build/native`                               |
 | `--profile`         | `processing/firm/eskf_lab/config/default.toml` |
 
 For example, `uv run firm-eskf --results-dir /tmp/eskf-results run my-launch/primary`.
@@ -174,7 +174,7 @@ Generated ESKF artifacts are ignored by Git:
 
 - `processing/firm/eskf_lab/cache`: aligned Parquet and compact replay input
 - `processing/firm/eskf_lab/results`: timestamped result Parquet, metadata, metrics, and plots
-- `build/host`: native CMake build (repo-root `host` preset)
+- `build/native`: native CMake build (repo-root `native` preset)
 
 Delete a recording's cache or use `prepare --force` to rebuild it. The manager build fingerprint
 automatically invalidates stale data caches; CMake automatically rebuilds changed filter sources.

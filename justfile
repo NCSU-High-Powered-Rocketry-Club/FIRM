@@ -14,16 +14,23 @@ default:
 sync:
     uv sync --all-packages --extra usb --group dev
 
-# Firmware ELF (ARM) + host ESKF + host cargo crates.
-build: build-firmware build-host build-rust
+# Firmware ELF (ARM), native ESKF,  C tests, and cargo crates. ALL THE BUILDS
+build: build-firmware build-native build-rust
 
+# Debug firmware ELF for the STM32
 build-firmware:
     cmake --preset firmware-debug
     cmake --build --preset firmware-debug
 
-build-host:
-    cmake --preset host
-    cmake --build --preset host
+# Everything local to your computer.
+build-native:
+    cmake --preset native
+    cmake --build --preset native
+
+# Only the native ESKF library and `firm_eskf_replay`.
+build-eskf:
+    cmake --preset native
+    cmake --build --preset native --target firm_eskf_replay
 
 build-rust:
     cargo build --workspace
@@ -45,7 +52,7 @@ test:
         codes+=("${code}")
         return 0
     }
-    run_suite c just test-host
+    run_suite c just test-c
     run_suite rust just test-rust
     run_suite python just test-python
     echo
@@ -61,22 +68,22 @@ test:
     done
     exit "${failed}"
 
-# Every C test: firmware unit tests, host ESKF, and wire layout (utest.h + CTest).
-test-host: build-host
-    ctest --preset host
+# Every C test (firmware unit tests, ESKF, and wire layout).
+test-c: build-native
+    ctest --preset native
 
 # Only the firmware unit tests in STM32/tests.
-test-firmware: build-host
-    ctest --preset host -L firmware
+test-firmware: build-native
+    ctest --preset native -L firmware
 
 test-rust:
     cargo test --workspace
 
-# Default markers only. Integration tests that need Node live on `test-integration`.
+# Default markers only, non-integration
 test-python:
     uv run pytest -m "not integration"
 
-test-integration: build-host
+test-integration: build-native
     uv run pytest -m integration
 
 lint: lint-ruff lint-rust lint-clang
@@ -95,7 +102,7 @@ lint-clang:
 
 # Local coverage of the firmware, c-tests, rust, python, and lint CI jobs.
 # Skips integration (Node + wasm-pack); run `just test-integration` for that.
-ci: build-firmware test-host test-rust test-python lint
+ci: build-firmware test-c test-rust test-python lint
 
 # Set `dry_run=true` to pack and check without uploading (e.g. `just dry_run=true publish`).
 dry_run := "false"
@@ -152,5 +159,5 @@ publish-crates:
     fi
     cargo publish -p firm_rust
 
-# PyPI + npm + crates.io. Needs HPRC registry credentials; prefer `just dry_run=true publish` first.
+# Publish to PyPI, npm, and crates.io. Needs credentials; you should run `just dry_run=true publish` to make sure everything is OK.
 publish: publish-pypi publish-npm publish-crates

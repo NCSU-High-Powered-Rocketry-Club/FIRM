@@ -48,10 +48,11 @@ just sync
 ## Commands
 
 ```bash
-just build          # firmware Debug ELF + host ESKF + cargo
+just build          # firmware Debug ELF + native ESKF and C tests + cargo
+just build-eskf     # only the native ESKF replay tool
 just test           # all C tests (CTest) + cargo test + pytest (summary at the end)
 just lint           # ruff, rustfmt, clippy, clang-format
-just ci             # local firmware/host/rust/python/lint
+just ci             # local firmware/C tests/rust/python/lint
 just publish        # PyPI + npm + crates.io (see `just dry_run=true publish`)
 just --list         # list all just recipes including building/testing/linting individual targets
 ```

@@ -90,15 +90,15 @@ NATIVE_TEST_TARGETS = ("test_eskf_smoke", "test_eskf_math")
 def build_native(build_dir: Path, *, run_tests: bool = True) -> Path:
     """Configure and incrementally build the native replay executable.
 
-    Configures with the repo-root ``host`` CMake preset; ``build_dir`` overrides
-    the preset's binary directory (``build/host`` by default). Only the ESKF
+    Configures with the repo-root ``native`` CMake preset; ``build_dir`` overrides
+    the preset's binary directory (``build/native`` by default). Only the ESKF
     targets are built, and the test targets only when ``run_tests`` is set.
     """
     build_dir = build_dir.resolve()
     if not (build_dir / "CMakeCache.txt").exists():
         if shutil.which("ninja") is None:
             raise RuntimeError("the host CMake preset needs Ninja; install it (see README Setup)")
-        _run_checked(["cmake", "--preset", "host", "-B", str(build_dir)])
+        _run_checked(["cmake", "--preset", "native", "-B", str(build_dir)])
     targets = ("firm_eskf_replay", *NATIVE_TEST_TARGETS) if run_tests else ("firm_eskf_replay",)
     _run_checked(["cmake", "--build", str(build_dir), "--parallel", "--target", *targets])
     if run_tests:

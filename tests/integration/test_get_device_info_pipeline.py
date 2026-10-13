@@ -28,8 +28,8 @@ FIRMWARE_VERSION = "v2.2.0"
 
 
 def find_stm32_harness() -> Path | None:
-    """Return the CMake-built command-dispatch harness (`just build-host`)."""
-    bin_dir = REPO_ROOT / "build" / "host" / "bin"
+    """Return the CMake-built command-dispatch harness, for `just build-native`."""
+    bin_dir = REPO_ROOT / "build" / "native" / "bin"
     for directory in (bin_dir, bin_dir / "Release"):
         for name in ("firm_device_info_harness", "firm_device_info_harness.exe"):
             if (directory / name).exists():
@@ -166,7 +166,7 @@ def test_get_device_info_pipeline(tmp_path: Path) -> None:
 
     harness = find_stm32_harness()
     if harness is None:
-        pytest.skip("STM32 device-info harness is missing; run `just build-host` first.")
+        pytest.skip("STM32 device-info harness is missing!!!! You need to run 'just build-native' first.")
 
     bridge = RawUsbBridge(harness)
     script = tmp_path / "device_info_pipeline.mjs"

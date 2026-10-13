@@ -1,4 +1,4 @@
-# Host ESKF library and replay tool. Configured from the repo root (`host` preset).
+# Host ESKF library and replay tool. Configured from the repo root via the `native` preset.
 
 add_library(firm_eskf_core STATIC
     ${FIRM_ESKF_SOURCES}

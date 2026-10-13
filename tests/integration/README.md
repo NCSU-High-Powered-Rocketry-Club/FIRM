@@ -19,7 +19,7 @@ just test-integration     # Full integration suite (Node + WASM + host C harness
 ### Prerequisites for `@pytest.mark.integration`
 
 - Node.js
-- Host C toolchain (the harness is built by `just build-host`, which `just test-integration` runs)
+- Host C toolchain (the harness is built by `just build-native`, which `just test-integration` runs)
 - [`wasm-pack`](https://rustwasm.github.io/wasm-pack/) and the Rust WebAssembly target:
 
 ```bash

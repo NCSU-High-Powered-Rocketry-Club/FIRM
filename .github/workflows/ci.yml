@@ -33,7 +33,7 @@ jobs:
       - name: Install Ninja
         run: sudo apt-get update && sudo apt-get install -y ninja-build
       - name: Firmware, ESKF, and wire-layout tests (CTest)
-        run: just test-host
+        run: just test-c
 
   rust:
     name: rust
