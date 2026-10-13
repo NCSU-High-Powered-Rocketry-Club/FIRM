@@ -166,7 +166,9 @@ def test_get_device_info_pipeline(tmp_path: Path) -> None:
 
     harness = find_stm32_harness()
     if harness is None:
-        pytest.skip("STM32 device-info harness is missing!!!! You need to run 'just build-native' first.")
+        pytest.skip(
+            "STM32 device-info harness is missing!!!! You need to run 'just build-native' first."
+        )
 
     bridge = RawUsbBridge(harness)
     script = tmp_path / "device_info_pipeline.mjs"
