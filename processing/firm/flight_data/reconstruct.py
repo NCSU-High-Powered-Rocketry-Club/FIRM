@@ -204,7 +204,7 @@ def _pack_magnetometer(row: dict[str, float], context: str) -> bytes:
     for axis, value in enumerate(values):
         payload[axis * 2] = (value >> 10) & 0xFF
         payload[axis * 2 + 1] = (value >> 2) & 0xFF
-    payload[6] = ((values[0] & 3) << 6) | ((values[1] & 3) << 4) | (values[2] & 0x0C)
+    payload[6] = ((values[0] & 3) << 6) | ((values[1] & 3) << 4) | ((values[2] & 3) << 2)
     return bytes(payload)
 
 

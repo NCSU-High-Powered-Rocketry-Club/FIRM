@@ -141,7 +141,7 @@ def _mag_bins(payload: bytes) -> tuple[int, int, int]:
     return (
         (payload[0] << 10) | (payload[1] << 2) | (payload[6] >> 6),
         (payload[2] << 10) | (payload[3] << 2) | ((payload[6] & 0x30) >> 4),
-        (payload[4] << 10) | (payload[5] << 2) | (payload[6] & 0x0C),
+        (payload[4] << 10) | (payload[5] << 2) | ((payload[6] & 0x0C) >> 2),
     )
 
 

@@ -36,7 +36,7 @@ def _mag_payload(values: tuple[int, int, int]) -> bytes:
     for axis, value in enumerate(values):
         result[2 * axis] = (value >> 10) & 0xFF
         result[2 * axis + 1] = (value >> 2) & 0xFF
-    result[6] = ((values[0] & 3) << 6) | ((values[1] & 3) << 4) | (values[2] & 0x0C)
+    result[6] = ((values[0] & 3) << 6) | ((values[1] & 3) << 4) | ((values[2] & 3) << 2)
     return bytes(result)
 
 
