@@ -1,15 +1,15 @@
 #include "usb_read_data_task.h"
 
-#include "main.h"
 #include "FreeRTOS.h"
+#include "main.h"
 #include "stream_buffer.h"
 #include "task.h"
 
 osThreadId_t usb_read_task_handle;
 const osThreadAttr_t usbReadTask_attributes = {
-  .name = "usbReadTask",
-  .stack_size = 2048 * 4,
-  .priority = (osPriority_t)osPriorityNormal,
+    .name = "usbReadTask",
+    .stack_size = 2048 * 4,
+    .priority = (osPriority_t)osPriorityNormal,
 };
 
 StreamBufferHandle_t usb_rx_stream;
@@ -40,7 +40,7 @@ void usb_read_data(void *argument) {
 
   // setup system reset callback
   commands_register_system_reset(firm_system_reset_cb, NULL);
-  
+
   for (;;) {
     // read the identifier byte to determine payload length
     if (!receive_exact(received_bytes, 1U))

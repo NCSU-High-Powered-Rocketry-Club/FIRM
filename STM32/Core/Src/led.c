@@ -1,7 +1,6 @@
 #include "led.h"
 #include "stm32f4xx_hal.h"
 
-
 void led_set_status(uint8_t status) {
   // Set the GPIO pins according to the status bits
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, (status & 0b100) ? GPIO_PIN_SET : GPIO_PIN_RESET); // Blue

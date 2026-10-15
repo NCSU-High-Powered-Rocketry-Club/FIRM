@@ -27,7 +27,7 @@ double clock_cycle_counter_process(ClockCycleCounter_t *counter, uint32_t clock_
   // using bit concatenation to combine the number of overflows (upper 32 bits) and the clock
   // cycle count (lower 32 bits) to make a 64 bit number.
   uint64_t cycle_count = ((uint64_t)counter->dwt_overflow_count << 32) | clock_cycle_count;
-  
+
   // divide by clock speed to convert to seconds
   return ((double)cycle_count) / counter->clock_speed_hz;
 }

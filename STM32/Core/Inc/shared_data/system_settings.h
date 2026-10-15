@@ -17,7 +17,7 @@ typedef struct {
  * User-defined settings and calibration for FIRM, saved in flash memory and reloaded on boot.
  */
 typedef struct __attribute__((packed)) {
-  uint64_t device_uid; // UID of settings storage device
+  uint64_t device_uid;                       // UID of settings storage device
   char device_name[FIRM_DEVICE_NAME_LENGTH]; // user configurable device name
   bool usb_transfer_enabled;
   bool uart_transfer_enabled;

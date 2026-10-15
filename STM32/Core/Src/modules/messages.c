@@ -1,6 +1,5 @@
 #include "messages.h"
 
-
 int parse_message_id(uint8_t identifier_byte) {
   Identifiers_t id = (Identifiers_t)identifier_byte;
   switch (id) {

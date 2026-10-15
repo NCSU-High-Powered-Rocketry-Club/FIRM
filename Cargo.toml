@@ -1,0 +1,11 @@
+[workspace]
+members = [
+    "client/firm_core",
+    "client/firm_rust",
+    "client/firm_python",
+    "client/firm_typescript",
+]
+resolver = "2"
+
+[profile.release]
+lto = "fat"

@@ -1,7 +1,7 @@
 #pragma once
-#include "shared_data/system_settings.h"
-#include "shared_data/identifiers.h"
 #include "settings_manager.h"
+#include "shared_data/identifiers.h"
+#include "shared_data/system_settings.h"
 #include "transmit_frame.h"
 #include <stdbool.h>
 #include <string.h>

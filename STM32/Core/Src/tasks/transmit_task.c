@@ -1,6 +1,6 @@
-#include "transmit_frame.h"
-#include "commands.h"
 #include "transmit_task.h"
+#include "commands.h"
+#include "transmit_frame.h"
 #include "usbd_cdc_if.h"
 #include "usbd_def.h"
 
@@ -10,9 +10,9 @@
 
 osThreadId_t transmit_task_handle;
 const osThreadAttr_t transmitTask_attributes = {
-  .name = "transmitTask",
-  .stack_size = 512 * 4,
-  .priority = (osPriority_t)osPriorityBelowNormal1,
+    .name = "transmitTask",
+    .stack_size = 512 * 4,
+    .priority = (osPriority_t)osPriorityBelowNormal1,
 };
 
 QueueHandle_t transmit_queue;
@@ -23,7 +23,6 @@ static void transmit_send_to_queue(TransmitFrame_t *transmit_frame) {
 
 void transmit_data(void *arg) {
   TransmitFrame_t transmit_frame;
-
 
   // when task starts, inject the queue sending function to the appropriate areas
   commands_set_response_queue(transmit_send_to_queue);
