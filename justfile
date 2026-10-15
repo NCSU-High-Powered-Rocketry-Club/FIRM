@@ -35,7 +35,7 @@ build-eskf:
 build-rust:
     cargo build --workspace
 
-# Every C test (CTest) + cargo + pytest.
+# Every C test (CTest) + cargo + pytest, excluding integration.
 test:
     #!/usr/bin/env bash
     set +e

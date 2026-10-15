@@ -50,7 +50,7 @@ just sync
 ```bash
 just build          # firmware Debug ELF + native ESKF and C tests + cargo
 just build-eskf     # only the native ESKF replay tool
-just test           # all C tests (CTest) + cargo test + pytest (summary at the end)
+just test           # CTest + cargo + pytest, excluding integration (summary at the end)
 just lint           # ruff, rustfmt, clippy, clang-format
 just ci             # local firmware/C tests/rust/python/lint
 just publish        # PyPI + npm + crates.io (see `just dry_run=true publish`)

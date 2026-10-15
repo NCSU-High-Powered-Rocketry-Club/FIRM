@@ -9,7 +9,7 @@
 | `client/tests/`      | `just test-python` (Python bindings for `firm-client`)   |
 | Rust `#[cfg(test)]`  | `just test-rust`                                         |
 
-`just test` runs every C test, cargo, and pytest, then prints a pass/fail summary.
+`just test` runs every C test, cargo, and pytest (excluding `@pytest.mark.integration`), then prints a pass/fail summary. Use `just test-integration` for the integration suite.
 
 All C tests use [utest.h](../third_party/utest) and are plain CTest executables:
 `just test-c` (or `ctest --preset native`) runs them all, and `ctest --preset native -L <label>`
