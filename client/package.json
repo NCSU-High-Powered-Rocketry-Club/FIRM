@@ -14,7 +14,6 @@
     "firm_typescript/pkg/firm_client_bg.wasm",
     "firm_typescript/pkg/firm_client.d.ts",
     "firm_typescript/pkg/firm_client_bg.wasm.d.ts",
-    "LICENSE",
     "README.md"
   ],
   "scripts": {
