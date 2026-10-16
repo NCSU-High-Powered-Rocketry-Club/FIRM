@@ -5,7 +5,7 @@ import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig(({ command }) => {
   // Use custom base from environment variable
-  const prodBase = process.env.VITE_BASE ?? "/FIRM-Web-App/";
+  const prodBase = process.env.VITE_BASE ?? "/";
 
   return {
     base: command === "serve" ? "/" : prodBase,
