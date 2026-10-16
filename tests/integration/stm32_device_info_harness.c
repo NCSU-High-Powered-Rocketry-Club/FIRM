@@ -4,11 +4,7 @@
 // responses to stdout. Driven by test_get_device_info_pipeline.py, which
 // expects the device UID and firmware version below.
 
-#include "adxl371_packet.h"
-#include "bmp581_packet.h"
 #include "commands.h"
-#include "icm45686_packet.h"
-#include "mmc5983ma_packet.h"
 #include "modules/transmit_frame.h"
 #include "shared_data/system_settings.h"
 
@@ -41,30 +37,6 @@ int settings_write_calibration(Calibration_t *accel, Calibration_t *gyro, Calibr
   (void)high_g;
   return 0;
 }
-bool mocking_handler_start_mock(void) { return false; }
-bool mocking_handler_cancel_mock(void) { return false; }
-uint32_t dispatch_mock_msg(const uint8_t *message) {
-  (void)message;
-  return 0U;
-}
-uint32_t mocking_handler_time_from_ring(void) { return 0U; }
-int mocking_handler_read_barometer(BMP581RawData_t *out) {
-  (void)out;
-  return 1;
-}
-int mocking_handler_read_imu(ICM45686RawData_t *out) {
-  (void)out;
-  return 1;
-}
-int mocking_handler_read_magnetometer(MMC5983MARawData_t *out) {
-  (void)out;
-  return 1;
-}
-int mocking_handler_read_high_g(ADXL371RawData_t *out) {
-  (void)out;
-  return 1;
-}
-
 static void capture_response(TransmitFrame_t *frame) {
   response_len = frame->payload_len;
   memcpy(response, frame->payload, response_len);

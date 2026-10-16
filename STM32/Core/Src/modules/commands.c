@@ -1,5 +1,4 @@
 #include "commands.h"
-#include "mocking_handler.h"
 
 static CommandSystemResetFn g_system_reset_fn = NULL;
 static void *g_system_reset_ctx = NULL;
@@ -89,10 +88,6 @@ void dispatch_command(const uint8_t *command_bytes) {
       g_system_reset_fn(g_system_reset_ctx);
     break;
 
-  case ID_MOCK_REQUEST:
-    send_response(ID_MOCK_REQUEST, (uint8_t[]){mocking_handler_start_mock()}, 1);
-    break;
-
   case ID_SET_MAG_CALIBRATON: {
     Calibration_t new_mag_calibration;
     memcpy(&new_mag_calibration, command_bytes, sizeof(Calibration_t));
@@ -117,7 +112,10 @@ void dispatch_command(const uint8_t *command_bytes) {
     break;
 
   case ID_CANCEL_REQUEST:
-    send_response(ID_CANCEL_REQUEST, (uint8_t[]){mocking_handler_cancel_mock()}, 1);
+    // TODO: Cancel only acknowledges. Mag/IMU calibration on-device is a
+    // synchronous settings write with nothing in-flight to abort. Host-side
+    // collection (Python/TS) should stop locally.
+    send_response(ID_CANCEL_REQUEST, (uint8_t[]){true}, 1);
     break;
 
   default:

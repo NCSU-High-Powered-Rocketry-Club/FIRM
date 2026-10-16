@@ -1,10 +1,9 @@
 #include <string.h>
 
 #include "commands.h"
-#include "mocking_handler.h"
 #include "utest.h"
 
-// Link-seam stubs for the settings_manager and mocking_handler calls in commands.c.
+// Link-seam stubs for the settings_manager calls in commands.c.
 static const SystemSettings_t *stub_settings;
 static int get_settings_calls;
 
@@ -24,8 +23,6 @@ int settings_write_calibration(Calibration_t *accel, Calibration_t *gyro, Calibr
   (void)high_g;
   return 0;
 }
-bool mocking_handler_start_mock(void) { return false; }
-bool mocking_handler_cancel_mock(void) { return false; }
 
 static TransmitFrame_t captured_frame;
 static bool response_was_queued;
