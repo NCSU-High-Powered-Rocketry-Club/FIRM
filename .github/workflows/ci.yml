@@ -115,9 +115,5 @@ jobs:
         with:
           node-version: "22"
       # lint-web needs web/node_modules; client's prepare needs wasm-pack.
-      - name: Install client and web dependencies
-        run: |
-          npm ci --prefix client
-          npm ci --prefix web
       - name: Lint, build web, and build docs
-        run: just lint-web build-web build-docs
+        run: just sync-web lint-web build-web build-docs

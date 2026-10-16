@@ -2,17 +2,18 @@
 
 React + TypeScript frontend for configuring and communicating with FIRM over Web Serial. It lives at `web/` in the FIRM monorepo and depends on the local WASM client (`firm-client` from `../client`, not npm).
 
-You need **Node.js + npm** (https://nodejs.org/en/download). A production web build also needs **wasm-pack**, because `npm ci` in `client/` runs that package's `prepare` script.
+You need **Node.js + npm** (https://nodejs.org/en/download) and **wasm-pack**, because `npm ci` in `client/` runs that package's `prepare` script to build the WASM package.
 
 From the **repository root**:
 
 ```bash
+just sync-web       # npm ci in client/ and web/ (run once, and after dependency changes)
 just web-dev        # Vite dev server (usually http://localhost:5173/)
-just build-web      # npm ci in client/ and web/, then production build
+just build-web      # sync-web, then production build
 just lint-web       # ESLint + Prettier check
 ```
 
-Or from this directory, after dependencies are installed (`npm ci` in `../client` then here):
+Or from this directory, after `just sync-web`:
 
 ```bash
 npm run dev

@@ -35,10 +35,13 @@ build-eskf:
 build-rust:
     cargo build --workspace
 
-# React web app. Needs Node and wasm-pack (client `prepare` builds WASM).
-build-web:
+# Node deps for client/ and web/. Needs Node and wasm-pack (client `prepare` builds WASM).
+sync-web:
     npm ci --prefix client
     npm ci --prefix web
+
+# React web app.
+build-web: sync-web
     npm run build --prefix web
 
 [working-directory('web')]

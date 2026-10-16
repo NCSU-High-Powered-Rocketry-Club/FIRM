@@ -108,9 +108,7 @@ export function ActionsPanel() {
     startTimer(TIME_CAL_IMU_SECONDS);
 
     try {
-      console.warn(
-        "Error: IMU calibration isn't implemented yet!",
-      );
+      console.warn("Error: IMU calibration isn't implemented yet!");
     } catch (err) {
       console.error("IMU Calibration error:", err);
     } finally {

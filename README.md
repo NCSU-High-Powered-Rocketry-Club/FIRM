@@ -61,9 +61,10 @@ just --list         # list all just recipes including building/testing/linting i
 
 ## Web app and docs
 
-The React app in `web/` talks to FIRM over Web Serial and uses the local WASM client (`firm-client` via `file:../client`). The MkDocs site lives in `docs/`. The app needs [Node.js](https://nodejs.org/); docs need only uv. Building the web app also needs `wasm-pack` so `client/` can compile its WASM package.
+The React app in `web/` talks to FIRM over Web Serial and uses the local WASM client (`firm-client` via `file:../client`). The MkDocs site lives in `docs/`. The app needs [Node.js](https://nodejs.org/) and `wasm-pack` (so `client/` can compile its WASM package); docs need only uv.
 
 ```bash
+just sync-web       # install client/ and web/ Node deps (once, and after dependency changes)
 just web-dev        # Vite dev server for the web app (http://localhost:5173/)
 just build-web      # production build of client WASM + the React app
 just lint-web       # ESLint + Prettier check in web/
