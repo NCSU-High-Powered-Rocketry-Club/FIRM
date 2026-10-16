@@ -3,7 +3,6 @@
 #include "FreeRTOS.h"
 #include "main.h"
 #include "stream_buffer.h"
-#include "task.h"
 
 osThreadId_t usb_read_task_handle;
 const osThreadAttr_t usbReadTask_attributes = {
@@ -53,10 +52,7 @@ void usb_read_data(void *argument) {
       continue;
     if (!receive_exact(received_bytes + 1, (size_t)payload_len))
       continue;
-    uint32_t delay_ms = dispatch_message(received_bytes);
-    if (delay_ms > 0U) {
-      vTaskDelay(pdMS_TO_TICKS(delay_ms));
-    }
+    dispatch_message(received_bytes);
   }
 }
 

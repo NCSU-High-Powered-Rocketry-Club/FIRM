@@ -25,10 +25,6 @@ firm_add_firmware_test(test_clock_cycle_count SOURCES
     data_processing/test_clock_cycle_count.c
     ${SRC}/data_processing/clock_cycle_count.c
 )
-firm_add_firmware_test(test_mocking_ring_buffer SOURCES
-    data_processing/test_mocking_ring_buffer.c
-    ${SRC}/data_processing/mocking_ring_buffer.c
-)
 
 firm_add_firmware_test(test_adxl371 SOURCES drivers/test_adxl371.c ${LIB}/ADXL371/adxl371.c ${HAL_STUBS})
 firm_add_firmware_test(test_bmp581 SOURCES drivers/test_bmp581.c ${LIB}/BMP581/bmp581.c ${HAL_STUBS})
@@ -45,19 +41,13 @@ firm_add_logger_test(test_logger SOURCES
     ${SRC}/interfaces/logger_storage.c
 )
 
-# Settings and mocking-handler dependencies are stubbed in the test file.
+# Settings-manager calls are stubbed in the test file.
 firm_add_firmware_test(test_commands SOURCES
     modules/test_commands.c
     ${SRC}/modules/commands.c
 )
-# dispatch_command/dispatch_mock_msg are faked in the test file.
+# dispatch_command is faked in the test file.
 firm_add_firmware_test(test_messages SOURCES
     modules/test_messages.c
     ${SRC}/modules/messages.c
-)
-# The mock ring and clock cycle counter are faked in the test file.
-firm_add_firmware_test(test_mocking_handler SOURCES
-    modules/test_mocking_handler.c
-    ${SRC}/modules/mocking_handler.c
-    ${SRC}/modules/system_state.c
 )
