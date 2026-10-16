@@ -109,7 +109,7 @@ function calibrationValuesToDrafts(cal: CalibrationValues): {
 }
 
 export function CalibrationPanel({ visible }: { visible: boolean }) {
-  const { firm, isConnected } = useFIRM();
+  const { firm, isConnected, calibrationBusy, setCalibrationBusy } = useFIRM();
 
   const [imuDraft, setImuDraft] = useState<IMUCalibrationDraft>(makeDefaultImuDraft);
   const [magDraft, setMagDraft] = useState<CalibrationDraft>(makeDefaultDraft);
@@ -132,6 +132,21 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
   const magEditSeqRef = useRef(0);
 
   const canSend = !!firm && isConnected && loadedFirm === firm;
+  // One calibration write at a time, across this panel and the Actions panel's mag routine.
+  const canApply = canSend && !calibrationBusy;
+  const applyingRef = useRef(false);
+
+  const beginApply = useCallback(() => {
+    if (applyingRef.current || calibrationBusy) return false;
+    applyingRef.current = true;
+    setCalibrationBusy(true);
+    return true;
+  }, [calibrationBusy, setCalibrationBusy]);
+
+  const endApply = useCallback(() => {
+    applyingRef.current = false;
+    setCalibrationBusy(false);
+  }, [setCalibrationBusy]);
 
   const inputClassName =
     "w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-mono text-slate-900 shadow-inner disabled:bg-slate-100 disabled:text-slate-400 focus:border-theme focus:outline-none focus:ring-1 focus:ring-theme";
@@ -234,6 +249,7 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
       return;
     }
 
+    if (!beginApply()) return;
     setIsApplyingImu(true);
     try {
       const ok = await firm.setIMUCalibration(
@@ -253,9 +269,10 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
       setImuError("Failed to send IMU calibration.");
     } finally {
       setIsApplyingImu(false);
+      endApply();
       window.setTimeout(() => setImuStatus(null), 3000);
     }
-  }, [firm, isConnected, imuDraft, refreshCalibrationFromDevice]);
+  }, [firm, isConnected, imuDraft, refreshCalibrationFromDevice, beginApply, endApply]);
 
   const applyMag = useCallback(async () => {
     setMagError(null);
@@ -272,6 +289,7 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
       return;
     }
 
+    if (!beginApply()) return;
     setIsApplyingMag(true);
     try {
       const ok = await firm.setMagnetometerCalibration(mag.offsets, mag.scaleMatrix);
@@ -286,9 +304,10 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
       setMagError("Failed to send magnetometer calibration.");
     } finally {
       setIsApplyingMag(false);
+      endApply();
       window.setTimeout(() => setMagStatus(null), 3000);
     }
-  }, [firm, isConnected, magDraft, refreshCalibrationFromDevice]);
+  }, [firm, isConnected, magDraft, refreshCalibrationFromDevice, beginApply, endApply]);
 
   const CalibrationBlock = useMemo(() => {
     const Comp = ({
@@ -318,7 +337,7 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
             <button
               type="button"
               className={smallBtnClassName}
-              disabled={isApplying}
+              disabled={!canSend || isApplying}
               onClick={() => {
                 if (setDraft === setMagDraft) magEditSeqRef.current += 1;
                 else imuEditSeqRef.current += 1;
@@ -333,7 +352,7 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
               type="button"
               className={primaryBtnClassName}
               onClick={onApply}
-              disabled={!canSend || isApplying}
+              disabled={!canApply || isApplying}
             >
               {isApplying ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -403,6 +422,7 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
     return Comp;
   }, [
     canSend,
+    canApply,
     firm,
     isConnected,
     inputClassName,
@@ -452,7 +472,7 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
             <button
               type="button"
               className={smallBtnClassName}
-              disabled={isApplyingImu || isApplyingMag}
+              disabled={!canSend || isApplyingImu || isApplyingMag}
               onClick={() => {
                 imuEditSeqRef.current += 1;
                 magEditSeqRef.current += 1;

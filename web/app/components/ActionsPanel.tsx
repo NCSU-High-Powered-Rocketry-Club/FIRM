@@ -3,8 +3,7 @@ import { Listbox, Transition } from "@headlessui/react";
 import { ChevronsUpDown, Check, Download, RefreshCcw, XCircle } from "lucide-react";
 import { useFIRM } from "~/contexts/FIRMContext";
 
-// The length each calibration takes
-const TIME_CAL_IMU_SECONDS = 10;
+// How long magnetometer calibration collects samples
 const TIME_CAL_MAG_SECONDS = 10;
 
 type LogOption = {
@@ -33,13 +32,13 @@ function classNames(...classes: Array<string | false | null | undefined>) {
 }
 
 export function ActionsPanel() {
-  const { firm } = useFIRM();
+  // calibrationBusy is shared with the Calibration panel so only one calibration write runs.
+  const { firm, calibrationBusy: calBusy, setCalibrationBusy } = useFIRM();
   const [selectedLog, setSelectedLog] = useState<LogOption>(LOG_OPTIONS[0]);
 
   // Calibration State
-  const [activeCal, setActiveCal] = useState<"IMU" | "MAG" | null>(null);
+  const [activeCal, setActiveCal] = useState<"MAG" | null>(null);
   const [countdown, setCountdown] = useState<number>(0);
-  const [calBusy, setCalBusy] = useState(false);
   const [calMessage, setCalMessage] = useState<{ type: "IMU" | "MAG"; text: string } | null>(null);
 
   // Ref for the timer interval so we can clear it easily
@@ -86,16 +85,16 @@ export function ActionsPanel() {
     }, 1000);
   };
 
-  const beginCalibration = (type: "IMU" | "MAG") => {
+  const beginMagCalibration = () => {
     calAbortRef.current?.abort();
     const abort = new AbortController();
     calAbortRef.current = abort;
     const runId = ++calRunIdRef.current;
     calBusyRef.current = true;
-    setCalBusy(true);
+    setCalibrationBusy(true);
     setCalMessage(null);
-    setActiveCal(type);
-    startTimer(type === "IMU" ? TIME_CAL_IMU_SECONDS : TIME_CAL_MAG_SECONDS);
+    setActiveCal("MAG");
+    startTimer(TIME_CAL_MAG_SECONDS);
     return { abort, runId };
   };
 
@@ -107,19 +106,19 @@ export function ActionsPanel() {
     setActiveCal(null);
     stopTimer();
     calBusyRef.current = false;
-    setCalBusy(false);
+    setCalibrationBusy(false);
   };
 
   const isCalAbortError = (err: unknown) => err instanceof Error && err.name === "AbortError";
 
   const handleCalibrateIMU = () => {
     // Use the `firm-imu-cal` CLI (processing/firm/cli/calibrate_imu.py) until this exists here.
-    setCalMessage({ type: "IMU", text: "Not available in the web app yet; use firm-imu-cal." });
+    setCalMessage({ type: "IMU", text: "Not available yet." });
   };
 
   const handleCalibrateMag = async () => {
-    if (!firm || calBusyRef.current) return;
-    const { abort, runId } = beginCalibration("MAG");
+    if (!firm || calBusyRef.current || calBusy) return;
+    const { abort, runId } = beginMagCalibration();
 
     const work = (async () => {
       try {
@@ -141,7 +140,8 @@ export function ActionsPanel() {
       } catch (err) {
         if (!isCalAbortError(err)) {
           console.error("Mag Calibration error:", err);
-          setCalMessage({ type: "MAG", text: "Calibration failed; see console for details." });
+          const detail = err instanceof Error ? err.message : String(err);
+          setCalMessage({ type: "MAG", text: `Calibration failed: ${detail}` });
         }
       } finally {
         finishCalibration(runId);
@@ -224,7 +224,7 @@ export function ActionsPanel() {
               Calibrate IMU
             </p>
             <p className="text-xs text-slate-500 mt-1">
-              Zero accel/gyro. Keep device still and level.
+              Not in the web app yet; use the firm-imu-cal command-line tool.
             </p>
           </div>
           <div className="mt-3 flex items-center gap-3">
