@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useFIRM } from "~/contexts/FIRMContext";
 import type { FIRMPacket } from "firm-client";
 
@@ -35,31 +35,28 @@ function renderHexWithIdHighlight(hex: string, identifiers: ReadonlySet<string>)
   // hex is one line per serial chunk, formatted as "aa bb cc". The firmware sends each message
   // in its own USB transfer and the client writes each command in one call, so a chunk usually
   // starts with a message identifier; only that first byte is highlighted, since identifier
-  // values also occur inside payloads.
-  const nodes: React.ReactNode[] = [];
-
-  hex.split("\n").forEach((line, lineIdx) => {
-    if (lineIdx > 0) nodes.push("\n");
-    const tokens = line.split(/\s+/).filter(Boolean);
-    tokens.forEach((t, i) => {
-      if (i === 0 && identifiers.has(t.toLowerCase())) {
-        nodes.push(
-          <span
-            key={`h-${lineIdx}-${i}`}
-            style={{ backgroundColor: "color-mix(in srgb, var(--color-theme) 12%, transparent)" }}
-            className="rounded px-0.5"
-          >
-            {t}
-          </span>,
-        );
-      } else {
-        nodes.push(<span key={`b-${lineIdx}-${i}`}>{t}</span>);
-      }
-      if (i < tokens.length - 1) nodes.push(" ");
-    });
+  // values also occur inside payloads. Each line is one text node (plus a span for the
+  // identifier) rather than a node per byte, to keep re-renders cheap.
+  return hex.split("\n").map((line, lineIdx) => {
+    const firstByte = line.slice(0, 2);
+    const rest = line.slice(2);
+    const lineBreak = lineIdx > 0 ? "\n" : "";
+    if (!identifiers.has(firstByte.toLowerCase())) {
+      return <Fragment key={lineIdx}>{lineBreak + line}</Fragment>;
+    }
+    return (
+      <Fragment key={lineIdx}>
+        {lineBreak}
+        <span
+          style={{ backgroundColor: "color-mix(in srgb, var(--color-theme) 12%, transparent)" }}
+          className="rounded px-0.5"
+        >
+          {firstByte}
+        </span>
+        {rest}
+      </Fragment>
+    );
   });
-
-  return nodes;
 }
 
 function highlightRx(hex: string) {
@@ -200,7 +197,12 @@ export function DeveloperPanel({ visible }: { visible: boolean }) {
             <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
               Recent received bytes (hex)
             </div>
-            <pre ref={rxRef} className={hexBoxClassName + " whitespace-pre-wrap"}>
+            <pre
+              ref={rxRef}
+              tabIndex={0}
+              aria-label="Recently received bytes"
+              className={hexBoxClassName + " whitespace-pre-wrap"}
+            >
               {rxHighlighted}
             </pre>
           </div>
@@ -219,7 +221,12 @@ export function DeveloperPanel({ visible }: { visible: boolean }) {
             <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
               Recent transmitted bytes (hex)
             </div>
-            <pre ref={txRef} className={hexBoxClassName + " whitespace-pre-wrap"}>
+            <pre
+              ref={txRef}
+              tabIndex={0}
+              aria-label="Recently sent bytes"
+              className={hexBoxClassName + " whitespace-pre-wrap"}
+            >
               {txHighlighted}
             </pre>
           </div>

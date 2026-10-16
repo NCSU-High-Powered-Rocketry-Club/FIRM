@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { isEditableTarget } from "~/contexts/FIRMContext";
 
 const KONAMI_SEQUENCE = [
   "ArrowUp",
@@ -16,34 +17,35 @@ const KONAMI_SEQUENCE = [
 
 export function KonamiPanel() {
   const [isActive, setIsActive] = useState(false);
-  const [_, setBuffer] = useState<string[]>([]);
+  const bufferRef = useRef<string[]>([]);
   const timeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      setBuffer((prev) => {
-        const next = [...prev, event.key];
-        if (next.length > KONAMI_SEQUENCE.length) next.shift();
+      // Ignore typing in form fields.
+      if (isEditableTarget(event.target)) return;
 
-        const matched =
-          next.length === KONAMI_SEQUENCE.length &&
-          next.every((key, i) => key === KONAMI_SEQUENCE[i]);
+      const next = [...bufferRef.current, event.key];
+      if (next.length > KONAMI_SEQUENCE.length) next.shift();
+      bufferRef.current = next;
 
-        if (matched) {
-          setIsActive(true);
+      const matched =
+        next.length === KONAMI_SEQUENCE.length &&
+        next.every((key, i) => key === KONAMI_SEQUENCE[i]);
+      if (!matched) return;
 
-          // reset timer if spammed
-          if (timeoutRef.current !== null) {
-            window.clearTimeout(timeoutRef.current);
-          }
+      // The sequence ends with Enter; don't let it also activate a focused button.
+      event.preventDefault();
+      setIsActive(true);
 
-          timeoutRef.current = window.setTimeout(() => {
-            setIsActive(false);
-          }, 1000);
-        }
+      // reset timer if spammed
+      if (timeoutRef.current !== null) {
+        window.clearTimeout(timeoutRef.current);
+      }
 
-        return next;
-      });
+      timeoutRef.current = window.setTimeout(() => {
+        setIsActive(false);
+      }, 1000);
     };
 
     window.addEventListener("keydown", handleKeyDown);
