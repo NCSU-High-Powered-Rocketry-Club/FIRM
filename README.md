@@ -11,7 +11,7 @@ FIRM is a project by the NCSU High Powered Rocketry Club to develop a flight com
 
 It is also designed to be modular and easily adaptable to different rocket configurations and mission requirements. The project includes a custom PCB that integrates the sensors and microcontroller into a compact, lightweight package suitable for high-speed flight.
 
-This repository holds the STM32 firmware (written in C), a USB client (Rust, with Python and TypeScript bindings) that interfaces with the hardware, and post-flight processing tools for log archives, ESKF replay, and trace analysis.
+This repository holds the STM32 firmware (written in C), a USB client (Rust, with Python and TypeScript bindings) that interfaces with the hardware, a React web app for Web Serial configuration, MkDocs documentation, and post-flight processing tools for log archives, ESKF replay, and trace analysis.
 
 ## Layout
 
@@ -19,6 +19,8 @@ This repository holds the STM32 firmware (written in C), a USB client (Rust, wit
 |----------------|------------------------------------------------------------------------------|
 | `STM32/`       | Firmware (CubeMX / VS Code STM32 extension)                                  |
 | `client/`      | USB client crates, `firm-client` Python bindings, and WASM/TypeScript client |
+| `web/`         | React web app (Web Serial UI); depends on the local `client/` package        |
+| `docs/`        | MkDocs documentation (Material theme), built from `mkdocs.yaml`              |
 | `processing/`  | Offline tools: `firm-hprc` (`firm.flight_data`, `firm.eskf_lab`)             |
 | `flight_data/` | Versioned flight-log archive (data only)                                     |
 | `tests/`       | Pytest and protocol C checks (firmware unit tests live in `STM32/tests/`)    |
@@ -56,6 +58,19 @@ just ci             # local firmware/C tests/rust/python/lint
 just publish        # PyPI + npm + crates.io (see `just dry_run=true publish`)
 just --list         # list all just recipes including building/testing/linting individual targets
 ```
+
+## Web app and docs
+
+The React app in `web/` talks to FIRM over Web Serial and uses the local WASM client (`firm-client` via `file:../client`). The MkDocs site lives in `docs/`. The app needs [Node.js](https://nodejs.org/); docs need only uv. Building the web app also needs `wasm-pack` so `client/` can compile its WASM package.
+
+```bash
+just web-dev        # Vite dev server for the web app (http://localhost:5173/)
+just build-web      # production build of client WASM + the React app
+just lint-web       # ESLint + Prettier check in web/
+just build-docs     # MkDocs site to ./site/
+```
+
+`just web-dev` runs `npm run dev` in `web/`. After `just build-docs`, or `uv run --group docs mkdocs serve`, the docs are at http://127.0.0.1:8000/docs/. Production is https://firm.ncsurocketry.org/ (app) and https://firm.ncsurocketry.org/docs/ (docs). See [web/README.md](web/README.md).
 
 ## Processing tools
 

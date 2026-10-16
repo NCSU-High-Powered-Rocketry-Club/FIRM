@@ -1,62 +1,44 @@
 # FIRM Web App
 
-The FIRM Web App is a React + TypeScript frontend for configuring and communicating with FIRM over Web Serial. It also contains the FIRM docs site, and eventually will include more features/pages for visualizing flight data.
+React + TypeScript frontend for configuring and communicating with FIRM over Web Serial. It lives at `web/` in the FIRM monorepo and depends on the local WASM client (`firm-client` from `../client`, not npm).
 
-To work on this project, you will need **Node.js + npm** (install here: https://nodejs.org/en/download) and **Python with uv** for the docs (install uv here: https://docs.astral.sh/uv/getting-started/installation/).
+You need **Node.js + npm** (https://nodejs.org/en/download). A production web build also needs **wasm-pack**, because `npm ci` in `client/` runs that package's `prepare` script.
 
----
-
-# Getting Started
-
-## 1. Working on the React Web App
-
-This folder contains the UI for connecting to and configuring FIRM as well as viewing live data.
-
-### Install dependencies
+From the **repository root**:
 
 ```bash
-npm install
+just web-dev        # Vite dev server (usually http://localhost:5173/)
+just build-web      # npm ci in client/ and web/, then production build
+just lint-web       # ESLint + Prettier check
 ```
 
-### Run the dev server locally
+Or from this directory, after dependencies are installed (`npm ci` in `../client` then here):
 
 ```bash
 npm run dev
+npm run build
+npm run lint
+npm run format:check
 ```
 
-This starts Vite and serves the app at a URL printed in the terminal (usually http://localhost:5173/). Any code changes to the UI will hot-reload.
+`just web-dev` hot-reloads UI changes. The app is wired to `file:../client`; keep `optimizeDeps.exclude` / `preserveSymlinks` in `vite.config.ts` so Vite follows that link.
 
-### Run the web app in production mode locally
-
-To test the production build locally:
+To test a production build locally (from the repository root):
 
 ```bash
-$env:VITE_BASE="/"; npm run build
-npx http-server build/client -p 8080
+just build-web
+npx http-server web/build/client -p 8080
 ```
 
-Then open http://127.0.0.1:8080/ in your browser. This builds the app with optimizations and serves it from a static HTTP server, matching the production environment.
+(`just build-web` already sets the Vite base to `/` by default.) Then open http://127.0.0.1:8080/.
 
----
-
-## 2. Working on the Documentation (MkDocs)
-
-The docs live under the top-level `docs/` folder and are built using **MkDocs + Material** and managed through **uv**.
-
-### Install the Python dependencies
+Documentation is **not** in this folder. It lives at repo-root `docs/` (`mkdocs.yaml`). From the repository root:
 
 ```bash
-uv sync
+just build-docs
+uv run --group docs mkdocs serve
 ```
 
-### Run the docs locally
+The served docs are at http://127.0.0.1:8000/docs/.
 
-```bash
-uv run mkdocs serve
-```
-
-This launches a local dev server (http://127.0.0.1:8000/docs/) where your changes auto-reload as you edit markdown files.
-
----
-
-To publish changes to the web app or docs, create a PR and merge it to `main`. Then you can view the web app at https://firm.ncsurocketry.org/ and the docs at https://firm.ncsurocketry.org/docs/.
+Merged changes on `main` that touch `web/`, `docs/`, `client/`, or `mkdocs.yaml` deploy to GitHub Pages: https://firm.ncsurocketry.org/ (app) and https://firm.ncsurocketry.org/docs/ (docs).
