@@ -5,7 +5,6 @@ use crate::constants::command::{
     DEVICE_NAME_LENGTH, FIRMCommand, IMU_CALIBRATION_PAYLOAD_LENGTH, NUMBER_OF_CALIBRATION_OFFSETS,
     NUMBER_OF_CALIBRATION_SCALE_MATRIX_ELEMENTS,
 };
-use crate::constants::log_parsing::FIRMLogPacketType;
 use crate::firm_packets::{DeviceConfig, DeviceProtocol};
 use crate::utils::str_to_bytes;
 use crate::wire_packet::PacketError;
@@ -80,10 +79,6 @@ impl FIRMCommandPacket {
         Self::new(FIRMCommand::Reboot, Vec::new())
     }
 
-    pub fn build_mock_command() -> Self {
-        Self::new(FIRMCommand::Mock, Vec::new())
-    }
-
     pub fn build_set_device_config_command(config: DeviceConfig) -> Self {
         let mut payload = Vec::with_capacity(DEVICE_CONFIG_PAYLOAD_LENGTH);
         payload.extend_from_slice(&config.frequency.to_le_bytes());
@@ -139,63 +134,12 @@ impl FIRMCommandPacket {
     }
 }
 
-/// A mock-log message encoded as `[sensor_id: u8][timestamp + sensor payload]`.
-#[derive(Debug, Clone, PartialEq)]
-pub struct FIRMLogPacket {
-    packet_type: FIRMLogPacketType,
-    payload: Vec<u8>,
-}
-
-impl FIRMLogPacket {
-    pub fn new(packet_type: FIRMLogPacketType, payload: Vec<u8>) -> Self {
-        Self {
-            packet_type,
-            payload,
-        }
-    }
-
-    pub fn packet_type(&self) -> FIRMLogPacketType {
-        self.packet_type
-    }
-
-    pub fn identifier(&self) -> u8 {
-        self.packet_type.as_u8()
-    }
-
-    pub fn payload(&self) -> &[u8] {
-        &self.payload
-    }
-
-    pub fn len(&self) -> usize {
-        self.payload.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.payload.is_empty()
-    }
-
-    pub fn to_bytes(&self) -> Vec<u8> {
-        let mut bytes = Vec::with_capacity(1 + self.payload.len());
-        bytes.push(self.identifier());
-        bytes.extend_from_slice(&self.payload);
-        bytes
-    }
-
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, PacketError> {
-        let (&identifier, payload) = bytes.split_first().ok_or(PacketError::TooShort)?;
-        let packet_type = FIRMLogPacketType::from_u8(identifier)
-            .ok_or(PacketError::UnknownIdentifier(identifier))?;
-        Ok(Self::new(packet_type, payload.to_vec()))
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{FIRMCommandPacket, FIRMLogPacket};
+    use super::FIRMCommandPacket;
     use crate::constants::command::{
         DEVICE_CONFIG_PAYLOAD_LENGTH, FIRMCommand, IMU_CALIBRATION_PAYLOAD_LENGTH,
     };
-    use crate::constants::log_parsing::FIRMLogPacketType;
     use crate::firm_packets::{DeviceConfig, DeviceProtocol};
 
     fn f32_from_payload(payload: &[u8], idx: usize) -> f32 {
@@ -210,7 +154,6 @@ mod tests {
             FIRMCommandPacket::build_get_device_config_command(),
             FIRMCommandPacket::build_cancel_command(),
             FIRMCommandPacket::build_reboot_command(),
-            FIRMCommandPacket::build_mock_command(),
         ];
         for packet in cases {
             assert_eq!(packet.to_bytes(), [packet.command_type().to_u8()]);
@@ -257,13 +200,5 @@ mod tests {
         for (i, expected) in gyro_matrix.iter().enumerate() {
             assert_eq!(f32_from_payload(packet.payload(), 15 + i), *expected);
         }
-    }
-
-    #[test]
-    fn mock_packet_roundtrips_as_id_plus_payload() {
-        let packet = FIRMLogPacket::new(FIRMLogPacketType::HighGPacket, vec![1, 2, 3]);
-        let bytes = packet.to_bytes();
-        assert_eq!(bytes, [b'A', 1, 2, 3]);
-        assert_eq!(FIRMLogPacket::from_bytes(&bytes).unwrap(), packet);
     }
 }
