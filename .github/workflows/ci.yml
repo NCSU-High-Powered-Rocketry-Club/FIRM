@@ -89,13 +89,28 @@ jobs:
       - uses: astral-sh/setup-uv@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version-file: .nvmrc
       - name: Install Ninja
         run: sudo apt-get update && sudo apt-get install -y ninja-build
       - name: uv sync
         run: just sync
-      - name: Build TypeScript / WASM client
-        working-directory: client
-        run: npm ci
       - name: pytest -m integration
         run: just test-integration
+
+  web:
+    name: web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: extractions/setup-just@v2
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: jetli/wasm-pack-action@v0.4.0
+      - uses: astral-sh/setup-uv@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      # client's prepare (run by npm ci) needs wasm-pack.
+      - name: Lint, build web, and build docs
+        run: just sync-web lint-web build-web build-docs

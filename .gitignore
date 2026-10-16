@@ -119,3 +119,15 @@ trace*.json
 /flight_data/launches/**/derived/
 /flight_data/launches/**/decoded/
 /flight_data/launches/**/.index/
+
+# npm workspace (client/ + web/) and MkDocs
+.DS_Store
+node_modules/
+/client/firm_typescript/pkg/
+/client/firm_typescript/typescript/dist/
+/client/firm_typescript/examples/temp_install/
+/client/firm_typescript/examples/test_packed.html
+/client/capture.csv
+web/.env
+web/.react-router/
+/site/

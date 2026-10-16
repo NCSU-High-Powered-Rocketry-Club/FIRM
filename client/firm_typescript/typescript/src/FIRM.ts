@@ -4,7 +4,7 @@ import init, {
   MagnetometerCalibrator,
   MockLogParser,
   mock_header_size,
-} from '../../pkg/firm_client.js';
+} from "../../pkg/firm_client.js";
 import {
   FIRMPacket,
   FIRMResponse,
@@ -12,9 +12,17 @@ import {
   DeviceConfig,
   DeviceProtocol,
   CalibrationValues,
-} from './types.js';
+} from "./types.js";
 
 const RESPONSE_TIMEOUT_MS = 5000;
+const ZERO_OFFSETS = [0, 0, 0];
+const IDENTITY_MATRIX = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+
+function createAbortError(): Error {
+  const err = new Error("Calibration cancelled");
+  err.name = "AbortError";
+  return err;
+}
 
 /** Options for connecting to a FIRM device over Web Serial. */
 export interface FIRMConnectOptions {
@@ -27,12 +35,20 @@ export interface FIRMConnectOptions {
 interface WebSerialPortLike {
   open(options: { baudRate: number }): Promise<void>;
   close(): Promise<void>;
+  setSignals?(signals: { dataTerminalReady?: boolean }): Promise<void>;
   readable: {
     getReader(): ReadableStreamDefaultReader<Uint8Array>;
   } | null;
   writable: {
     getWriter(): WritableStreamDefaultWriter<Uint8Array>;
   } | null;
+}
+
+interface ResponseWaiter {
+  /** Takes the response and returns true if it is the one this waiter wants. */
+  offer(res: FIRMResponse): boolean;
+  /** Rejects the wait because the connection closed. */
+  cancel(): void;
 }
 
 interface WebSerialNavigator extends Navigator {
@@ -80,25 +96,53 @@ export class FIRMClient {
 
   private packetQueue: FIRMPacket[] = [];
   private packetWaiters: ((pkt: FIRMPacket | null) => void)[] = [];
+  /** Responses that arrived while no waiter wanted them. */
   private responseQueue: FIRMResponse[] = [];
-  private responseWaiters: ((res: FIRMResponse) => void)[] = [];
+  /**
+   * Pending waitForResponse() calls, oldest first. Each response goes to the oldest waiter
+   * that accepts it, so one response never satisfies two calls.
+   */
+  private responseWaiters: ResponseWaiter[] = [];
 
   private closed = false;
+  /** Aborted when the connection shuts down, so in-flight work (e.g. calibration) stops. */
+  private closedController = new AbortController();
+  /** Teardown of the port, shared by close() and the read loop so both wait for it. */
+  private shutdownPromise: Promise<void> | null = null;
 
   private constructor(wasm: FIRMDataParser) {
     this.dataParser = wasm;
   }
 
-  private async sleep(ms: number): Promise<void> {
-    await new Promise((resolve) => setTimeout(resolve, ms));
+  /** Sleeps for `ms`, rejecting with an AbortError as soon as any of `signals` aborts. */
+  private async sleep(ms: number, ...signals: (AbortSignal | undefined)[]): Promise<void> {
+    const active = signals.filter((s): s is AbortSignal => s !== undefined);
+    if (active.some((s) => s.aborted)) throw createAbortError();
+    await new Promise<void>((resolve, reject) => {
+      const removeListeners = () => active.forEach((s) => s.removeEventListener("abort", onAbort));
+      const onAbort = () => {
+        clearTimeout(timeoutId);
+        removeListeners();
+        reject(createAbortError());
+      };
+      const timeoutId = setTimeout(() => {
+        removeListeners();
+        resolve();
+      }, ms);
+      active.forEach((s) => s.addEventListener("abort", onAbort, { once: true }));
+    });
+  }
+
+  private throwIfAborted(signal?: AbortSignal): void {
+    if (signal?.aborted) throw createAbortError();
   }
 
   private async safeCall(obj: unknown, fn: string): Promise<void> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const target = obj as any;
-    if (!target || typeof target[fn] !== 'function') return;
+    if (!target || typeof target[fn] !== "function") return;
     try {
-      if (fn === 'close' || fn === 'cancel') {
+      if (fn === "close" || fn === "cancel") {
         await target[fn]();
       } else {
         target[fn]();
@@ -115,22 +159,39 @@ export class FIRMClient {
    * @returns A connected FIRM instance.
    */
   static async connect(options: FIRMConnectOptions = {}): Promise<FIRMClient> {
-    if (!('serial' in navigator)) throw new Error('Web Serial API not available');
+    if (!("serial" in navigator)) throw new Error("Web Serial API not available");
     const baudRate = options.baudRate ?? 2000000;
     const port = options.port ?? (await (navigator as WebSerialNavigator).serial.requestPort());
 
     await init();
     const dataParser = new FIRMDataParser();
     await port.open({ baudRate });
-    const reader = port.readable!.getReader();
-    const writer = port.writable!.getWriter();
+    let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+    let writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
+    try {
+      // The firmware ignores USB CDC traffic until the host asserts DTR (see usbd_cdc_if.c).
+      // Not every OS raises DTR on open, so assert it explicitly like the Rust client does.
+      if (port.setSignals) {
+        await port.setSignals({ dataTerminalReady: true });
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      if (!port.readable || !port.writable) throw new Error("Serial port has no streams");
+      reader = port.readable.getReader();
+      writer = port.writable.getWriter();
+    } catch (err) {
+      // Don't leave the port open, or every later connect fails with "already open".
+      reader?.releaseLock();
+      writer?.releaseLock();
+      await port.close().catch(() => {});
+      throw err;
+    }
     const firm = new FIRMClient(dataParser);
     firm.port = port;
     firm.reader = reader;
     firm.writer = writer;
     firm
       .startReadLoop()
-      .catch((err) => console.warn('[FIRM] read loop task failed (ignored):', err));
+      .catch((err) => console.warn("[FIRM] read loop task failed (ignored):", err));
     return firm;
   }
 
@@ -150,7 +211,7 @@ export class FIRMClient {
             try {
               fn(value);
             } catch (e) {
-              console.warn('[FIRM] raw bytes listener error:', e);
+              console.warn("[FIRM] raw bytes listener error:", e);
             }
           });
           this.dataParser.parse_bytes(value);
@@ -162,20 +223,34 @@ export class FIRMClient {
         }
       }
     } catch (err) {
-      console.warn('[FIRM] read loop ended:', err);
-      this.flushWaitersWithNull();
+      console.warn("[FIRM] read loop ended:", err);
     } finally {
-      this.running = false;
-      this.flushWaitersWithNull();
-      await this.safeCall(this.reader, 'cancel');
-      await this.safeCall(this.reader, 'releaseLock');
-      await this.safeCall(this.writer, 'close');
-      await this.safeCall(this.writer, 'releaseLock');
-      await this.safeCall(this.port, 'close');
-      this.reader = null;
-      this.writer = null;
-      this.port = null;
+      await this.shutdown();
     }
+  }
+
+  /**
+   * Stops the client and releases the port. Runs once; later calls return the same promise,
+   * so every caller waits until the port is actually closed.
+   */
+  private shutdown(): Promise<void> {
+    if (!this.shutdownPromise) {
+      this.shutdownPromise = (async () => {
+        this.running = false;
+        this.closed = true;
+        this.closedController.abort();
+        this.flushWaitersWithNull();
+        await this.safeCall(this.reader, "cancel");
+        await this.safeCall(this.reader, "releaseLock");
+        await this.safeCall(this.writer, "close");
+        await this.safeCall(this.writer, "releaseLock");
+        await this.safeCall(this.port, "close");
+        this.reader = null;
+        this.writer = null;
+        this.port = null;
+      })();
+    }
+    return this.shutdownPromise;
   }
 
   /**
@@ -183,13 +258,13 @@ export class FIRMClient {
    * @param bytes The bytes to send.
    */
   async sendBytes(bytes: Uint8Array): Promise<void> {
-    if (!this.writer) throw new Error('Writer not available');
+    if (!this.writer) throw new Error("Writer not available");
 
     this.outgoingBytesListeners.forEach((fn) => {
       try {
         fn(bytes);
       } catch (e) {
-        console.warn('[FIRM] outgoing bytes listener error:', e);
+        console.warn("[FIRM] outgoing bytes listener error:", e);
       }
     });
     await this.writer.write(bytes);
@@ -234,8 +309,11 @@ export class FIRMClient {
   ): Promise<T | null> {
     const command = buildCmd();
     if (command.length === 0 || !this.dataParser.expect_response(command[0])) {
-      throw new Error('Command does not have a recognized response identifier');
+      throw new Error("Command does not have a recognized response identifier");
     }
+    // Drop queued responses this call would accept (e.g. a late reply to an earlier call that
+    // timed out) so they can't be taken as the reply to this command.
+    this.responseQueue = this.responseQueue.filter((res) => matcher(res) === undefined);
     await this.sendBytes(command);
     try {
       return await this.waitForResponse(matcher, timeout);
@@ -248,28 +326,28 @@ export class FIRMClient {
    * Streams a mock log file to the device (used for hardware mock mode).
    */
   async streamMockLogFile(file: File, options: MockStreamOptions = {}): Promise<number> {
-    if (!this.writer) throw new Error('Writer not available');
+    if (!this.writer) throw new Error("Writer not available");
 
     const realtime = options.realtime ?? true;
     const speed = options.speed ?? 1.0;
     const chunkSize = options.chunkSize ?? 8192;
     const startTimeoutMs = options.startTimeoutMs ?? RESPONSE_TIMEOUT_MS;
 
-    if (speed <= 0) throw new Error('speed must be > 0');
+    if (speed <= 0) throw new Error("speed must be > 0");
 
     const mockCommand = FIRMCommandBuilder.build_mock();
     this.dataParser.expect_response(mockCommand[0]);
     await this.sendBytes(mockCommand);
     const ok = await this.waitForResponse(
-      (res) => ('Mock' in res ? res.Mock : undefined),
+      (res) => ("Mock" in res ? res.Mock : undefined),
       startTimeoutMs,
     ).catch(() => null);
 
-    if (!ok) throw new Error('Mock mode not acknowledged');
+    if (!ok) throw new Error("Mock mode not acknowledged");
 
     const data = new Uint8Array(await file.arrayBuffer());
     const headerSize = mock_header_size();
-    if (data.length < headerSize) throw new Error('Log file too small');
+    if (data.length < headerSize) throw new Error("Log file too small");
 
     const header = data.slice(0, headerSize);
     const body = data.slice(headerSize);
@@ -419,7 +497,7 @@ export class FIRMClient {
   async getDeviceInfo(): Promise<DeviceInfo | null> {
     return this.sendAndWait(
       () => FIRMCommandBuilder.build_get_device_info(),
-      (res) => ('GetDeviceInfo' in res ? res.GetDeviceInfo : undefined),
+      (res) => ("GetDeviceInfo" in res ? res.GetDeviceInfo : undefined),
     );
   }
 
@@ -430,7 +508,7 @@ export class FIRMClient {
   async getDeviceConfig(): Promise<DeviceConfig | null> {
     return this.sendAndWait(
       () => FIRMCommandBuilder.build_get_device_config(),
-      (res) => ('GetDeviceConfig' in res ? res.GetDeviceConfig : undefined),
+      (res) => ("GetDeviceConfig" in res ? res.GetDeviceConfig : undefined),
     );
   }
 
@@ -441,7 +519,7 @@ export class FIRMClient {
   async getCalibration(): Promise<CalibrationValues | null> {
     return this.sendAndWait(
       () => FIRMCommandBuilder.build_get_calibration(),
-      (res) => ('GetCalibration' in res ? res.GetCalibration : undefined),
+      (res) => ("GetCalibration" in res ? res.GetCalibration : undefined),
     );
   }
 
@@ -460,7 +538,7 @@ export class FIRMClient {
     return (
       (await this.sendAndWait(
         () => FIRMCommandBuilder.build_set_device_config(name, frequency, protocol),
-        (res) => ('SetDeviceConfig' in res ? res.SetDeviceConfig : undefined),
+        (res) => ("SetDeviceConfig" in res ? res.SetDeviceConfig : undefined),
       )) ?? false
     );
   }
@@ -485,7 +563,7 @@ export class FIRMClient {
             gyroOffsetsF32,
             gyroScaleF32,
           ),
-        (res) => ('SetIMUCalibration' in res ? res.SetIMUCalibration : undefined),
+        (res) => ("SetIMUCalibration" in res ? res.SetIMUCalibration : undefined),
       )) ?? false
     );
   }
@@ -497,7 +575,7 @@ export class FIRMClient {
     return (
       (await this.sendAndWait(
         () => FIRMCommandBuilder.build_set_magnetometer_calibration(offsetsF32, scaleF32),
-        (res) => ('SetMagnetometerCalibration' in res ? res.SetMagnetometerCalibration : undefined),
+        (res) => ("SetMagnetometerCalibration" in res ? res.SetMagnetometerCalibration : undefined),
       )) ?? false
     );
   }
@@ -506,19 +584,70 @@ export class FIRMClient {
    * Runs a full magnetometer calibration sequence and applies it to the device.
    *
    * Mirrors the Rust helper `run_and_apply_magnetometer_calibration`:
-   * 1) Collects samples for `collectionDurationMs` while you rotate the device.
-   * 2) Fits offsets + soft-iron matrix.
-   * 3) Sends `SetMagnetometerCalibration` and returns the device acknowledgement.
+   * 1) Resets the magnetometer calibration to identity so samples are uncorrected.
+   * 2) Collects samples for `collectionDurationMs` while you rotate the device.
+   * 3) Fits offsets + soft-iron matrix.
+   * 4) Sends `SetMagnetometerCalibration` and returns the device acknowledgement.
+   *
+   * Unless the new calibration is acknowledged and the run was not cancelled, the previous
+   * calibration is written back.
    *
    * @returns `true/false` if the device responded, or `null` if calibration failed or timed out.
+   * @throws AbortError when `signal` is aborted or the connection closes.
+   * @throws Error when the previous calibration could not be restored.
    */
   async runAndApplyMagnetometerCalibration(
     collectionDurationMs: number,
     applyTimeoutMs = RESPONSE_TIMEOUT_MS,
+    signal?: AbortSignal,
   ): Promise<boolean | null> {
-    if (!this.running) throw new Error('Not connected');
-    if (!(collectionDurationMs > 0)) throw new Error('collectionDurationMs must be > 0');
+    if (!this.running) throw new Error("Not connected");
+    if (!(collectionDurationMs > 0)) throw new Error("collectionDurationMs must be > 0");
+    this.throwIfAborted(signal);
 
+    const previous = await this.getCalibration();
+    this.throwIfAborted(signal);
+    if (!previous) return null;
+
+    // Restore unless the new calibration is confirmed. Set before the identity write: its ack
+    // can be lost even though the device stored it.
+    let restore = true;
+    let result: boolean | null = null;
+    let failure: unknown = null;
+    try {
+      if (await this.setMagnetometerCalibration(ZERO_OFFSETS, IDENTITY_MATRIX)) {
+        this.throwIfAborted(signal);
+        result = await this.collectAndApplyMagnetometerCalibration(
+          collectionDurationMs,
+          applyTimeoutMs,
+          signal,
+        );
+        if (result === true) restore = false;
+      }
+    } catch (err) {
+      failure = err;
+    }
+
+    if (restore) {
+      const restored = await this.setMagnetometerCalibration(
+        previous.magnetometer_offsets,
+        previous.magnetometer_scale_matrix,
+      ).catch(() => false);
+      if (!restored) {
+        throw new Error(
+          "The previous magnetometer calibration could not be restored; check it before flying.",
+        );
+      }
+    }
+    if (failure) throw failure;
+    return result;
+  }
+
+  private async collectAndApplyMagnetometerCalibration(
+    collectionDurationMs: number,
+    applyTimeoutMs: number,
+    signal?: AbortSignal,
+  ): Promise<boolean | null> {
     const calibrator = new MagnetometerCalibrator();
     calibrator.start();
 
@@ -530,10 +659,14 @@ export class FIRMClient {
       }
     });
 
-    await this.sleep(collectionDurationMs);
-
-    unsubscribe();
-    calibrator.stop();
+    try {
+      // Also stop if the connection drops mid-collection.
+      await this.sleep(collectionDurationMs, signal, this.closedController.signal);
+    } finally {
+      unsubscribe();
+      calibrator.stop();
+    }
+    this.throwIfAborted(signal);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = calibrator.calculate() as any | null;
@@ -542,11 +675,16 @@ export class FIRMClient {
     const offsetsF32 = new Float32Array(result.offsets as number[]);
     const scaleF32 = new Float32Array(result.scaleMatrix as number[]);
 
-    return await this.sendAndWait(
+    // Last point where cancel can still prevent the device write.
+    this.throwIfAborted(signal);
+    const ack = await this.sendAndWait(
       () => FIRMCommandBuilder.build_set_magnetometer_calibration(offsetsF32, scaleF32),
-      (res) => ('SetMagnetometerCalibration' in res ? res.SetMagnetometerCalibration : undefined),
+      (res) => ("SetMagnetometerCalibration" in res ? res.SetMagnetometerCalibration : undefined),
       applyTimeoutMs,
     );
+    // A cancel that arrived while waiting for the ack still wins; the caller restores.
+    this.throwIfAborted(signal);
+    return ack;
   }
 
   /**
@@ -557,7 +695,7 @@ export class FIRMClient {
     return (
       (await this.sendAndWait(
         () => FIRMCommandBuilder.build_cancel(),
-        (res) => ('Cancel' in res ? res.Cancel : undefined),
+        (res) => ("Cancel" in res ? res.Cancel : undefined),
       )) ?? false
     );
   }
@@ -579,7 +717,7 @@ export class FIRMClient {
       try {
         fn(dataPacket);
       } catch (e) {
-        console.warn('[FIRM] packet listener error:', e);
+        console.warn("[FIRM] packet listener error:", e);
       }
     });
     (this.packetWaiters.shift() || this.packetQueue.push.bind(this.packetQueue))(dataPacket);
@@ -599,13 +737,16 @@ export class FIRMClient {
   }
 
   /**
-   * Enqueues a newly parsed response and notifies waiters.
+   * Hands a newly parsed response to the oldest waiter that wants it, or queues it.
    *
    * @param response Parsed FIRM response.
    */
   private enqueueResponse(response: FIRMResponse): void {
+    // Iterate over a copy: a waiter that accepts the response removes itself from the list.
+    for (const waiter of [...this.responseWaiters]) {
+      if (waiter.offer(response)) return;
+    }
     this.responseQueue.push(response);
-    this.responseWaiters.forEach((waiter) => waiter(response));
   }
 
   /**
@@ -627,44 +768,47 @@ export class FIRMClient {
       }
     }
 
+    if (this.closed) throw new Error("Connection closed");
+
     // 2. Wait for new responses
     return new Promise<T>((resolve, reject) => {
+      const remove = () => {
+        clearTimeout(timeoutId);
+        const idx = this.responseWaiters.indexOf(waiter);
+        if (idx !== -1) this.responseWaiters.splice(idx, 1);
+      };
+
+      const waiter: ResponseWaiter = {
+        offer: (res) => {
+          const match = matcher(res);
+          if (match === undefined) return false;
+          remove();
+          resolve(match);
+          return true;
+        },
+        cancel: () => {
+          remove();
+          reject(new Error("Connection closed"));
+        },
+      };
+
       const timeoutId = setTimeout(() => {
-        cleanup();
-        reject(new Error('Timeout waiting for response'));
+        remove();
+        reject(new Error("Timeout waiting for response"));
       }, timeoutMs);
 
-      const onResponse = (res: FIRMResponse) => {
-        const match = matcher(res);
-        if (match !== undefined) {
-          // We found it! Remove from queue.
-          const idx = this.responseQueue.indexOf(res);
-          if (idx !== -1) {
-            this.responseQueue.splice(idx, 1);
-          }
-          cleanup();
-          resolve(match);
-        }
-      };
-
-      const cleanup = () => {
-        clearTimeout(timeoutId);
-        const idx = this.responseWaiters.indexOf(onResponse);
-        if (idx !== -1) {
-          this.responseWaiters.splice(idx, 1);
-        }
-      };
-
-      this.responseWaiters.push(onResponse);
+      this.responseWaiters.push(waiter);
     });
   }
 
   /**
-   * Resolves all pending waiters with null (used on shutdown/error).
+   * Resolves all pending packet waiters with null and rejects pending response waiters
+   * (used on shutdown/error).
    */
   private flushWaitersWithNull(): void {
     while (this.packetWaiters.length)
       (this.packetWaiters.shift() as (pkt: FIRMPacket | null) => void)(null);
+    for (const waiter of [...this.responseWaiters]) waiter.cancel();
   }
 
   /**
@@ -733,25 +877,11 @@ export class FIRMClient {
    */
   async close(): Promise<void> {
     try {
-      if (this.closed) return;
-      this.closed = true;
-
-      this.running = false;
-      await this.safeCall(this.reader, 'cancel');
-      await this.safeCall(this.reader, 'releaseLock');
-      await this.safeCall(this.writer, 'close');
-      await this.safeCall(this.writer, 'releaseLock');
-      await this.safeCall(this.port, 'close');
-      this.reader = null;
-      this.writer = null;
-      this.port = null;
-      this.flushWaitersWithNull();
+      await this.shutdown();
     } catch (e) {
       // Swallow any unexpected error so close() never rejects
       // (prevents unhandled promise rejection on reboot/disconnect)
-      console.warn('[FIRM] close() failed (swallowed):', e);
-      // Re-throw for debug if needed:
-      // throw e;
+      console.warn("[FIRM] close() failed (swallowed):", e);
     }
   }
 }

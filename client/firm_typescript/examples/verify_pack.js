@@ -1,13 +1,13 @@
-import { execSync } from 'child_process';
-import fs from 'fs';
-import path from 'path';
-import http from 'http';
-import { fileURLToPath } from 'url';
+import { execSync } from "child_process";
+import fs from "fs";
+import path from "path";
+import http from "http";
+import { fileURLToPath } from "url";
 
 // --- CONFIGURATION ---
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT_DIR = path.resolve(__dirname, '../../'); // client/ (npm package root)
-const TEMP_DIR = path.join(__dirname, 'temp_install'); // Where we fake the install
+const ROOT_DIR = path.resolve(__dirname, "../../"); // client/ (npm package root)
+const TEMP_DIR = path.join(__dirname, "temp_install"); // Where we fake the install
 const PORT = 8080;
 
 // Colors for console output
@@ -25,11 +25,11 @@ try {
   fs.mkdirSync(TEMP_DIR);
 
   // 2. BUILD AND PACK
-  LOG.info('Building and Packing project...');
+  LOG.info("Building and Packing project...");
   // Ensure we install deps, build, and then pack.
   // We capture the output filename from npm pack (e.g., firm-client-0.1.5.tgz)
   const packCmd = `npm run build && npm pack --json`;
-  const packOutput = execSync(packCmd, { cwd: ROOT_DIR, encoding: 'utf-8' });
+  const packOutput = execSync(packCmd, { cwd: ROOT_DIR, encoding: "utf-8" });
 
   // Parse the JSON output from npm pack to find the filename
   // npm pack --json returns an array of objects
@@ -40,10 +40,10 @@ try {
   LOG.success(`Created tarball: ${tarballName}`);
 
   // 3. EXTRACT (Simulate Install)
-  LOG.info('Extracting to temp_install (simulating npm install)...');
+  LOG.info("Extracting to temp_install (simulating npm install)...");
   // We use tar to extract. npm pack creates a 'package' folder inside.
   // We strip that component so it looks like node_modules/firm-client
-  const installPath = path.join(TEMP_DIR, 'firm-client');
+  const installPath = path.join(TEMP_DIR, "firm-client");
   fs.mkdirSync(installPath);
 
   execSync(`tar -xf "${tarballPath}" -C "${installPath}" --strip-components=1`);
@@ -53,19 +53,28 @@ try {
 
   // 4. VERIFY CRITICAL FILES
   // This is the step that catches your previous bug!
-  const wasmPath = path.join(installPath, 'firm_typescript/pkg/firm_client_bg.wasm');
-  const jsPath = path.join(installPath, 'firm_typescript/pkg/firm_client.js');
+  const pkg = JSON.parse(fs.readFileSync(path.join(installPath, "package.json"), "utf-8"));
+  const requiredFiles = [
+    pkg.main,
+    pkg.types,
+    "firm_typescript/pkg/firm_client.js",
+    "firm_typescript/pkg/firm_client.d.ts",
+    "firm_typescript/pkg/firm_client_bg.wasm",
+  ];
+  const missing = requiredFiles.filter((file) => !fs.existsSync(path.join(installPath, file)));
 
-  if (!fs.existsSync(wasmPath) || !fs.existsSync(jsPath)) {
+  if (missing.length > 0) {
     throw new Error(
-      'CRITICAL: WASM/JS files are missing from the packed archive! Check your .npmignore or package.json files list.',
+      `CRITICAL: missing from the packed archive: ${missing.join(", ")}. Check your .npmignore or package.json files list.`,
     );
   }
-  LOG.success('Verification Passed: WASM and JS files are present in the package.');
+  LOG.success(
+    "Verification Passed: entry point, types, and WASM files are present in the package.",
+  );
 
   // 5. CREATE TEST PAGE
   // We copy your test.html but inject an Import Map pointing to the unpacked files
-  const originalHtml = fs.readFileSync(path.join(__dirname, 'test.html'), 'utf-8');
+  const originalHtml = fs.readFileSync(path.join(__dirname, "test.html"), "utf-8");
 
   // We need to inject the import map before the script tag or in the head
   const importMap = `
@@ -82,8 +91,8 @@ try {
   `;
 
   // Insert Import Map into the HTML (replace head tag or prepend to body)
-  const testHtml = originalHtml.replace('<head>', `<head>${importMap}`);
-  const testHtmlPath = path.join(__dirname, 'test_packed.html');
+  const testHtml = originalHtml.replace("<head>", `<head>${importMap}`);
+  const testHtmlPath = path.join(__dirname, "test_packed.html");
   fs.writeFileSync(testHtmlPath, testHtml);
 
   // 6. SERVE
@@ -91,22 +100,22 @@ try {
 
   const server = http.createServer((req, res) => {
     // Basic static file server
-    const safePath = path.normalize(req.url).replace(/^(\.\.[/\\])+/, '');
-    let filePath = path.join(__dirname, safePath === '/' ? 'test_packed.html' : safePath);
+    const safePath = path.normalize(req.url).replace(/^(\.\.[/\\])+/, "");
+    let filePath = path.join(__dirname, safePath === "/" ? "test_packed.html" : safePath);
 
     // Allow serving from the simulated package
-    if (req.url.startsWith('/temp_install')) {
+    if (req.url.startsWith("/temp_install")) {
       filePath = path.join(__dirname, safePath);
     }
 
     const ext = path.extname(filePath);
-    let contentType = 'text/html';
-    if (ext === '.js') contentType = 'text/javascript';
-    if (ext === '.wasm') contentType = 'application/wasm';
+    let contentType = "text/html";
+    if (ext === ".js") contentType = "text/javascript";
+    if (ext === ".wasm") contentType = "application/wasm";
 
     fs.readFile(filePath, (err, content) => {
       if (err) {
-        if (err.code === 'ENOENT') {
+        if (err.code === "ENOENT") {
           res.writeHead(404);
           res.end(`File not found: ${filePath}`);
         } else {
@@ -115,9 +124,9 @@ try {
         }
       } else {
         res.writeHead(200, {
-          'Content-Type': contentType,
-          'Cross-Origin-Opener-Policy': 'same-origin',
-          'Cross-Origin-Embedder-Policy': 'require-corp',
+          "Content-Type": contentType,
+          "Cross-Origin-Opener-Policy": "same-origin",
+          "Cross-Origin-Embedder-Policy": "require-corp",
         });
         res.end(content);
       }
@@ -126,7 +135,7 @@ try {
 
   server.listen(PORT, () => {
     LOG.success(`Ready! Open http://localhost:${PORT}/test_packed.html in your browser.`);
-    LOG.info('Press Ctrl+C to stop.');
+    LOG.info("Press Ctrl+C to stop.");
   });
 } catch (err) {
   LOG.error(err.message);

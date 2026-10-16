@@ -1,5 +1,5 @@
 // Re-export the main class and types from your wrapper
-export { FIRMClient as FIRM, type FIRMConnectOptions } from './FIRM.js';
+export { FIRMClient as FIRM, type FIRMConnectOptions } from "./FIRM.js";
 
 // Re-export all the shared types from your types file
 export {
@@ -9,4 +9,4 @@ export {
   type DeviceConfig,
   DeviceProtocol,
   type CalibrationValues,
-} from './types.js';
+} from "./types.js";

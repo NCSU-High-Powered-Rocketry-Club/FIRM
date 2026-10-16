@@ -1,0 +1,332 @@
+import { Fragment, useState, useRef, useEffect } from "react";
+import { Listbox, Transition } from "@headlessui/react";
+import { ChevronsUpDown, Check, Download, RefreshCcw, XCircle } from "lucide-react";
+import { useFIRM } from "~/contexts/FIRMContext";
+
+// How long magnetometer calibration collects samples
+const TIME_CAL_MAG_SECONDS = 10;
+
+type LogOption = {
+  id: string;
+  label: string;
+  description: string;
+};
+
+const LOG_OPTIONS: LogOption[] = [
+  {
+    id: "latest",
+    label: "Most Recent Session",
+    description: "The last active run from this device",
+  },
+  { id: "flight-001", label: "Flight 001", description: "Test launch profile – 2025-03-12" },
+  { id: "flight-002", label: "Flight 002", description: "Full stack integration test" },
+  {
+    id: "ground-cal",
+    label: "Ground Calibration",
+    description: "Static sensor characterization log",
+  },
+];
+
+function classNames(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(" ");
+}
+
+export function ActionsPanel() {
+  // calibrationBusy is shared with the Calibration panel so only one calibration write runs.
+  const { firm, calibrationBusy: calBusy, setCalibrationBusy } = useFIRM();
+  const [selectedLog, setSelectedLog] = useState<LogOption>(LOG_OPTIONS[0]);
+
+  // Calibration State
+  const [activeCal, setActiveCal] = useState<"MAG" | null>(null);
+  const [countdown, setCountdown] = useState<number>(0);
+  const [calMessage, setCalMessage] = useState<{ type: "IMU" | "MAG"; text: string } | null>(null);
+
+  // Ref for the timer interval so we can clear it easily
+  const timerRef = useRef<number | null>(null);
+  const calRunIdRef = useRef(0);
+  const calAbortRef = useRef<AbortController | null>(null);
+  const pendingCalRef = useRef<Promise<void> | null>(null);
+  const calBusyRef = useRef(false);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      stopTimer();
+      calAbortRef.current?.abort();
+    };
+  }, []);
+
+  // A disconnect ends any in-flight calibration; its own cleanup resets the UI state.
+  useEffect(() => {
+    if (firm) return;
+    calAbortRef.current?.abort();
+    stopTimer();
+    setActiveCal(null);
+  }, [firm]);
+
+  const stopTimer = () => {
+    if (timerRef.current) {
+      window.clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  const startTimer = (seconds: number) => {
+    stopTimer();
+    setCountdown(seconds);
+    timerRef.current = window.setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          stopTimer();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const beginMagCalibration = () => {
+    calAbortRef.current?.abort();
+    const abort = new AbortController();
+    calAbortRef.current = abort;
+    const runId = ++calRunIdRef.current;
+    calBusyRef.current = true;
+    setCalibrationBusy(true);
+    setCalMessage(null);
+    setActiveCal("MAG");
+    startTimer(TIME_CAL_MAG_SECONDS);
+    return { abort, runId };
+  };
+
+  const finishCalibration = (runId: number) => {
+    if (calAbortRef.current && calRunIdRef.current === runId) {
+      calAbortRef.current = null;
+    }
+    if (runId !== calRunIdRef.current) return;
+    setActiveCal(null);
+    stopTimer();
+    calBusyRef.current = false;
+    setCalibrationBusy(false);
+  };
+
+  const isCalAbortError = (err: unknown) => err instanceof Error && err.name === "AbortError";
+
+  const handleCalibrateIMU = () => {
+    // Use the `firm-imu-cal` CLI (processing/firm/cli/calibrate_imu.py) until this exists here.
+    setCalMessage({ type: "IMU", text: "Not available yet." });
+  };
+
+  const handleCalibrateMag = async () => {
+    if (!firm || calBusyRef.current || calBusy) return;
+    const { abort, runId } = beginMagCalibration();
+
+    const work = (async () => {
+      try {
+        const success = await firm.runAndApplyMagnetometerCalibration(
+          TIME_CAL_MAG_SECONDS * 1000,
+          undefined,
+          abort.signal,
+        );
+        if (success === null) {
+          setCalMessage({
+            type: "MAG",
+            text: "Calibration failed: not enough rotation or the device timed out.",
+          });
+        } else if (!success) {
+          setCalMessage({ type: "MAG", text: "Device rejected the calibration." });
+        } else {
+          setCalMessage({ type: "MAG", text: "Calibration applied." });
+        }
+      } catch (err) {
+        if (!isCalAbortError(err)) {
+          console.error("Mag Calibration error:", err);
+          const detail = err instanceof Error ? err.message : String(err);
+          setCalMessage({ type: "MAG", text: `Calibration failed: ${detail}` });
+        }
+      } finally {
+        finishCalibration(runId);
+      }
+    })();
+    pendingCalRef.current = work;
+    await work;
+  };
+
+  // Magnetometer collection runs entirely in the client, so cancelling only needs to abort it;
+  // calBusy stays set until the routine has actually stopped (and restored the old calibration).
+  const handleCancel = async () => {
+    calAbortRef.current?.abort();
+    stopTimer();
+    setActiveCal(null);
+
+    try {
+      await pendingCalRef.current;
+    } catch {
+      // In-flight calibration handles abort errors itself.
+    }
+  };
+
+  const handleDownloadLog = () => console.log("Download log:", selectedLog);
+
+  // Helper to render the button state
+  const renderCalMessage = (type: "IMU" | "MAG") =>
+    calMessage?.type === type && (
+      <p className="text-xs text-slate-500" aria-live="polite">
+        {calMessage.text}
+      </p>
+    );
+
+  const renderCalibrateButton = (type: "IMU" | "MAG", label: string, onClick: () => void) => {
+    const isRunning = activeCal === type;
+    const isOtherRunning = activeCal !== null && !isRunning;
+
+    // If THIS specific calibration is running, show Cancel button
+    if (isRunning) {
+      return (
+        <button
+          type="button"
+          onClick={handleCancel}
+          className="inline-flex items-center gap-2 rounded-md bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 border border-red-200 shadow-sm hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
+        >
+          <XCircle className="h-4 w-4" />
+          Cancel ({countdown}s)
+        </button>
+      );
+    }
+
+    // Standard Button
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={!firm || isOtherRunning || (calBusy && !isRunning)}
+        className={classNames(
+          "inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-semibold text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-white transition-all",
+          !firm || isOtherRunning || calBusy
+            ? "bg-slate-300 cursor-not-allowed"
+            : "bg-[var(--color-theme)] hover:brightness-110 focus:ring-[var(--color-theme)]",
+        )}
+      >
+        <RefreshCcw className={classNames("h-4 w-4", isRunning && "animate-spin")} />
+        {label}
+      </button>
+    );
+  };
+
+  return (
+    <section className="mt-4 rounded-xl border border-slate-300 bg-white px-6 pt-3 pb-4 shadow-sm text-slate-900">
+      <h2 className="mb-3 text-lg font-semibold leading-tight flex items-center gap-2">Actions</h2>
+
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-4 text-sm">
+        {/* --- Calibrate IMU --- */}
+        <div className="col-span-1 flex flex-col justify-between rounded-lg border border-transparent bg-white">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Calibrate IMU
+            </p>
+            <p className="text-xs text-slate-500 mt-1">
+              Not in the web app yet; use the firm-imu-cal command-line tool.
+            </p>
+          </div>
+          <div className="mt-3 flex items-center gap-3">
+            {renderCalibrateButton("IMU", "Calibrate IMU", handleCalibrateIMU)}
+            {renderCalMessage("IMU")}
+          </div>
+        </div>
+
+        {/* --- Calibrate Magnetometer --- */}
+        <div className="col-span-1 flex flex-col justify-between rounded-lg border border-transparent bg-white">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Calibrate Magnetometer
+            </p>
+            <p className="text-xs text-slate-500 mt-1">
+              Rotate device in all axes to map hard/soft iron.
+            </p>
+          </div>
+          <div className="mt-3 flex items-center gap-3">
+            {renderCalibrateButton("MAG", "Calibrate Mag", handleCalibrateMag)}
+            {renderCalMessage("MAG")}
+          </div>
+        </div>
+
+        {/* --- Download Log (Logic Preserved, UI Only) --- */}
+        <div className="col-span-1 md:col-span-2 flex flex-col justify-between rounded-lg border border-transparent bg-white">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Download Log File
+            </p>
+            <p className="text-xs text-slate-500 mt-1">
+              Not available yet. Copy the <span className="font-mono">logN.frm</span> files from the
+              microSD card instead.
+            </p>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Listbox value={selectedLog} onChange={setSelectedLog}>
+              <div className="relative w-full sm:max-w-[220px]">
+                <Listbox.Button className="relative w-full cursor-default rounded-md border border-slate-300 bg-white py-2 pl-3 pr-8 text-left text-sm text-slate-800 shadow-sm hover:bg-slate-50 focus:border-[var(--color-theme)] focus:outline-none focus:ring-1 focus:ring-[var(--color-theme)]">
+                  <span className="block truncate">{selectedLog.label}</span>
+                  <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                    <ChevronsUpDown className="h-4 w-4 text-slate-400" />
+                  </span>
+                </Listbox.Button>
+                <Transition
+                  as={Fragment}
+                  leave="transition ease-in duration-100"
+                  leaveFrom="opacity-100"
+                  leaveTo="opacity-0"
+                >
+                  <Listbox.Options className="absolute z-20 mt-1 w-full origin-top-left rounded-md border border-slate-200 bg-white py-1 text-sm shadow-lg focus:outline-none max-h-40 overflow-y-auto">
+                    {LOG_OPTIONS.map((log) => (
+                      <Listbox.Option
+                        key={log.id}
+                        value={log}
+                        className={({ active }) =>
+                          classNames(
+                            "relative cursor-pointer select-none px-3 py-2",
+                            active ? "bg-slate-50 text-slate-900" : "text-slate-800",
+                          )
+                        }
+                      >
+                        {({ selected }) => (
+                          <div className="flex items-start gap-2">
+                            {selected && (
+                              <Check className="mt-[2px] h-4 w-4 text-[var(--color-theme)]" />
+                            )}
+                            <div>
+                              <p
+                                className={classNames(
+                                  "truncate",
+                                  selected ? "font-semibold" : "font-medium",
+                                )}
+                              >
+                                {log.label}
+                              </p>
+                              <p className="truncate text-[11px] text-slate-500">
+                                {log.description}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </Listbox.Option>
+                    ))}
+                  </Listbox.Options>
+                </Transition>
+              </div>
+            </Listbox>
+
+            <button
+              type="button"
+              onClick={handleDownloadLog}
+              disabled
+              title="Downloading logs over USB is not implemented yet"
+              className="inline-flex shrink-0 items-center gap-2 rounded-md bg-[var(--color-theme)] px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-[var(--color-theme)] focus:ring-offset-1 focus:ring-offset-white disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:brightness-100"
+            >
+              <Download className="h-4 w-4 text-white" />
+              Download Log
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}

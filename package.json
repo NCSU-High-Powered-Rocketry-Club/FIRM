@@ -1,0 +1,25 @@
+{
+  "name": "firm-workspace",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "client",
+    "web"
+  ],
+  "scripts": {
+    "lint": "eslint .",
+    "format": "prettier --write client web eslint.config.js",
+    "format:check": "prettier --check client web eslint.config.js",
+    "typecheck": "npm run typecheck -w web"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^16.5.0",
+    "prettier": "^3.7.4",
+    "typescript-eslint": "^8.50.0"
+  }
+}
