@@ -1,11 +1,4 @@
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { FIRM as FIRMClient } from "firm-client";
 import type { DeviceConfig, DeviceInfo, FIRMConnectOptions, FIRMPacket } from "firm-client";
 

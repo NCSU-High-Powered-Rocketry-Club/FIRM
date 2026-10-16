@@ -50,11 +50,10 @@ From the repository root:
     ```bash
     cargo install wasm-pack
     rustup target add wasm32-unknown-unknown
-    cd client
-    npm ci
+    just sync-web
     ```
 
-    Note that `npm ci` runs the `prepare` script, which compiles both the WASM package and the TypeScript sources.
+    `just sync-web` runs `npm ci` for the root npm workspace (`client/` + `web/`), and that runs this package's `prepare` script, which compiles both the WASM package and the TypeScript sources.
 
 ## Running Tests
 
@@ -123,7 +122,7 @@ with FIRMClient("/dev/ttyUSB0", baud_rate=2_000_000, timeout=0.1) as client:
 The browser client connects via the Web Serial API (supported in Chromium-based desktop browsers such as Chrome or Edge over HTTPS or localhost):
 
 ```ts
-import { FIRM } from 'firm-client';
+import { FIRM } from "firm-client";
 
 const firm = await FIRM.connect();
 for await (const packet of firm.getDataPackets()) {
@@ -135,11 +134,11 @@ for await (const packet of firm.getDataPackets()) {
 
 From the repository root. Preview with `just dry_run=true <recipe>` (no upload). `just publish` also publishes `firm-hprc` to PyPI.
 
-| Registry   | Package                         | Bump first                                                                 | Recipe                     |
-|------------|---------------------------------|----------------------------------------------------------------------------|----------------------------|
-| crates.io  | `firm_core`, `firm_rust`        | `firm_core/Cargo.toml`, `firm_rust/Cargo.toml` (keep the path dep version in sync) | `just publish-crates`      |
-| PyPI       | `firm-client`                   | `firm_python/Cargo.toml`                                                   | `just publish-pypi-client` |
-| npm        | `firm-client`                   | `firm_typescript/Cargo.toml` and `package.json` (keep them equal)          | `just publish-npm`         |
+| Registry  | Package                  | Bump first                                                                         | Recipe                     |
+| --------- | ------------------------ | ---------------------------------------------------------------------------------- | -------------------------- |
+| crates.io | `firm_core`, `firm_rust` | `firm_core/Cargo.toml`, `firm_rust/Cargo.toml` (keep the path dep version in sync) | `just publish-crates`      |
+| PyPI      | `firm-client`            | `firm_python/Cargo.toml`                                                           | `just publish-pypi-client` |
+| npm       | `firm-client`            | `firm_typescript/Cargo.toml` and `package.json` (keep them equal)                  | `just publish-npm`         |
 
 Wheels are Zig-cross-compiled for Python 3.14 and 3.14t on Linux x86_64, Linux aarch64, and Windows x86_64; macOS installs build from the sdist. Publishing needs HPRC maintainer credentials on each registry (`UV_PUBLISH_TOKEN`, `npm login`, `cargo login`). `just publish-crates` uploads `firm_core` first; wait for crates.io to index it if `firm_rust` cannot see the new version yet.
 

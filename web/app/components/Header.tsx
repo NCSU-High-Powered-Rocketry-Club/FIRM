@@ -1,5 +1,3 @@
-import React from "react";
-
 export function Header() {
   return (
     <header className="bg-theme text-white">

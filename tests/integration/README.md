@@ -27,5 +27,5 @@ cargo install wasm-pack
 rustup target add wasm32-unknown-unknown
 ```
 
-- Built TypeScript client. `just test-integration` runs `just sync-web` first, whose `npm ci` in
-  `client/` builds the WASM package and the TypeScript sources.
+- Built TypeScript client. `just test-integration` runs `just sync-web` first, whose `npm ci`
+  builds the WASM package and the TypeScript sources.

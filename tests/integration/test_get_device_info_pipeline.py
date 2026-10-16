@@ -159,14 +159,14 @@ def make_node_script(script_path: Path, bridge_port: int) -> None:
 def test_get_device_info_pipeline(tmp_path: Path) -> None:
     """Send and receive the raw one-ID-byte protocol without a translating bridge."""
     if not TYPESCRIPT_DIST_INDEX.exists():
-        pytest.skip("TypeScript client dist is missing; build the client first.")
+        pytest.fail("TypeScript client dist is missing; run `just sync-web` first.")
     node = shutil.which("node")
     if node is None:
-        pytest.skip("Node.js is required for the Web Serial integration test.")
+        pytest.fail("Node.js is required for the Web Serial integration test.")
 
     harness = find_stm32_harness()
     if harness is None:
-        pytest.skip(
+        pytest.fail(
             "STM32 device-info harness is missing!!!! You need to run 'just build-native' first."
         )
 

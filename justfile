@@ -35,18 +35,16 @@ build-eskf:
 build-rust:
     cargo build --workspace
 
-# Node deps for client/ and web/. Needs Node and wasm-pack (client `prepare` builds WASM).
+# Node deps for the client/ + web/ npm workspace. Needs Node and wasm-pack (client `prepare` builds WASM).
 sync-web:
-    npm ci --prefix client
-    npm ci --prefix web
+    npm ci
 
-# React web app.
-build-web: sync-web
-    npm run build --prefix web
+# React web app. Run `just sync-web` first.
+build-web:
+    npm run build -w web
 
-[working-directory('web')]
 web-dev:
-    npm run dev
+    npm run dev -w web
 
 build-docs:
     uv run --group docs mkdocs build
@@ -116,14 +114,14 @@ lint-rust:
 lint-clang:
     uv run pre-commit run clang-format --all-files --show-diff-on-failure
 
-# ESLint + Prettier. Needs Node; not part of `just lint` so firmware/Python checkouts stay node-free.
-[working-directory('web')]
+# ESLint, Prettier, and tsc over client/ and web/. Needs `just sync-web`; not part of `just lint` so firmware/Python checkouts stay node-free.
 lint-web:
     npm run lint
     npm run format:check
+    npm run typecheck
 
 # Local coverage of the firmware, c-tests, rust, python, and lint CI jobs.
-# Skips integration (Node + wasm-pack); run `just test-integration` for that.
+# Skips the Node jobs: run `just test-integration` and `just sync-web lint-web build-web build-docs` for those.
 ci: build-firmware test-c test-rust test-python lint
 
 # Set `dry_run=true` to pack and check without uploading (e.g. `just dry_run=true publish`).

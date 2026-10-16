@@ -118,14 +118,14 @@
         align-items: center;
       }
 
-      input[type='text'] {
+      input[type="text"] {
         padding: 0.7rem;
         border-radius: 5px;
         border: 1px solid #ccc;
         flex-grow: 1;
       }
 
-      input[type='file'] {
+      input[type="file"] {
         flex-grow: 1;
       }
 
@@ -156,7 +156,7 @@
         <button id="rebootBtn">Reboot</button>
       </div>
 
-      <div class="control-row" style="flex-direction: column; align-items: stretch;">
+      <div class="control-row" style="flex-direction: column; align-items: stretch">
         <input
           type="text"
           id="magOffsetsInput"
@@ -170,22 +170,14 @@
         <button id="setMagCalBtn">Set Mag Calibration</button>
       </div>
 
-      <div class="control-row" style="flex-direction: column; align-items: stretch;">
-        <input
-          type="text"
-          id="accelOffsetsInput"
-          placeholder="Accel offsets (3): e.g. 0, 0, 0"
-        />
+      <div class="control-row" style="flex-direction: column; align-items: stretch">
+        <input type="text" id="accelOffsetsInput" placeholder="Accel offsets (3): e.g. 0, 0, 0" />
         <input
           type="text"
           id="accelMatrixInput"
           placeholder="Accel 3x3 matrix (9 row-major): e.g. 1,0,0, 0,1,0, 0,0,1"
         />
-        <input
-          type="text"
-          id="gyroOffsetsInput"
-          placeholder="Gyro offsets (3): e.g. 0, 0, 0"
-        />
+        <input type="text" id="gyroOffsetsInput" placeholder="Gyro offsets (3): e.g. 0, 0, 0" />
         <input
           type="text"
           id="gyroMatrixInput"
@@ -223,33 +215,33 @@
 
     <script type="module">
       // 2. USE THE MAPPED NAME HERE
-      import { FIRM } from 'firm-client';
+      import { FIRM } from "firm-client";
 
-      const btn = document.getElementById('connect');
-      const output = document.getElementById('output');
-      const status = document.getElementById('status');
-      const controls = document.getElementById('controls');
-      const deviceNameInput = document.getElementById('deviceNameInput');
-      const setConfigBtn = document.getElementById('setConfigBtn');
-      const getConfigBtn = document.getElementById('getConfigBtn');
-      const getInfoBtn = document.getElementById('getInfoBtn');
-      const getCalBtn = document.getElementById('getCalBtn');
-      const runMagCalBtn = document.getElementById('runMagCalBtn');
-      const cancelBtn = document.getElementById('cancelBtn');
-      const rebootBtn = document.getElementById('rebootBtn');
-      const mockLogFile = document.getElementById('mockLogFile');
-      const mockStreamBtn = document.getElementById('mockStreamBtn');
-      const magOffsetsInput = document.getElementById('magOffsetsInput');
-      const magMatrixInput = document.getElementById('magMatrixInput');
-      const setMagCalBtn = document.getElementById('setMagCalBtn');
-      const accelOffsetsInput = document.getElementById('accelOffsetsInput');
-      const accelMatrixInput = document.getElementById('accelMatrixInput');
-      const gyroOffsetsInput = document.getElementById('gyroOffsetsInput');
-      const gyroMatrixInput = document.getElementById('gyroMatrixInput');
-      const setImuCalBtn = document.getElementById('setImuCalBtn');
-      const configOutput = document.getElementById('configOutput');
-      const rawBytesEl = document.getElementById('rawBytes');
-      const outgoingBytesEl = document.getElementById('outgoingBytes');
+      const btn = document.getElementById("connect");
+      const output = document.getElementById("output");
+      const status = document.getElementById("status");
+      const controls = document.getElementById("controls");
+      const deviceNameInput = document.getElementById("deviceNameInput");
+      const setConfigBtn = document.getElementById("setConfigBtn");
+      const getConfigBtn = document.getElementById("getConfigBtn");
+      const getInfoBtn = document.getElementById("getInfoBtn");
+      const getCalBtn = document.getElementById("getCalBtn");
+      const runMagCalBtn = document.getElementById("runMagCalBtn");
+      const cancelBtn = document.getElementById("cancelBtn");
+      const rebootBtn = document.getElementById("rebootBtn");
+      const mockLogFile = document.getElementById("mockLogFile");
+      const mockStreamBtn = document.getElementById("mockStreamBtn");
+      const magOffsetsInput = document.getElementById("magOffsetsInput");
+      const magMatrixInput = document.getElementById("magMatrixInput");
+      const setMagCalBtn = document.getElementById("setMagCalBtn");
+      const accelOffsetsInput = document.getElementById("accelOffsetsInput");
+      const accelMatrixInput = document.getElementById("accelMatrixInput");
+      const gyroOffsetsInput = document.getElementById("gyroOffsetsInput");
+      const gyroMatrixInput = document.getElementById("gyroMatrixInput");
+      const setImuCalBtn = document.getElementById("setImuCalBtn");
+      const configOutput = document.getElementById("configOutput");
+      const rawBytesEl = document.getElementById("rawBytes");
+      const outgoingBytesEl = document.getElementById("outgoingBytes");
 
       let firmInstance = null;
       let unsubscribeRawBytes = null;
@@ -265,135 +257,135 @@
 
       function bytesToHex(bytes) {
         return Array.from(bytes)
-          .map((b) => b.toString(16).padStart(2, '0'))
-          .join(' ');
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join(" ");
       }
 
       function parseNumberList(text) {
-        const parts = String(text ?? '')
+        const parts = String(text ?? "")
           .trim()
           .split(/[^0-9eE+\-\.]+/)
           .filter(Boolean);
         const nums = parts.map((p) => Number(p));
         if (nums.some((n) => !Number.isFinite(n))) {
-          throw new Error('Inputs must be valid numbers');
+          throw new Error("Inputs must be valid numbers");
         }
         return nums;
       }
 
-      setConfigBtn.addEventListener('click', async () => {
+      setConfigBtn.addEventListener("click", async () => {
         if (!firmInstance) return;
         const name = deviceNameInput.value;
         if (!name) {
-          alert('Please enter a name');
+          alert("Please enter a name");
           return;
         }
-        setStatus('[UI] Setting device name...');
+        setStatus("[UI] Setting device name...");
         const success = await firmInstance.setDeviceConfig(name, 100, 1);
         if (success) {
-          setStatus('[UI] Device name set successfully!');
+          setStatus("[UI] Device name set successfully!");
           configOutput.textContent = `Success: Name set to "${name}"`;
         } else {
-          setStatus('[UI] Failed to set device name (timeout).');
-          configOutput.textContent = 'Error: Timeout waiting for response.';
+          setStatus("[UI] Failed to set device name (timeout).");
+          configOutput.textContent = "Error: Timeout waiting for response.";
         }
       });
 
-      getConfigBtn.addEventListener('click', async () => {
+      getConfigBtn.addEventListener("click", async () => {
         if (!firmInstance) return;
-        setStatus('[UI] Getting device config...');
+        setStatus("[UI] Getting device config...");
         const config = await firmInstance.getDeviceConfig();
         if (config) {
-          setStatus('[UI] Config received.');
+          setStatus("[UI] Config received.");
           configOutput.textContent = JSON.stringify(config, null, 2);
         } else {
-          setStatus('[UI] Failed to get config (timeout).');
-          configOutput.textContent = 'Error: Timeout waiting for response.';
+          setStatus("[UI] Failed to get config (timeout).");
+          configOutput.textContent = "Error: Timeout waiting for response.";
         }
       });
 
-      getInfoBtn.addEventListener('click', async () => {
+      getInfoBtn.addEventListener("click", async () => {
         if (!firmInstance) return;
-        setStatus('[UI] Getting device info...');
+        setStatus("[UI] Getting device info...");
         const info = await firmInstance.getDeviceInfo();
         if (info) {
-          setStatus('[UI] Info received.');
+          setStatus("[UI] Info received.");
           configOutput.textContent = JSON.stringify(info, null, 2);
         } else {
-          setStatus('[UI] Failed to get info (timeout).');
-          configOutput.textContent = 'Error: Timeout waiting for response.';
+          setStatus("[UI] Failed to get info (timeout).");
+          configOutput.textContent = "Error: Timeout waiting for response.";
         }
       });
 
-      getCalBtn.addEventListener('click', async () => {
+      getCalBtn.addEventListener("click", async () => {
         if (!firmInstance) return;
-        setStatus('[UI] Getting calibration...');
+        setStatus("[UI] Getting calibration...");
         const cal = await firmInstance.getCalibration();
         if (cal) {
-          setStatus('[UI] Calibration received.');
+          setStatus("[UI] Calibration received.");
           configOutput.textContent = JSON.stringify(cal, null, 2);
         } else {
-          setStatus('[UI] Failed to get calibration (timeout).');
-          configOutput.textContent = 'Error: Timeout waiting for response.';
+          setStatus("[UI] Failed to get calibration (timeout).");
+          configOutput.textContent = "Error: Timeout waiting for response.";
         }
       });
 
-      runMagCalBtn.addEventListener('click', async () => {
+      runMagCalBtn.addEventListener("click", async () => {
         if (!firmInstance) return;
-        setStatus('[UI] Running magnetometer calibration...');
+        setStatus("[UI] Running magnetometer calibration...");
         try {
           // Rotate the device through many orientations during collection.
           const res = await firmInstance.runAndApplyMagnetometerCalibration(10_000, 5000);
 
           if (res === null) {
-            setStatus('[UI] Magnetometer calibration failed or timed out.');
-            configOutput.textContent = 'Error: Calibration failed or timeout waiting for ack.';
+            setStatus("[UI] Magnetometer calibration failed or timed out.");
+            configOutput.textContent = "Error: Calibration failed or timeout waiting for ack.";
           } else if (res) {
-            setStatus('[UI] Magnetometer calibration applied successfully.');
-            configOutput.textContent = 'Magnetometer calibration applied successfully.';
+            setStatus("[UI] Magnetometer calibration applied successfully.");
+            configOutput.textContent = "Magnetometer calibration applied successfully.";
           } else {
-            setStatus('[UI] Magnetometer calibration rejected by device.');
-            configOutput.textContent = 'Device rejected calibration.';
+            setStatus("[UI] Magnetometer calibration rejected by device.");
+            configOutput.textContent = "Device rejected calibration.";
           }
         } catch (err) {
           console.error(err);
-          setStatus('[UI] Magnetometer calibration errored.');
-          configOutput.textContent = 'Error: ' + (err?.message ?? err);
+          setStatus("[UI] Magnetometer calibration errored.");
+          configOutput.textContent = "Error: " + (err?.message ?? err);
         }
       });
 
-      setMagCalBtn.addEventListener('click', async () => {
+      setMagCalBtn.addEventListener("click", async () => {
         if (!firmInstance) return;
         try {
           const offsets = parseNumberList(magOffsetsInput.value);
           const matrix = parseNumberList(magMatrixInput.value);
 
           if (offsets.length !== 3) {
-            alert('Offsets must have exactly 3 numbers');
+            alert("Offsets must have exactly 3 numbers");
             return;
           }
           if (matrix.length !== 9) {
-            alert('Matrix must have exactly 9 numbers (row-major)');
+            alert("Matrix must have exactly 9 numbers (row-major)");
             return;
           }
 
-          setStatus('[UI] Setting magnetometer calibration...');
+          setStatus("[UI] Setting magnetometer calibration...");
           const ok = await firmInstance.setMagnetometerCalibration(offsets, matrix);
           if (ok) {
-            setStatus('[UI] Magnetometer calibration set.');
-            configOutput.textContent = 'Magnetometer calibration set successfully.';
+            setStatus("[UI] Magnetometer calibration set.");
+            configOutput.textContent = "Magnetometer calibration set successfully.";
           } else {
-            setStatus('[UI] Failed to set magnetometer calibration (timeout).');
-            configOutput.textContent = 'Error: Timeout waiting for response.';
+            setStatus("[UI] Failed to set magnetometer calibration (timeout).");
+            configOutput.textContent = "Error: Timeout waiting for response.";
           }
         } catch (err) {
           console.error(err);
-          setStatus('[UI] Failed to set magnetometer calibration.');
-          configOutput.textContent = 'Error: ' + (err?.message ?? err);
+          setStatus("[UI] Failed to set magnetometer calibration.");
+          configOutput.textContent = "Error: " + (err?.message ?? err);
         }
       });
 
-      setImuCalBtn.addEventListener('click', async () => {
+      setImuCalBtn.addEventListener("click", async () => {
         if (!firmInstance) return;
         try {
           const accelOffsets = parseNumberList(accelOffsetsInput.value);
@@ -402,23 +394,23 @@
           const gyroMatrix = parseNumberList(gyroMatrixInput.value);
 
           if (accelOffsets.length !== 3) {
-            alert('Accel offsets must have exactly 3 numbers');
+            alert("Accel offsets must have exactly 3 numbers");
             return;
           }
           if (accelMatrix.length !== 9) {
-            alert('Accel matrix must have exactly 9 numbers (row-major)');
+            alert("Accel matrix must have exactly 9 numbers (row-major)");
             return;
           }
           if (gyroOffsets.length !== 3) {
-            alert('Gyro offsets must have exactly 3 numbers');
+            alert("Gyro offsets must have exactly 3 numbers");
             return;
           }
           if (gyroMatrix.length !== 9) {
-            alert('Gyro matrix must have exactly 9 numbers (row-major)');
+            alert("Gyro matrix must have exactly 9 numbers (row-major)");
             return;
           }
 
-          setStatus('[UI] Setting IMU calibration...');
+          setStatus("[UI] Setting IMU calibration...");
           const ok = await firmInstance.setIMUCalibration(
             accelOffsets,
             accelMatrix,
@@ -426,72 +418,72 @@
             gyroMatrix,
           );
           if (ok) {
-            setStatus('[UI] IMU calibration set.');
-            configOutput.textContent = 'IMU calibration set successfully.';
+            setStatus("[UI] IMU calibration set.");
+            configOutput.textContent = "IMU calibration set successfully.";
           } else {
-            setStatus('[UI] Failed to set IMU calibration (timeout).');
-            configOutput.textContent = 'Error: Timeout waiting for response.';
+            setStatus("[UI] Failed to set IMU calibration (timeout).");
+            configOutput.textContent = "Error: Timeout waiting for response.";
           }
         } catch (err) {
           console.error(err);
-          setStatus('[UI] Failed to set IMU calibration.');
-          configOutput.textContent = 'Error: ' + (err?.message ?? err);
+          setStatus("[UI] Failed to set IMU calibration.");
+          configOutput.textContent = "Error: " + (err?.message ?? err);
         }
       });
 
-      cancelBtn.addEventListener('click', async () => {
+      cancelBtn.addEventListener("click", async () => {
         if (!firmInstance) return;
-        setStatus('[UI] Sending cancel command...');
+        setStatus("[UI] Sending cancel command...");
         const ack = await firmInstance.sendCancelCommand();
         if (ack === null) {
-          setStatus('[UI] Cancel timed out.');
-          configOutput.textContent = 'Error: Timeout waiting for response.';
+          setStatus("[UI] Cancel timed out.");
+          configOutput.textContent = "Error: Timeout waiting for response.";
         } else if (ack) {
-          setStatus('[UI] Cancel acknowledged.');
-          configOutput.textContent = 'Cancel acknowledged.';
+          setStatus("[UI] Cancel acknowledged.");
+          configOutput.textContent = "Cancel acknowledged.";
         } else {
-          setStatus('[UI] Cancel not acknowledged.');
-          configOutput.textContent = 'Cancel not acknowledged.';
+          setStatus("[UI] Cancel not acknowledged.");
+          configOutput.textContent = "Cancel not acknowledged.";
         }
       });
 
-      rebootBtn.addEventListener('click', async () => {
+      rebootBtn.addEventListener("click", async () => {
         if (!firmInstance) return;
-        setStatus('[UI] Sending reboot command...');
+        setStatus("[UI] Sending reboot command...");
         try {
           await firmInstance.reboot();
-          setStatus('[UI] Reboot command sent.');
-          configOutput.textContent = 'Reboot command sent.';
+          setStatus("[UI] Reboot command sent.");
+          configOutput.textContent = "Reboot command sent.";
 
           await cleanupDisconnectedUI();
-          setStatus('[UI] Disconnected (reboot).');
+          setStatus("[UI] Disconnected (reboot).");
         } catch (err) {
           console.error(err);
-          setStatus('[UI] Failed to send reboot command.');
-          configOutput.textContent = 'Error: Failed to send reboot command.';
+          setStatus("[UI] Failed to send reboot command.");
+          configOutput.textContent = "Error: Failed to send reboot command.";
         }
       });
 
-      mockStreamBtn.addEventListener('click', async () => {
+      mockStreamBtn.addEventListener("click", async () => {
         if (!firmInstance) return;
         const file = mockLogFile?.files?.[0];
         if (!file) {
-          alert('Please select a log file first');
+          alert("Please select a log file first");
           return;
         }
-        setStatus('[UI] Streaming mock log...');
+        setStatus("[UI] Streaming mock log...");
         try {
           const sent = await firmInstance.streamMockLogFile(file, {
             realtime: true,
             speed: 1.0,
             chunkSize: 8192,
           });
-          setStatus('[UI] Mock stream complete.');
+          setStatus("[UI] Mock stream complete.");
           configOutput.textContent = `Sent ${sent} mock packets.`;
         } catch (err) {
           console.error(err);
-          setStatus('[UI] Mock stream failed.');
-          configOutput.textContent = 'Error: ' + (err?.message ?? err);
+          setStatus("[UI] Mock stream failed.");
+          configOutput.textContent = "Error: " + (err?.message ?? err);
         }
       });
 
@@ -514,33 +506,33 @@
         try {
           await instanceToClose?.close?.();
         } catch (e) {
-          console.warn('[UI] close() failed (ignored):', e);
+          console.warn("[UI] close() failed (ignored):", e);
         }
 
-        controls.style.display = 'none';
-        btn.textContent = 'Connect to Device';
+        controls.style.display = "none";
+        btn.textContent = "Connect to Device";
         btn.disabled = false;
       }
 
-      btn.addEventListener('click', async () => {
+      btn.addEventListener("click", async () => {
         btn.disabled = true;
-        setStatus('[UI] Connecting...');
+        setStatus("[UI] Connecting...");
 
         try {
           const firm = await FIRM.connect({ baudRate: 2000000 });
           firmInstance = firm;
-          setStatus('[UI] Connected. Streaming packets...');
-          controls.style.display = 'flex';
-          btn.textContent = 'Connect to Device';
+          setStatus("[UI] Connected. Streaming packets...");
+          controls.style.display = "flex";
+          btn.textContent = "Connect to Device";
           btn.disabled = true;
 
-          let rawLog = '';
-          let outgoingLog = '';
+          let rawLog = "";
+          let outgoingLog = "";
           const MAX_CHARS = 20000;
 
           // Batch UI updates to avoid locking up the main thread at high packet rates.
-          let pendingRaw = '';
-          let pendingOutgoing = '';
+          let pendingRaw = "";
+          let pendingOutgoing = "";
           let uiFlushScheduled = false;
 
           function scheduleFlush() {
@@ -552,7 +544,7 @@
 
               if (pendingRaw) {
                 rawLog += pendingRaw;
-                pendingRaw = '';
+                pendingRaw = "";
                 if (rawLog.length > MAX_CHARS) {
                   rawLog = rawLog.slice(rawLog.length - MAX_CHARS);
                 }
@@ -562,7 +554,7 @@
 
               if (pendingOutgoing) {
                 outgoingLog += pendingOutgoing;
-                pendingOutgoing = '';
+                pendingOutgoing = "";
                 if (outgoingLog.length > MAX_CHARS) {
                   outgoingLog = outgoingLog.slice(outgoingLog.length - MAX_CHARS);
                 }
@@ -573,7 +565,7 @@
           }
 
           unsubscribeRawBytes = firm.onRawBytes((bytes) => {
-            pendingRaw += bytesToHex(bytes) + '\n';
+            pendingRaw += bytesToHex(bytes) + "\n";
             // Prevent runaway memory if the UI can't keep up.
             if (pendingRaw.length > 50000) {
               pendingRaw = pendingRaw.slice(pendingRaw.length - 50000);
@@ -582,7 +574,7 @@
           });
 
           unsubscribeOutgoingBytes = firm.onOutgoingBytes((bytes) => {
-            pendingOutgoing += bytesToHex(bytes) + '\n';
+            pendingOutgoing += bytesToHex(bytes) + "\n";
             if (pendingOutgoing.length > 50000) {
               pendingOutgoing = pendingOutgoing.slice(pendingOutgoing.length - 50000);
             }
@@ -610,20 +602,20 @@
                 await new Promise((r) => setTimeout(r, 0));
               }
 
-              setStatus('[UI] Stream ended.');
+              setStatus("[UI] Stream ended.");
             } catch (err) {
               console.error(err);
-              setStatus('Error: ' + (err?.message ?? err));
+              setStatus("Error: " + (err?.message ?? err));
             } finally {
               await cleanupDisconnectedUI();
             }
           })().catch((e) => {
-            console.error('[UI] stream task error:', e);
+            console.error("[UI] stream task error:", e);
           });
         } catch (err) {
           console.error(err);
-          setStatus('Error: ' + (err?.message ?? err));
-          btn.textContent = 'Connect to Device';
+          setStatus("Error: " + (err?.message ?? err));
+          btn.textContent = "Connect to Device";
           btn.disabled = false;
         }
       });

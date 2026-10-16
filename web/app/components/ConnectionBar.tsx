@@ -1,4 +1,3 @@
-import React from "react";
 import { useFIRM } from "~/contexts/FIRMContext";
 
 export function ConnectionBar() {

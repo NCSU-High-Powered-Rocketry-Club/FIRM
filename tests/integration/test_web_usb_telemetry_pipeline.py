@@ -52,7 +52,7 @@ def parse_message_in_web_client(message: bytes, tmp_path: Path) -> dict[str, obj
     """Feed raw serial bytes through the built TypeScript and WASM client."""
     node = shutil.which("node")
     if node is None:
-        pytest.skip("Node.js is required for the Web/WASM integration test.")
+        pytest.fail("Node.js is required for the Web/WASM integration test.")
 
     message_bytes = list(message)
     script = tmp_path / "raw_stm32_telemetry.mjs"
@@ -122,7 +122,7 @@ def parse_message_in_web_client(message: bytes, tmp_path: Path) -> dict[str, obj
 def test_web_client_parses_raw_stm32_usb_telemetry(tmp_path: Path) -> None:
     """Require the Web/WASM client to expose a raw STM32 telemetry message."""
     if not CLIENT_DIST_INDEX.exists():
-        pytest.skip("TypeScript client dist is missing; build the client first.")
+        pytest.fail("TypeScript client dist is missing; run `just sync-web` first.")
 
     next_message = build_stm32_data_message(timestamp=43.0, temperature=26.0, pressure=100_000.0)
     stream = build_stm32_data_message() + next_message[:9]
@@ -156,7 +156,7 @@ def test_web_client_parses_raw_stm32_usb_telemetry(tmp_path: Path) -> None:
 def test_web_client_resynchronizes_after_partial_stm32_telemetry(tmp_path: Path) -> None:
     """Do not decode a payload byte as an ID when attachment occurs mid-packet."""
     if not CLIENT_DIST_INDEX.exists():
-        pytest.skip("TypeScript client dist is missing; build the client first.")
+        pytest.fail("TypeScript client dist is missing; run `just sync-web` first.")
 
     # The first byte of this timestamp is 0x01. Simulate opening Web Serial after
     # the true packet ID has already passed, followed by one complete packet.
@@ -176,10 +176,10 @@ def test_web_client_resynchronizes_after_partial_stm32_telemetry(tmp_path: Path)
 def test_web_client_rejects_false_config_response_inside_telemetry(tmp_path: Path) -> None:
     """Ignore a response ID found in telemetry before the real configuration."""
     if not CLIENT_DIST_INDEX.exists():
-        pytest.skip("TypeScript client dist is missing; build the client first.")
+        pytest.fail("TypeScript client dist is missing; run `just sync-web` first.")
     node = shutil.which("node")
     if node is None:
-        pytest.skip("Node.js is required for the Web/WASM integration test.")
+        pytest.fail("Node.js is required for the Web/WASM integration test.")
 
     false_config = bytearray([0x03, 0x01, 0x08])
     false_config.extend(b"A" * (39 - len(false_config)))

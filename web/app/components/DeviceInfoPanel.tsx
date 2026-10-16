@@ -1,4 +1,3 @@
-import React from "react";
 import { Cpu, GaugeCircle, Wifi, RefreshCcw } from "lucide-react";
 import { useFIRM } from "~/contexts/FIRMContext";
 

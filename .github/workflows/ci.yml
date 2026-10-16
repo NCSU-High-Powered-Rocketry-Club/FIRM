@@ -89,7 +89,7 @@ jobs:
       - uses: astral-sh/setup-uv@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version-file: .nvmrc
       - name: Install Ninja
         run: sudo apt-get update && sudo apt-get install -y ninja-build
       - name: uv sync
@@ -110,7 +110,7 @@ jobs:
       - uses: astral-sh/setup-uv@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
-      # lint-web needs web/node_modules; client's prepare needs wasm-pack.
+          node-version-file: .nvmrc
+      # client's prepare (run by npm ci) needs wasm-pack.
       - name: Lint, build web, and build docs
         run: just sync-web lint-web build-web build-docs
