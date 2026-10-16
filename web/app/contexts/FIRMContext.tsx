@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { FIRM as FIRMClient } from "firm-client";
 import type { DeviceConfig, DeviceInfo, FIRMConnectOptions, FIRMPacket } from "firm-client";
 
@@ -33,6 +41,8 @@ type FIRMContextValue = {
 const FIRMContext = createContext<FIRMContextValue | undefined>(undefined);
 
 const MAX_HEX_LOG_CHARS = 2000;
+// latestPacket is published at most this often; every context consumer re-renders on each update.
+const PACKET_PUBLISH_INTERVAL_MS = 50;
 const DATA_MESSAGE_ID = 0x01;
 const DATA_MESSAGE_LENGTH = 1 + 88;
 const RESPONSE_MESSAGE_LENGTHS: Readonly<Record<number, number>> = {
@@ -108,10 +118,23 @@ export function FIRMProvider({ children }: { children: ReactNode }) {
   const [hideDataPackets, setHideDataPackets] = useState(false);
   const [pauseByteStream, setPauseByteStream] = useState(false);
 
+  // Refs so async work can tell whether it still belongs to the current connection.
+  // `sessionRef` changes on every connect attempt and disconnect; anything that awaited across
+  // a change must drop its result.
+  const sessionRef = useRef(0);
+  const firmRef = useRef<FIRMInstance | null>(null);
+  const portRef = useRef<WebSerialPort | null>(null);
+  const connectingRef = useRef(false);
+
   const disconnect = useCallback(async () => {
-    if (firm) {
+    sessionRef.current += 1;
+    connectingRef.current = false;
+    const current = firmRef.current;
+    firmRef.current = null;
+    portRef.current = null;
+    if (current) {
       try {
-        await firm.close();
+        await current.close();
       } catch (err) {
         console.warn("FIRM close failed (device may have been unplugged):", err);
       }
@@ -129,15 +152,28 @@ export function FIRMProvider({ children }: { children: ReactNode }) {
     setRecentRxHex("");
     setRecentTxHex("");
     setPacketsPerSecond(0);
-  }, [firm]);
+    setIsLoadingDeviceMeta(false);
+  }, []);
 
-  // Auto-reset UI state if the serial device disconnects.
+  // Close the port if the provider unmounts while connected.
+  useEffect(() => {
+    return () => {
+      sessionRef.current += 1;
+      void firmRef.current?.close();
+      firmRef.current = null;
+    };
+  }, []);
+
+  // Auto-reset UI state if our serial device disconnects. The event fires for every port this
+  // origin has been granted, so ignore ports other than the connected one.
   useEffect(() => {
     if (!("serial" in navigator)) return;
 
     const handleNativeDisconnect = (event: Event) => {
+      const port = (event as Event & { port?: unknown }).port ?? event.target;
+      if (!portRef.current || port !== portRef.current) return;
       console.log("USB serial disconnected:", event);
-      disconnect();
+      void disconnect();
     };
 
     const serial = getWebSerial();
@@ -149,28 +185,38 @@ export function FIRMProvider({ children }: { children: ReactNode }) {
     };
   }, [disconnect]);
 
-  const refreshDeviceMeta = useCallback(async () => {
-    if (!firm) return;
-
+  const loadDeviceMeta = useCallback(async (instance: FIRMInstance, session: number) => {
     setIsLoadingDeviceMeta(true);
     try {
-      const [info, cfg] = await Promise.all([firm.getDeviceInfo(), firm.getDeviceConfig()]);
+      const [info, cfg] = await Promise.all([instance.getDeviceInfo(), instance.getDeviceConfig()]);
+      if (sessionRef.current !== session) return;
       setDeviceInfo(info);
       setDeviceConfig(cfg);
     } catch (err) {
-      console.error("Failed to refresh device metadata:", err);
+      // Best-effort; some devices may not support metadata requests.
+      console.error("Failed to load device metadata:", err);
     } finally {
-      setIsLoadingDeviceMeta(false);
+      if (sessionRef.current === session) setIsLoadingDeviceMeta(false);
     }
-  }, [firm]);
+  }, []);
+
+  const refreshDeviceMeta = useCallback(async () => {
+    const instance = firmRef.current;
+    if (!instance) return;
+    await loadDeviceMeta(instance, sessionRef.current);
+  }, [loadDeviceMeta]);
 
   const connect = useCallback(async () => {
-    if (isConnected || isConnecting) return;
+    if (firmRef.current || connectingRef.current) return;
 
     if (!("serial" in navigator)) {
       alert("Web Serial API is not available in this browser.");
       return;
     }
+
+    sessionRef.current += 1;
+    const session = sessionRef.current;
+    connectingRef.current = true;
 
     try {
       setIsConnecting(true);
@@ -185,21 +231,25 @@ export function FIRMProvider({ children }: { children: ReactNode }) {
       setPauseByteStream(false);
 
       const port = await getWebSerial().requestPort();
+      if (sessionRef.current !== session) return;
       const instance = await FIRMClient.connect({ baudRate: 115200, port });
+      if (sessionRef.current !== session) {
+        await instance.close();
+        return;
+      }
+      firmRef.current = instance;
+      portRef.current = port;
+      connectingRef.current = false;
       setFIRM(instance);
       setIsConnected(true);
+      setIsConnecting(false);
 
-      try {
-        const [info, cfg] = await Promise.all([
-          instance.getDeviceInfo(),
-          instance.getDeviceConfig(),
-        ]);
-        setDeviceInfo(info);
-        setDeviceConfig(cfg);
-      } catch {
-        // Best-effort; some devices may not support metadata requests.
-      }
+      await loadDeviceMeta(instance, session);
     } catch (err) {
+      if (sessionRef.current !== session) return;
+      // The user dismissed the port picker; nothing failed.
+      if (err instanceof DOMException && err.name === "NotFoundError") return;
+
       console.error("[FIRM] Connection failed:", err);
       alert("Failed to connect to FIRM. Check the device and try again.");
 
@@ -215,9 +265,12 @@ export function FIRMProvider({ children }: { children: ReactNode }) {
       setRecentTxHex("");
       setPacketsPerSecond(0);
     } finally {
-      setIsConnecting(false);
+      if (sessionRef.current === session) {
+        connectingRef.current = false;
+        setIsConnecting(false);
+      }
     }
-  }, [isConnected, isConnecting]);
+  }, [loadDeviceMeta]);
 
   // Track RX/TX byte counts and hex logs.
   useEffect(() => {
@@ -293,6 +346,7 @@ export function FIRMProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     let count = 0;
     let lastRateTs = performance.now();
+    let pendingPacket: FIRMPacket | null = null;
 
     const updateRate = () => {
       const now = performance.now();
@@ -308,7 +362,7 @@ export function FIRMProvider({ children }: { children: ReactNode }) {
       try {
         for await (const pkt of firm.getDataPackets()) {
           if (cancelled) return;
-          setLatestPacket(pkt);
+          pendingPacket = pkt;
           count += 1;
           updateRate();
         }
@@ -318,10 +372,16 @@ export function FIRMProvider({ children }: { children: ReactNode }) {
     })();
 
     const rateTimer = window.setInterval(updateRate, 250);
+    const publishTimer = window.setInterval(() => {
+      if (pendingPacket === null) return;
+      setLatestPacket(pendingPacket);
+      pendingPacket = null;
+    }, PACKET_PUBLISH_INTERVAL_MS);
 
     return () => {
       cancelled = true;
       window.clearInterval(rateTimer);
+      window.clearInterval(publishTimer);
       setPacketsPerSecond(0);
     };
   }, [firm]);
