@@ -1,0 +1,85 @@
+name: Deploy site to Pages
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "web/**"
+      - "docs/**"
+      - "mkdocs.yaml"
+      - "client/**"
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: extractions/setup-just@v2
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - uses: jetli/wasm-pack-action@v0.4.0
+
+      - uses: astral-sh/setup-uv@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build React app
+        env:
+          VITE_BASE: "/"
+        run: just build-web
+
+      - name: Build MkDocs site
+        run: just build-docs
+
+      - name: Prepare combined site
+        run: |
+          mkdir -p public
+
+          # React app at root
+          if [ -d web/build/client ]; then
+            cp -r web/build/client/* public/
+          else
+            echo "React build output directory web/build/client not found"
+            exit 1
+          fi
+
+          # MkDocs under /docs
+          mkdir -p public/docs
+          cp -r site/* public/docs/
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./public
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
