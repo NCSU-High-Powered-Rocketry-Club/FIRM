@@ -436,16 +436,14 @@
       cancelBtn.addEventListener('click', async () => {
         if (!firmInstance) return;
         setStatus('[UI] Sending cancel command...');
+        // sendCancelCommand() resolves false on both a timeout and a negative ack.
         const ack = await firmInstance.sendCancelCommand();
-        if (ack === null) {
-          setStatus('[UI] Cancel timed out.');
-          configOutput.textContent = 'Error: Timeout waiting for response.';
-        } else if (ack) {
+        if (ack) {
           setStatus('[UI] Cancel acknowledged.');
           configOutput.textContent = 'Cancel acknowledged.';
         } else {
-          setStatus('[UI] Cancel not acknowledged.');
-          configOutput.textContent = 'Cancel not acknowledged.';
+          setStatus('[UI] Cancel not acknowledged (or timed out).');
+          configOutput.textContent = 'Cancel not acknowledged (or timed out).';
         }
       });
 
