@@ -119,3 +119,11 @@ trace*.json
 /flight_data/launches/**/derived/
 /flight_data/launches/**/decoded/
 /flight_data/launches/**/.index/
+
+# Web app + MkDocs
+.DS_Store
+web/.env
+web/node_modules/
+web/.react-router/
+web/.eslintcache
+/site/

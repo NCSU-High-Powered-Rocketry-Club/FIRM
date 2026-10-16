@@ -35,6 +35,19 @@ build-eskf:
 build-rust:
     cargo build --workspace
 
+# React web app. Needs Node and wasm-pack (client `prepare` builds WASM).
+build-web:
+    npm ci --prefix client
+    npm ci --prefix web
+    npm run build --prefix web
+
+[working-directory('web')]
+web-dev:
+    npm run dev
+
+build-docs:
+    uv run --group docs mkdocs build
+
 # Every C test (CTest) + cargo + pytest, excluding integration.
 test:
     #!/usr/bin/env bash
@@ -99,6 +112,12 @@ lint-rust:
 # Same pinned clang-format and file list as the pre-commit hook (.pre-commit-config.yaml).
 lint-clang:
     uv run pre-commit run clang-format --all-files --show-diff-on-failure
+
+# ESLint + Prettier. Needs Node; not part of `just lint` so firmware/Python checkouts stay node-free.
+[working-directory('web')]
+lint-web:
+    npm run lint
+    npm run format:check
 
 # Local coverage of the firmware, c-tests, rust, python, and lint CI jobs.
 # Skips integration (Node + wasm-pack); run `just test-integration` for that.
