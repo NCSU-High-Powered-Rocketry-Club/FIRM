@@ -236,6 +236,8 @@ impl FIRMClient {
         Ok(res)
     }
 
+    /// TODO: Firmware currently only ACKs cancel. Mag/IMU calibration on-device
+    /// is a synchronous settings write with nothing in-flight to abort.
     #[pyo3(signature = (timeout_seconds=5.0))]
     fn cancel(&mut self, timeout_seconds: f64) -> PyResult<bool> {
         self.ensure_ok()?;

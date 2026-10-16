@@ -373,7 +373,12 @@ export class FIRMClient {
   }
 
   /**
-   * Sends a cancel command to the device (e.g., to abort a calibration).
+   * Sends a cancel command and waits for acknowledgement.
+   *
+   * TODO: Firmware currently only ACKs this command. Mag/IMU calibration on
+   * the device is a synchronous settings write with nothing in-flight to abort.
+   * Host-side collection should stop locally.
+   *
    * @returns True if acknowledged, false if timeout or not acknowledged.
    */
   async sendCancelCommand(): Promise<boolean> {
