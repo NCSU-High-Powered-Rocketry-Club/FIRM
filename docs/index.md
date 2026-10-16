@@ -44,7 +44,7 @@ Start here:
 - **[Contributor Overview](contributors/overview.md)** – what FIRM is as a system and how all the pieces fit together.
 - **[Environment Setup (VS Code, Python, Git)](contributors/environment-setup.md)** – how to set up your development
   environment(s).
-- **[Hardware & KiCad](contributors/kidcad-setup.md)** – how we organize the KiCad projects, conventions, and best
+- **[Hardware & KiCad](contributors/kicad-setup.md)** – how we organize the KiCad projects, conventions, and best
   practices.
 
 ---

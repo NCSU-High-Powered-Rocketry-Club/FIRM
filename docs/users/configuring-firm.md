@@ -54,11 +54,14 @@ structure. Every packet contains all of the fields below.
 
 #### Derived by the client library
 
-| Field Name                        | Units | Description                                |
-| --------------------------------- | ----- | ------------------------------------------ |
-| raw_rotated_acceleration_x/y/z_gs | g     | Acceleration rotated into the world frame. |
-| est_tilt_angle_degrees            | °     | Tilt from +Z, from the raw acceleration.   |
-| est_mach_number                   | —     | Mach number from velocity and temperature. |
+| Field Name                        | Units | Description                                  |
+| --------------------------------- | ----- | -------------------------------------------- |
+| raw_rotated_acceleration_x/y/z_gs | g     | Acceleration rotated into the world frame.\* |
+| est_tilt_angle_degrees            | °     | Tilt angle from the orientation.\*           |
+| est_mach_number                   | —     | Mach number from velocity and temperature.\* |
+
+\* These are computed from the filter estimates above, so they are not meaningful until the device populates
+them.
 
 > You can **import or export** the device name, frequency, and protocol as a JSON file using the
 > buttons at the bottom of the settings panel.
@@ -68,6 +71,8 @@ structure. Every packet contains all of the fields below.
 ## 〰️ Update Frequency (1-1000 Hz)
 
 This controls how often FIRM sends data packets. **100 Hz** is usually fine for most applications.
+
+> A new frequency is saved right away but takes effect the next time FIRM powers on.
 
 - **Higher = smoother, more detailed data.**
 - **Lower = lighter communication load, helpful if your device can't keep up with the rate of updates.**

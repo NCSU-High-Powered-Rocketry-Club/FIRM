@@ -16,10 +16,10 @@ FIRM is designed to keep things as simple as possible:
 
 - **As soon as the board is powered on, it boots up and immediately starts logging data** into a new log file.
 - There is **no "start" or "stop" button** - FIRM just records until it powers off.
-- While logging internally, FIRM also **streams data** to whatever computer (Raspberry Pi, Arduino, etc.) it's connected
-  to.
-
-> 📚 Make sure you have configured the device using the web app to use the correct protocol and fields before continuing.
+- While logging internally, FIRM also **streams data over USB** to whatever computer (laptop, Raspberry Pi, etc.)
+  it's plugged into. USB is currently the only way FIRM sends live data.
+- Each log file records the device's settings and calibration from when it powered on. After changing calibration,
+  power-cycle FIRM so the next log file records the new values.
 
 This means that you can:
 
@@ -33,8 +33,10 @@ This means that you can:
 Downloading logs through the web app is not available yet. For now, after a test or flight:
 
 1. Unplug FIRM and remove the MicroSD card.
-2. Put the card in your computer. Each power-on creates a new file named `logN.frm` (for example
-   `log3.frm`); the highest number is the most recent session.
+2. Put the card in your computer. Each power-on creates a new file named `logN.frm`, using the lowest
+   number that isn't already on the card. If you never delete logs, the highest number is the most recent session;
+   after deleting older logs, a new session can reuse a lower number, so check file times or clear the card
+   between sessions.
 3. Copy the files you want. The `firm-log` tool from the
    [`firm-hprc`](https://pypi.org/project/firm-hprc/) Python package can ingest and decode them.
 
@@ -42,7 +44,7 @@ Downloading logs through the web app is not available yet. For now, after a test
 
 ## 🖥️ Connecting FIRM Other Devices
 
-While the device is logging internally, it also **streams data** to whatever system it's plugged into.
+While the device is logging internally, it also **streams data over USB** to whatever system it's plugged into.
 
 We've built a cross-language client library to make this painless. Currently, we have support for:
 
@@ -59,7 +61,7 @@ All of these are maintained in the `client/` folder of the FIRM repo:
 As long as you:
 
 1. Configure the FIRM device using the web app, and
-2. Plug it into something capable of reading serial data (a Raspberry Pi, a laptop, an Arduino, a flight computer, etc.),
+2. Plug it into a USB host that can read serial data (a laptop, a Raspberry Pi, a flight computer, etc.),
 
 ...then all you need to do is follow the [client README](https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM/blob/main/client/README.md) to start reading parsed FIRM data in your code.
 
