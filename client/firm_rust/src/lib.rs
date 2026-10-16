@@ -2,7 +2,7 @@ use anyhow::Result;
 use firm_core::calibration::{MagnetometerCalibration, MagnetometerCalibrator};
 use firm_core::client_packets::FIRMCommandPacket;
 use firm_core::constants::command::{
-    NUMBER_OF_CALIBRATION_OFFSETS, NUMBER_OF_CALIBRATION_SCALE_MATRIX_ELEMENTS,
+    FIRMCommand, NUMBER_OF_CALIBRATION_OFFSETS, NUMBER_OF_CALIBRATION_SCALE_MATRIX_ELEMENTS,
 };
 use firm_core::data_parser::SerialParser;
 use firm_core::firm_packets::{
@@ -116,9 +116,13 @@ impl FIRMClient {
 
     /// Starts the background thread to read from the serial port and parse packets.
     pub fn start(&mut self) {
-        // Return early if already running
-        if self.join_handle.is_some() {
-            return;
+        // Return early if already running. If the reader thread exited on its own (e.g. an I/O
+        // error), reclaim the port with stop() so the client can be started again.
+        if let Some(handle) = &self.join_handle {
+            if !handle.is_finished() {
+                return;
+            }
+            self.stop();
         }
 
         // Gets the port or return if not available
@@ -169,6 +173,7 @@ impl FIRMClient {
                         // Reads all available data packets and send them to the main thread and calibration if wanted
                         while let Some(packet) = parser.get_data_packet() {
                             if sender.send(packet.clone()).is_err() {
+                                running_clone.store(false, Ordering::Relaxed);
                                 return port; // Receiver dropped
                             }
 
@@ -185,6 +190,7 @@ impl FIRMClient {
                         while let Some(firm_response_packet) = parser.get_response_packet() {
                             let response = firm_response_packet.response().clone();
                             if response_sender.send(response).is_err() {
+                                running_clone.store(false, Ordering::Relaxed);
                                 return port; // Receiver dropped
                             }
                         }
@@ -373,7 +379,8 @@ impl FIRMClient {
 
     /// Sends a reboot command.
     pub fn reboot(&self) -> Result<()> {
-        self.send_command(FIRMCommandPacket::build_reboot_command())
+        // Reboot has no response, so there are no stale replies to drop.
+        self.queue_command(FIRMCommandPacket::build_reboot_command())
     }
 
     /// Checks for any errors that have occurred in the background thread.
@@ -458,7 +465,22 @@ impl FIRMClient {
     }
 
     /// Sends a high-level command to the device.
-    fn send_command(&self, command: FIRMCommandPacket) -> Result<()> {
+    ///
+    /// Drops already-received responses of the kind this command produces (for example a late
+    /// ack from an earlier call that timed out), so the wait that follows can't take one of them
+    /// as the reply to this command.
+    fn send_command(&mut self, command: FIRMCommandPacket) -> Result<()> {
+        while let Ok(res) = self.response_receiver.try_recv() {
+            self.response_buffer.push_back(res);
+        }
+        let kind = command.command_type();
+        self.response_buffer
+            .retain(|res| !response_answers_command(res, kind));
+
+        self.queue_command(command)
+    }
+
+    fn queue_command(&self, command: FIRMCommandPacket) -> Result<()> {
         self.command_sender
             .send(command)
             .map_err(|_| io::Error::other("Command channel closed"))?;
@@ -612,6 +634,32 @@ impl FIRMClient {
 }
 
 /// Ensures that the client is properly stopped when dropped, i.e. .stop() is called.
+/// Returns true if `response` is the reply the device sends for `command`.
+fn response_answers_command(response: &FIRMResponse, command: FIRMCommand) -> bool {
+    matches!(
+        (response, command),
+        (FIRMResponse::GetDeviceInfo(_), FIRMCommand::GetDeviceInfo)
+            | (
+                FIRMResponse::GetDeviceConfig(_),
+                FIRMCommand::GetDeviceConfig
+            )
+            | (
+                FIRMResponse::SetDeviceConfig(_),
+                FIRMCommand::SetDeviceConfig
+            )
+            | (
+                FIRMResponse::SetMagnetometerCalibration(_),
+                FIRMCommand::SetMagnetometerCalibration
+            )
+            | (
+                FIRMResponse::SetIMUCalibration(_),
+                FIRMCommand::SetIMUCalibration
+            )
+            | (FIRMResponse::GetCalibration(_), FIRMCommand::GetCalibration)
+            | (FIRMResponse::Cancel(_), FIRMCommand::Cancel)
+    )
+}
+
 impl Drop for FIRMClient {
     fn drop(&mut self) {
         self.stop();
@@ -879,5 +927,25 @@ mod tests {
         let result = client.cancel(Duration::from_millis(100));
         responder.join().unwrap();
         assert_eq!(result.unwrap(), Some(true));
+    }
+
+    #[test]
+    fn test_late_ack_is_not_taken_as_reply_to_next_command() {
+        let (mut client, device) = FIRMClient::new_mock(0.01);
+        client.start();
+
+        // First cancel times out; its ack only arrives afterwards.
+        assert_eq!(client.cancel(Duration::from_millis(20)).unwrap(), None);
+        assert_eq!(
+            device
+                .wait_for_command_identifier(Duration::from_millis(100))
+                .unwrap(),
+            Some(FIRMCommand::Cancel.to_u8().into())
+        );
+        device.inject_response(FIRMCommand::Cancel, &[1u8]);
+        thread::sleep(Duration::from_millis(50));
+
+        // The device never answers the second cancel, so the stale ack must not count.
+        assert_eq!(client.cancel(Duration::from_millis(20)).unwrap(), None);
     }
 }
