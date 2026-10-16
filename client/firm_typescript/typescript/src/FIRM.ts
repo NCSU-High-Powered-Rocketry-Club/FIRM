@@ -2,8 +2,6 @@ import init, {
   FIRMDataParser,
   FIRMCommandBuilder,
   MagnetometerCalibrator,
-  MockLogParser,
-  mock_header_size,
 } from '../../pkg/firm_client.js';
 import {
   FIRMPacket,
@@ -37,13 +35,6 @@ interface WebSerialPortLike {
 
 interface WebSerialNavigator extends Navigator {
   readonly serial: { requestPort(): Promise<WebSerialPortLike> };
-}
-
-export interface MockStreamOptions {
-  realtime?: boolean;
-  speed?: number;
-  chunkSize?: number;
-  startTimeoutMs?: number;
 }
 
 /**
@@ -242,174 +233,6 @@ export class FIRMClient {
     } catch {
       return null;
     }
-  }
-
-  /**
-   * Streams a mock log file to the device (used for hardware mock mode).
-   */
-  async streamMockLogFile(file: File, options: MockStreamOptions = {}): Promise<number> {
-    if (!this.writer) throw new Error('Writer not available');
-
-    const realtime = options.realtime ?? true;
-    const speed = options.speed ?? 1.0;
-    const chunkSize = options.chunkSize ?? 8192;
-    const startTimeoutMs = options.startTimeoutMs ?? RESPONSE_TIMEOUT_MS;
-
-    if (speed <= 0) throw new Error('speed must be > 0');
-
-    const mockCommand = FIRMCommandBuilder.build_mock();
-    this.dataParser.expect_response(mockCommand[0]);
-    await this.sendBytes(mockCommand);
-    const ok = await this.waitForResponse(
-      (res) => ('Mock' in res ? res.Mock : undefined),
-      startTimeoutMs,
-    ).catch(() => null);
-
-    if (!ok) throw new Error('Mock mode not acknowledged');
-
-    const data = new Uint8Array(await file.arrayBuffer());
-    const headerSize = mock_header_size();
-    if (data.length < headerSize) throw new Error('Log file too small');
-
-    const header = data.slice(0, headerSize);
-    const body = data.slice(headerSize);
-
-    const parser = new MockLogParser();
-    parser.read_header(header);
-    await this.sendBytes(parser.build_header_packet(header));
-
-    let sent = 0;
-
-    // We want ONE burst of 75 total, not 75 per chunk.
-    // So we track whether we've already done the preload.
-    let didPreload = false;
-
-    for (let offset = 0; offset < body.length; offset += chunkSize) {
-      parser.parse_bytes(body.slice(offset, offset + chunkSize));
-
-      // First drain does the preload burst, later drains do only batching
-      if (!didPreload) {
-        sent += await this.drainMockPacketsBatched(parser, realtime, speed, 75, 10);
-        didPreload = true;
-      } else {
-        // No preload after the first call; still batch in 10s
-        sent += await this.drainMockPacketsBatched(parser, realtime, speed, 0, 10);
-      }
-    }
-
-    // Final drain in case parser buffered leftovers
-    if (!didPreload) {
-      sent += await this.drainMockPacketsBatched(parser, realtime, speed, 75, 10);
-    } else {
-      sent += await this.drainMockPacketsBatched(parser, realtime, speed, 0, 10);
-    }
-
-    return sent;
-  }
-
-  /** Sends multiple messages as a single byte array. */
-  private async sendBatch(messages: Uint8Array[]): Promise<void> {
-    let total = 0;
-    for (const message of messages) total += message.length;
-
-    const out = new Uint8Array(total);
-    let off = 0;
-    for (const message of messages) {
-      out.set(message, off);
-      off += message.length;
-    }
-
-    await this.sendBytes(out);
-  }
-
-  private async drainMockPacketsBatched(
-    parser: MockLogParser,
-    realtime: boolean,
-    speed: number,
-    preloadCount = 75,
-    batchSize = 10,
-  ): Promise<number> {
-    // Stage parsed packets here so we can burst + batch
-    const staged: { bytes: Uint8Array; delaySeconds: number }[] = [];
-
-    const popOne = () => {
-      if (staged.length > 0) return staged.shift()!;
-      const pkt = parser.get_packet_with_delay() as {
-        bytes: Uint8Array;
-        delaySeconds: number;
-      } | null;
-      return pkt ?? null;
-    };
-
-    const fillUntil = (n: number) => {
-      while (staged.length < n) {
-        const pkt = parser.get_packet_with_delay() as {
-          bytes: Uint8Array;
-          delaySeconds: number;
-        } | null;
-        if (!pkt) break;
-        staged.push(pkt);
-      }
-    };
-
-    let sent = 0;
-
-    // -------------------------
-    // 1) PRELOAD burst (no sleep)
-    // -------------------------
-    fillUntil(preloadCount);
-
-    const batch: Uint8Array[] = [];
-    while (batch.length < preloadCount) {
-      const pkt = popOne();
-      if (!pkt) break;
-      batch.push(pkt.bytes);
-    }
-
-    await this.sendBatch(batch);
-    sent += batch.length;
-
-    // Reset pacing after burst: we pace relative to "now"
-    const streamStart = performance.now();
-    let totalDelaySeconds = 0;
-
-    // -----------------------------------------
-    // 2) MAIN: batches of N (one sleep per batch)
-    // -----------------------------------------
-    while (true) {
-      // Make sure we have at least one packet available
-      fillUntil(batchSize);
-      if (staged.length === 0) {
-        const pkt = popOne();
-        if (!pkt) break;
-        staged.push(pkt);
-      }
-
-      // Build a batch up to batchSize
-      const batch = staged.splice(0, batchSize);
-      if (batch.length === 0) break;
-
-      let batchDelaySeconds = 0;
-      for (const pkt of batch) batchDelaySeconds += pkt.delaySeconds;
-
-      await this.sendBatch(batch.map((p) => p.bytes));
-      sent += batch.length;
-
-      // Sleep once per batch to approximate original pacing
-      if (realtime && batchDelaySeconds > 0) {
-        totalDelaySeconds += batchDelaySeconds;
-
-        const elapsedSeconds = (performance.now() - streamStart) / 1000;
-        const targetSeconds = totalDelaySeconds / speed;
-
-        // Only sleep if we're not already behind
-        if (elapsedSeconds <= targetSeconds) {
-          await this.sleep((batchDelaySeconds * 1000) / speed);
-        }
-      }
-    }
-
-    return sent;
   }
 
   /**

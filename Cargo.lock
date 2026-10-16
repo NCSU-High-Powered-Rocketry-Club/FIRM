@@ -264,7 +264,6 @@ name = "firm_typescript"
 version = "1.3.0"
 dependencies = [
  "firm_core",
- "js-sys",
  "serde",
  "serde-wasm-bindgen",
  "wasm-bindgen",
