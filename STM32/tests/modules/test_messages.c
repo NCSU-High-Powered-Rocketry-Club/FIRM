@@ -55,9 +55,11 @@ UTEST_I(messages, dispatch_valid_cmd, 8) {
   ASSERT_TRUE(dispatched_command);
 }
 
-static const uint8_t invalid_cmd_cases[] = {0, 6, 66, 86, 11};
+// Includes the retired mock request (6) and the sensor log record IDs 'B', 'I', 'M', 'A'
+// (66, 73, 77, 65), which must not be dispatched as commands.
+static const uint8_t invalid_cmd_cases[] = {0, 6, 66, 73, 77, 65, 86, 11};
 
-UTEST_I(messages, dispatch_invalid_cmd, 5) {
+UTEST_I(messages, dispatch_invalid_cmd, 8) {
   uint8_t msg[5] = {invalid_cmd_cases[utest_fixture->case_index], 1, 7, 4, 0};
   dispatch_message(msg);
   ASSERT_FALSE(dispatched_command);
