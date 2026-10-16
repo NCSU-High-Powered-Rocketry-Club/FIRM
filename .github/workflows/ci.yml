@@ -94,9 +94,6 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ninja-build
       - name: uv sync
         run: just sync
-      - name: Build TypeScript / WASM client
-        working-directory: client
-        run: npm ci
       - name: pytest -m integration
         run: just test-integration
 

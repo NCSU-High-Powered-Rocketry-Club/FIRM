@@ -99,7 +99,7 @@ test-rust:
 test-python:
     uv run pytest -m "not integration"
 
-test-integration: build-native
+test-integration: build-native sync-web
     uv run pytest -m integration
 
 lint: lint-ruff lint-rust lint-clang
@@ -166,7 +166,7 @@ publish-pypi: publish-pypi-client publish-pypi-hprc
 
 # npm: firm-client (WASM + TypeScript). Bump `client/package.json` and `client/firm_typescript/Cargo.toml` first.
 [working-directory('client')]
-publish-npm:
+publish-npm: sync-web
     npm publish {{ _publish_flag }}
 
 # crates.io: firm_core then firm_rust. Bump those crate versions first.
