@@ -3,20 +3,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
-typedef enum {
-  PARTITION_SETTINGS_MAIN,
-  PARTITION_SETTINGS_MOCK,
-} StoragePartition_t;
-
 typedef struct {
-  int (*read_settings)(const StoragePartition_t partition, uint8_t *buf, size_t len);
-  int (*write_settings)(const StoragePartition_t partition, uint8_t *buf, size_t len);
+  int (*read_settings)(uint8_t *buf, size_t len);
+  int (*write_settings)(uint8_t *buf, size_t len);
   uint64_t (*read_uid)(void);
 } SettingsStorageInterface_t;
 
 int settings_storage_init(SettingsStorageInterface_t *interface);
-
-int settings_storage_set_partition(StoragePartition_t partition);
 
 int settings_write_to_storage(SystemSettings_t *settings);
 
