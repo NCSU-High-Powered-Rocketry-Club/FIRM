@@ -103,29 +103,22 @@ export function ActionsPanel() {
   const isCalAbortError = (err: unknown) => err instanceof Error && err.name === "AbortError";
 
   const handleCalibrateIMU = async () => {
-    if (!firm || calBusyRef.current) return;
-    const { abort, runId } = beginCalibration("IMU");
+    if (!firm) return;
+    setActiveCal("IMU");
+    startTimer(TIME_CAL_IMU_SECONDS);
 
-    const work = (async () => {
-      try {
-        const success = await firm.runAndApplyIMUCalibration(
-          TIME_CAL_IMU_SECONDS * 1000,
-          undefined,
-          abort.signal,
-        );
-        if (!success) {
-          console.warn("IMU calibration failed or timed out");
-        }
-      } catch (err) {
-        if (!isCalAbortError(err)) {
-          console.error("IMU Calibration error:", err);
-        }
-      } finally {
-        finishCalibration(runId);
-      }
-    })();
-    pendingCalRef.current = work;
-    await work;
+    try {
+      // firm-client no longer exposes a built-in IMU calibration routine from the web client.
+      // Use Developer Panel -> IMU Calibration to manually set offsets/matrix.
+      console.warn(
+        "IMU calibration routine is not available in this client build. Use manual setIMUCalibration.",
+      );
+    } catch (err) {
+      console.error("IMU Calibration error:", err);
+    } finally {
+      setActiveCal(null);
+      stopTimer();
+    }
   };
 
   const handleCalibrateMag = async () => {
