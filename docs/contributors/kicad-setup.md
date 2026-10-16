@@ -9,6 +9,6 @@ Follow the setup instructions from the FIRM KiCad repo:
 
 ---
 
-TODO: eventually this page will contain more informationa bout general practices, design choices, and tips for working with the FIRM KiCad project.
+TODO: eventually this page will contain more information about general practices, design choices, and tips for working with the FIRM KiCad project.
 
 ---

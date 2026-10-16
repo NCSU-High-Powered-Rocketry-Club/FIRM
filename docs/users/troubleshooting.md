@@ -15,38 +15,34 @@ Possible causes:
 Checklist:
 
 1. Try a different cable and USB port.
-2. Make sure you see only a green LED on the board when you first plug it in.
+2. Make sure the green power LED is on, and that after a moment the yellow LED is blinking (see below).
 3. Check your Device Manager for a new COM port that appears when you plug in the board.
 
 ---
 
 ## LED Status Codes
 
-The board uses 3 LEDs (Blue, Yellow, Red) to indicate operational status.
+Besides the green power LED, the board uses 3 status LEDs (Blue, Yellow, Red).
 
-### Initialization Status
+### Normal Operation
 
-These LEDs will always stay lit up to indicate the initialization status. When FIRM is booting up, you should see all 3 LEDs lit for 0.5 seconds.
+| Status                      | Blue | Yellow | Red |
+| :-------------------------- | :--: | :----: | :-: |
+| Booting (blinking)          |  🔵  |   ⚫   | ⚫  |
+| Running normally (blinking) |  ⚫  |   🟡   | ⚫  |
 
-| Status          | Blue | Yellow | Red |
-| :-------------- | :--: | :----: | :-: |
-| Bootup          |  🔵  |   🟡   | 🔴  |
-| IMU Fail        |  🔵  |   🟡   | ⚫  |
-| BMP581 Fail     |  🔵  |   ⚫   | 🔴  |
-| MMC5983MA Fail  |  🔵  |   ⚫   | ⚫  |
-| Flash Chip Fail |  ⚫  |   🟡   | 🔴  |
-| SD Card Fail    |  ⚫  |   🟡   | ⚫  |
-| All Sensors OK  |  ⚫  |   ⚫   | ⚫  |
+### Initialization Failures
 
-### Interrupt Failures
+If a component fails to start, FIRM stops and these LEDs stay lit (not blinking).
 
-If a sensor's interrupt is not firing, the LEDs will blink 5 times.
-
-| Status                        | Blue | Yellow | Red |
-| :---------------------------- | :--: | :----: | :-: |
-| Failed IMU Interrupt          |  🔵  |   ⚫   | ⚫  |
-| Failed BMP Interrupt          |  ⚫  |   🟡   | ⚫  |
-| Failed Magnetometer Interrupt |  ⚫  |   ⚫   | 🔴  |
+| Status                    | Blue | Yellow | Red |
+| :------------------------ | :--: | :----: | :-: |
+| IMU Fail                  |  🔵  |   🟡   | ⚫  |
+| BMP581 Fail               |  🔵  |   ⚫   | 🔴  |
+| MMC5983MA Fail            |  🔵  |   ⚫   | ⚫  |
+| Flash Chip Fail           |  ⚫  |   🟡   | 🔴  |
+| High-g Accelerometer Fail |  ⚫  |   🟡   | ⚫  |
+| SD Card Fail              |  ⚫  |   ⚫   | 🔴  |
 
 ## Web App Can't Connect via Serial
 

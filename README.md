@@ -67,11 +67,11 @@ The React app in `web/` talks to FIRM over Web Serial and uses the local WASM cl
 just sync-web       # npm ci for the workspace; builds client WASM + TypeScript (once, and after dependency changes)
 just web-dev        # Vite dev server for the web app (http://localhost:5173/)
 just build-web      # production build of the React app
-just lint-web       # ESLint, Prettier, and tsc over client/ and web/
+just lint-web       # ESLint and Prettier over client/ and web/, tsc over web/
 just build-docs     # MkDocs site to ./site/
 ```
 
-`just web-dev` runs `npm run dev -w web`. After `just build-docs`, or `uv run --group docs mkdocs serve`, the docs are at http://127.0.0.1:8000/docs/. Production is https://firm.ncsurocketry.org/ (app) and https://firm.ncsurocketry.org/docs/ (docs). See [web/README.md](web/README.md).
+`just web-dev` runs `npm run dev -w web`. `just build-docs` writes the static site to `site/`; `uv run --group docs mkdocs serve` serves it at http://127.0.0.1:8000/docs/. Production is https://firm.ncsurocketry.org/ (app) and https://firm.ncsurocketry.org/docs/ (docs). See [web/README.md](web/README.md).
 
 ## Processing tools
 

@@ -19,8 +19,8 @@ Follow the setup instructions from the main FIRM repo:
 
 The FIRM Client handles **parsing live FIRM data** and packing it into an easy-to-use format. Its core is written in **Rust**, with libraries for **Python, JavaScript/TypeScript, and (eventually) Arduino**.
 
-Follow the setup instructions from the FIRM Client repo:  
-**[https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM-Client](https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM-Client)**
+It lives in the `client/` folder of the FIRM repo. Follow the setup instructions in
+**[client/README.md](https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM/blob/main/client/README.md)**
 
 ---
 

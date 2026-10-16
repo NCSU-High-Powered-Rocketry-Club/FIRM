@@ -10,7 +10,7 @@ From the **repository root**:
 just sync-web       # npm ci for the workspace (run once, and after dependency changes)
 just web-dev        # Vite dev server (usually http://localhost:5173/)
 just build-web      # production build
-just lint-web       # ESLint, Prettier, and tsc (client/ and web/)
+just lint-web       # ESLint and Prettier (client/ and web/), tsc (web/)
 ```
 
 Or from this directory, after `just sync-web`:

@@ -1,5 +1,7 @@
 site_name: FIRM Documentation
 site_url: https://firm.ncsurocketry.org/docs/
+repo_url: https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM
+edit_uri: edit/main/docs/
 
 docs_dir: docs
 
@@ -25,7 +27,7 @@ nav:
   - Contributing to FIRM:
       - Contributor Overview: contributors/overview.md
       - Environment Setup (VS Code, Python, Git): contributors/environment-setup.md
-      - Hardware & KiCad: contributors/kidcad-setup.md
+      - Hardware & KiCad: contributors/kicad-setup.md
 
 extra_css:
   - extra.css

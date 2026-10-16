@@ -20,7 +20,7 @@ To follow this guide, you should have:
 - A **Windows or Linux laptop**.
 - One **FIRM device**.
 - A **USB-C power + data cable** (Can be USB-C to USB-C, USB-A to USB-C, etc.).
-- A **32GB V30 U3 MicroSD card**.
+- A **MicroSD card** (we recommend a 32GB V30 U3 card; each power-on creates a ~200 MB log file).
 
 You do **not** need to know how to write code or anything about electronics for this page.
 
@@ -36,7 +36,7 @@ You do **not** need to know how to write code or anything about electronics for 
    ![microsd_card_slot.png](../assets/images/microsd_card_slot.png)
 2. Plug your cable into your laptop and into the USB-C port on the FIRM device.
    ![usb_c_port.png](../assets/images/usb_c_port.png)
-3. Confirm that you see a green LED 🟢 (means that it's receiving power). If you see any other color LEDs, that means something isn't working properly. Check the **[Troubleshooting](troubleshooting.md)** page for help.
+3. Confirm that you see the green power LED 🟢, and that after a moment the yellow LED 🟡 starts blinking (FIRM is running). Any other LED pattern means something isn't working properly. Check the **[Troubleshooting](troubleshooting.md)** page for help.
    ![green_led.png](../assets/images/green_led.png)
 
 > ⚠️ **Safety Note**  
@@ -59,8 +59,8 @@ You do **not** need to know how to write code or anything about electronics for 
 
 ## 💻 Step 3 - Connect via Serial
 
-1. In the FIRM Web App click on the `Connect to Firm` button.
-2. A dialog should pop up showing available serial ports, click the one corresponding to the FIRM device. The name should contain `STM32` in it.
+1. In the FIRM Web App click on the `Connect to FIRM` button.
+2. A dialog should pop up showing available serial ports, click the one corresponding to the FIRM device. It should be named `FIRM Device`.
 3. Click **Connect**.
 
 Now you should see that the app has connected to the FIRM device. Confirm you see **live status** from the device by

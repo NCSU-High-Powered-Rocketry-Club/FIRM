@@ -5,7 +5,7 @@ This page explains how to **configure settings on FIRM** using the web app and a
 We assume you've already:
 
 - Connected the device to your computer, and
-- Verified it is successfully communnicating (see **[Quick Start](quick-start.md)**).
+- Verified it is successfully communicating (see **[Quick Start](quick-start.md)**).
 
 ---
 
@@ -24,71 +24,48 @@ There's no functional impact--it's just for organization.
 
 ### 📝 Data Packet Fields
 
-FIRM generates a flat data packet, so every individual data point is sent as its own top-level field rather than nested structures. This makes it easy to enable/disable individual data points.
+FIRM sends a flat data packet: every data point is its own top-level field rather than a nested
+structure. Every packet contains all of the fields below.
 
-Below is a list of all available fields, grouped by type:
+#### Sent by the device
 
-#### Raw Sensor Data
+| Field Name                   | Units | Description                                |
+| ---------------------------- | ----- | ------------------------------------------ |
+| timestamp_seconds            | s     | Monotonic device timestamp.                |
+| temperature_celsius          | °C    | Barometer temperature.                     |
+| pressure_pascals             | Pa    | Barometric pressure.                       |
+| raw_acceleration_x_gs        | g     | IMU accelerometer X axis.                  |
+| raw_acceleration_y_gs        | g     | IMU accelerometer Y axis.                  |
+| raw_acceleration_z_gs        | g     | IMU accelerometer Z axis.                  |
+| raw_angular_rate_x_deg_per_s | °/s   | Gyroscope X axis.                          |
+| raw_angular_rate_y_deg_per_s | °/s   | Gyroscope Y axis.                          |
+| raw_angular_rate_z_deg_per_s | °/s   | Gyroscope Z axis.                          |
+| magnetic_field_x_microteslas | µT    | Magnetometer X axis.                       |
+| magnetic_field_y_microteslas | µT    | Magnetometer Y axis.                       |
+| magnetic_field_z_microteslas | µT    | Magnetometer Z axis.                       |
+| high_g_accel_x_gs            | g     | High-g accelerometer X axis.               |
+| high_g_accel_y_gs            | g     | High-g accelerometer Y axis.               |
+| high_g_accel_z_gs            | g     | High-g accelerometer Z axis.               |
+| est_position_z_meters        | m     | Filter-estimated vertical position.\*      |
+| est_velocity_z_meters_per_s  | m/s   | Filter-estimated vertical velocity.\*      |
+| est_quaternion_w/x/y/z       | —     | Filter-estimated orientation quaternion.\* |
 
-| Field Name            | Units   | Description                 |
-| --------------------- | ------- | --------------------------- |
-| timestamp_seconds     | seconds | Monotonic device timestamp. |
-| accel_x_meters_per_s2 | m/s²    | Raw accelerometer X axis.   |
-| accel_y_meters_per_s2 | m/s²    | Raw accelerometer Y axis.   |
-| accel_z_meters_per_s2 | m/s²    | Raw accelerometer Z axis.   |
-| gyro_x_radians_per_s  | rad/s   | Raw gyro X axis.            |
-| gyro_y_radians_per_s  | rad/s   | Raw gyro Y axis.            |
-| gyro_z_radians_per_s  | rad/s   | Raw gyro Z axis.            |
-| mag_x_microteslas     | µT      | Raw magnetometer X axis.    |
-| mag_y_microteslas     | µT      | Raw magnetometer Y axis.    |
-| mag_z_microteslas     | µT      | Raw magnetometer Z axis.    |
-| pressure_pascals      | Pa      | Raw barometric pressure.    |
-| temperature_celsius   | °C      | Raw temperature reading.    |
+\* The on-device filter does not populate these fields yet, so they are currently always 0.
 
-#### Estimated (Kalman Filtered) Data
+#### Derived by the client library
 
-| Field Name              | Units | Description                          |
-| ----------------------- | ----- | ------------------------------------ |
-| pos_x_meters            | m     | Estimated position X.                |
-| pos_y_meters            | m     | Estimated position Y.                |
-| pos_z_meters            | m     | Estimated position Z.                |
-| vel_x_meters_per_s      | m/s   | Estimated velocity X.                |
-| vel_y_meters_per_s      | m/s   | Estimated velocity Y.                |
-| vel_z_meters_per_s      | m/s   | Estimated velocity Z.                |
-| acc_x_meters_per_s2_kf  | m/s²  | Estimated acceleration X (filtered). |
-| acc_y_meters_per_s2_kf  | m/s²  | Estimated acceleration Y (filtered). |
-| acc_z_meters_per_s2_kf  | m/s²  | Estimated acceleration Z (filtered). |
-| gyro_x_radians_per_s_kf | rad/s | Filter-estimated gyro X.             |
-| gyro_y_radians_per_s_kf | rad/s | Filter-estimated gyro Y.             |
-| gyro_z_radians_per_s_kf | rad/s | Filter-estimated gyro Z.             |
-| quaternion_w            | —     | Orientation quaternion W.            |
-| quaternion_x            | —     | Orientation quaternion X.            |
-| quaternion_y            | —     | Orientation quaternion Y.            |
-| quaternion_z            | —     | Orientation quaternion Z.            |
+| Field Name                        | Units | Description                                |
+| --------------------------------- | ----- | ------------------------------------------ |
+| raw_rotated_acceleration_x/y/z_gs | g     | Acceleration rotated into the world frame. |
+| est_tilt_angle_degrees            | °     | Tilt from +Z, from the raw acceleration.   |
+| est_mach_number                   | —     | Mach number from velocity and temperature. |
 
-#### Derived Data
-
-| Field Name                  | Units | Description                           |
-| --------------------------- | ----- | ------------------------------------- |
-| pitch_radians               | rad   | Derived from quaternion orientation.  |
-| roll_radians                | rad   | Derived from quaternion orientation.  |
-| yaw_radians                 | rad   | Derived from quaternion orientation.  |
-| altitude_meters             | m     | Barometric altitude from pressure.    |
-| calculated_pressure_pascals | Pa    | Pressure corrected via KF (optional). |
-
-You can select as many or as few as you want.
-
-**Recommended:**
-
-- Using the default settings is fine for most applications.
-- Alternatively, you can choose to **disable** any fields you don't need--FIRM keeps a local copy of all data it
-  records, so you don't have to be worried about losing any data.
-
-> You can also **import or export** your entire configuration as a JSON file using the buttons at the bottom.
+> You can **import or export** the device name, frequency, and protocol as a JSON file using the
+> buttons at the bottom of the settings panel.
 
 ---
 
-## 〰️ Update Frequency (1-500 Hz)
+## 〰️ Update Frequency (1-1000 Hz)
 
 This controls how often FIRM sends data packets. **100 Hz** is usually fine for most applications.
 
@@ -98,7 +75,7 @@ This controls how often FIRM sends data packets. **100 Hz** is usually fine for 
 General guidance:
 
 - **100 Hz** → smooth real-time graphs, great for most tests
-- **200-500 Hz** → high-performance data (only needed for special use cases)
+- **200-1000 Hz** → high-performance data (only needed for special use cases)
 - **20-50 Hz** → slow tests or debugging
 
 **Recommended:**  
@@ -108,21 +85,21 @@ Use **100 Hz**, unless you specifically need a higher rate.
 
 ## 🔗 Protocol
 
-This tells the web app how to talk to the device.
-
-There are other protocols that can be used such as I2C, SPI, and UART, but USB is the easiest to set up.
+This setting is stored on the device. FIRM currently only sends data over **USB**, and the web app
+always talks to it over USB; the I2C, SPI, and UART options are reserved for future use.
 
 **Recommended:**  
 Leave this set to **USB**.
 
 ---
 
-## 🔄 Apply / Reset
+## 🔄 Apply / Import / Export
 
 After making changes:
 
 - **Apply Settings** writes the configuration to the device.
-- **Reset** restores all fields back to their defaults.
+- **Export** saves the current form as a JSON file, and **Import** loads one back into the form
+  (press **Apply Settings** afterwards to write it to the device).
 
 Make sure to save a copy of your settings once you're done!
 

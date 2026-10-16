@@ -30,20 +30,13 @@ This means that you can:
 
 ## ⬇️ Downloading the Raw FIRM Device Log File
 
-After a test or flight:
+Downloading logs through the web app is not available yet. For now, after a test or flight:
 
-1. Plug your FIRM device into your laptop.
-2. Open the FIRM Web App at **[https://firm.ncsurocketry.org/](https://firm.ncsurocketry.org/)**
-3. Connect to the device using the **Connect to FIRM** button.
-4. Scroll down to the **Download Log File** section.
-
-Use the dropdown to pick which recorded session you want (usually just _Most Recent Session_), then click:
-
-**Download Log**
-
-This gives you a `.csv` log file containing what the device recorded internally.
-
-> You can also **import/export device settings** as JSON files using the import and export buttons.
+1. Unplug FIRM and remove the MicroSD card.
+2. Put the card in your computer. Each power-on creates a new file named `logN.frm` (for example
+   `log3.frm`); the highest number is the most recent session.
+3. Copy the files you want. The `firm-log` tool from the
+   [`firm-hprc`](https://pypi.org/project/firm-hprc/) Python package can ingest and decode them.
 
 ---
 
@@ -53,13 +46,13 @@ While the device is logging internally, it also **streams data** to whatever sys
 
 We've built a cross-language client library to make this painless. Currently, we have support for:
 
-- **[Python (PyPI)](https://pypi.org/project/firm-hprc/)**
+- **[Python (PyPI)](https://pypi.org/project/firm-client/)**
 - **[JavaScript / TypeScript (NPM)](https://www.npmjs.com/package/firm-client)**
 - **Rust crate**
 - **Arduino library (planned)**
 
-All of these are maintained in this repo:  
-**[https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM-Client](https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM-Client)**
+All of these are maintained in the `client/` folder of the FIRM repo:  
+**[https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM/tree/main/client](https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM/tree/main/client)**
 
 ### 👨‍🚀 What this means for you
 
@@ -68,7 +61,7 @@ As long as you:
 1. Configure the FIRM device using the web app, and
 2. Plug it into something capable of reading serial data (a Raspberry Pi, a laptop, an Arduino, a flight computer, etc.),
 
-...then all you need to do is follow the [README](https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM-Client) in the **FIRM-Client** repo to start reading parsed FIRM data in your code.
+...then all you need to do is follow the [client README](https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM/blob/main/client/README.md) to start reading parsed FIRM data in your code.
 
 The client library handles:
 
@@ -90,7 +83,7 @@ That's it--just plug it into your device and start reading data!
 [//]: # "## Summary"
 [//]: #
 [//]: # "- FIRM automatically starts logging when powered."
-[//]: # '- You can download the "raw device log" anytime using the web app.'
+[//]: # '- You can copy the "raw device log" files off the MicroSD card.'
 [//]: # "- FIRM streams live data to any connected computer."
-[//]: # "- Use the **FIRM-Client** library to read data in Python, JS/TS, Rust, or (soon) Arduino."
+[//]: # "- Use the **firm-client** library to read data in Python, JS/TS, Rust, or (soon) Arduino."
 [//]: # "- The guide for using the client library is in the other repo; this page just explains how FIRM produces data."
