@@ -15,6 +15,8 @@ import {
 } from "./types.js";
 
 const RESPONSE_TIMEOUT_MS = 5000;
+const ZERO_OFFSETS = [0, 0, 0];
+const IDENTITY_MATRIX = [1, 0, 0, 0, 1, 0, 0, 0, 1];
 
 function createAbortError(): Error {
   const err = new Error("Calibration cancelled");
@@ -33,6 +35,7 @@ export interface FIRMConnectOptions {
 interface WebSerialPortLike {
   open(options: { baudRate: number }): Promise<void>;
   close(): Promise<void>;
+  setSignals?(signals: { dataTerminalReady?: boolean }): Promise<void>;
   readable: {
     getReader(): ReadableStreamDefaultReader<Uint8Array>;
   } | null;
@@ -88,6 +91,8 @@ export class FIRMClient {
   private packetWaiters: ((pkt: FIRMPacket | null) => void)[] = [];
   private responseQueue: FIRMResponse[] = [];
   private responseWaiters: ((res: FIRMResponse) => void)[] = [];
+  /** Rejects every pending waitForResponse() call; used on close. */
+  private responseCancellers: (() => void)[] = [];
 
   private closed = false;
 
@@ -143,6 +148,12 @@ export class FIRMClient {
     await init();
     const dataParser = new FIRMDataParser();
     await port.open({ baudRate });
+    // The firmware ignores USB CDC traffic until the host asserts DTR (see usbd_cdc_if.c).
+    // Not every OS raises DTR on open, so assert it explicitly like the Rust client does.
+    if (port.setSignals) {
+      await port.setSignals({ dataTerminalReady: true });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
     const reader = port.readable!.getReader();
     const writer = port.writable!.getWriter();
     const firm = new FIRMClient(dataParser);
@@ -187,6 +198,7 @@ export class FIRMClient {
       this.flushWaitersWithNull();
     } finally {
       this.running = false;
+      this.closed = true;
       this.flushWaitersWithNull();
       await this.safeCall(this.reader, "cancel");
       await this.safeCall(this.reader, "releaseLock");
@@ -527,9 +539,12 @@ export class FIRMClient {
    * Runs a full magnetometer calibration sequence and applies it to the device.
    *
    * Mirrors the Rust helper `run_and_apply_magnetometer_calibration`:
-   * 1) Collects samples for `collectionDurationMs` while you rotate the device.
-   * 2) Fits offsets + soft-iron matrix.
-   * 3) Sends `SetMagnetometerCalibration` and returns the device acknowledgement.
+   * 1) Resets the magnetometer calibration to identity so samples are uncorrected.
+   * 2) Collects samples for `collectionDurationMs` while you rotate the device.
+   * 3) Fits offsets + soft-iron matrix.
+   * 4) Sends `SetMagnetometerCalibration` and returns the device acknowledgement.
+   *
+   * If the run is cancelled or fails after step 1, the previous calibration is restored.
    *
    * @returns `true/false` if the device responded, or `null` if calibration failed or timed out.
    * @throws AbortError when `signal` is aborted before apply.
@@ -543,37 +558,56 @@ export class FIRMClient {
     if (!(collectionDurationMs > 0)) throw new Error("collectionDurationMs must be > 0");
     this.throwIfAborted(signal);
 
-    const calibrator = new MagnetometerCalibrator();
-    calibrator.start();
-
-    const unsubscribe = this.onPacket((pkt) => {
-      try {
-        calibrator.add_sample(pkt as unknown as object);
-      } catch {
-        // Ignore per-sample errors (should be rare; keeps stream alive)
-      }
-    });
-
-    try {
-      await this.sleep(collectionDurationMs, signal);
-    } finally {
-      unsubscribe();
-      calibrator.stop();
-    }
+    const previous = await this.getCalibration();
+    if (!previous) return null;
     this.throwIfAborted(signal);
+    if (!(await this.setMagnetometerCalibration(ZERO_OFFSETS, IDENTITY_MATRIX))) return null;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = calibrator.calculate() as any | null;
-    if (!result) return null;
+    let applied = false;
+    try {
+      const calibrator = new MagnetometerCalibrator();
+      calibrator.start();
 
-    const offsetsF32 = new Float32Array(result.offsets as number[]);
-    const scaleF32 = new Float32Array(result.scaleMatrix as number[]);
+      const unsubscribe = this.onPacket((pkt) => {
+        try {
+          calibrator.add_sample(pkt as unknown as object);
+        } catch {
+          // Ignore per-sample errors (should be rare; keeps stream alive)
+        }
+      });
 
-    return await this.sendAndWait(
-      () => FIRMCommandBuilder.build_set_magnetometer_calibration(offsetsF32, scaleF32),
-      (res) => ("SetMagnetometerCalibration" in res ? res.SetMagnetometerCalibration : undefined),
-      applyTimeoutMs,
-    );
+      try {
+        await this.sleep(collectionDurationMs, signal);
+      } finally {
+        unsubscribe();
+        calibrator.stop();
+      }
+      this.throwIfAborted(signal);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = calibrator.calculate() as any | null;
+      if (!result) return null;
+
+      const offsetsF32 = new Float32Array(result.offsets as number[]);
+      const scaleF32 = new Float32Array(result.scaleMatrix as number[]);
+
+      // Last point where cancel can still prevent the device write.
+      this.throwIfAborted(signal);
+      const ack = await this.sendAndWait(
+        () => FIRMCommandBuilder.build_set_magnetometer_calibration(offsetsF32, scaleF32),
+        (res) => ("SetMagnetometerCalibration" in res ? res.SetMagnetometerCalibration : undefined),
+        applyTimeoutMs,
+      );
+      applied = ack === true;
+      return ack;
+    } finally {
+      if (!applied) {
+        await this.setMagnetometerCalibration(
+          previous.magnetometer_offsets,
+          previous.magnetometer_scale_matrix,
+        ).catch(() => false);
+      }
+    }
   }
 
   /**
@@ -654,12 +688,19 @@ export class FIRMClient {
       }
     }
 
+    if (this.closed) throw new Error("Connection closed");
+
     // 2. Wait for new responses
     return new Promise<T>((resolve, reject) => {
       const timeoutId = setTimeout(() => {
         cleanup();
         reject(new Error("Timeout waiting for response"));
       }, timeoutMs);
+
+      const onClose = () => {
+        cleanup();
+        reject(new Error("Connection closed"));
+      };
 
       const onResponse = (res: FIRMResponse) => {
         const match = matcher(res);
@@ -680,18 +721,25 @@ export class FIRMClient {
         if (idx !== -1) {
           this.responseWaiters.splice(idx, 1);
         }
+        const cancelIdx = this.responseCancellers.indexOf(onClose);
+        if (cancelIdx !== -1) {
+          this.responseCancellers.splice(cancelIdx, 1);
+        }
       };
 
       this.responseWaiters.push(onResponse);
+      this.responseCancellers.push(onClose);
     });
   }
 
   /**
-   * Resolves all pending waiters with null (used on shutdown/error).
+   * Resolves all pending packet waiters with null and rejects pending response waiters
+   * (used on shutdown/error).
    */
   private flushWaitersWithNull(): void {
     while (this.packetWaiters.length)
       (this.packetWaiters.shift() as (pkt: FIRMPacket | null) => void)(null);
+    for (const cancel of [...this.responseCancellers]) cancel();
   }
 
   /**
