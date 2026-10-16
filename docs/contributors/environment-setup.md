@@ -28,8 +28,8 @@ Follow the setup instructions from the FIRM Client repo:
 
 The FIRM Web App lets users configure the device and view live data directly in the browser. It's written in **TypeScript** and uses **React** and **Tailwind CSS**.
 
-Follow the setup instructions from the FIRM Web App repo:
-**[https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM-Web-App](https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM-Web-App)**
+It lives in the `web/` folder of the FIRM repo. Follow the setup instructions in
+**[web/README.md](https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM/blob/main/web/README.md)**
 
 ---
 

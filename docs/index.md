@@ -62,7 +62,7 @@ Make sure you're:
 ---
 
 These docs are a work in progress and are hosted in
-our **[FIRM-Web-App repo](https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM-Web-App)**. If anything feels confusing,
+the `docs/` folder of the **[FIRM repo](https://github.com/NCSU-High-Powered-Rocketry-Club/FIRM)**. If anything feels confusing,
 incomplete, or out of date, please open an issue or PR - future you (and other members) will appreciate it.
 
 ---
