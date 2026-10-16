@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import shutil
-import subprocess
 from pathlib import Path
 from typing import cast
 
@@ -298,11 +296,8 @@ def test_listing_the_repository_archive_is_read_only(
 
 
 @pytest.mark.integration
-def test_manager_output_is_accepted_by_rust_playback(tmp_path: Path) -> None:
-    """Feed a manager-generated current log through the Rust playback parser."""
-    cargo = shutil.which("cargo")
-    if cargo is None:
-        pytest.skip("Cargo is required for the Rust playback compatibility test")
+def test_manager_output_is_accepted_by_log_decoder(tmp_path: Path) -> None:
+    """Feed a manager-generated current log through the processing log decoder."""
     root = make_archive(tmp_path / "flight_data")
     recording = Archive(root).ingest(
         "launch",
@@ -311,22 +306,7 @@ def test_manager_output_is_accepted_by_rust_playback(tmp_path: Path) -> None:
         hardware="new",
     )
     build_recording(recording)
-    repository = Path(__file__).resolve().parents[2]
-    completed = subprocess.run(  # noqa: S603 -- Cargo executable is resolved from PATH.
-        [
-            cargo,
-            "run",
-            "-q",
-            "-p",
-            "firm_rust",
-            "--example",
-            "verify_mock_packets",
-            "--",
-            str(recording.flight_derived),
-        ],
-        cwd=repository,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    assert "OK: total=32 B=8 I=8 M=8 A=8" in completed.stdout
+    counts = {"barometer": 0, "imu": 0, "magnetometer": 0, "high_g": 0}
+    for packet in LogReader(recording.flight_derived).iter_packets():
+        counts[packet.sensor] += 1
+    assert counts == {"barometer": 8, "imu": 8, "magnetometer": 8, "high_g": 8}
