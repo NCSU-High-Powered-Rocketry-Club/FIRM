@@ -6,6 +6,7 @@
 // Link-seam stubs for the settings_manager calls in commands.c.
 static const SystemSettings_t *stub_settings;
 static int get_settings_calls;
+static int stub_write_calibration_result;
 
 const SystemSettings_t *get_settings(void) {
   get_settings_calls++;
@@ -21,7 +22,14 @@ int settings_write_calibration(Calibration_t *accel, Calibration_t *gyro, Calibr
   (void)gyro;
   (void)mag;
   (void)high_g;
-  return 0;
+  return stub_write_calibration_result;
+}
+
+static int calibration_changed_calls;
+
+static void count_calibration_changed(void *ctx) {
+  (void)ctx;
+  calibration_changed_calls++;
 }
 
 static TransmitFrame_t captured_frame;
@@ -41,7 +49,10 @@ UTEST_F_SETUP(commands) {
   response_was_queued = false;
   stub_settings = NULL;
   get_settings_calls = 0;
+  stub_write_calibration_result = 0;
+  calibration_changed_calls = 0;
   commands_set_response_queue(capture_response);
+  commands_register_calibration_changed(count_calibration_changed, NULL);
 }
 
 UTEST_F_TEARDOWN(commands) {}
@@ -62,6 +73,28 @@ UTEST_F(commands, get_device_info_response_length_includes_identifier_byte) {
   ASSERT_MEMEQ(&settings.device_uid, &captured_frame.payload[1], sizeof(uint64_t));
   ASSERT_MEMEQ(settings.firmware_version, &captured_frame.payload[1U + sizeof(uint64_t)],
                FIRM_FIRMWARE_VERSION_LEN);
+}
+
+UTEST_F(commands, calibration_commands_reload_driver_calibration) {
+  uint8_t mag_command[1U + sizeof(Calibration_t)] = {(uint8_t)ID_SET_MAG_CALIBRATON};
+  uint8_t imu_command[1U + (2U * sizeof(Calibration_t))] = {(uint8_t)ID_SET_IMU_CALIBRATON};
+
+  dispatch_command(mag_command);
+  ASSERT_EQ(1, calibration_changed_calls);
+  dispatch_command(imu_command);
+  ASSERT_EQ(2, calibration_changed_calls);
+}
+
+UTEST_F(commands, failed_calibration_write_does_not_reload_drivers) {
+  uint8_t mag_command[1U + sizeof(Calibration_t)] = {(uint8_t)ID_SET_MAG_CALIBRATON};
+  uint8_t imu_command[1U + (2U * sizeof(Calibration_t))] = {(uint8_t)ID_SET_IMU_CALIBRATON};
+  stub_write_calibration_result = 1;
+
+  dispatch_command(mag_command);
+  ASSERT_TRUE(response_was_queued);
+  ASSERT_EQ(0, captured_frame.payload[1]);
+  dispatch_command(imu_command);
+  ASSERT_EQ(0, calibration_changed_calls);
 }
 
 struct command_payload {
