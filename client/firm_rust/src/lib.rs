@@ -847,11 +847,19 @@ mod tests {
         let (mut client, device) = FIRMClient::new_mock(0.01);
         client.start();
 
-        let response_payload = [1u8];
-        device.inject_response(FIRMCommand::Cancel, &response_payload);
+        let responder = device.clone();
+        let handle = thread::spawn(move || {
+            assert_eq!(
+                responder
+                    .wait_for_command_identifier(Duration::from_millis(100))
+                    .unwrap(),
+                Some(FIRMCommand::Cancel.to_u8().into())
+            );
+            responder.inject_response(FIRMCommand::Cancel, &[1u8]);
+        });
 
         let result = client.cancel(Duration::from_millis(100));
-
+        handle.join().unwrap();
         assert_eq!(result.unwrap(), Some(true));
     }
 }
