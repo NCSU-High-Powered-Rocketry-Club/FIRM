@@ -105,45 +105,6 @@ impl FIRMClient {
         self.inner.stop();
     }
 
-    /// Start streaming a mock log file in the background.
-    #[pyo3(signature = (log_path, realtime=true, speed=1.0, chunk_size=8192, start_timeout_seconds=5.0, cancel_on_finish=true))]
-    fn start_mock_log_stream(
-        &mut self,
-        log_path: &str,
-        realtime: bool,
-        speed: f64,
-        chunk_size: usize,
-        start_timeout_seconds: f64,
-        cancel_on_finish: bool,
-    ) -> PyResult<()> {
-        self.ensure_ok()?;
-
-        map_io(self.inner.start_mock_log_stream(
-            log_path.to_string(),
-            Duration::from_secs_f64(start_timeout_seconds),
-            realtime,
-            speed,
-            chunk_size,
-            cancel_on_finish,
-        ))?;
-
-        Ok(())
-    }
-
-    fn is_mock_log_streaming(&self) -> bool {
-        self.inner.is_mock_log_streaming()
-    }
-
-    #[pyo3(signature = (cancel_device=true, block=true))]
-    fn stop_mock_log_stream(
-        &mut self,
-        cancel_device: bool,
-        block: bool,
-    ) -> PyResult<Option<usize>> {
-        let res = map_io(self.inner.stop_mock_log_stream(cancel_device, block))?;
-        Ok(res)
-    }
-
     #[pyo3(signature = (block=false))]
     fn get_data_packets(&mut self, block: bool) -> PyResult<Vec<ProcessedFIRMData>> {
         self.ensure_ok()?;
@@ -305,9 +266,6 @@ impl FIRMClient {
         _traceback: Option<Bound<'_, PyAny>>,
     ) {
         let mut this = slf.borrow_mut();
-
-        let _ = this.inner.stop_mock_log_stream(true, true);
-
         this.inner.stop();
     }
 }
