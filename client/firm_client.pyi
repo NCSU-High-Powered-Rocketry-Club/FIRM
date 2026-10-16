@@ -225,7 +225,11 @@ class FIRMClient:
     """Request calibration values and wait up to timeout_seconds."""
 
     def cancel(self, timeout_seconds: float = 5.0) -> bool: ...
-    """Send cancel and wait up to timeout_seconds for acknowledgement."""
+    """Send cancel and wait up to timeout_seconds for acknowledgement.
+
+    Firmware currently only ACKs; on-device mag/IMU calibration is a
+    synchronous settings write with nothing in-flight to abort.
+    """
 
     def reboot(self) -> None: ...
     """Send reboot command."""

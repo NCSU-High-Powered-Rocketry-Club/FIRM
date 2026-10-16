@@ -359,6 +359,10 @@ impl FIRMClient {
     }
 
     /// Sends a cancel command and waits for acknowledgement.
+    ///
+    /// TODO: Firmware currently only ACKs this command. Mag/IMU calibration on
+    /// the device is a synchronous settings write with nothing in-flight to abort.
+    /// Host-side collection should stop locally.
     pub fn cancel(&mut self, timeout: Duration) -> Result<Option<bool>> {
         self.send_command(FIRMCommandPacket::build_cancel_command())?;
         self.wait_for_matching_response(timeout, |res| match res {
