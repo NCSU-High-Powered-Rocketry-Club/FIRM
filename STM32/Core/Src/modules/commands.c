@@ -2,6 +2,8 @@
 
 static CommandSystemResetFn g_system_reset_fn = NULL;
 static void *g_system_reset_ctx = NULL;
+static CommandCalibrationChangedFn g_calibration_changed_fn = NULL;
+static void *g_calibration_changed_ctx = NULL;
 static void (*queue_send)(TransmitFrame_t *transmit_frame) = NULL;
 
 static uint16_t clamp_u16(uint16_t value, uint16_t min_value, uint16_t max_value) {
@@ -28,6 +30,16 @@ static void send_response(Identifiers_t id, const void *response_data, uint16_t 
 void commands_register_system_reset(CommandSystemResetFn fn, void *ctx) {
   g_system_reset_fn = fn;
   g_system_reset_ctx = ctx;
+}
+
+void commands_register_calibration_changed(CommandCalibrationChangedFn fn, void *ctx) {
+  g_calibration_changed_fn = fn;
+  g_calibration_changed_ctx = ctx;
+}
+
+static void notify_calibration_changed(void) {
+  if (g_calibration_changed_fn != NULL)
+    g_calibration_changed_fn(g_calibration_changed_ctx);
 }
 
 void commands_set_response_queue(void (*queue_send_fn)(TransmitFrame_t *transmit_frame)) {
@@ -92,6 +104,8 @@ void dispatch_command(const uint8_t *command_bytes) {
     Calibration_t new_mag_calibration;
     memcpy(&new_mag_calibration, command_bytes, sizeof(Calibration_t));
     const bool success = settings_write_calibration(NULL, NULL, &new_mag_calibration, NULL) == 0;
+    if (success)
+      notify_calibration_changed();
     send_response(ID_SET_MAG_CALIBRATON, &success, sizeof(success));
     break;
   }
@@ -103,6 +117,8 @@ void dispatch_command(const uint8_t *command_bytes) {
     memcpy(&new_gyro_calibration, command_bytes + sizeof(Calibration_t), sizeof(Calibration_t));
     const bool success =
         settings_write_calibration(&new_accel_calibration, &new_gyro_calibration, NULL, NULL) == 0;
+    if (success)
+      notify_calibration_changed();
     send_response(ID_SET_IMU_CALIBRATON, &success, sizeof(success));
     break;
   }

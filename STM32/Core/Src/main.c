@@ -31,6 +31,7 @@
 #include "packetizer_task.h"
 #include "transmit_task.h"
 #include "usb_read_data_task.h"
+#include "commands.h"
 #include "transmit_frame.h"
 #include "led.h"
 #include "logger.h"
@@ -131,6 +132,7 @@ void StartupTask(void *argument);
 static void firm_rtos_init(void);
 static uint32_t firm_time_cyccnt(void);
 static void apply_stored_sensor_calibrations(void);
+static void apply_changed_sensor_calibrations(void *ctx);
 
 /* USER CODE END PFP */
 
@@ -166,6 +168,15 @@ static void apply_stored_sensor_calibrations(void) {
          sizeof(startup_calibration_buffer));
   adxl371_set_calibration(startup_calibration_buffer.offset,
                           startup_calibration_buffer.scale_matrix);
+}
+
+static void apply_changed_sensor_calibrations(void *ctx) {
+  (void)ctx;
+  // Runs on the USB read task while the sensor tasks are using the drivers; keep them from
+  // reading a half-updated calibration.
+  taskENTER_CRITICAL();
+  apply_stored_sensor_calibrations();
+  taskEXIT_CRITICAL();
 }
 
 static void firm_rtos_init(void) {
@@ -820,6 +831,8 @@ void StartupTask(void *argument)
 
   // Sensor drivers keep their active calibration in RAM, so load the values restored from flash.
   apply_stored_sensor_calibrations();
+  // Calibration commands update settings in flash; load them into the drivers right away too.
+  commands_register_calibration_changed(apply_changed_sensor_calibrations, NULL);
 
   // setup logger with the sensor data sizes
   logger_set_sensor_info(sizeof(BMP581RawData_t), sizeof(ICM45686RawData_t),
