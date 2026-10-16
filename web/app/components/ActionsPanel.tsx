@@ -39,13 +39,21 @@ export function ActionsPanel() {
   // Calibration State
   const [activeCal, setActiveCal] = useState<"IMU" | "MAG" | null>(null);
   const [countdown, setCountdown] = useState<number>(0);
+  const [calBusy, setCalBusy] = useState(false);
 
   // Ref for the timer interval so we can clear it easily
   const timerRef = useRef<number | null>(null);
+  const calRunIdRef = useRef(0);
+  const calAbortRef = useRef<AbortController | null>(null);
+  const pendingCalRef = useRef<Promise<void> | null>(null);
+  const calBusyRef = useRef(false);
 
   // Cleanup timer on unmount
   useEffect(() => {
-    return () => stopTimer();
+    return () => {
+      stopTimer();
+      calAbortRef.current?.abort();
+    };
   }, []);
 
   const stopTimer = () => {
@@ -69,50 +77,95 @@ export function ActionsPanel() {
     }, 1000);
   };
 
-  const handleCalibrateIMU = async () => {
-    if (!firm) return;
-    setActiveCal("IMU");
-    startTimer(TIME_CAL_IMU_SECONDS);
+  const beginCalibration = (type: "IMU" | "MAG") => {
+    calAbortRef.current?.abort();
+    const abort = new AbortController();
+    calAbortRef.current = abort;
+    const runId = ++calRunIdRef.current;
+    calBusyRef.current = true;
+    setCalBusy(true);
+    setActiveCal(type);
+    startTimer(type === "IMU" ? TIME_CAL_IMU_SECONDS : TIME_CAL_MAG_SECONDS);
+    return { abort, runId };
+  };
 
-    try {
-      // firm-client no longer exposes a built-in IMU calibration routine from the web client.
-      // Use Developer Panel -> IMU Calibration to manually set offsets/matrix.
-      console.warn(
-        "IMU calibration routine is not available in this client build. Use manual setIMUCalibration.",
-      );
-    } catch (err) {
-      console.error("IMU Calibration error:", err);
-    } finally {
-      setActiveCal(null);
-      stopTimer();
+  const finishCalibration = (runId: number) => {
+    if (calAbortRef.current && calRunIdRef.current === runId) {
+      calAbortRef.current = null;
     }
+    if (runId !== calRunIdRef.current) return;
+    setActiveCal(null);
+    stopTimer();
+    calBusyRef.current = false;
+    setCalBusy(false);
+  };
+
+  const isCalAbortError = (err: unknown) => err instanceof Error && err.name === "AbortError";
+
+  const handleCalibrateIMU = async () => {
+    if (!firm || calBusyRef.current) return;
+    const { abort, runId } = beginCalibration("IMU");
+
+    const work = (async () => {
+      try {
+        const success = await firm.runAndApplyIMUCalibration(
+          TIME_CAL_IMU_SECONDS * 1000,
+          undefined,
+          abort.signal,
+        );
+        if (!success) {
+          console.warn("IMU calibration failed or timed out");
+        }
+      } catch (err) {
+        if (!isCalAbortError(err)) {
+          console.error("IMU Calibration error:", err);
+        }
+      } finally {
+        finishCalibration(runId);
+      }
+    })();
+    pendingCalRef.current = work;
+    await work;
   };
 
   const handleCalibrateMag = async () => {
-    if (!firm) return;
-    setActiveCal("MAG");
-    startTimer(TIME_CAL_MAG_SECONDS);
+    if (!firm || calBusyRef.current) return;
+    const { abort, runId } = beginCalibration("MAG");
 
-    try {
-      // Collect samples for TIME_CAL_MAG_SECONDS and apply automatically.
-      const collectionMs = TIME_CAL_MAG_SECONDS * 1000;
-      const success = await firm.runAndApplyMagnetometerCalibration(collectionMs);
-      if (!success) {
-        console.warn("Mag calibration failed or timed out");
+    const work = (async () => {
+      try {
+        const success = await firm.runAndApplyMagnetometerCalibration(
+          TIME_CAL_MAG_SECONDS * 1000,
+          undefined,
+          abort.signal,
+        );
+        if (!success) {
+          console.warn("Mag calibration failed or timed out");
+        }
+      } catch (err) {
+        if (!isCalAbortError(err)) {
+          console.error("Mag Calibration error:", err);
+        }
+      } finally {
+        finishCalibration(runId);
       }
-    } catch (err) {
-      console.error("Mag Calibration error:", err);
-    } finally {
-      setActiveCal(null);
-      stopTimer();
-    }
+    })();
+    pendingCalRef.current = work;
+    await work;
   };
 
   const handleCancel = async () => {
     if (!firm) return;
     // Don't wait for the cancel response to update UI, makes it feel snappier
+    calAbortRef.current?.abort();
     stopTimer();
     setActiveCal(null);
+
+    try {
+      await pendingCalRef.current;
+    } catch {
+      // In-flight calibration handles abort errors itself.
+    }
 
     try {
       await firm.sendCancelCommand();
@@ -147,10 +200,10 @@ export function ActionsPanel() {
       <button
         type="button"
         onClick={onClick}
-        disabled={!firm || isOtherRunning}
+        disabled={!firm || isOtherRunning || (calBusy && !isRunning)}
         className={classNames(
           "inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-semibold text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-white transition-all",
-          !firm || isOtherRunning
+          !firm || isOtherRunning || calBusy
             ? "bg-slate-300 cursor-not-allowed"
             : "bg-[var(--color-theme)] hover:brightness-110 focus:ring-[var(--color-theme)]",
         )}

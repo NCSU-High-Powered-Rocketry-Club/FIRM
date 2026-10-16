@@ -15,6 +15,46 @@ import {
 } from './types.js';
 
 const RESPONSE_TIMEOUT_MS = 5000;
+const MIN_IMU_CALIBRATION_SAMPLES = 10;
+const ZERO_OFFSETS = [0, 0, 0];
+const IDENTITY_SCALE_MATRIX = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+
+function createAbortError(): Error {
+  const err = new Error('Calibration cancelled');
+  err.name = 'AbortError';
+  return err;
+}
+
+function isAbortError(err: unknown): boolean {
+  return err instanceof Error && err.name === 'AbortError';
+}
+
+function meanVec3(samples: Array<[number, number, number]>): [number, number, number] | null {
+  if (samples.length === 0) return null;
+  let x = 0;
+  let y = 0;
+  let z = 0;
+  for (const sample of samples) {
+    x += sample[0];
+    y += sample[1];
+    z += sample[2];
+  }
+  const n = samples.length;
+  const mean: [number, number, number] = [x / n, y / n, z / n];
+  return mean.every(Number.isFinite) ? mean : null;
+}
+
+/** Subtract 1g on the dominant axis so a still, level device keeps gravity. */
+function stillLevelAccelOffsets(mean: [number, number, number]): [number, number, number] | null {
+  const absX = Math.abs(mean[0]);
+  const absY = Math.abs(mean[1]);
+  const absZ = Math.abs(mean[2]);
+  const dominant = absX >= absY && absX >= absZ ? 0 : absY >= absZ ? 1 : 2;
+  if (Math.abs(mean[dominant]) < 0.5) return null;
+  const gravity: [number, number, number] = [0, 0, 0];
+  gravity[dominant] = Math.sign(mean[dominant]);
+  return [mean[0] - gravity[0], mean[1] - gravity[1], mean[2] - gravity[2]];
+}
 
 /** Options for connecting to a FIRM device over Web Serial. */
 export interface FIRMConnectOptions {
@@ -89,8 +129,23 @@ export class FIRMClient {
     this.dataParser = wasm;
   }
 
-  private async sleep(ms: number): Promise<void> {
-    await new Promise((resolve) => setTimeout(resolve, ms));
+  private async sleep(ms: number, signal?: AbortSignal): Promise<void> {
+    if (signal?.aborted) throw createAbortError();
+    await new Promise<void>((resolve, reject) => {
+      const onAbort = () => {
+        clearTimeout(timeoutId);
+        reject(createAbortError());
+      };
+      const timeoutId = setTimeout(() => {
+        signal?.removeEventListener('abort', onAbort);
+        resolve();
+      }, ms);
+      signal?.addEventListener('abort', onAbort, { once: true });
+    });
+  }
+
+  private throwIfAborted(signal?: AbortSignal): void {
+    if (signal?.aborted) throw createAbortError();
   }
 
   private async safeCall(obj: unknown, fn: string): Promise<void> {
@@ -503,6 +558,94 @@ export class FIRMClient {
   }
 
   /**
+   * Collects still-level IMU samples and applies gyro bias plus gravity-preserving
+   * accelerometer offsets. Resets calibration to identity first so samples are raw.
+   *
+   * @returns `true/false` if the device responded, or `null` if calibration failed.
+   * @throws AbortError when `signal` is aborted before apply.
+   */
+  async runAndApplyIMUCalibration(
+    collectionDurationMs: number,
+    applyTimeoutMs = RESPONSE_TIMEOUT_MS,
+    signal?: AbortSignal,
+  ): Promise<boolean | null> {
+    if (!this.running) throw new Error('Not connected');
+    if (!(collectionDurationMs > 0)) throw new Error('collectionDurationMs must be > 0');
+    this.throwIfAborted(signal);
+
+    const previous = await this.getCalibration();
+    this.throwIfAborted(signal);
+
+    let resetApplied = false;
+    try {
+      const resetOk = await this.setIMUCalibration(
+        ZERO_OFFSETS,
+        IDENTITY_SCALE_MATRIX,
+        ZERO_OFFSETS,
+        IDENTITY_SCALE_MATRIX,
+      );
+      if (!resetOk) return null;
+      resetApplied = true;
+      this.throwIfAborted(signal);
+
+      const accels: Array<[number, number, number]> = [];
+      const gyros: Array<[number, number, number]> = [];
+      const unsubscribe = this.onPacket((pkt) => {
+        accels.push([
+          pkt.raw_acceleration_x_gs,
+          pkt.raw_acceleration_y_gs,
+          pkt.raw_acceleration_z_gs,
+        ]);
+        gyros.push([
+          pkt.raw_angular_rate_x_deg_per_s,
+          pkt.raw_angular_rate_y_deg_per_s,
+          pkt.raw_angular_rate_z_deg_per_s,
+        ]);
+      });
+
+      try {
+        await this.sleep(collectionDurationMs, signal);
+      } finally {
+        unsubscribe();
+      }
+      this.throwIfAborted(signal);
+
+      if (
+        accels.length < MIN_IMU_CALIBRATION_SAMPLES ||
+        gyros.length < MIN_IMU_CALIBRATION_SAMPLES
+      ) {
+        return null;
+      }
+
+      const accelMean = meanVec3(accels);
+      const gyroMean = meanVec3(gyros);
+      if (!accelMean || !gyroMean) return null;
+
+      const accelOffsets = stillLevelAccelOffsets(accelMean);
+      if (!accelOffsets) return null;
+
+      return (
+        (await this.sendAndWait(
+          () =>
+            FIRMCommandBuilder.build_set_imu_calibration(
+              new Float32Array(accelOffsets),
+              new Float32Array(IDENTITY_SCALE_MATRIX),
+              new Float32Array(gyroMean),
+              new Float32Array(IDENTITY_SCALE_MATRIX),
+            ),
+          (res) => ('SetIMUCalibration' in res ? res.SetIMUCalibration : undefined),
+          applyTimeoutMs,
+        )) ?? false
+      );
+    } catch (err) {
+      if (isAbortError(err) && resetApplied && previous) {
+        await this.restoreIMUCalibration(previous);
+      }
+      throw err;
+    }
+  }
+
+  /**
    * Runs a full magnetometer calibration sequence and applies it to the device.
    *
    * Mirrors the Rust helper `run_and_apply_magnetometer_calibration`:
@@ -511,13 +654,16 @@ export class FIRMClient {
    * 3) Sends `SetMagnetometerCalibration` and returns the device acknowledgement.
    *
    * @returns `true/false` if the device responded, or `null` if calibration failed or timed out.
+   * @throws AbortError when `signal` is aborted before apply.
    */
   async runAndApplyMagnetometerCalibration(
     collectionDurationMs: number,
     applyTimeoutMs = RESPONSE_TIMEOUT_MS,
+    signal?: AbortSignal,
   ): Promise<boolean | null> {
     if (!this.running) throw new Error('Not connected');
     if (!(collectionDurationMs > 0)) throw new Error('collectionDurationMs must be > 0');
+    this.throwIfAborted(signal);
 
     const calibrator = new MagnetometerCalibrator();
     calibrator.start();
@@ -530,10 +676,13 @@ export class FIRMClient {
       }
     });
 
-    await this.sleep(collectionDurationMs);
-
-    unsubscribe();
-    calibrator.stop();
+    try {
+      await this.sleep(collectionDurationMs, signal);
+    } finally {
+      unsubscribe();
+      calibrator.stop();
+    }
+    this.throwIfAborted(signal);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = calibrator.calculate() as any | null;
@@ -547,6 +696,19 @@ export class FIRMClient {
       (res) => ('SetMagnetometerCalibration' in res ? res.SetMagnetometerCalibration : undefined),
       applyTimeoutMs,
     );
+  }
+
+  private async restoreIMUCalibration(cal: CalibrationValues): Promise<void> {
+    try {
+      await this.setIMUCalibration(
+        [...cal.imu_accelerometer_offsets],
+        [...cal.imu_accelerometer_scale_matrix],
+        [...cal.imu_gyroscope_offsets],
+        [...cal.imu_gyroscope_scale_matrix],
+      );
+    } catch (err) {
+      console.warn('[FIRM] failed to restore IMU calibration after cancel:', err);
+    }
   }
 
   /**
