@@ -14,7 +14,6 @@ fn command_identifiers_match_stm32_identifiers() {
         (FIRMCommand::GetDeviceConfig, 0x03),
         (FIRMCommand::SetDeviceConfig, 0x04),
         (FIRMCommand::Reboot, 0x05),
-        (FIRMCommand::Mock, 0x06),
         (FIRMCommand::SetMagnetometerCalibration, 0x07),
         (FIRMCommand::SetIMUCalibration, 0x08),
         (FIRMCommand::GetCalibration, 0x09),
