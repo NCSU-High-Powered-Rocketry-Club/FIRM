@@ -31,6 +31,17 @@ struct MockDeviceHandle {
     inner: RustMockDeviceHandle,
 }
 
+// Kept out of #[pymethods] so it isn't exported to Python.
+impl FIRMClient {
+    #[inline]
+    fn ensure_ok(&self) -> PyResult<()> {
+        if let Some(err) = self.inner.check_error() {
+            return Err(py_io_err(err));
+        }
+        Ok(())
+    }
+}
+
 #[pymethods]
 impl FIRMClient {
     #[new]
@@ -86,14 +97,6 @@ impl FIRMClient {
             },
             MockDeviceHandle { inner: device },
         ))
-    }
-
-    #[inline]
-    fn ensure_ok(&self) -> PyResult<()> {
-        if let Some(err) = self.inner.check_error() {
-            return Err(py_io_err(err));
-        }
-        Ok(())
     }
 
     fn start(&mut self) -> PyResult<()> {
