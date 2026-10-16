@@ -53,15 +53,24 @@ try {
 
   // 4. VERIFY CRITICAL FILES
   // This is the step that catches your previous bug!
-  const wasmPath = path.join(installPath, "firm_typescript/pkg/firm_client_bg.wasm");
-  const jsPath = path.join(installPath, "firm_typescript/pkg/firm_client.js");
+  const pkg = JSON.parse(fs.readFileSync(path.join(installPath, "package.json"), "utf-8"));
+  const requiredFiles = [
+    pkg.main,
+    pkg.types,
+    "firm_typescript/pkg/firm_client.js",
+    "firm_typescript/pkg/firm_client.d.ts",
+    "firm_typescript/pkg/firm_client_bg.wasm",
+  ];
+  const missing = requiredFiles.filter((file) => !fs.existsSync(path.join(installPath, file)));
 
-  if (!fs.existsSync(wasmPath) || !fs.existsSync(jsPath)) {
+  if (missing.length > 0) {
     throw new Error(
-      "CRITICAL: WASM/JS files are missing from the packed archive! Check your .npmignore or package.json files list.",
+      `CRITICAL: missing from the packed archive: ${missing.join(", ")}. Check your .npmignore or package.json files list.`,
     );
   }
-  LOG.success("Verification Passed: WASM and JS files are present in the package.");
+  LOG.success(
+    "Verification Passed: entry point, types, and WASM files are present in the package.",
+  );
 
   // 5. CREATE TEST PAGE
   // We copy your test.html but inject an Import Map pointing to the unpacked files
