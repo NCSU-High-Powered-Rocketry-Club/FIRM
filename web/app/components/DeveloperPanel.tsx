@@ -32,29 +32,32 @@ function prettyBytes(n: number): string {
 }
 
 function renderHexWithIdHighlight(hex: string, identifiers: ReadonlySet<string>) {
-  // Highlights known one-byte message identifiers.
-  // hex is formatted as "aa bb cc" with optional newlines between chunks.
-  const tokens = hex.split(/\s+/).filter(Boolean);
+  // hex is one line per serial chunk, formatted as "aa bb cc". The firmware sends each message
+  // in its own USB transfer and the client writes each command in one call, so a chunk usually
+  // starts with a message identifier; only that first byte is highlighted, since identifier
+  // values also occur inside payloads.
   const nodes: React.ReactNode[] = [];
 
-  for (let i = 0; i < tokens.length; i++) {
-    const t = tokens[i];
-    if (identifiers.has(t.toLowerCase())) {
-      nodes.push(
-        <span
-          key={`h-${i}`}
-          style={{ backgroundColor: "color-mix(in srgb, var(--color-theme) 12%, transparent)" }}
-          className="rounded px-0.5"
-        >
-          {t}
-        </span>,
-      );
-    } else {
-      nodes.push(<span key={`b-${i}`}>{t}</span>);
-    }
-
-    if (i < tokens.length - 1) nodes.push(" ");
-  }
+  hex.split("\n").forEach((line, lineIdx) => {
+    if (lineIdx > 0) nodes.push("\n");
+    const tokens = line.split(/\s+/).filter(Boolean);
+    tokens.forEach((t, i) => {
+      if (i === 0 && identifiers.has(t.toLowerCase())) {
+        nodes.push(
+          <span
+            key={`h-${lineIdx}-${i}`}
+            style={{ backgroundColor: "color-mix(in srgb, var(--color-theme) 12%, transparent)" }}
+            className="rounded px-0.5"
+          >
+            {t}
+          </span>,
+        );
+      } else {
+        nodes.push(<span key={`b-${lineIdx}-${i}`}>{t}</span>);
+      }
+      if (i < tokens.length - 1) nodes.push(" ");
+    });
+  });
 
   return nodes;
 }
@@ -89,8 +92,15 @@ export function DeveloperPanel({ visible }: { visible: boolean }) {
 
   const didInitialScrollRef = useRef(false);
 
-  const rxHighlighted = useMemo(() => highlightRx(recentRxHex), [recentRxHex]);
-  const txHighlighted = useMemo(() => highlightTx(recentTxHex), [recentTxHex]);
+  // The panel stays mounted while hidden; skip highlighting work until it is shown.
+  const rxHighlighted = useMemo(
+    () => (visible ? highlightRx(recentRxHex) : null),
+    [visible, recentRxHex],
+  );
+  const txHighlighted = useMemo(
+    () => (visible ? highlightTx(recentTxHex) : null),
+    [visible, recentTxHex],
+  );
 
   // Scroll RX/TX logs to bottom once when the panel is opened.
   useEffect(() => {

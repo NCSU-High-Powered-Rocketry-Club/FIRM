@@ -18,8 +18,11 @@ const MAX_HISTORY_POINTS = 60;
 // Controls how often the chart re-renders.
 const REFRESH_RATE_MS = 50;
 
+// Distinct per-axis colors so the traces can be told apart.
+const AXIS_COLORS = { x: "var(--color-theme)", y: "#2563eb", z: "#059669" } as const;
+
 interface GraphDataPoint {
-  t: string;
+  t: number;
   // Accel
   ax: number;
   ay: number;
@@ -35,25 +38,19 @@ interface GraphDataPoint {
 // Reusable legend component for consistent styling
 const LegendHeader = () => (
   <div className="flex items-center gap-3 text-xs font-normal text-slate-500">
-    <span className="flex items-center gap-1">
-      <span
-        className="block h-2 w-2 rounded-full bg-[var(--color-theme)]"
-        style={{ filter: "brightness(1.2)" }}
-      ></span>{" "}
-      X
-    </span>
-    <span className="flex items-center gap-1">
-      <span className="block h-2 w-2 rounded-full bg-[var(--color-theme)]"></span> Y
-    </span>
-    <span className="flex items-center gap-1">
-      <span
-        className="block h-2 w-2 rounded-full bg-[var(--color-theme)]"
-        style={{ filter: "brightness(0.8)" }}
-      ></span>{" "}
-      Z
-    </span>
+    {(["x", "y", "z"] as const).map((axis) => (
+      <span key={axis} className="flex items-center gap-1">
+        <span
+          className="block h-2 w-2 rounded-full"
+          style={{ backgroundColor: AXIS_COLORS[axis] }}
+        ></span>{" "}
+        {axis.toUpperCase()}
+      </span>
+    ))}
   </div>
 );
+
+const formatTimeLabel = (t: unknown) => `t = ${Number(t).toFixed(3)} s`;
 
 export function GraphsPanel() {
   const { latestPacket } = useFIRM();
@@ -63,12 +60,11 @@ export function GraphsPanel() {
   const historyBuffer = useRef<GraphDataPoint[]>([]);
   const [graphData, setGraphData] = useState<GraphDataPoint[]>([]);
   const lastPktTs = useRef<number | null>(null);
+  const bufferChanged = useRef(false);
 
   const processPacket = (pkt: FIRMPacket) => {
-    const tLabel = pkt.timestamp_seconds.toFixed(2);
-
     historyBuffer.current.push({
-      t: tLabel,
+      t: pkt.timestamp_seconds,
       ax: pkt.raw_acceleration_x_gs,
       ay: pkt.raw_acceleration_y_gs,
       az: pkt.raw_acceleration_z_gs,
@@ -81,11 +77,18 @@ export function GraphsPanel() {
     if (historyBuffer.current.length > MAX_HISTORY_POINTS) {
       historyBuffer.current.shift();
     }
+    bufferChanged.current = true;
   };
 
   // Append a point whenever the latest packet changes
   useEffect(() => {
-    if (!latestPacket) return;
+    if (!latestPacket) {
+      // Disconnected: don't carry the previous session into the next one.
+      historyBuffer.current = [];
+      lastPktTs.current = null;
+      bufferChanged.current = true;
+      return;
+    }
 
     const ts = latestPacket.timestamp_seconds;
     if (lastPktTs.current === ts) return;
@@ -100,7 +103,8 @@ export function GraphsPanel() {
     let lastRender = 0;
 
     const loop = (timestamp: number) => {
-      if (timestamp - lastRender > REFRESH_RATE_MS) {
+      if (bufferChanged.current && timestamp - lastRender > REFRESH_RATE_MS) {
+        bufferChanged.current = false;
         setGraphData([...historyBuffer.current]);
         lastRender = timestamp;
       }
@@ -129,37 +133,35 @@ export function GraphsPanel() {
               <LineChart data={graphData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis dataKey="t" tick={false} />
-                <YAxis domain={["auto", "auto"]} width={30} tick={{ fontSize: 10 }} />
-                <Tooltip contentStyle={{ fontSize: "12px" }} itemStyle={{ padding: 0 }} />
-
-                {/* X Axis: Light (1.2) */}
+                <YAxis domain={["auto", "auto"]} width={40} tick={{ fontSize: 10 }} />
+                <Tooltip
+                  contentStyle={{ fontSize: "12px" }}
+                  itemStyle={{ padding: 0 }}
+                  labelFormatter={formatTimeLabel}
+                />
                 <Line
                   isAnimationActive={false}
                   type="monotone"
                   dataKey="ax"
-                  stroke="currentColor"
+                  stroke={AXIS_COLORS.x}
                   strokeWidth={2}
                   dot={false}
-                  style={{ filter: "brightness(1.2)" }}
                 />
-                {/* Y Axis: Base Theme Color */}
                 <Line
                   isAnimationActive={false}
                   type="monotone"
                   dataKey="ay"
-                  stroke="currentColor"
+                  stroke={AXIS_COLORS.y}
                   strokeWidth={2}
                   dot={false}
                 />
-                {/* Z Axis: Dark (0.8) */}
                 <Line
                   isAnimationActive={false}
                   type="monotone"
                   dataKey="az"
-                  stroke="currentColor"
+                  stroke={AXIS_COLORS.z}
                   strokeWidth={2}
                   dot={false}
-                  style={{ filter: "brightness(0.8)" }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -178,37 +180,31 @@ export function GraphsPanel() {
               <LineChart data={graphData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis dataKey="t" tick={false} />
-                <YAxis domain={["auto", "auto"]} width={30} tick={{ fontSize: 10 }} />
-                <Tooltip contentStyle={{ fontSize: "12px" }} />
-
-                {/* X Axis: Light (1.2) */}
+                <YAxis domain={["auto", "auto"]} width={40} tick={{ fontSize: 10 }} />
+                <Tooltip contentStyle={{ fontSize: "12px" }} labelFormatter={formatTimeLabel} />
                 <Line
                   isAnimationActive={false}
                   type="monotone"
                   dataKey="mx"
-                  stroke="currentColor"
+                  stroke={AXIS_COLORS.x}
                   strokeWidth={2}
                   dot={false}
-                  style={{ filter: "brightness(1.2)" }}
                 />
-                {/* Y Axis: Base */}
                 <Line
                   isAnimationActive={false}
                   type="monotone"
                   dataKey="my"
-                  stroke="currentColor"
+                  stroke={AXIS_COLORS.y}
                   strokeWidth={2}
                   dot={false}
                 />
-                {/* Z Axis: Dark (0.8) */}
                 <Line
                   isAnimationActive={false}
                   type="monotone"
                   dataKey="mz"
-                  stroke="currentColor"
+                  stroke={AXIS_COLORS.z}
                   strokeWidth={2}
                   dot={false}
-                  style={{ filter: "brightness(0.8)" }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -223,8 +219,8 @@ export function GraphsPanel() {
               <AreaChart data={graphData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis dataKey="t" tick={false} />
-                <YAxis domain={["auto", "auto"]} width={30} tick={{ fontSize: 10 }} />
-                <Tooltip />
+                <YAxis domain={["auto", "auto"]} width={55} tick={{ fontSize: 10 }} />
+                <Tooltip labelFormatter={formatTimeLabel} />
                 <Area
                   isAnimationActive={false}
                   type="monotone"
