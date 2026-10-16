@@ -626,6 +626,7 @@ mod tests {
     };
 
     use super::*;
+    use crate::mock_serial::MockDeviceHandle;
 
     fn str_to_bytes<const N: usize>(string: &str) -> [u8; N] {
         let mut out = [0u8; N];
@@ -640,6 +641,25 @@ mod tests {
         // Test that creating a client with an invalid port fails immediately
         let result = FIRMClient::new("invalid_port_name", 2_000_000, 0.1);
         assert!(result.is_err());
+    }
+
+    /// Injects `payload` only after the client has sent `command`, so the client can't discard it
+    /// as a stale response before the command goes out.
+    fn respond_after_command(
+        device: &MockDeviceHandle,
+        command: FIRMCommand,
+        payload: Vec<u8>,
+    ) -> thread::JoinHandle<()> {
+        let responder = device.clone();
+        thread::spawn(move || {
+            assert_eq!(
+                responder
+                    .wait_for_command_identifier(Duration::from_millis(100))
+                    .unwrap(),
+                Some(command.to_u8().into())
+            );
+            responder.inject_response(command, &payload);
+        })
     }
 
     #[test]
@@ -725,9 +745,8 @@ mod tests {
         let (mut client, device) = FIRMClient::new_mock(0.01);
         client.start();
 
-        // Prepare the response packet to be injected
-        let response_payload = [1u8]; // Acknowledgement byte
-        device.inject_response(FIRMCommand::SetDeviceConfig, &response_payload);
+        // Acknowledgement byte
+        let responder = respond_after_command(&device, FIRMCommand::SetDeviceConfig, vec![1u8]);
 
         // Send the set device config command
         let result = client.set_device_config(
@@ -736,6 +755,7 @@ mod tests {
             DeviceProtocol::UART,
             Duration::from_millis(100),
         );
+        responder.join().unwrap();
 
         // Verify the result
         assert_eq!(result.unwrap(), Some(true));
@@ -753,9 +773,10 @@ mod tests {
         payload[DEVICE_ID_LENGTH..DEVICE_ID_LENGTH + FIRMWARE_VERSION_LENGTH]
             .copy_from_slice(&fw_bytes);
 
-        device.inject_response(FIRMCommand::GetDeviceInfo, &payload);
+        let responder = respond_after_command(&device, FIRMCommand::GetDeviceInfo, payload);
 
         let result = client.get_device_info(Duration::from_millis(100));
+        responder.join().unwrap();
 
         assert_eq!(
             result.unwrap(),
@@ -783,9 +804,10 @@ mod tests {
         payload[FREQUENCY_LENGTH + DEVICE_NAME_LENGTH] = 1;
         payload[FREQUENCY_LENGTH + DEVICE_NAME_LENGTH + 1] = 1;
 
-        device.inject_response(FIRMCommand::GetDeviceConfig, &payload);
+        let responder = respond_after_command(&device, FIRMCommand::GetDeviceConfig, payload);
 
         let result = client.get_device_config(Duration::from_millis(100));
+        responder.join().unwrap();
 
         assert_eq!(
             result.unwrap(),
@@ -839,9 +861,10 @@ mod tests {
             payload.extend_from_slice(&v.to_le_bytes());
         }
 
-        device.inject_response(FIRMCommand::GetCalibration, &payload);
+        let responder = respond_after_command(&device, FIRMCommand::GetCalibration, payload);
 
         let result = client.get_calibration(Duration::from_millis(100));
+        responder.join().unwrap();
 
         assert_eq!(result.unwrap(), Some(expected));
     }
@@ -851,19 +874,10 @@ mod tests {
         let (mut client, device) = FIRMClient::new_mock(0.01);
         client.start();
 
-        let responder = device.clone();
-        let handle = thread::spawn(move || {
-            assert_eq!(
-                responder
-                    .wait_for_command_identifier(Duration::from_millis(100))
-                    .unwrap(),
-                Some(FIRMCommand::Cancel.to_u8().into())
-            );
-            responder.inject_response(FIRMCommand::Cancel, &[1u8]);
-        });
+        let responder = respond_after_command(&device, FIRMCommand::Cancel, vec![1u8]);
 
         let result = client.cancel(Duration::from_millis(100));
-        handle.join().unwrap();
+        responder.join().unwrap();
         assert_eq!(result.unwrap(), Some(true));
     }
 }
