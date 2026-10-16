@@ -50,6 +50,10 @@ export function Layout({ children }: { children: ReactNode }) {
             font-family: system-ui, -apple-system, sans-serif;
             transition: opacity 0.5s ease;
           }
+          #initial-loader.hidden {
+            opacity: 0;
+            pointer-events: none;
+          }
           .spinner {
             width: 40px;
             height: 40px;
@@ -79,25 +83,21 @@ export function Layout({ children }: { children: ReactNode }) {
   );
 }
 
-export default function App() {
-  // Remove the loading screen once React wakes up
+// Fade out the loading screen once React has rendered. The node belongs to Layout, so hide it
+// with a class rather than removing it from under React; `hidden` also stops it taking clicks.
+function useHideInitialLoader() {
   useEffect(() => {
-    const loader = document.getElementById("initial-loader");
-    if (loader) {
-      // Fade out
-      loader.style.opacity = "0";
-      // Remove from DOM after transition
-      const timer = setTimeout(() => {
-        loader.remove();
-      }, 500);
-      return () => clearTimeout(timer);
-    }
+    document.getElementById("initial-loader")?.classList.add("hidden");
   }, []);
+}
 
+export default function App() {
+  useHideInitialLoader();
   return <Outlet />;
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  useHideInitialLoader();
   let message = "Oops!";
   let details = "An unexpected error occurred.";
   let stack: string | undefined;

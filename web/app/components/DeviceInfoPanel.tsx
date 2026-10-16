@@ -9,8 +9,14 @@ function safeStr(v: unknown): string {
 }
 
 export function DeviceInfoPanel() {
-  const { isConnected, isLoadingDeviceMeta, refreshDeviceMeta, deviceInfo, deviceConfig } =
-    useFIRM();
+  const {
+    isConnected,
+    isLoadingDeviceMeta,
+    deviceMetaError,
+    refreshDeviceMeta,
+    deviceInfo,
+    deviceConfig,
+  } = useFIRM();
 
   const items = [
     {
@@ -62,9 +68,9 @@ export function DeviceInfoPanel() {
         ))}
       </ul>
 
-      {!deviceInfo && isConnected && !isLoadingDeviceMeta && (
-        <p className="mt-3 text-sm text-slate-500">
-          No device info yet (timeout or not supported). Try &quot;Refresh&quot;.
+      {deviceMetaError && isConnected && !isLoadingDeviceMeta && (
+        <p className="mt-3 text-sm text-slate-500" role="status">
+          {deviceMetaError}
         </p>
       )}
     </section>

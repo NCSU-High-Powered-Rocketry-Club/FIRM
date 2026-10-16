@@ -1,7 +1,7 @@
 import { useFIRM } from "~/contexts/FIRMContext";
 
 export function ConnectionBar() {
-  const { isConnected, isConnecting, connect } = useFIRM();
+  const { isConnected, isConnecting, connect, disconnect } = useFIRM();
 
   return (
     <div className="mx-auto max-w-5xl w-full px-6 pt-6 flex items-center gap-3 text-sm text-gray-600">
@@ -20,20 +20,28 @@ export function ConnectionBar() {
         {isConnected ? "FIRM connected" : "No device connected"}
       </span>
 
-      <button
-        type="button"
-        onClick={connect}
-        disabled={isConnecting || isConnected}
-        className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${
-          isConnected
-            ? "border-green-300 text-green-700 bg-green-50 cursor-default"
-            : isConnecting
+      {isConnected ? (
+        <button
+          type="button"
+          onClick={() => void disconnect()}
+          className="inline-flex items-center rounded-full border border-gray-300 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100"
+        >
+          Disconnect
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={connect}
+          disabled={isConnecting}
+          className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${
+            isConnecting
               ? "border-gray-300 text-gray-500 bg-gray-100 cursor-wait"
               : "border-gray-300 text-gray-700 hover:bg-gray-100"
-        }`}
-      >
-        {isConnected ? "Connected" : isConnecting ? "Connecting..." : "Connect to FIRM"}
-      </button>
+          }`}
+        >
+          {isConnecting ? "Connecting..." : "Connect to FIRM"}
+        </button>
+      )}
     </div>
   );
 }
