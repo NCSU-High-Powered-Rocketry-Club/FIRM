@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Loader2, Save } from "lucide-react";
 import { useFIRM } from "~/contexts/FIRMContext";
 import type { CalibrationValues } from "firm-client";
@@ -75,7 +75,7 @@ function offsetsToDraft(offsets: [number, number, number]): CalibrationDraft["of
 function matrix9ToDraftScale(
   m: [number, number, number, number, number, number, number, number, number],
 ): CalibrationDraft["scale"] {
-  // Row-major 3x3:
+  // Row-major 3x3, applied by the firmware as corrected = (raw - offset) · M:
   // [ m0 m1 m2
   //   m3 m4 m5
   //   m6 m7 m8 ]
@@ -122,7 +122,16 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
   const [isApplyingImu, setIsApplyingImu] = useState(false);
   const [isApplyingMag, setIsApplyingMag] = useState(false);
 
-  const canSend = !!firm && isConnected;
+  // Apply stays disabled until the device's current calibration has been read, so the identity
+  // defaults are never written by accident.
+  const [loadedFirm, setLoadedFirm] = useState<typeof firm>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  // Bumped on every load and every edit; a load that finishes after either is dropped.
+  const loadSeqRef = useRef(0);
+  const imuEditSeqRef = useRef(0);
+  const magEditSeqRef = useRef(0);
+
+  const canSend = !!firm && isConnected && loadedFirm === firm;
 
   const inputClassName =
     "w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-mono text-slate-900 shadow-inner disabled:bg-slate-100 disabled:text-slate-400 focus:border-theme focus:outline-none focus:ring-1 focus:ring-theme";
@@ -139,6 +148,8 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
       idx: 0 | 1 | 2,
       value: string,
     ) => {
+      if (setDraft === setMagDraft) magEditSeqRef.current += 1;
+      else imuEditSeqRef.current += 1;
       setDraft((prev) => ({
         offsets: [
           ...prev.offsets.slice(0, idx),
@@ -158,6 +169,8 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
       c: 0 | 1 | 2,
       value: string,
     ) => {
+      if (setDraft === setMagDraft) magEditSeqRef.current += 1;
+      else imuEditSeqRef.current += 1;
       setDraft((prev) => {
         const nextScale = prev.scale.map((row) => [...row]) as CalibrationDraft["scale"];
         nextScale[r][c] = value;
@@ -167,20 +180,34 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
     [],
   );
 
-  const refreshCalibrationFromDevice = useCallback(async () => {
-    if (!firm || !isConnected) return;
+  const refreshCalibrationFromDevice = useCallback(
+    async (blocks: { imu: boolean; mag: boolean } = { imu: true, mag: true }) => {
+      if (!firm || !isConnected) return;
 
-    try {
-      const cal = await firm.getCalibration();
-      if (!cal) return;
+      const seq = ++loadSeqRef.current;
+      const imuEditSeq = imuEditSeqRef.current;
+      const magEditSeq = magEditSeqRef.current;
+      try {
+        const cal = await firm.getCalibration();
+        if (seq !== loadSeqRef.current) return;
+        if (!cal) {
+          setLoadError("Could not read calibration from the device (timeout).");
+          return;
+        }
 
-      const { imu, mag } = calibrationValuesToDrafts(cal);
-      setImuDraft(imu);
-      setMagDraft(mag);
-    } catch (e) {
-      console.warn("Failed to refresh calibration from device:", e);
-    }
-  }, [firm, isConnected]);
+        const { imu, mag } = calibrationValuesToDrafts(cal);
+        // Skip blocks the user edited while the request was in flight.
+        if (blocks.imu && imuEditSeq === imuEditSeqRef.current) setImuDraft(imu);
+        if (blocks.mag && magEditSeq === magEditSeqRef.current) setMagDraft(mag);
+        setLoadError(null);
+        setLoadedFirm(firm);
+      } catch (e) {
+        console.warn("Failed to refresh calibration from device:", e);
+        if (seq === loadSeqRef.current) setLoadError("Could not read calibration from the device.");
+      }
+    },
+    [firm, isConnected],
+  );
 
   React.useEffect(() => {
     if (!visible) return;
@@ -217,7 +244,7 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
       );
       if (ok) {
         setImuStatus("IMU calibration applied.");
-        await refreshCalibrationFromDevice();
+        await refreshCalibrationFromDevice({ imu: true, mag: false });
       } else {
         setImuError("IMU calibration not acknowledged (timeout).");
       }
@@ -250,7 +277,7 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
       const ok = await firm.setMagnetometerCalibration(mag.offsets, mag.scaleMatrix);
       if (ok) {
         setMagStatus("Magnetometer calibration applied.");
-        await refreshCalibrationFromDevice();
+        await refreshCalibrationFromDevice({ imu: false, mag: true });
       } else {
         setMagError("Magnetometer calibration not acknowledged (timeout).");
       }
@@ -292,7 +319,11 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
               type="button"
               className={smallBtnClassName}
               disabled={isApplying}
-              onClick={() => setDraft(makeDefaultDraft())}
+              onClick={() => {
+                if (setDraft === setMagDraft) magEditSeqRef.current += 1;
+                else imuEditSeqRef.current += 1;
+                setDraft(makeDefaultDraft());
+              }}
               title="Reset offsets to 0 and scale matrix to identity"
             >
               Reset
@@ -336,7 +367,7 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
 
           <div>
             <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              Scale matrix (row-major 3×3)
+              Scale matrix (row-major M, applied as (raw − offset) · M)
             </div>
             <div className="grid grid-cols-3 gap-2">
               {([0, 1, 2] as const).flatMap((r) =>
@@ -357,7 +388,11 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
         </div>
 
         <div className="mt-2 text-xs">
-          {!canSend && <div className="text-slate-500">Connect a device to apply calibration.</div>}
+          {!firm || !isConnected ? (
+            <div className="text-slate-500">Connect a device to apply calibration.</div>
+          ) : (
+            !canSend && <div className="text-slate-500">Reading calibration from device…</div>
+          )}
           {status && <div className="font-medium text-emerald-600">{status}</div>}
           {error && <div className="font-medium text-red-600">{error}</div>}
         </div>
@@ -368,6 +403,8 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
     return Comp;
   }, [
     canSend,
+    firm,
+    isConnected,
     inputClassName,
     primaryBtnClassName,
     setDraftOffset,
@@ -376,6 +413,19 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
   ]);
 
   if (!visible) return null;
+
+  const loadErrorBanner = loadError && (
+    <div className="mb-3 flex items-center gap-2 text-xs font-medium text-red-600">
+      {loadError}
+      <button
+        type="button"
+        className={smallBtnClassName}
+        onClick={() => void refreshCalibrationFromDevice()}
+      >
+        Retry
+      </button>
+    </div>
+  );
 
   return (
     <section className="mt-4 rounded-xl border border-slate-300 bg-white px-6 pt-3.5 pb-4 shadow-sm text-slate-900">
@@ -393,6 +443,8 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
         </div>
       </div>
 
+      {loadErrorBanner}
+
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
           <div className="mb-2 flex items-center justify-between gap-2">
@@ -402,6 +454,8 @@ export function CalibrationPanel({ visible }: { visible: boolean }) {
               className={smallBtnClassName}
               disabled={isApplyingImu || isApplyingMag}
               onClick={() => {
+                imuEditSeqRef.current += 1;
+                magEditSeqRef.current += 1;
                 setImuDraft(makeDefaultImuDraft());
                 setImuError(null);
                 setImuStatus(null);

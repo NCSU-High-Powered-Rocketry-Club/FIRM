@@ -40,6 +40,7 @@ export function ActionsPanel() {
   const [activeCal, setActiveCal] = useState<"IMU" | "MAG" | null>(null);
   const [countdown, setCountdown] = useState<number>(0);
   const [calBusy, setCalBusy] = useState(false);
+  const [calMessage, setCalMessage] = useState<{ type: "IMU" | "MAG"; text: string } | null>(null);
 
   // Ref for the timer interval so we can clear it easily
   const timerRef = useRef<number | null>(null);
@@ -55,6 +56,14 @@ export function ActionsPanel() {
       calAbortRef.current?.abort();
     };
   }, []);
+
+  // A disconnect ends any in-flight calibration; its own cleanup resets the UI state.
+  useEffect(() => {
+    if (firm) return;
+    calAbortRef.current?.abort();
+    stopTimer();
+    setActiveCal(null);
+  }, [firm]);
 
   const stopTimer = () => {
     if (timerRef.current) {
@@ -84,6 +93,7 @@ export function ActionsPanel() {
     const runId = ++calRunIdRef.current;
     calBusyRef.current = true;
     setCalBusy(true);
+    setCalMessage(null);
     setActiveCal(type);
     startTimer(type === "IMU" ? TIME_CAL_IMU_SECONDS : TIME_CAL_MAG_SECONDS);
     return { abort, runId };
@@ -102,19 +112,9 @@ export function ActionsPanel() {
 
   const isCalAbortError = (err: unknown) => err instanceof Error && err.name === "AbortError";
 
-  const handleCalibrateIMU = async () => {
-    if (!firm) return;
-    setActiveCal("IMU");
-    startTimer(TIME_CAL_IMU_SECONDS);
-
-    try {
-      console.warn("Error: IMU calibration isn't implemented yet!");
-    } catch (err) {
-      console.error("IMU Calibration error:", err);
-    } finally {
-      setActiveCal(null);
-      stopTimer();
-    }
+  const handleCalibrateIMU = () => {
+    // Use the `firm-imu-cal` CLI (processing/firm/cli/calibrate_imu.py) until this exists here.
+    setCalMessage({ type: "IMU", text: "Not available in the web app yet; use firm-imu-cal." });
   };
 
   const handleCalibrateMag = async () => {
@@ -128,12 +128,20 @@ export function ActionsPanel() {
           undefined,
           abort.signal,
         );
-        if (!success) {
-          console.warn("Mag calibration failed or timed out");
+        if (success === null) {
+          setCalMessage({
+            type: "MAG",
+            text: "Calibration failed: not enough rotation or the device timed out.",
+          });
+        } else if (!success) {
+          setCalMessage({ type: "MAG", text: "Device rejected the calibration." });
+        } else {
+          setCalMessage({ type: "MAG", text: "Calibration applied." });
         }
       } catch (err) {
         if (!isCalAbortError(err)) {
           console.error("Mag Calibration error:", err);
+          setCalMessage({ type: "MAG", text: "Calibration failed; see console for details." });
         }
       } finally {
         finishCalibration(runId);
@@ -143,9 +151,9 @@ export function ActionsPanel() {
     await work;
   };
 
+  // Magnetometer collection runs entirely in the client, so cancelling only needs to abort it;
+  // calBusy stays set until the routine has actually stopped (and restored the old calibration).
   const handleCancel = async () => {
-    if (!firm) return;
-    // Don't wait for the cancel response to update UI, makes it feel snappier
     calAbortRef.current?.abort();
     stopTimer();
     setActiveCal(null);
@@ -155,17 +163,18 @@ export function ActionsPanel() {
     } catch {
       // In-flight calibration handles abort errors itself.
     }
-
-    try {
-      await firm.sendCancelCommand();
-    } catch (err) {
-      console.error("Failed to send cancel command:", err);
-    }
   };
 
   const handleDownloadLog = () => console.log("Download log:", selectedLog);
 
   // Helper to render the button state
+  const renderCalMessage = (type: "IMU" | "MAG") =>
+    calMessage?.type === type && (
+      <p className="text-xs text-slate-500" aria-live="polite">
+        {calMessage.text}
+      </p>
+    );
+
   const renderCalibrateButton = (type: "IMU" | "MAG", label: string, onClick: () => void) => {
     const isRunning = activeCal === type;
     const isOtherRunning = activeCal !== null && !isRunning;
@@ -220,6 +229,7 @@ export function ActionsPanel() {
           </div>
           <div className="mt-3 flex items-center gap-3">
             {renderCalibrateButton("IMU", "Calibrate IMU", handleCalibrateIMU)}
+            {renderCalMessage("IMU")}
           </div>
         </div>
 
@@ -235,6 +245,7 @@ export function ActionsPanel() {
           </div>
           <div className="mt-3 flex items-center gap-3">
             {renderCalibrateButton("MAG", "Calibrate Mag", handleCalibrateMag)}
+            {renderCalMessage("MAG")}
           </div>
         </div>
 
@@ -245,7 +256,8 @@ export function ActionsPanel() {
               Download Log File
             </p>
             <p className="text-xs text-slate-500 mt-1">
-              Choose a recorded session from FIRM and download for offline analysis.
+              Not available yet. Copy the <span className="font-mono">logN.frm</span> files from the
+              microSD card instead.
             </p>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -305,7 +317,9 @@ export function ActionsPanel() {
             <button
               type="button"
               onClick={handleDownloadLog}
-              className="inline-flex shrink-0 items-center gap-2 rounded-md bg-[var(--color-theme)] px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-[var(--color-theme)] focus:ring-offset-1 focus:ring-offset-white"
+              disabled
+              title="Downloading logs over USB is not implemented yet"
+              className="inline-flex shrink-0 items-center gap-2 rounded-md bg-[var(--color-theme)] px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-[var(--color-theme)] focus:ring-offset-1 focus:ring-offset-white disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:brightness-100"
             >
               <Download className="h-4 w-4 text-white" />
               Download Log
