@@ -79,7 +79,8 @@ export interface DeviceInfo {
 export interface DeviceConfig {
   name: string;
   frequency: number;
-  protocol: DeviceProtocol;
+  /** Variant name as serialized by the WASM bindings (e.g. "USB"), not the numeric value. */
+  protocol: keyof typeof DeviceProtocol;
 }
 
 export interface CalibrationValues {
