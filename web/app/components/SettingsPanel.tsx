@@ -20,8 +20,16 @@ function validateDeviceName(name: string): string | null {
   if (new TextEncoder().encode(name).length > MAX_NAME_BYTES) {
     return `Max ${MAX_NAME_BYTES} bytes`;
   }
+  // Same set as Rust's char::is_control (C0, DEL, C1); the client drops configs containing them.
   // eslint-disable-next-line no-control-regex
-  if (/[\u0000-\u001f\u007f]/.test(name)) return "No control characters";
+  if (/[\u0000-\u001f\u007f-\u009f]/.test(name)) return "No control characters";
+  return null;
+}
+
+function validateFrequency(value: string): string | null {
+  if (value === "") return "Required";
+  const numeric = Number(value);
+  if (!Number.isInteger(numeric) || numeric < 1 || numeric > 1000) return "1-1000 Hz";
   return null;
 }
 
@@ -44,10 +52,14 @@ export function SettingsPanel() {
   // True once the user edits a field, so a metadata refresh doesn't overwrite unsaved edits.
   const [isDirty, setIsDirty] = useState(false);
   const successTimerRef = useRef<number | undefined>(undefined);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const freqInputRef = useRef<HTMLInputElement>(null);
 
   // Apply is only safe once the connected device's config has been read; otherwise it would
   // overwrite the device with the form defaults.
   const configLoaded = isConnected && deviceConfig !== null;
+  // Fields are locked while saving so edits can't be lost when the saved config is read back.
+  const fieldsEnabled = configLoaded && !isSaving;
 
   useEffect(() => {
     if (!deviceConfig) {
@@ -78,25 +90,10 @@ export function SettingsPanel() {
   };
 
   const handleFreqChange = (value: string) => {
-    if (value === "" || /^\d*$/.test(value)) {
-      setFreqInput(value);
-      setFreqError(null);
-      setIsDirty(true);
-    }
-  };
-
-  const validateFrequency = (): boolean => {
-    if (freqInput === "") {
-      setFreqError("Required");
-      return false;
-    }
-    const numeric = Number(freqInput);
-    if (!Number.isInteger(numeric) || numeric < 1 || numeric > 1000) {
-      setFreqError("1-1000 Hz");
-      return false;
-    }
+    // Keep digits only, so a non-integer from an imported file (e.g. "1.5") can still be edited.
+    setFreqInput(value.replace(/\D/g, ""));
     setFreqError(null);
-    return true;
+    setIsDirty(true);
   };
 
   const handleApply = async (event: React.FormEvent) => {
@@ -110,9 +107,17 @@ export function SettingsPanel() {
     }
 
     const nameProblem = validateDeviceName(deviceName);
+    const freqProblem = validateFrequency(freqInput);
     setNameError(nameProblem);
-    const freqOk = validateFrequency();
-    if (nameProblem || !freqOk) return;
+    setFreqError(freqProblem);
+    if (nameProblem) {
+      nameInputRef.current?.focus();
+      return;
+    }
+    if (freqProblem) {
+      freqInputRef.current?.focus();
+      return;
+    }
 
     const protoNum = PROTOCOL_MAP[protocol];
     if (protoNum === undefined) {
@@ -195,7 +200,7 @@ export function SettingsPanel() {
         setIsDirty(true);
         // Surface problems now; Apply re-validates before sending.
         setNameError(validateDeviceName(data.deviceName));
-        setFreqError(null);
+        setFreqError(validateFrequency(String(data.updateFrequencyHz)));
         setConfigError(null);
       } catch (err) {
         console.error(err);
@@ -238,9 +243,10 @@ export function SettingsPanel() {
               Device Name
             </label>
             <input
+              ref={nameInputRef}
               id="deviceName"
               type="text"
-              disabled={!configLoaded}
+              disabled={!fieldsEnabled}
               value={deviceName}
               onChange={(e) => handleNameChange(e.target.value)}
               onBlur={() => setNameError(validateDeviceName(deviceName))}
@@ -254,7 +260,7 @@ export function SettingsPanel() {
               placeholder="FIRM Device"
             />
             {nameError && (
-              <p id="deviceName-error" className="text-xs text-red-500 mt-1">
+              <p id="deviceName-error" role="alert" className="text-xs text-red-500 mt-1">
                 {nameError}
               </p>
             )}
@@ -269,13 +275,14 @@ export function SettingsPanel() {
             </label>
             <div className="relative">
               <input
+                ref={freqInputRef}
                 id="frequency"
                 type="text"
                 inputMode="numeric"
-                disabled={!configLoaded}
+                disabled={!fieldsEnabled}
                 value={freqInput}
                 onChange={(e) => handleFreqChange(e.target.value)}
-                onBlur={validateFrequency}
+                onBlur={() => setFreqError(validateFrequency(freqInput))}
                 aria-invalid={freqError !== null}
                 aria-describedby={freqError ? "frequency-error" : undefined}
                 className={`w-full rounded-md border bg-white px-3 py-2 text-sm text-slate-900 shadow-inner disabled:bg-slate-100 disabled:text-slate-400 focus:outline-none focus:ring-1 ${
@@ -287,7 +294,7 @@ export function SettingsPanel() {
               />
             </div>
             {freqError && (
-              <p id="frequency-error" className="text-xs text-red-500 mt-1">
+              <p id="frequency-error" role="alert" className="text-xs text-red-500 mt-1">
                 {freqError}
               </p>
             )}
@@ -295,7 +302,7 @@ export function SettingsPanel() {
         </div>
 
         {/* Row 2 — Protocol */}
-        <Field className="flex flex-col gap-1" disabled={!configLoaded}>
+        <Field className="flex flex-col gap-1" disabled={!fieldsEnabled}>
           <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Protocol
           </Label>
