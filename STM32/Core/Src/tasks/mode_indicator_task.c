@@ -17,8 +17,6 @@ static LED_Mode_Indicator_Status led_status_from_state(SystemState_t state) {
   switch (state) {
   case SYSTEM_STATE_BOOT:
     return FIRM_MODE_BOOT;
-  case SYSTEM_STATE_MOCK:
-    return FIRM_MODE_MOCK;
   case SYSTEM_STATE_LIVE:
   default:
     return FIRM_MODE_LIVE;

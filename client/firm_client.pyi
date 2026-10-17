@@ -225,27 +225,14 @@ class FIRMClient:
     """Request calibration values and wait up to timeout_seconds."""
 
     def cancel(self, timeout_seconds: float = 5.0) -> bool: ...
-    """Send cancel and wait up to timeout_seconds for acknowledgement."""
+    """Send cancel and wait up to timeout_seconds for acknowledgement.
+
+    Firmware currently only ACKs; on-device mag/IMU calibration is a
+    synchronous settings write with nothing in-flight to abort.
+    """
 
     def reboot(self) -> None: ...
     """Send reboot command."""
-
-    def start_mock_log_stream(
-        self,
-        log_path: str,
-        realtime: bool = True,
-        speed: float = 1.0,
-        chunk_size: int = 8192,
-        start_timeout_seconds: float = 5.0,
-        cancel_on_finish: bool = True,
-    ) -> None: ...
-    """Start streaming a mock log file asynchronously in the background."""
-
-    def is_mock_log_streaming(self) -> bool: ...
-    """True if a mock log stream is currently running."""
-
-    def stop_mock_log_stream(self, cancel_device: bool = True, join: bool = True) -> int | None: ...
-    """Stop the async mock log stream. Optionally cancel the device."""
 
     def run_and_apply_magnetometer_calibration(
         self,

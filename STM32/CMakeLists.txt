@@ -83,7 +83,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     
     ${FIRM_ESKF_SOURCES}
     Core/Src/data_processing/clock_cycle_count.c
-    Core/Src/data_processing/mocking_ring_buffer.c
 
     Core/Src/interfaces/settings_storage.c
     Core/Src/interfaces/logger_storage.c
@@ -93,7 +92,6 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/modules/commands.c
     Core/Src/modules/messages.c
     Core/Src/modules/sensor_manager.c
-    Core/Src/modules/mocking_handler.c
     Core/Src/modules/system_state.c
 
     Core/Src/target/firm_v1_0.c

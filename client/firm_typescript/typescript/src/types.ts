@@ -130,6 +130,5 @@ export type FIRMResponse =
   | { SetMagnetometerCalibration: boolean }
   | { SetIMUCalibration: boolean }
   | { GetCalibration: CalibrationValues }
-  | { Mock: boolean }
   | { Cancel: boolean }
   | { Error: string };

@@ -346,7 +346,6 @@ pub enum FIRMResponse {
     SetMagnetometerCalibration(bool),
     SetIMUCalibration(bool),
     GetCalibration(CalibrationValues),
-    Mock(bool),
     Cancel(bool),
     Error(String),
 }
@@ -517,7 +516,6 @@ impl FIRMResponsePacket {
                     && payload[flags_start + 1..].iter().all(|flag| *flag <= 1)
             }
             FIRMCommand::SetDeviceConfig
-            | FIRMCommand::Mock
             | FIRMCommand::SetMagnetometerCalibration
             | FIRMCommand::SetIMUCalibration
             | FIRMCommand::Cancel => matches!(payload, [0] | [1]),
@@ -588,10 +586,6 @@ impl FIRMResponse {
             FIRMCommand::SetDeviceConfig => {
                 let success = data.first() == Some(&1);
                 FIRMResponse::SetDeviceConfig(success)
-            }
-            FIRMCommand::Mock => {
-                let success = data.first() == Some(&1);
-                FIRMResponse::Mock(success)
             }
             FIRMCommand::Cancel => {
                 let acknowledgement = data.first() == Some(&1);
@@ -670,10 +664,6 @@ mod tests {
 
     fn resp_set_device_config(v: bool) -> FIRMResponse {
         FIRMResponse::SetDeviceConfig(v)
-    }
-
-    fn resp_mock(v: bool) -> FIRMResponse {
-        FIRMResponse::Mock(v)
     }
 
     fn resp_cancel(v: bool) -> FIRMResponse {
@@ -769,7 +759,6 @@ mod tests {
                 FIRMCommand::SetDeviceConfig,
                 resp_set_device_config,
             ),
-            (FIRMCommand::Mock as u8, FIRMCommand::Mock, resp_mock),
             (FIRMCommand::Cancel as u8, FIRMCommand::Cancel, resp_cancel),
         ];
 

@@ -31,10 +31,10 @@
 #include "packetizer_task.h"
 #include "transmit_task.h"
 #include "usb_read_data_task.h"
+#include "commands.h"
 #include "transmit_frame.h"
 #include "led.h"
 #include "logger.h"
-#include "mocking_handler.h"
 #include "packets.h"
 #include "sensor_manager.h"
 #include "settings_manager.h"
@@ -46,7 +46,6 @@
 #include "FreeRTOS.h"
 #include "event_groups.h"
 #include "queue.h"
-#include "semphr.h"
 #include "stream_buffer.h"
 #include "task.h"
 
@@ -70,8 +69,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
-#define MOCK_QUEUE_LENGTH 50U
 
 /* USER CODE END PD */
 
@@ -132,36 +129,15 @@ void StartupTask(void *argument);
 
 /* USER CODE BEGIN PFP */
 
-static bool mock_count_try_take(void *context);
-static bool mock_count_give(void *context);
-static size_t mock_count_get_count(void *context);
-static void mock_count_reset(void *context);
 static void firm_rtos_init(void);
-static void configure_mocking_injection(void);
 static uint32_t firm_time_cyccnt(void);
 static void apply_stored_sensor_calibrations(void);
+static void apply_changed_sensor_calibrations(void *ctx);
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
-static bool mock_count_try_take(void *context) {
-  return xSemaphoreTake((SemaphoreHandle_t)context, 0U) == pdTRUE;
-}
-
-static bool mock_count_give(void *context) {
-  return xSemaphoreGive((SemaphoreHandle_t)context) == pdTRUE;
-}
-
-static size_t mock_count_get_count(void *context) {
-  return (size_t)uxSemaphoreGetCount((SemaphoreHandle_t)context);
-}
-
-static void mock_count_reset(void *context) {
-  while (xSemaphoreTake((SemaphoreHandle_t)context, 0U) == pdTRUE) {
-  }
-}
 
 static uint32_t firm_time_cyccnt(void) {
   return DWT->CYCCNT;
@@ -194,21 +170,13 @@ static void apply_stored_sensor_calibrations(void) {
                           startup_calibration_buffer.scale_matrix);
 }
 
-static void configure_mocking_injection(void) {
-  MockSensorTaskInjectFns_t inject_fns = {
-      .set_time_fn = set_time_fn,
-      .set_barometer_read_fn = set_barometer_read_fn,
-      .set_imu_read_fn = set_imu_read_fn,
-      .set_magnetometer_read_fn = set_magnetometer_read_fn,
-      .set_high_g_read_fn = set_high_g_read_fn,
-      .get_time_fn = sensor_manager_get_time_fn,
-      .get_barometer_read_fn = sensor_manager_get_barometer_read_fn,
-      .get_imu_read_fn = sensor_manager_get_imu_read_fn,
-      .get_magnetometer_read_fn = sensor_manager_get_magnetometer_read_fn,
-      .get_high_g_read_fn = sensor_manager_get_high_g_read_fn,
-  };
-
-  mocking_handler_configure_sensor_task_injection(&inject_fns);
+static void apply_changed_sensor_calibrations(void *ctx) {
+  (void)ctx;
+  // Runs on the USB read task while the sensor tasks are using the drivers; keep them from
+  // reading a half-updated calibration.
+  taskENTER_CRITICAL();
+  apply_stored_sensor_calibrations();
+  taskEXIT_CRITICAL();
 }
 
 static void firm_rtos_init(void) {
@@ -222,23 +190,6 @@ static void firm_rtos_init(void) {
       sensor_collected_group == NULL) {
     Error_Handler();
   }
-
-  SemaphoreHandle_t mock_count_sem = xSemaphoreCreateCounting(MOCK_QUEUE_LENGTH, 0U);
-  if (mock_count_sem != NULL) {
-    MockRingCountSemaphore_t mock_counting_semaphore = {
-        .context = mock_count_sem,
-        .try_take = mock_count_try_take,
-        .give = mock_count_give,
-        .get_count = mock_count_get_count,
-        .reset = mock_count_reset,
-    };
-
-    uint32_t hclk_hz = HAL_RCC_GetHCLKFreq();
-    uint32_t hclk_mhz = (hclk_hz == 0U) ? 168U : (hclk_hz / 1000000U);
-    mocking_handler_init(&mock_counting_semaphore, hclk_mhz);
-  }
-
-  configure_mocking_injection();
 }
 
 /* USER CODE END 0 */
@@ -880,6 +831,8 @@ void StartupTask(void *argument)
 
   // Sensor drivers keep their active calibration in RAM, so load the values restored from flash.
   apply_stored_sensor_calibrations();
+  // Calibration commands update settings in flash; load them into the drivers right away too.
+  commands_register_calibration_changed(apply_changed_sensor_calibrations, NULL);
 
   // setup logger with the sensor data sizes
   logger_set_sensor_info(sizeof(BMP581RawData_t), sizeof(ICM45686RawData_t),
