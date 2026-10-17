@@ -20,6 +20,9 @@ use std::time::{Duration, Instant};
 
 pub mod mock_serial;
 
+/// Default for `FIRMClient::late_reply_grace`. USB replies normally arrive within milliseconds.
+const LATE_REPLY_GRACE: Duration = Duration::from_secs(1);
+
 /// Interface to the FIRM Client device.
 ///
 /// # Example:
@@ -54,10 +57,15 @@ pub struct FIRMClient {
     port: Option<Box<dyn SerialPort>>,
 
     response_buffer: VecDeque<FIRMResponse>,
-    /// Commands of each kind (by identifier) whose wait timed out with no reply yet. The device
-    /// answers every command in order, so that many late replies of the kind are discarded
-    /// instead of being taken as the answer to a later command.
-    unanswered_commands: HashMap<u8, usize>,
+    /// Commands of each kind (by identifier) whose wait timed out with no reply yet, each with
+    /// the time after which its reply is presumed lost. The device answers every command in
+    /// order, so until then one late reply of the kind is discarded per entry instead of being
+    /// taken as the answer to a later command.
+    unanswered_commands: HashMap<u8, VecDeque<Instant>>,
+    /// How long after a timed-out wait a late reply is still expected. The device can drop a
+    /// reply (e.g. when USB stays busy), and without a cutoff that lost reply would make every
+    /// later reply of the kind look late.
+    late_reply_grace: Duration,
 
     calibration_snoop: Arc<RwLock<Option<Sender<ProcessedFIRMData>>>>,
     calibration_handle: Option<JoinHandle<Option<MagnetometerCalibration>>>,
@@ -113,6 +121,7 @@ impl FIRMClient {
             port: Some(port),
             response_buffer: VecDeque::new(),
             unanswered_commands: HashMap::new(),
+            late_reply_grace: LATE_REPLY_GRACE,
 
             calibration_snoop: Arc::new(RwLock::new(None)),
             calibration_handle: None,
@@ -504,10 +513,17 @@ impl FIRMClient {
     fn accept_response(&mut self, response: FIRMResponse) {
         if let Some(kind) = command_for_response(&response)
             && let Some(unanswered) = self.unanswered_commands.get_mut(&kind.to_u8())
-            && *unanswered > 0
         {
-            *unanswered -= 1;
-            return;
+            let now = Instant::now();
+            while unanswered
+                .front()
+                .is_some_and(|&lost_after| lost_after <= now)
+            {
+                unanswered.pop_front();
+            }
+            if unanswered.pop_front().is_some() {
+                return;
+            }
         }
         self.response_buffer.push_back(response);
     }
@@ -521,7 +537,8 @@ impl FIRMClient {
     /// Wait up to `timeout` for the reply to a `kind` command, as picked out by `matcher`.
     ///
     /// Non-matching responses stay buffered for other calls. On timeout the command is recorded
-    /// as unanswered so its late reply can't satisfy a later command of the same kind.
+    /// as unanswered so its late reply can't satisfy a later command of the same kind, unless the
+    /// reply is still missing after `late_reply_grace`.
     fn wait_for_matching_response<T>(
         &mut self,
         kind: FIRMCommand,
@@ -544,7 +561,10 @@ impl FIRMClient {
 
             let remaining = deadline.saturating_duration_since(Instant::now());
             if remaining.is_zero() {
-                *self.unanswered_commands.entry(kind.to_u8()).or_default() += 1;
+                self.unanswered_commands
+                    .entry(kind.to_u8())
+                    .or_default()
+                    .push_back(Instant::now() + self.late_reply_grace);
                 return Ok(None);
             }
 
@@ -967,6 +987,32 @@ mod tests {
             Some(false)
         );
         replies.join().unwrap();
+    }
+
+    #[test]
+    fn test_lost_reply_does_not_block_later_commands() {
+        let (mut client, device) = FIRMClient::new_mock(0.01);
+        client.late_reply_grace = Duration::from_millis(50);
+        client.start();
+
+        // First cancel times out and the device never replies to it.
+        assert_eq!(client.cancel(Duration::from_millis(20)).unwrap(), None);
+        assert_eq!(
+            device
+                .wait_for_command_identifier(Duration::from_millis(100))
+                .unwrap(),
+            Some(FIRMCommand::Cancel.to_u8().into())
+        );
+        thread::sleep(Duration::from_millis(100));
+
+        // Once the lost reply is no longer expected, a retry gets its own reply, and so does the
+        // one after it.
+        for _ in 0..2 {
+            let responder = respond_after_command(&device, FIRMCommand::Cancel, vec![1u8]);
+            let result = client.cancel(Duration::from_millis(200));
+            responder.join().unwrap();
+            assert_eq!(result.unwrap(), Some(true));
+        }
     }
 
     #[test]
