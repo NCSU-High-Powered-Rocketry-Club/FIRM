@@ -1,7 +1,6 @@
 #include "filter_data_task.h"
 
 #include "sensor_task.h"
-#include "system_state.h"
 
 #include "FreeRTOS.h"
 #include "error_state_kalman_filter.h"
@@ -46,7 +45,6 @@ void filter_data_task(void *arg) {
   }
 
   (void)eskf_init(&eskf);
-  system_state_set(SYSTEM_STATE_LIVE);
 
   float last_time = (float)snapshot.timestamp_seconds - 0.005F;
 

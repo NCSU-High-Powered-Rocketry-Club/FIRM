@@ -46,8 +46,3 @@ firm_add_firmware_test(test_commands SOURCES
     modules/test_commands.c
     ${SRC}/modules/commands.c
 )
-# dispatch_command is faked in the test file.
-firm_add_firmware_test(test_messages SOURCES
-    modules/test_messages.c
-    ${SRC}/modules/messages.c
-)

@@ -90,9 +90,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/modules/settings_manager.c
     Core/Src/modules/logger.c
     Core/Src/modules/commands.c
-    Core/Src/modules/messages.c
     Core/Src/modules/sensor_manager.c
-    Core/Src/modules/system_state.c
 
     Core/Src/target/firm_v1_0.c
 
