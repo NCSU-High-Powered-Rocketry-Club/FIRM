@@ -121,6 +121,7 @@ void StartDefaultTask(void *argument);
 /* USER CODE BEGIN PFP */
 
 static void firm_rtos_init(void);
+static void firm_board_init(void);
 static void apply_stored_sensor_calibrations(void);
 static void apply_changed_sensor_calibrations(void *ctx);
 
@@ -133,8 +134,8 @@ static void apply_stored_sensor_calibrations(void) {
   const uint8_t *settings_bytes = (const uint8_t *)get_settings();
 
   // SystemSettings_t is packed. Copy one calibration at a time into aligned static storage before
-  // passing it to a driver. Keeping this buffer off the startup task stack avoids overflowing it
-  // during nested hardware initialization.
+  // passing it to a driver. Keeping this buffer off the main stack avoids overflowing it during
+  // nested hardware initialization.
   memcpy(&startup_calibration_buffer, settings_bytes + offsetof(SystemSettings_t, accel_cal),
          sizeof(startup_calibration_buffer));
   icm45686_set_accel_calibration(startup_calibration_buffer.offset,
@@ -163,6 +164,51 @@ static void apply_changed_sensor_calibrations(void *ctx) {
   taskENTER_CRITICAL();
   apply_stored_sensor_calibrations();
   taskEXIT_CRITICAL();
+}
+
+static void firm_board_init(void) {
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+  DWT->CYCCNT = 0;
+  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // BMP581 CS pin
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // ICM45686 CS pin
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET); // flash chip CS pin
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET); // MMC5983MA CS pin
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET); // ADXL371 CS pin
+
+  HAL_Delay(100);
+
+  if (icm45686_init()) {
+    led_set_status(IMU_FAIL);
+    Error_Handler();
+  }
+
+  if (mmc5983ma_init()) {
+    led_set_status(MMC5983MA_FAIL);
+    Error_Handler();
+  }
+
+  if (bmp581_init()) {
+    led_set_status(BMP581_FAIL);
+    Error_Handler();
+  }
+
+  if (adxl371_init()) {
+    led_set_status(HIGH_G_FAIL);
+    Error_Handler();
+  }
+
+  if (settings_manager_init()) {
+    led_set_status(FLASH_CHIP_FAIL);
+    Error_Handler();
+  }
+
+  apply_stored_sensor_calibrations();
+  commands_register_calibration_changed(apply_changed_sensor_calibrations, NULL);
+
+  logger_set_sensor_info(sizeof(BMP581RawData_t), sizeof(ICM45686RawData_t),
+                         sizeof(MMC5983MARawData_t), sizeof(ADXL371RawData_t));
 }
 
 static void firm_rtos_init(void) {
@@ -228,6 +274,8 @@ int main(void)
   HAL_NVIC_DisableIRQ(EXTI1_IRQn);
   HAL_NVIC_DisableIRQ(EXTI2_IRQn);
   HAL_NVIC_DisableIRQ(EXTI3_IRQn);
+
+  firm_board_init();
 
   /* USER CODE END 2 */
 
@@ -752,53 +800,6 @@ void StartDefaultTask(void *argument)
   /* init code for USB_DEVICE */
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 5 */
-
-  // High-resolution free-running timestamp from DWT.
-  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-  DWT->CYCCNT = 0;
-  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
-
-  // Ensure SPI chip-select lines default to not selected.
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // BMP581 CS pin
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // ICM45686 CS pin
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET); // flash chip CS pin
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET); // MMC5983MA CS pin
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET); // ADXL371 CS pin
-
-  vTaskDelay(pdMS_TO_TICKS(100));
-
-  if (icm45686_init()) {
-    led_set_status(IMU_FAIL);
-    Error_Handler();
-  }
-
-  if (mmc5983ma_init()) {
-    led_set_status(MMC5983MA_FAIL);
-    Error_Handler();
-  }
-
-  if (bmp581_init()) {
-    led_set_status(BMP581_FAIL);
-    Error_Handler();
-  }
-
-  if (adxl371_init()) {
-    led_set_status(HIGH_G_FAIL);
-    Error_Handler();
-  }
-
-  if (settings_manager_init()) {
-    led_set_status(FLASH_CHIP_FAIL);
-    Error_Handler();
-  }
-
-  // Sensor drivers keep their active calibration in RAM, so load the values restored from flash.
-  apply_stored_sensor_calibrations();
-  // Calibration commands update settings in flash; load them into the drivers right away too.
-  commands_register_calibration_changed(apply_changed_sensor_calibrations, NULL);
-
-  logger_set_sensor_info(sizeof(BMP581RawData_t), sizeof(ICM45686RawData_t),
-                         sizeof(MMC5983MARawData_t), sizeof(ADXL371RawData_t));
 
   if (create_log()) {
     Error_Handler();

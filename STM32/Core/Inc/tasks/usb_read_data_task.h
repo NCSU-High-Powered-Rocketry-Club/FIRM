@@ -5,7 +5,7 @@
 #include "stream_buffer.h"
 
 #define USB_MESSAGE_BYTE_BUFFER_SIZE 128U
-#define USB_RX_STREAM_BUFFER_SIZE_BYTES 256U
+#define USB_RX_STREAM_BUFFER_SIZE_BYTES 2048U
 #define USB_RX_STREAM_TRIGGER_LEVEL_BYTES 1U
 
 extern osThreadId_t usb_read_task_handle;
