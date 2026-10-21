@@ -1,12 +1,14 @@
 #include "filter_data_task.h"
 
 #include "sensor_task.h"
-#include "system_state.h"
 
 #include "FreeRTOS.h"
 #include "error_state_kalman_filter.h"
 #include "eskf_functions.h"
 #include "task.h"
+
+#include <stddef.h>
+#include <string.h>
 
 osThreadId_t filter_data_task_handle;
 const osThreadAttr_t filterDataTask_attributes = {
@@ -14,6 +16,11 @@ const osThreadAttr_t filterDataTask_attributes = {
     .stack_size = 4096 * 4,
     .priority = (osPriority_t)osPriorityLow,
 };
+
+_Static_assert(offsetof(DataPacket_t, est_quaternion_z) + sizeof(float) -
+                       offsetof(DataPacket_t, est_position_z_meters) ==
+                   ESKF_NOMINAL_DIM * sizeof(float),
+               "estimated packet fields must match the ESKF nominal state");
 
 static bool has_initial_sensor_data(const DataPacket_t *data) {
   return data->magnetic_field_x_microteslas != 0.0F && data->pressure_pascals != 0.0F;
@@ -46,7 +53,6 @@ void filter_data_task(void *arg) {
   }
 
   (void)eskf_init(&eskf);
-  system_state_set(SYSTEM_STATE_LIVE);
 
   float last_time = (float)snapshot.timestamp_seconds - 0.005F;
 
@@ -96,6 +102,6 @@ void filter_data_task(void *arg) {
     eskf_set_measurement(&eskf, z_raw);
     eskf_update(&eskf);
 
-    // memcpy(&data_packet->est_position_z_meters, eskf.x_nom, ESKF_NOMINAL_DIM * sizeof(float));
+    memcpy(&data_packet->est_position_z_meters, eskf.x_nom, ESKF_NOMINAL_DIM * sizeof(float));
   }
 }

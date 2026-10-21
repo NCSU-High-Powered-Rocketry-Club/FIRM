@@ -1,8 +1,9 @@
 #include "commands.h"
-#include "mocking_handler.h"
 
 static CommandSystemResetFn g_system_reset_fn = NULL;
 static void *g_system_reset_ctx = NULL;
+static CommandCalibrationChangedFn g_calibration_changed_fn = NULL;
+static void *g_calibration_changed_ctx = NULL;
 static void (*queue_send)(TransmitFrame_t *transmit_frame) = NULL;
 
 static uint16_t clamp_u16(uint16_t value, uint16_t min_value, uint16_t max_value) {
@@ -31,8 +32,38 @@ void commands_register_system_reset(CommandSystemResetFn fn, void *ctx) {
   g_system_reset_ctx = ctx;
 }
 
+void commands_register_calibration_changed(CommandCalibrationChangedFn fn, void *ctx) {
+  g_calibration_changed_fn = fn;
+  g_calibration_changed_ctx = ctx;
+}
+
+static void notify_calibration_changed(void) {
+  if (g_calibration_changed_fn != NULL)
+    g_calibration_changed_fn(g_calibration_changed_ctx);
+}
+
 void commands_set_response_queue(void (*queue_send_fn)(TransmitFrame_t *transmit_frame)) {
   queue_send = queue_send_fn;
+}
+
+int command_payload_len(uint8_t identifier_byte) {
+  switch ((Identifiers_t)identifier_byte) {
+  case ID_GET_DEVICE_INFO:
+  case ID_GET_DEVICE_CONFIG:
+  case ID_REBOOT:
+  case ID_CANCEL_REQUEST:
+  case ID_GET_CALIBRATION:
+    return 0;
+  case ID_SET_DEVICE_CONFIG:
+    return sizeof(DeviceConfig_t);
+  case ID_SET_MAG_CALIBRATON:
+    return sizeof(Calibration_t);
+  case ID_SET_IMU_CALIBRATON:
+    return sizeof(Calibration_t) * 2;
+  case ID_DATA_PACKET:
+  default:
+    return -1;
+  }
 }
 
 void dispatch_command(const uint8_t *command_bytes) {
@@ -89,14 +120,12 @@ void dispatch_command(const uint8_t *command_bytes) {
       g_system_reset_fn(g_system_reset_ctx);
     break;
 
-  case ID_MOCK_REQUEST:
-    send_response(ID_MOCK_REQUEST, (uint8_t[]){mocking_handler_start_mock()}, 1);
-    break;
-
   case ID_SET_MAG_CALIBRATON: {
     Calibration_t new_mag_calibration;
     memcpy(&new_mag_calibration, command_bytes, sizeof(Calibration_t));
     const bool success = settings_write_calibration(NULL, NULL, &new_mag_calibration, NULL) == 0;
+    if (success)
+      notify_calibration_changed();
     send_response(ID_SET_MAG_CALIBRATON, &success, sizeof(success));
     break;
   }
@@ -108,6 +137,8 @@ void dispatch_command(const uint8_t *command_bytes) {
     memcpy(&new_gyro_calibration, command_bytes + sizeof(Calibration_t), sizeof(Calibration_t));
     const bool success =
         settings_write_calibration(&new_accel_calibration, &new_gyro_calibration, NULL, NULL) == 0;
+    if (success)
+      notify_calibration_changed();
     send_response(ID_SET_IMU_CALIBRATON, &success, sizeof(success));
     break;
   }
@@ -117,7 +148,10 @@ void dispatch_command(const uint8_t *command_bytes) {
     break;
 
   case ID_CANCEL_REQUEST:
-    send_response(ID_CANCEL_REQUEST, (uint8_t[]){mocking_handler_cancel_mock()}, 1);
+    // TODO: Cancel only acknowledges. Mag/IMU calibration on-device is a
+    // synchronous settings write with nothing in-flight to abort. Host-side
+    // collection (Python/TS) should stop locally.
+    send_response(ID_CANCEL_REQUEST, (uint8_t[]){true}, 1);
     break;
 
   default:

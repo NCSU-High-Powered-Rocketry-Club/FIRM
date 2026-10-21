@@ -7,11 +7,6 @@
 #include "cmsis_os.h"
 #include "event_groups.h"
 
-#define BMP581_POLL_RATE_HZ 255
-#define ICM45686_POLL_RATE_HZ 400
-#define MMC5983MA_POLL_RATE_HZ 225
-#define ADXL371_POLL_RATE_HZ 160
-
 // Event bits for data-ready interrupts.
 #define SENSOR_EVENT_BAROMETER_READY (1U << 0)
 #define SENSOR_EVENT_IMU_READY (1U << 1)

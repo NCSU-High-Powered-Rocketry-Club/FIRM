@@ -10,8 +10,7 @@
 
 #if FIRM_HARDWARE_VERSION == VERSION_V1_0
 
-#define FLASH_MAIN_SETTINGS_SECTOR 0
-#define FLASH_MOCK_SETTINGS_SECTOR 1
+#define FLASH_SETTINGS_SECTOR 0
 
 #define LOGGER_SECTOR_SIZE 8192
 
@@ -38,20 +37,14 @@ static int logger_target_write_sector(const uint8_t *buffer, size_t len) {
   return fatfs_sd_write_sector(buffer, len);
 }
 
-static uint32_t get_sector(const StoragePartition_t partition) {
-  if (partition == PARTITION_SETTINGS_MOCK)
-    return FLASH_MOCK_SETTINGS_SECTOR;
-  return FLASH_MAIN_SETTINGS_SECTOR;
-}
-
-static int settings_storage_read(const StoragePartition_t partition, uint8_t *buffer, size_t len) {
-  w25q128jv_read_sector(buffer, get_sector(partition), 0, len);
+static int settings_storage_read(uint8_t *buffer, size_t len) {
+  w25q128jv_read_sector(buffer, FLASH_SETTINGS_SECTOR, 0, len);
   return 0;
 }
 
-static int settings_storage_write(const StoragePartition_t partition, uint8_t *buffer, size_t len) {
-  w25q128jv_erase_sector(get_sector(partition));
-  w25q128jv_write_sector(buffer, get_sector(partition), 0, len);
+static int settings_storage_write(uint8_t *buffer, size_t len) {
+  w25q128jv_erase_sector(FLASH_SETTINGS_SECTOR);
+  w25q128jv_write_sector(buffer, FLASH_SETTINGS_SECTOR, 0, len);
   return 0;
 }
 

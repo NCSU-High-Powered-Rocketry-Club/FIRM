@@ -1,12 +1,9 @@
-use firm_core::client_packets::{FIRMCommandPacket, FIRMLogPacket};
+use firm_core::client_packets::FIRMCommandPacket;
 use firm_core::constants::command::{
     FIRMCommand, NUMBER_OF_CALIBRATION_OFFSETS, NUMBER_OF_CALIBRATION_SCALE_MATRIX_ELEMENTS,
 };
-use firm_core::constants::log_parsing::{FIRMLogPacketType, HEADER_TOTAL_SIZE};
 use firm_core::data_parser::SerialParser;
 use firm_core::firm_packets::{DeviceConfig, DeviceProtocol};
-use firm_core::log_parsing::LogParser;
-use js_sys::{Object, Reflect, Uint8Array};
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
@@ -136,15 +133,6 @@ impl FIRMCommandBuilder {
     pub fn build_reboot() -> Vec<u8> {
         FIRMCommandPacket::build_reboot_command().to_bytes()
     }
-
-    pub fn build_mock() -> Vec<u8> {
-        FIRMCommandPacket::build_mock_command().to_bytes()
-    }
-}
-
-#[wasm_bindgen]
-pub fn mock_header_size() -> usize {
-    HEADER_TOTAL_SIZE
 }
 
 #[wasm_bindgen(js_name = FIRMDataParser)]
@@ -194,64 +182,6 @@ impl FIRMDataParser {
             Some(frame) => serde_wasm_bindgen::to_value(frame.response()).unwrap(),
             None => JsValue::NULL,
         }
-    }
-}
-
-#[wasm_bindgen(js_name = MockLogParser)]
-pub struct MockLogParser {
-    inner: LogParser,
-}
-
-impl Default for MockLogParser {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[wasm_bindgen(js_class = MockLogParser)]
-impl MockLogParser {
-    #[wasm_bindgen(constructor)]
-    pub fn new() -> MockLogParser {
-        MockLogParser {
-            inner: LogParser::new(),
-        }
-    }
-
-    #[wasm_bindgen]
-    pub fn read_header(&mut self, header: &[u8]) {
-        self.inner.read_header(header);
-    }
-
-    #[wasm_bindgen]
-    pub fn parse_bytes(&mut self, data: &[u8]) {
-        self.inner.parse_bytes(data);
-    }
-
-    #[wasm_bindgen]
-    pub fn get_packet_with_delay(&mut self) -> JsValue {
-        match self.inner.get_packet_and_time_delay() {
-            Some((pkt, delay_seconds)) => {
-                let bytes = pkt.to_bytes();
-                let obj = Object::new();
-                let _ = Reflect::set(
-                    &obj,
-                    &"bytes".into(),
-                    &Uint8Array::from(bytes.as_slice()).into(),
-                );
-                let _ = Reflect::set(
-                    &obj,
-                    &"delaySeconds".into(),
-                    &JsValue::from_f64(delay_seconds),
-                );
-                obj.into()
-            }
-            None => JsValue::NULL,
-        }
-    }
-
-    #[wasm_bindgen]
-    pub fn build_header_packet(&self, header: &[u8]) -> Vec<u8> {
-        FIRMLogPacket::new(FIRMLogPacketType::HeaderPacket, header.to_vec()).to_bytes()
     }
 }
 
