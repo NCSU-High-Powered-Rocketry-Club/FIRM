@@ -19,4 +19,9 @@ void commands_register_calibration_changed(CommandCalibrationChangedFn fn, void 
 
 void commands_set_response_queue(void (*queue_send_fn)(TransmitFrame_t *transmit_frame));
 
+/**
+ * @brief Payload bytes that follow the identifier, or -1 if the ID is not a command.
+ */
+int command_payload_len(uint8_t identifier_byte);
+
 void dispatch_command(const uint8_t *command_bytes);

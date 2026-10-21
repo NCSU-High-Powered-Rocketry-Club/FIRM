@@ -12,7 +12,6 @@ from pathlib import Path
 
 TASK_NAMES = [
     "defaultTask",
-    "startupTask",
     "modeIndicatorTask",
     "sensorTask",
     "filterDataTask",

@@ -1,10 +1,10 @@
 #include "packetizer_task.h"
 
 #include "FreeRTOS.h"
-#include "messages.h"
 #include "packets.h"
 #include "queue.h"
 #include "settings_manager.h"
+#include "shared_data/identifiers.h"
 #include "task.h"
 #include "transmit_frame.h"
 #include "transmit_task.h"

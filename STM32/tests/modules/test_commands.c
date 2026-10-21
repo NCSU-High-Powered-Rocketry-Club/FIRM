@@ -83,4 +83,39 @@ UTEST_F(commands, calibration_commands_reload_driver_calibration) {
   ASSERT_EQ(2, calibration_changed_calls);
 }
 
+struct command_payload {
+  size_t case_index;
+};
+
+UTEST_I_SETUP(command_payload) { utest_fixture->case_index = utest_index; }
+UTEST_I_TEARDOWN(command_payload) {}
+
+static const struct {
+  uint8_t id;
+  int expected_size;
+} payload_len_cases[] = {
+    {0, -1},
+    {1, -1},
+    {2, 0},
+    {3, 0},
+    {4, sizeof(DeviceConfig_t)},
+    {5, 0},
+    {6, -1},
+    {7, sizeof(Calibration_t)},
+    {8, sizeof(Calibration_t) * 2},
+    {9, 0},
+    {10, 0},
+    {66, -1},
+    {73, -1},
+    {77, -1},
+    {65, -1},
+    {11, -1},
+    {86, -1},
+};
+
+UTEST_I(command_payload, len, 17) {
+  ASSERT_EQ(payload_len_cases[utest_fixture->case_index].expected_size,
+            command_payload_len(payload_len_cases[utest_fixture->case_index].id));
+}
+
 UTEST_MAIN()

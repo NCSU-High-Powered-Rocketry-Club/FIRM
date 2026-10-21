@@ -46,6 +46,26 @@ void commands_set_response_queue(void (*queue_send_fn)(TransmitFrame_t *transmit
   queue_send = queue_send_fn;
 }
 
+int command_payload_len(uint8_t identifier_byte) {
+  switch ((Identifiers_t)identifier_byte) {
+  case ID_GET_DEVICE_INFO:
+  case ID_GET_DEVICE_CONFIG:
+  case ID_REBOOT:
+  case ID_CANCEL_REQUEST:
+  case ID_GET_CALIBRATION:
+    return 0;
+  case ID_SET_DEVICE_CONFIG:
+    return sizeof(DeviceConfig_t);
+  case ID_SET_MAG_CALIBRATON:
+    return sizeof(Calibration_t);
+  case ID_SET_IMU_CALIBRATON:
+    return sizeof(Calibration_t) * 2;
+  case ID_DATA_PACKET:
+  default:
+    return -1;
+  }
+}
+
 void dispatch_command(const uint8_t *command_bytes) {
   const SystemSettings_t *settings = get_settings();
   Identifiers_t command_id = (Identifiers_t)command_bytes[0];

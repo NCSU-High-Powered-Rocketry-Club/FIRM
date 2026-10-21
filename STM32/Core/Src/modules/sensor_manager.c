@@ -1,16 +1,15 @@
 #include "sensor_manager.h"
 
-static uint32_t (*get_time)(void);
+#include "stm32f4xx.h"
+
 static ClockCycleCounter_t clock_counter = {
     .dwt_overflow_count = 0U,
     .last_cyccnt = 0U,
     .clock_speed_hz = 168000000U,
 };
 
-void set_time_fn(uint32_t (*time_fn)(void)) { get_time = time_fn; }
-
 void sensor_collect_data(Identifiers_t sensor, DataPacket_t *board_readings) {
-  uint32_t clock_cycles = (get_time != NULL) ? get_time() : 0U;
+  uint32_t clock_cycles = DWT->CYCCNT;
   // allocate bytes in the logger for the raw sensor data
   void *raw_data_storage = logger_malloc_raw_storage(sensor, clock_cycles);
 

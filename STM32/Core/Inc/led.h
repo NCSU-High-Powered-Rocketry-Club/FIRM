@@ -22,8 +22,6 @@ typedef enum {
 } LED_Interrupt_Status;
 
 typedef enum {
-  FIRM_MODE_DEFAULT = 0b000,
-  FIRM_MODE_BOOT = 0b100,
   FIRM_MODE_LIVE = 0b010,
 } LED_Mode_Indicator_Status;
 
