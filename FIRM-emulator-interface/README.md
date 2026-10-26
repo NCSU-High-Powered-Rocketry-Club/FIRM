@@ -22,14 +22,15 @@ FIRM-emulator-interface/
   docs/
     devices.md         what each emulated sensor must do
     log-format.md      .frm file layout and the matching-log test
-    protocol.md        laptop <-> Teensy messages          (iteration 3)
-  host/                Python package firm_emu             (iterations 1-3)
+    protocol.md        laptop <-> Teensy messages
+  host/                Python package firm_emu
     pyproject.toml
     firm_emu/
       cli.py           firm-emu inspect | compare | run
       log.py           read, write, and compare .frm logs
-      replay.py        replay at the original timing
-      protocol.py      message framing                     (iteration 3)
+      replay.py        replay at the original timing (laptop keeps time)
+      protocol.py      laptop <-> Teensy messages and the laptop side of the link
+      fake_teensy.py   Python stand-in for the Teensy firmware
     tests/
   teensy/              PlatformIO project                  (iteration 4+)
     platformio.ini
@@ -51,16 +52,20 @@ uv sync
 uv run firm-emu inspect LOG90.FRM
 uv run firm-emu compare replayed.frm firm_output.frm
 uv run firm-emu run LOG90.FRM --out replay.frm --seconds 60
-uv run firm-emu compare LOG90.FRM replay.frm --seconds 60
+uv run firm-emu run LOG90.FRM --fake --out played.frm --seconds 60
+uv run firm-emu compare LOG90.FRM played.frm --seconds 60
 uv run pytest
+uvx ruff check .
 ```
 
 - `compare` prints a table per sensor and ends with PASS or FAIL (exit code 0 or 1). The rules
   are in `docs/log-format.md`.
-- `run` replays a log at its original timing. For now it writes to a file, stamping each record
-  with the time it was actually sent, so `compare` shows how well the timing held. `--speed`
-  replays faster, `--seconds` replays only the start of the log (use the same `--seconds` with
-  `compare`).
+- `run --out` replays a log with the laptop keeping time and writes each record with the time it
+  was actually sent. `--speed` replays faster.
+- `run --fake` streams the log to the Python stand-in Teensy over the real protocol
+  (`docs/protocol.md`). The stand-in keeps time, like the real Teensy will. `--out` saves what it
+  played. The real Teensy will replace it in iteration 5.
+- `--seconds` replays only the start of the log. Use the same `--seconds` with `compare`.
 
 ## Iterations
 
@@ -69,8 +74,8 @@ uv run pytest
 | 0 | Specs from the drivers | `docs/devices.md` and `docs/log-format.md` written | Done |
 | 1 | Read and compare logs | `firm-emu inspect` and `firm-emu compare` work on LOG90.FRM | Done |
 | 2 | Replay timing | Replay to a file keeps the logged timing | Done |
-| 3 | Laptop-Teensy protocol | `firm-emu run --fake` works against a Python stand-in | Next |
-| 4 | Teensy SPI slave test | Teensy answers the BMP581 chip ID read from a real STM32 | |
+| 3 | Laptop-Teensy protocol | `firm-emu run --fake` works against a Python stand-in | Done |
+| 4 | Teensy SPI slave test | Teensy answers the BMP581 chip ID read from a real STM32 | Next |
 | 5 | First sensor | FIRM reads replayed BMP581 data | |
 | 6 | All four sensors | FIRM boots with no failure LED | |
 | 7 | Matching-log test | Replayed log and FIRM's log match on real hardware | |

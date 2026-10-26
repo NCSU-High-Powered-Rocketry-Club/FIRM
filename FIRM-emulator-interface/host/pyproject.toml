@@ -14,6 +14,12 @@ dev = ["pytest"]
 [tool.uv.sources]
 firm-hprc = { path = "../..", editable = true }
 
+[tool.ruff]
+extend = "../../pyproject.toml"
+
+[tool.ruff.lint.per-file-ignores]
+"firm_emu/*.py" = ["TRY003"]  # a short message reads better than one exception class per error
+
 [tool.uv.build-backend]
 module-root = ""
 

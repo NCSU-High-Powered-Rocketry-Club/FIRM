@@ -3,6 +3,7 @@
 firm-emu inspect LOG
 firm-emu compare EXPECTED ACTUAL [--tolerance-ms 1.0] [--seconds N]
 firm-emu run LOG --out OUT [--speed 1.0] [--seconds N]
+firm-emu run LOG --fake [--out OUT] [--seconds N]
 """
 
 from __future__ import annotations
@@ -11,8 +12,18 @@ import argparse
 import sys
 from pathlib import Path
 
-from firm_emu.log import by_sensor, compare_logs, first_seconds, read_log, sensor_stats
-from firm_emu.replay import FileOutput, replay
+from firm_emu.fake_teensy import FakeTeensy
+from firm_emu.log import (
+    Record,
+    by_sensor,
+    compare_logs,
+    first_seconds,
+    read_log,
+    sensor_stats,
+    write_log,
+)
+from firm_emu.protocol import Teensy
+from firm_emu.replay import FileOutput, RealClock, replay
 
 
 def inspect(path: Path) -> int:
@@ -55,16 +66,29 @@ def compare(expected: Path, actual: Path, tolerance_ms: float, seconds: float | 
     return 1 if failed else 0
 
 
-def run(log: Path, out: Path, speed: float, seconds: float | None) -> int:
-    """Replay a log in real time into a file."""
-    _, records = read_log(log)
-    records = first_seconds(records, seconds)
+def run(records: list[Record], out: Path, speed: float) -> int:
+    """Replay records in real time into a file, with the laptop keeping time."""
     print(f"replaying {len(records)} records at {speed}x ...")
     stats = replay(records, FileOutput(out), speed)
     print(f"sent {stats.sent} records in {stats.duration_s:.1f} s")
     print(f"worst delay {stats.max_late_ms:.3f} ms")
     print(f"wrote {out}")
     return 0
+
+
+def run_fake(records: list[Record], out: Path | None) -> int:
+    """Stream records to the Python stand-in Teensy, which keeps time."""
+    clock = RealClock()
+    fake = FakeTeensy(clock)
+    teensy = Teensy(fake, clock)
+    print(f"fake Teensy, protocol v{teensy.ping()}: streaming {len(records)} records ...")
+    status = teensy.play(records)
+    print(f"played {status.played} records in {status.time_us / 1e6:.1f} s")
+    print(f"late {status.late}, worst {status.max_late_us / 1000:.3f} ms")
+    if out:
+        write_log(out, fake.played, device_name="fake teensy")
+        print(f"wrote {out}")
+    return 0 if status.late == 0 else 1
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -82,7 +106,8 @@ def main(argv: list[str] | None = None) -> int:
 
     run_cmd = commands.add_parser("run", help="replay a log at its original timing")
     run_cmd.add_argument("log", type=Path)
-    run_cmd.add_argument("--out", type=Path, required=True, help="write the replay to this .frm")
+    run_cmd.add_argument("--out", type=Path, help="write what was played to this .frm")
+    run_cmd.add_argument("--fake", action="store_true", help="stream to the stand-in Teensy")
     run_cmd.add_argument("--speed", type=float, default=1.0, help="2 replays twice as fast")
     run_cmd.add_argument("--seconds", type=float, help="only replay the first N seconds")
 
@@ -91,7 +116,16 @@ def main(argv: list[str] | None = None) -> int:
         return inspect(args.log)
     if args.command == "compare":
         return compare(args.expected, args.actual, args.tolerance_ms, args.seconds)
-    return run(args.log, args.out, args.speed, args.seconds)
+
+    if not args.fake and args.out is None:
+        parser.error("run needs --out or --fake")
+    if args.fake and args.speed != 1.0:
+        parser.error("--speed only works without --fake")
+    _, records = read_log(args.log)
+    records = first_seconds(records, args.seconds)
+    if args.fake:
+        return run_fake(records, args.out)
+    return run(records, args.out, args.speed)
 
 
 if __name__ == "__main__":
