@@ -1,0 +1,22 @@
+[project]
+name = "firm-emu"
+version = "0.1.0"
+description = "Laptop-side tools for the FIRM emulator"
+requires-python = ">=3.10"
+dependencies = ["firm-hprc"]
+
+[project.scripts]
+firm-emu = "firm_emu.cli:main"
+
+[dependency-groups]
+dev = ["pytest"]
+
+[tool.uv.sources]
+firm-hprc = { path = "../..", editable = true }
+
+[tool.uv.build-backend]
+module-root = ""
+
+[build-system]
+requires = ["uv_build>=0.9.5,<0.10.0"]
+build-backend = "uv_build"
