@@ -1,0 +1,12 @@
+# Python environment and caches (host/)
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+
+# Flight logs and replay output are large, keep them out of git
+*.frm
+*.FRM
+
+# PlatformIO build output (teensy/)
+.pio/
