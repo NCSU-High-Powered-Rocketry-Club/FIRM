@@ -46,3 +46,8 @@ firm_add_firmware_test(test_commands SOURCES
     modules/test_commands.c
     ${SRC}/modules/commands.c
 )
+
+firm_add_firmware_test(test_fault_recovery SOURCES
+    modules/test_fault_recovery.c
+    ${SRC}/modules/fault_recovery.c
+)

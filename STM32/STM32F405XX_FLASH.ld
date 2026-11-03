@@ -245,6 +245,17 @@ SECTIONS
   PROVIDE( __bss_start = __tbss_start );
   PROVIDE( __bss_size = __bss_end - __bss_start );
 
+  /* Survives a software reset: not loaded from flash, and the startup code only zeroes
+     _sbss.._ebss, so it never touches this. Holds data that has to outlive a reset (e.g. the
+     stack overflow record). Contents are random after a power-up, so users must validate them. */
+  .noinit (NOLOAD) :
+  {
+    . = ALIGN(4);
+    *(.noinit)
+    *(.noinit*)
+    . = ALIGN(4);
+  } >RAM
+
   /* User_heap_stack section, used to check that there is enough RAM left */
   ._user_heap_stack (NOLOAD) :
   {

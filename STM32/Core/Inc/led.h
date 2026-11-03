@@ -12,6 +12,7 @@ typedef enum {
   FLASH_CHIP_FAIL = 0b011,
   HIGH_G_FAIL = 0b010,
   SD_FAIL = 0b001,
+  STACK_OVERFLOW_FAIL = 0b111,
 } LED_Status;
 
 // Failed interrupt triggered LEDs:
