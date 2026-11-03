@@ -1,10 +1,9 @@
 #include <string.h>
 
 #include "commands.h"
-#include "mocking_handler.h"
 #include "utest.h"
 
-// Link-seam stubs for the settings_manager and mocking_handler calls in commands.c.
+// Link-seam stubs for the settings_manager calls in commands.c.
 static const SystemSettings_t *stub_settings;
 static int get_settings_calls;
 
@@ -24,8 +23,6 @@ int settings_write_calibration(Calibration_t *accel, Calibration_t *gyro, Calibr
   (void)high_g;
   return 0;
 }
-bool mocking_handler_start_mock(void) { return false; }
-bool mocking_handler_cancel_mock(void) { return false; }
 
 static TransmitFrame_t captured_frame;
 static bool response_was_queued;
@@ -65,6 +62,46 @@ UTEST_F(commands, get_device_info_response_length_includes_identifier_byte) {
   ASSERT_MEMEQ(&settings.device_uid, &captured_frame.payload[1], sizeof(uint64_t));
   ASSERT_MEMEQ(settings.firmware_version, &captured_frame.payload[1U + sizeof(uint64_t)],
                FIRM_FIRMWARE_VERSION_LEN);
+}
+
+struct command_payload {
+  size_t case_index;
+};
+
+UTEST_I_SETUP(command_payload) { utest_fixture->case_index = utest_index; }
+UTEST_I_TEARDOWN(command_payload) {}
+
+static const struct {
+  uint8_t id;
+  int expected_size;
+} payload_len_cases[] = {
+    {0, -1},
+    {1, -1},
+    {2, 0},
+    {3, 0},
+    {4, sizeof(DeviceConfig_t)},
+    {5, 0},
+    {6, -1},
+    {7, sizeof(Calibration_t)},
+    {8, sizeof(Calibration_t) * 2},
+    {9, 0},
+    {10, 0},
+    {66, -1},
+    {73, -1},
+    {77, -1},
+    {65, -1},
+    {72, -1}, // 'H', the retired mock header
+    {11, -1},
+    {86, -1},
+};
+
+// UTEST_I pastes its count into identifiers, so it has to be a literal. This catches drift.
+_Static_assert(sizeof(payload_len_cases) / sizeof(payload_len_cases[0]) == 18,
+               "update the UTEST_I count below to match payload_len_cases");
+
+UTEST_I(command_payload, len, 18) {
+  ASSERT_EQ(payload_len_cases[utest_fixture->case_index].expected_size,
+            command_payload_len(payload_len_cases[utest_fixture->case_index].id));
 }
 
 UTEST_MAIN()

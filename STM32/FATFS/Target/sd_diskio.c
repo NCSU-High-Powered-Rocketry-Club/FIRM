@@ -65,7 +65,8 @@ See BSP_SD_ErrorCallback() and BSP_SD_AbortCallback() below
  * BSP_SD_Init() elsewhere in the application.
  */
 /* USER CODE BEGIN disableSDInit */
-/* #define DISABLE_SD_INIT */
+/* fatfs_sd_init() already runs BSP_SD_Init() before the first volume access. */
+#define DISABLE_SD_INIT
 uint32_t sd_FastWriteFlag = 0;
 extern SD_HandleTypeDef hsd;
 static volatile uint32_t sd_async_write = 0;

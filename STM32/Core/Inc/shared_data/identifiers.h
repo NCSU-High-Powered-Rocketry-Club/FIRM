@@ -6,7 +6,7 @@ typedef enum {
   ID_GET_DEVICE_CONFIG = 0x03,
   ID_SET_DEVICE_CONFIG = 0x04,
   ID_REBOOT = 0x05,
-  ID_MOCK_REQUEST = 0x06,
+  /* 0x06 is retired (was hardware mock request). Do not reuse. */
   ID_SET_MAG_CALIBRATON = 0x07,
   ID_SET_IMU_CALIBRATON = 0x08,
   ID_GET_CALIBRATION = 0x9,
@@ -15,5 +15,4 @@ typedef enum {
   ID_IMU = 'I',
   ID_MAGNETOMETER = 'M',
   ID_HIGH_G_ACCELEROMETER = 'A',
-  ID_MOCK_HEADER = 'H',
 } Identifiers_t;
