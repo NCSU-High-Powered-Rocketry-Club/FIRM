@@ -120,7 +120,7 @@ void StartDefaultTask(void *argument);
 /* USER CODE BEGIN PFP */
 
 static void firm_rtos_init(void);
-static void firm_board_init(void);
+static void firm_app_init(void);
 static void apply_stored_sensor_calibrations(void);
 
 /* USER CODE END PFP */
@@ -155,38 +155,12 @@ static void apply_stored_sensor_calibrations(void) {
                           startup_calibration_buffer.scale_matrix);
 }
 
-static void firm_board_init(void) {
+// Application setup (settings, calibrations, logger layout). Runs after firm_init_hardware() and
+// before any FreeRTOS call.
+static void firm_app_init(void) {
   CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
   DWT->CYCCNT = 0;
   DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
-
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // BMP581 CS pin
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // ICM45686 CS pin
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET); // flash chip CS pin
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET); // MMC5983MA CS pin
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET); // ADXL371 CS pin
-
-  HAL_Delay(100);
-
-  if (icm45686_init()) {
-    led_set_status(IMU_FAIL);
-    Error_Handler();
-  }
-
-  if (mmc5983ma_init()) {
-    led_set_status(MMC5983MA_FAIL);
-    Error_Handler();
-  }
-
-  if (bmp581_init()) {
-    led_set_status(BMP581_FAIL);
-    Error_Handler();
-  }
-
-  if (adxl371_init()) {
-    led_set_status(HIGH_G_FAIL);
-    Error_Handler();
-  }
 
   if (settings_manager_init()) {
     led_set_status(FLASH_CHIP_FAIL);
@@ -255,16 +229,16 @@ int main(void)
   MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
 
-  if (firm_init_hardware())
-    Error_Handler();
-
   // MX_GPIO_Init enables these; keep them off until the drivers and log file are ready.
   HAL_NVIC_DisableIRQ(EXTI0_IRQn);
   HAL_NVIC_DisableIRQ(EXTI1_IRQn);
   HAL_NVIC_DisableIRQ(EXTI2_IRQn);
   HAL_NVIC_DisableIRQ(EXTI3_IRQn);
 
-  firm_board_init();
+  if (firm_init_hardware())
+    Error_Handler();
+
+  firm_app_init();
 
   /* USER CODE END 2 */
 
@@ -284,6 +258,8 @@ int main(void)
   /* USER CODE END RTOS_TIMERS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
+  // The first FreeRTOS call that allocates leaves interrupts masked until osKernelStart(), so no
+  // HAL_Delay, HAL timeouts or interrupt/DMA-driven HAL calls from here on.
   firm_rtos_init();
   /* USER CODE END RTOS_QUEUES */
 
@@ -790,10 +766,15 @@ void StartDefaultTask(void *argument)
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 5 */
 
+  if (firm_init_log_storage()) {
+    Error_Handler();
+  }
   if (create_log()) {
+    led_set_status(SD_FAIL);
     Error_Handler();
   }
   if (logger_write_header(*get_settings())) {
+    led_set_status(SD_FAIL);
     Error_Handler();
   }
 

@@ -54,7 +54,18 @@ static uint64_t settings_read_uid(void) {
   return uid;
 }
 
+// Must finish before the first FreeRTOS call that allocates or enters a critical section. Until
+// osKernelStart() that leaves BASEPRI raised (nesting starts at 0xaaaaaaaa), masking the
+// interrupts we use, including the TIM2 HAL tick. Then HAL_Delay hangs, HAL timeouts never
+// expire, and interrupt- or DMA-driven HAL calls never complete.
 int firm_init_hardware(void) {
+  // MX_GPIO_Init leaves the chip selects low. Deselect every SPI device before using a bus.
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // BMP581 CS pin
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // ICM45686 CS pin
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET); // flash chip CS pin
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET); // MMC5983MA CS pin
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET); // ADXL371 CS pin
+
   // set up settings storage (w25q128jv NOR Flash)
   SettingsStorageInterface_t settings_storage_interface = {
       .read_settings = settings_storage_read,
@@ -74,6 +85,35 @@ int firm_init_hardware(void) {
   set_spi_icm(&hspi2, GPIOB, GPIO_PIN_9);
   set_spi_mmc(&hspi2, GPIOC, GPIO_PIN_7);
 
+  // let the sensors power up before talking to them
+  HAL_Delay(100);
+
+  if (icm45686_init()) {
+    led_set_status(IMU_FAIL);
+    return 1;
+  }
+
+  if (mmc5983ma_init()) {
+    led_set_status(MMC5983MA_FAIL);
+    return 1;
+  }
+
+  if (bmp581_init()) {
+    led_set_status(BMP581_FAIL);
+    return 1;
+  }
+
+  if (adxl371_init()) {
+    led_set_status(HIGH_G_FAIL);
+    return 1;
+  }
+
+  return 0;
+}
+
+// Call from a task, after osKernelStart(). HAL_SD_Init needs the HAL tick (HAL_Delay), f_mount
+// creates an RTOS object, and the first volume access (f_stat/f_open) needs the kernel running.
+int firm_init_log_storage(void) {
   if (fatfs_sd_init(&hdma_sdio_tx)) {
     led_set_status(SD_FAIL);
     return 1;
@@ -90,6 +130,7 @@ int firm_init_hardware(void) {
       .buffer_size = LOGGER_SECTOR_SIZE,
   };
   if (logger_storage_init(&logger_storage_interface)) {
+    led_set_status(SD_FAIL);
     return 1;
   }
 
