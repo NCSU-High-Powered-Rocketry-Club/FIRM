@@ -90,11 +90,16 @@ static const struct {
     {73, -1},
     {77, -1},
     {65, -1},
+    {72, -1}, // 'H', the retired mock header
     {11, -1},
     {86, -1},
 };
 
-UTEST_I(command_payload, len, 17) {
+// UTEST_I pastes its count into identifiers, so it has to be a literal. This catches drift.
+_Static_assert(sizeof(payload_len_cases) / sizeof(payload_len_cases[0]) == 18,
+               "update the UTEST_I count below to match payload_len_cases");
+
+UTEST_I(command_payload, len, 18) {
   ASSERT_EQ(payload_len_cases[utest_fixture->case_index].expected_size,
             command_payload_len(payload_len_cases[utest_fixture->case_index].id));
 }
