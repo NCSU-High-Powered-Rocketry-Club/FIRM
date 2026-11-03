@@ -649,7 +649,6 @@ impl FIRMClient {
     }
 }
 
-/// Ensures that the client is properly stopped when dropped, i.e. .stop() is called.
 /// The command whose reply `response` is.
 fn command_for_response(response: &FIRMResponse) -> Option<FIRMCommand> {
     match response {
@@ -666,6 +665,7 @@ fn command_for_response(response: &FIRMResponse) -> Option<FIRMCommand> {
     }
 }
 
+/// Ensures that the client is properly stopped when dropped, i.e. .stop() is called.
 impl Drop for FIRMClient {
     fn drop(&mut self) {
         self.stop();
