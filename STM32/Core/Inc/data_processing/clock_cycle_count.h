@@ -19,13 +19,6 @@ typedef struct {
 void clock_cycle_counter_init(ClockCycleCounter_t *counter, uint32_t clock_speed_mhz);
 
 /**
- * @brief Resets overflow and last-cycle tracking for an instance.
- *
- * @param counter Pointer to counter state.
- */
-void clock_cycle_counter_reset(ClockCycleCounter_t *counter);
-
-/**
  * @brief Updates clock speed used by an instance.
  * @note This does not set MCU hardware speed; it updates conversion math only.
  *

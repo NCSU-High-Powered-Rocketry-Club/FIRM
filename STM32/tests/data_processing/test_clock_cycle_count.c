@@ -6,28 +6,11 @@ struct clock_cycle_count {
   size_t case_index;
 };
 
-UTEST_F_SETUP(clock_cycle_count) { clock_cycle_counter_init(&utest_fixture->counter, 168); }
-UTEST_F_TEARDOWN(clock_cycle_count) {}
-
 UTEST_I_SETUP(clock_cycle_count) {
   clock_cycle_counter_init(&utest_fixture->counter, 168);
   utest_fixture->case_index = utest_index;
 }
 UTEST_I_TEARDOWN(clock_cycle_count) {}
-
-UTEST_F(clock_cycle_count, counter_reset) {
-  ClockCycleCounter_t *counter = &utest_fixture->counter;
-  clock_cycle_counter_set_speed_mhz(counter, 168);
-  clock_cycle_counter_process(counter, 100000000);
-  clock_cycle_counter_process(counter, 50000000); // triggers overflow
-
-  // reset the counter
-  clock_cycle_counter_reset(counter);
-  // use a cycle count that would cause an overflow if the reset did NOT happen (cyccnt2 < cyccnt1)
-  double timestamp2 = clock_cycle_counter_process(counter, 50000000);
-  double exp2 = (double)50000000 / (double)168000000;
-  ASSERT_NEAR(exp2, timestamp2, 1e-6);
-}
 
 static const struct {
   uint32_t cyccnt;

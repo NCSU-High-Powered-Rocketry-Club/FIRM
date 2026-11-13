@@ -34,19 +34,16 @@
 #include "transmit_frame.h"
 #include "led.h"
 #include "logger.h"
-#include "mocking_handler.h"
 #include "packets.h"
 #include "sensor_manager.h"
 #include "settings_manager.h"
 #include "system_settings.h"
-#include "system_state.h"
 #include "targets.h"
 #include "firm_v1_0.h"
 
 #include "FreeRTOS.h"
 #include "event_groups.h"
 #include "queue.h"
-#include "semphr.h"
 #include "stream_buffer.h"
 #include "task.h"
 
@@ -70,8 +67,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
-#define MOCK_QUEUE_LENGTH 50U
 
 /* USER CODE END PD */
 
@@ -99,15 +94,8 @@ DMA_HandleTypeDef hdma_usart1_tx;
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
-  .stack_size = 256 * 4,
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityRealtime1,
-};
-/* Definitions for startupTask */
-osThreadId_t startupTaskHandle;
-const osThreadAttr_t startupTask_attributes = {
-  .name = "startupTask",
-  .stack_size = 256 * 4,
-  .priority = (osPriority_t) osPriorityRealtime,
 };
 /* USER CODE BEGIN PV */
 
@@ -128,17 +116,11 @@ static void MX_SPI3_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_USART1_UART_Init(void);
 void StartDefaultTask(void *argument);
-void StartupTask(void *argument);
 
 /* USER CODE BEGIN PFP */
 
-static bool mock_count_try_take(void *context);
-static bool mock_count_give(void *context);
-static size_t mock_count_get_count(void *context);
-static void mock_count_reset(void *context);
 static void firm_rtos_init(void);
-static void configure_mocking_injection(void);
-static uint32_t firm_time_cyccnt(void);
+static void firm_app_init(void);
 static void apply_stored_sensor_calibrations(void);
 
 /* USER CODE END PFP */
@@ -146,33 +128,12 @@ static void apply_stored_sensor_calibrations(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-static bool mock_count_try_take(void *context) {
-  return xSemaphoreTake((SemaphoreHandle_t)context, 0U) == pdTRUE;
-}
-
-static bool mock_count_give(void *context) {
-  return xSemaphoreGive((SemaphoreHandle_t)context) == pdTRUE;
-}
-
-static size_t mock_count_get_count(void *context) {
-  return (size_t)uxSemaphoreGetCount((SemaphoreHandle_t)context);
-}
-
-static void mock_count_reset(void *context) {
-  while (xSemaphoreTake((SemaphoreHandle_t)context, 0U) == pdTRUE) {
-  }
-}
-
-static uint32_t firm_time_cyccnt(void) {
-  return DWT->CYCCNT;
-}
-
 static void apply_stored_sensor_calibrations(void) {
   const uint8_t *settings_bytes = (const uint8_t *)get_settings();
 
   // SystemSettings_t is packed. Copy one calibration at a time into aligned static storage before
-  // passing it to a driver. Keeping this buffer out of StartupTask's stack is important: that task
-  // has a 1 KiB stack and runs several deeply nested hardware initialization routines.
+  // passing it to a driver. Keeping this buffer off the main stack avoids overflowing it during
+  // nested hardware initialization.
   memcpy(&startup_calibration_buffer, settings_bytes + offsetof(SystemSettings_t, accel_cal),
          sizeof(startup_calibration_buffer));
   icm45686_set_accel_calibration(startup_calibration_buffer.offset,
@@ -194,21 +155,23 @@ static void apply_stored_sensor_calibrations(void) {
                           startup_calibration_buffer.scale_matrix);
 }
 
-static void configure_mocking_injection(void) {
-  MockSensorTaskInjectFns_t inject_fns = {
-      .set_time_fn = set_time_fn,
-      .set_barometer_read_fn = set_barometer_read_fn,
-      .set_imu_read_fn = set_imu_read_fn,
-      .set_magnetometer_read_fn = set_magnetometer_read_fn,
-      .set_high_g_read_fn = set_high_g_read_fn,
-      .get_time_fn = sensor_manager_get_time_fn,
-      .get_barometer_read_fn = sensor_manager_get_barometer_read_fn,
-      .get_imu_read_fn = sensor_manager_get_imu_read_fn,
-      .get_magnetometer_read_fn = sensor_manager_get_magnetometer_read_fn,
-      .get_high_g_read_fn = sensor_manager_get_high_g_read_fn,
-  };
+// Application setup (settings, calibrations, logger layout). Runs after firm_init_hardware() and
+// before any FreeRTOS call.
+static void firm_app_init(void) {
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+  DWT->CYCCNT = 0;
+  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 
-  mocking_handler_configure_sensor_task_injection(&inject_fns);
+  if (settings_manager_init()) {
+    led_set_status(FLASH_CHIP_FAIL);
+    Error_Handler();
+  }
+
+  // Sensor drivers keep their active calibration in RAM, so load the values restored from flash.
+  apply_stored_sensor_calibrations();
+
+  logger_set_sensor_info(sizeof(BMP581RawData_t), sizeof(ICM45686RawData_t),
+                         sizeof(MMC5983MARawData_t), sizeof(ADXL371RawData_t));
 }
 
 static void firm_rtos_init(void) {
@@ -222,23 +185,6 @@ static void firm_rtos_init(void) {
       sensor_collected_group == NULL) {
     Error_Handler();
   }
-
-  SemaphoreHandle_t mock_count_sem = xSemaphoreCreateCounting(MOCK_QUEUE_LENGTH, 0U);
-  if (mock_count_sem != NULL) {
-    MockRingCountSemaphore_t mock_counting_semaphore = {
-        .context = mock_count_sem,
-        .try_take = mock_count_try_take,
-        .give = mock_count_give,
-        .get_count = mock_count_get_count,
-        .reset = mock_count_reset,
-    };
-
-    uint32_t hclk_hz = HAL_RCC_GetHCLKFreq();
-    uint32_t hclk_mhz = (hclk_hz == 0U) ? 168U : (hclk_hz / 1000000U);
-    mocking_handler_init(&mock_counting_semaphore, hclk_mhz);
-  }
-
-  configure_mocking_injection();
 }
 
 /* USER CODE END 0 */
@@ -283,8 +229,16 @@ int main(void)
   MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
 
+  // MX_GPIO_Init enables these; keep them off until the drivers and log file are ready.
+  HAL_NVIC_DisableIRQ(EXTI0_IRQn);
+  HAL_NVIC_DisableIRQ(EXTI1_IRQn);
+  HAL_NVIC_DisableIRQ(EXTI2_IRQn);
+  HAL_NVIC_DisableIRQ(EXTI3_IRQn);
+
   if (firm_init_hardware())
     Error_Handler();
+
+  firm_app_init();
 
   /* USER CODE END 2 */
 
@@ -304,15 +258,14 @@ int main(void)
   /* USER CODE END RTOS_TIMERS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
+  // The first FreeRTOS call that allocates leaves interrupts masked until osKernelStart(), so no
+  // HAL_Delay, HAL timeouts or interrupt/DMA-driven HAL calls from here on.
   firm_rtos_init();
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
-
-  /* creation of startupTask */
-  startupTaskHandle = osThreadNew(StartupTask, NULL, &startupTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   firm_mode_indicator_task_handle =
@@ -812,95 +765,26 @@ void StartDefaultTask(void *argument)
   /* init code for USB_DEVICE */
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 5 */
-  /* Infinite loop */
-  vTaskDelete(NULL);
-  /* USER CODE END 5 */
-}
 
-/* USER CODE BEGIN Header_StartupTask */
-/**
- * @brief Function implementing the startupTask thread.
- * @param argument: Not used
- * @retval None
- */
-/* USER CODE END Header_StartupTask */
-void StartupTask(void *argument)
-{
-  /* USER CODE BEGIN StartupTask */
-
-  system_state_set(SYSTEM_STATE_BOOT);
-
-  // We use DWT (Data Watchpoint and Trace unit) to get a high resolution free-running timer.
-  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-  DWT->CYCCNT = 0;
-  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
-
-  set_time_fn(firm_time_cyccnt);
-
-  // Ensure SPI chip-select lines default to not selected.
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET); // BMP581 CS pin
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_9, GPIO_PIN_SET); // ICM45686 CS pin
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_4, GPIO_PIN_SET); // flash chip CS pin
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET); // MMC5983MA CS pin
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET); // ADXL371 CS pin
-
-  HAL_Delay(100);
-
-  // The scheduler is not running yet; prevent EXTI callbacks from notifying task handles.
-  HAL_NVIC_DisableIRQ(EXTI0_IRQn);
-  HAL_NVIC_DisableIRQ(EXTI1_IRQn);
-  HAL_NVIC_DisableIRQ(EXTI2_IRQn);
-  HAL_NVIC_DisableIRQ(EXTI3_IRQn);
-
-  if (icm45686_init()) {
-    led_set_status(IMU_FAIL);
+  if (firm_init_log_storage()) {
     Error_Handler();
   }
-
-  if (mmc5983ma_init()) {
-    led_set_status(MMC5983MA_FAIL);
-    Error_Handler();
-  }
-
-  if (bmp581_init()) {
-    led_set_status(BMP581_FAIL);
-    Error_Handler();
-  }
-
-  if (adxl371_init()) {
-    led_set_status(HIGH_G_FAIL);
-    Error_Handler();
-  }
-  
-  // set up the settings manager
-  if (settings_manager_init()) {
-    led_set_status(FLASH_CHIP_FAIL);
-    Error_Handler();
-  }
-
-  // Sensor drivers keep their active calibration in RAM, so load the values restored from flash.
-  apply_stored_sensor_calibrations();
-
-  // setup logger with the sensor data sizes
-  logger_set_sensor_info(sizeof(BMP581RawData_t), sizeof(ICM45686RawData_t),
-                         sizeof(MMC5983MARawData_t), sizeof(ADXL371RawData_t));
-
-  // Open a new log and emit the metadata header.
   if (create_log()) {
+    led_set_status(SD_FAIL);
     Error_Handler();
   }
   if (logger_write_header(*get_settings())) {
+    led_set_status(SD_FAIL);
     Error_Handler();
   }
 
-  // re-enable ISR's so that interrupts can trigger the sensor tasks to run
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);
   HAL_NVIC_EnableIRQ(EXTI1_IRQn);
   HAL_NVIC_EnableIRQ(EXTI2_IRQn);
   HAL_NVIC_EnableIRQ(EXTI3_IRQn);
 
   vTaskDelete(NULL);
-  /* USER CODE END StartupTask */
+  /* USER CODE END 5 */
 }
 
 /**

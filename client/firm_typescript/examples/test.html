@@ -193,10 +193,6 @@
         />
         <button id="setImuCalBtn">Set IMU Calibration</button>
       </div>
-      <div class="control-row">
-        <input type="file" id="mockLogFile" />
-        <button id="mockStreamBtn">Stream Mock Log</button>
-      </div>
       <div
         id="configOutput"
         style="
@@ -237,8 +233,6 @@
       const runMagCalBtn = document.getElementById('runMagCalBtn');
       const cancelBtn = document.getElementById('cancelBtn');
       const rebootBtn = document.getElementById('rebootBtn');
-      const mockLogFile = document.getElementById('mockLogFile');
-      const mockStreamBtn = document.getElementById('mockStreamBtn');
       const magOffsetsInput = document.getElementById('magOffsetsInput');
       const magMatrixInput = document.getElementById('magMatrixInput');
       const setMagCalBtn = document.getElementById('setMagCalBtn');
@@ -442,16 +436,14 @@
       cancelBtn.addEventListener('click', async () => {
         if (!firmInstance) return;
         setStatus('[UI] Sending cancel command...');
+        // sendCancelCommand() resolves false on both a timeout and a negative ack.
         const ack = await firmInstance.sendCancelCommand();
-        if (ack === null) {
-          setStatus('[UI] Cancel timed out.');
-          configOutput.textContent = 'Error: Timeout waiting for response.';
-        } else if (ack) {
+        if (ack) {
           setStatus('[UI] Cancel acknowledged.');
           configOutput.textContent = 'Cancel acknowledged.';
         } else {
-          setStatus('[UI] Cancel not acknowledged.');
-          configOutput.textContent = 'Cancel not acknowledged.';
+          setStatus('[UI] Cancel not acknowledged (or timed out).');
+          configOutput.textContent = 'Cancel not acknowledged (or timed out).';
         }
       });
 
@@ -469,29 +461,6 @@
           console.error(err);
           setStatus('[UI] Failed to send reboot command.');
           configOutput.textContent = 'Error: Failed to send reboot command.';
-        }
-      });
-
-      mockStreamBtn.addEventListener('click', async () => {
-        if (!firmInstance) return;
-        const file = mockLogFile?.files?.[0];
-        if (!file) {
-          alert('Please select a log file first');
-          return;
-        }
-        setStatus('[UI] Streaming mock log...');
-        try {
-          const sent = await firmInstance.streamMockLogFile(file, {
-            realtime: true,
-            speed: 1.0,
-            chunkSize: 8192,
-          });
-          setStatus('[UI] Mock stream complete.');
-          configOutput.textContent = `Sent ${sent} mock packets.`;
-        } catch (err) {
-          console.error(err);
-          setStatus('[UI] Mock stream failed.');
-          configOutput.textContent = 'Error: ' + (err?.message ?? err);
         }
       });
 

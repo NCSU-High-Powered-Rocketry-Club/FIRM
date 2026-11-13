@@ -1,9 +1,10 @@
 #include "usb_read_data_task.h"
 
+#include "commands.h"
+
 #include "FreeRTOS.h"
 #include "main.h"
 #include "stream_buffer.h"
-#include "task.h"
 
 osThreadId_t usb_read_task_handle;
 const osThreadAttr_t usbReadTask_attributes = {
@@ -16,6 +17,8 @@ StreamBufferHandle_t usb_rx_stream;
 
 _Static_assert(USB_MESSAGE_BYTE_BUFFER_SIZE >= (1U + (sizeof(Calibration_t) * 2U)),
                "USB command buffer must hold a complete IMU calibration command");
+_Static_assert(USB_RX_STREAM_BUFFER_SIZE_BYTES >= USB_MESSAGE_BYTE_BUFFER_SIZE,
+               "USB RX stream must hold at least one complete command");
 
 static bool receive_exact(uint8_t *buffer, size_t length) {
   size_t received_total = 0U;
@@ -45,7 +48,7 @@ void usb_read_data(void *argument) {
     // read the identifier byte to determine payload length
     if (!receive_exact(received_bytes, 1U))
       continue;
-    int payload_len = parse_message_id(received_bytes[0]);
+    int payload_len = command_payload_len(received_bytes[0]);
     if (payload_len == -1) // invalid ID
       continue;
 
@@ -53,10 +56,7 @@ void usb_read_data(void *argument) {
       continue;
     if (!receive_exact(received_bytes + 1, (size_t)payload_len))
       continue;
-    uint32_t delay_ms = dispatch_message(received_bytes);
-    if (delay_ms > 0U) {
-      vTaskDelay(pdMS_TO_TICKS(delay_ms));
-    }
+    dispatch_command(received_bytes);
   }
 }
 
