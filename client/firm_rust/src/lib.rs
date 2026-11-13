@@ -2,7 +2,7 @@ use anyhow::Result;
 use firm_core::calibration::{MagnetometerCalibration, MagnetometerCalibrator};
 use firm_core::client_packets::FIRMCommandPacket;
 use firm_core::constants::command::{
-    NUMBER_OF_CALIBRATION_OFFSETS, NUMBER_OF_CALIBRATION_SCALE_MATRIX_ELEMENTS,
+    FIRMCommand, NUMBER_OF_CALIBRATION_OFFSETS, NUMBER_OF_CALIBRATION_SCALE_MATRIX_ELEMENTS,
 };
 use firm_core::data_parser::SerialParser;
 use firm_core::firm_packets::{
@@ -16,9 +16,28 @@ use std::sync::RwLock;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, channel};
 use std::thread::{self, JoinHandle};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 pub mod mock_serial;
+
+/// Most commands tracked as awaiting a reply at once. Only reached if the device stops
+/// answering, in which case the oldest are forgotten.
+const MAX_AWAITING_REPLY: usize = 64;
+
+/// Side-effect-free commands that `send_command` can send as a fence in the reply stream.
+const FENCE_COMMANDS: [FIRMCommand; 3] = [
+    FIRMCommand::GetDeviceInfo,
+    FIRMCommand::GetDeviceConfig,
+    FIRMCommand::GetCalibration,
+];
+
+/// A sent command whose reply has neither arrived nor been ruled out.
+struct AwaitingReply {
+    id: u64,
+    kind: FIRMCommand,
+    /// No caller wants the reply: its wait timed out, or the command was only a fence.
+    discard: bool,
+}
 
 /// Interface to the FIRM Client device.
 ///
@@ -53,7 +72,13 @@ pub struct FIRMClient {
     command_receiver: Option<Receiver<FIRMCommandPacket>>,
     port: Option<Box<dyn SerialPort>>,
 
-    response_buffer: VecDeque<FIRMResponse>,
+    /// Received responses no wait has taken yet, each with the id of the command it answers
+    /// (`None` if it matched no awaiting command).
+    response_buffer: VecDeque<(Option<u64>, FIRMResponse)>,
+    /// Commands awaiting a reply, in send order. The device answers commands in order but can
+    /// drop a reply (e.g. when USB stays busy), so replies are an in-order subset of these.
+    awaiting_reply: VecDeque<AwaitingReply>,
+    next_command_id: u64,
 
     calibration_snoop: Arc<RwLock<Option<Sender<ProcessedFIRMData>>>>,
     calibration_handle: Option<JoinHandle<Option<MagnetometerCalibration>>>,
@@ -108,6 +133,8 @@ impl FIRMClient {
             command_receiver: Some(command_receiver),
             port: Some(port),
             response_buffer: VecDeque::new(),
+            awaiting_reply: VecDeque::new(),
+            next_command_id: 0,
 
             calibration_snoop: Arc::new(RwLock::new(None)),
             calibration_handle: None,
@@ -116,9 +143,13 @@ impl FIRMClient {
 
     /// Starts the background thread to read from the serial port and parse packets.
     pub fn start(&mut self) {
-        // Return early if already running
-        if self.join_handle.is_some() {
-            return;
+        // Return early if already running. If the reader thread exited on its own (e.g. an I/O
+        // error), reclaim the port with stop() so the client can be started again.
+        if let Some(handle) = &self.join_handle {
+            if !handle.is_finished() {
+                return;
+            }
+            self.stop();
         }
 
         // Gets the port or return if not available
@@ -169,6 +200,7 @@ impl FIRMClient {
                         // Reads all available data packets and send them to the main thread and calibration if wanted
                         while let Some(packet) = parser.get_data_packet() {
                             if sender.send(packet.clone()).is_err() {
+                                running_clone.store(false, Ordering::Relaxed);
                                 return port; // Receiver dropped
                             }
 
@@ -185,6 +217,7 @@ impl FIRMClient {
                         while let Some(firm_response_packet) = parser.get_response_packet() {
                             let response = firm_response_packet.response().clone();
                             if response_sender.send(response).is_err() {
+                                running_clone.store(false, Ordering::Relaxed);
                                 return port; // Receiver dropped
                             }
                         }
@@ -219,6 +252,11 @@ impl FIRMClient {
         {
             self.port = Some(port);
         }
+
+        // Replies to anything sent before the restart are no longer meaningful.
+        while self.response_receiver.try_recv().is_ok() {}
+        self.response_buffer.clear();
+        self.awaiting_reply.clear();
 
         // The receivers are moved into the background thread on start()
         // This remakes them so the client can be restarted.
@@ -261,26 +299,32 @@ impl FIRMClient {
         &mut self,
         timeout: Option<Duration>,
     ) -> Result<Vec<FIRMResponse>, RecvTimeoutError> {
-        let mut responses: Vec<FIRMResponse> = self.response_buffer.drain(..).collect();
+        self.drain_response_channel();
 
         // If blocking and we have nothing buffered, wait for one response.
-        if responses.is_empty()
+        if self.response_buffer.is_empty()
             && let Some(duration) = timeout
         {
-            responses.push(self.response_receiver.recv_timeout(duration)?);
+            let deadline = Instant::now() + duration;
+            while self.response_buffer.is_empty() {
+                let remaining = deadline.saturating_duration_since(Instant::now());
+                let res = self.response_receiver.recv_timeout(remaining)?;
+                self.accept_response(res);
+            }
+            self.drain_response_channel();
         }
 
-        while let Ok(res) = self.response_receiver.try_recv() {
-            responses.push(res);
-        }
-
-        Ok(responses)
+        Ok(self
+            .response_buffer
+            .drain(..)
+            .map(|(_, response)| response)
+            .collect())
     }
 
     /// Requests device info and waits for the response.
     pub fn get_device_info(&mut self, timeout: Duration) -> Result<Option<DeviceInfo>> {
-        self.send_command(FIRMCommandPacket::build_get_device_info_command())?;
-        self.wait_for_matching_response(timeout, |res| match res {
+        let id = self.send_command(FIRMCommandPacket::build_get_device_info_command())?;
+        self.wait_for_matching_response(id, timeout, |res| match res {
             FIRMResponse::GetDeviceInfo(info) => Some(info.clone()),
             _ => None,
         })
@@ -288,8 +332,8 @@ impl FIRMClient {
 
     /// Requests device configuration and waits for the response.
     pub fn get_device_config(&mut self, timeout: Duration) -> Result<Option<DeviceConfig>> {
-        self.send_command(FIRMCommandPacket::build_get_device_config_command())?;
-        self.wait_for_matching_response(timeout, |res| match res {
+        let id = self.send_command(FIRMCommandPacket::build_get_device_config_command())?;
+        self.wait_for_matching_response(id, timeout, |res| match res {
             FIRMResponse::GetDeviceConfig(cfg) => Some(cfg.clone()),
             _ => None,
         })
@@ -308,8 +352,8 @@ impl FIRMClient {
             frequency,
             protocol,
         };
-        self.send_command(FIRMCommandPacket::build_set_device_config_command(config))?;
-        self.wait_for_matching_response(timeout, |res| match res {
+        let id = self.send_command(FIRMCommandPacket::build_set_device_config_command(config))?;
+        self.wait_for_matching_response(id, timeout, |res| match res {
             FIRMResponse::SetDeviceConfig(ok) => Some(*ok),
             _ => None,
         })
@@ -321,10 +365,10 @@ impl FIRMClient {
         scale_matrix: [f32; NUMBER_OF_CALIBRATION_SCALE_MATRIX_ELEMENTS],
         timeout: Duration,
     ) -> Result<Option<bool>> {
-        self.send_command(
+        let id = self.send_command(
             FIRMCommandPacket::build_set_magnetometer_calibration_command(offsets, scale_matrix),
         )?;
-        self.wait_for_matching_response(timeout, |res| match res {
+        self.wait_for_matching_response(id, timeout, |res| match res {
             FIRMResponse::SetMagnetometerCalibration(ok) => Some(*ok),
             _ => None,
         })
@@ -338,21 +382,21 @@ impl FIRMClient {
         gyro_scale_matrix: [f32; NUMBER_OF_CALIBRATION_SCALE_MATRIX_ELEMENTS],
         timeout: Duration,
     ) -> Result<Option<bool>> {
-        self.send_command(FIRMCommandPacket::build_set_imu_calibration_command(
+        let id = self.send_command(FIRMCommandPacket::build_set_imu_calibration_command(
             accel_offsets,
             accel_scale_matrix,
             gyro_offsets,
             gyro_scale_matrix,
         ))?;
-        self.wait_for_matching_response(timeout, |res| match res {
+        self.wait_for_matching_response(id, timeout, |res| match res {
             FIRMResponse::SetIMUCalibration(ok) => Some(*ok),
             _ => None,
         })
     }
 
     pub fn get_calibration(&mut self, timeout: Duration) -> Result<Option<CalibrationValues>> {
-        self.send_command(FIRMCommandPacket::build_get_calibration_command())?;
-        self.wait_for_matching_response(timeout, |res| match res {
+        let id = self.send_command(FIRMCommandPacket::build_get_calibration_command())?;
+        self.wait_for_matching_response(id, timeout, |res| match res {
             FIRMResponse::GetCalibration(calibration) => Some(calibration.clone()),
             _ => None,
         })
@@ -364,8 +408,8 @@ impl FIRMClient {
     /// the device is a synchronous settings write with nothing in-flight to abort.
     /// Host-side collection should stop locally.
     pub fn cancel(&mut self, timeout: Duration) -> Result<Option<bool>> {
-        self.send_command(FIRMCommandPacket::build_cancel_command())?;
-        self.wait_for_matching_response(timeout, |res| match res {
+        let id = self.send_command(FIRMCommandPacket::build_cancel_command())?;
+        self.wait_for_matching_response(id, timeout, |res| match res {
             FIRMResponse::Cancel(ok) => Some(*ok),
             _ => None,
         })
@@ -373,7 +417,8 @@ impl FIRMClient {
 
     /// Sends a reboot command.
     pub fn reboot(&self) -> Result<()> {
-        self.send_command(FIRMCommandPacket::build_reboot_command())
+        // Reboot has no response, so it is not tracked as awaiting one.
+        self.queue_command(FIRMCommandPacket::build_reboot_command())
     }
 
     /// Checks for any errors that have occurred in the background thread.
@@ -457,86 +502,123 @@ impl FIRMClient {
         }
     }
 
-    /// Sends a high-level command to the device.
-    fn send_command(&self, command: FIRMCommandPacket) -> Result<()> {
+    /// Sends a command that the device replies to, and returns the id its reply is matched to.
+    ///
+    /// Replies carry no command id, so if an earlier command of the same kind is still awaiting
+    /// a reply (its wait timed out), a reply of that kind could be either command's. To tell
+    /// them apart, a side-effect-free command of another kind is sent first as a fence: replies
+    /// come back in command order, so the fence's reply rules out the earlier command, and
+    /// every reply of the kind after it answers this command (see `accept_response`).
+    fn send_command(&mut self, command: FIRMCommandPacket) -> Result<u64> {
+        // Settle replies that already arrived, so only commands still awaiting one count below.
+        self.drain_response_channel();
+        let kind = command.command_type();
+        if self.is_awaiting_reply(kind)
+            && let Some(fence) = FENCE_COMMANDS
+                .into_iter()
+                .find(|&fence| !self.is_awaiting_reply(fence))
+        {
+            self.queue_command(FIRMCommandPacket::new(fence, Vec::new()))?;
+            self.track_reply(fence, true);
+        }
+
+        self.queue_command(command)?;
+        Ok(self.track_reply(kind, false))
+    }
+
+    fn is_awaiting_reply(&self, kind: FIRMCommand) -> bool {
+        self.awaiting_reply
+            .iter()
+            .any(|command| command.kind == kind)
+    }
+
+    fn track_reply(&mut self, kind: FIRMCommand, discard: bool) -> u64 {
+        if self.awaiting_reply.len() == MAX_AWAITING_REPLY {
+            self.awaiting_reply.pop_front();
+        }
+        let id = self.next_command_id;
+        self.next_command_id += 1;
+        self.awaiting_reply
+            .push_back(AwaitingReply { id, kind, discard });
+        id
+    }
+
+    fn queue_command(&self, command: FIRMCommandPacket) -> Result<()> {
         self.command_sender
             .send(command)
             .map_err(|_| io::Error::other("Command channel closed"))?;
         Ok(())
     }
 
-    fn wait_for_response(&mut self, timeout: Duration) -> Result<Option<FIRMResponse>> {
-        // Prefer already-buffered responses.
-        if let Some(res) = self.response_buffer.pop_front() {
-            return Ok(Some(res));
-        }
-
-        match self.response_receiver.recv_timeout(timeout) {
-            Ok(res) => Ok(Some(res)),
-            Err(RecvTimeoutError::Timeout) => Ok(None),
-            Err(RecvTimeoutError::Disconnected) => {
-                Err(io::Error::other("Response channel closed").into())
-            }
+    /// Matches a response from the reader to the command it answers, and buffers it unless no
+    /// caller wants it.
+    ///
+    /// The response is taken as the reply to the oldest awaiting command of its kind. Replies
+    /// come back in command order, so commands sent before that one will never get theirs and
+    /// stop awaiting. If the oldest command's reply was lost instead, this misattributes a
+    /// later command's reply to it; that later command then times out rather than getting a
+    /// wrong answer, and the fence `send_command` puts between same-kind commands makes this
+    /// happen only if the fence's reply is lost too.
+    fn accept_response(&mut self, response: FIRMResponse) {
+        let answered = command_for_response(&response).and_then(|kind| {
+            let position = self
+                .awaiting_reply
+                .iter()
+                .position(|command| command.kind == kind)?;
+            self.awaiting_reply.drain(..position);
+            self.awaiting_reply.pop_front()
+        });
+        match answered {
+            Some(command) if command.discard => {}
+            Some(command) => self.response_buffer.push_back((Some(command.id), response)),
+            None => self.response_buffer.push_back((None, response)),
         }
     }
 
-    /// Wait for a response matching `matcher` up to `timeout`.
+    fn drain_response_channel(&mut self) {
+        while let Ok(res) = self.response_receiver.try_recv() {
+            self.accept_response(res);
+        }
+    }
+
+    /// Wait up to `timeout` for the reply to the command sent as `id`, converted by `matcher`.
     ///
-    /// Looks through buffered responses first and keeps non-matching responses. It makes sure
-    /// that the total time spent waiting is less than `timeout`.
+    /// Other responses stay buffered. On timeout the command keeps awaiting its reply, which is
+    /// discarded if it arrives late, so it can't be taken as the reply to a later command.
     fn wait_for_matching_response<T>(
         &mut self,
+        id: u64,
         timeout: Duration,
-        mut matcher: impl FnMut(&FIRMResponse) -> Option<T>,
+        matcher: impl FnOnce(&FIRMResponse) -> Option<T>,
     ) -> Result<Option<T>> {
-        // Pull any immediately-available responses into our buffer so we can search them first.
-        while let Ok(res) = self.response_receiver.try_recv() {
-            self.response_buffer.push_back(res);
-        }
-
-        let mut try_get_response = |response_buffer: &mut VecDeque<FIRMResponse>| {
-            // First, search the buffer for a match without blocking.
-            if let Some((idx, value)) = response_buffer
-                .iter()
-                .enumerate()
-                .find_map(|(idx, res)| matcher(res).map(|value| (idx, value)))
-            {
-                // Remove the matched response from the buffer and return it.
-                response_buffer.remove(idx);
-                Some(value)
-            } else {
-                None
-            }
-        };
-
-        if let Some(result) = try_get_response(&mut self.response_buffer) {
-            return Ok(Some(result));
-        }
-
-        // Makes a deadline to enforce the overall timeout
-        let deadline = std::time::Instant::now() + timeout;
+        let deadline = Instant::now() + timeout;
 
         loop {
-            // If we've already passed the deadline, give up and return None.
-            let now = std::time::Instant::now();
-            if now >= deadline {
+            self.drain_response_channel();
+            if let Some(idx) = self
+                .response_buffer
+                .iter()
+                .position(|(answers, _)| *answers == Some(id))
+            {
+                let (_, response) = self.response_buffer.remove(idx).expect("index is in range");
+                return Ok(matcher(&response));
+            }
+
+            let remaining = deadline.saturating_duration_since(Instant::now());
+            if remaining.is_zero() {
+                if let Some(command) = self.awaiting_reply.iter_mut().find(|c| c.id == id) {
+                    command.discard = true;
+                }
                 return Ok(None);
             }
 
-            let remaining = deadline - now;
-
-            // If the receiver was disconnected, propagate the error.
-            let Some(next) = self.wait_for_response(remaining)? else {
-                // No response arrived before the remaining time elapsed.
-                return Ok(None);
-            };
-
-            // Keep the response in the buffer so non-matching responses are kept for other calls
-            self.response_buffer.push_back(next);
-
-            // Re-scan the buffer for a match now that we have new data.
-            if let Some(result) = try_get_response(&mut self.response_buffer) {
-                return Ok(Some(result));
+            // Block on the channel only; everything already buffered was checked above.
+            match self.response_receiver.recv_timeout(remaining) {
+                Ok(res) => self.accept_response(res),
+                Err(RecvTimeoutError::Timeout) => {}
+                Err(RecvTimeoutError::Disconnected) => {
+                    return Err(io::Error::other("Response channel closed").into());
+                }
             }
         }
     }
@@ -611,6 +693,22 @@ impl FIRMClient {
     }
 }
 
+/// The command whose reply `response` is.
+fn command_for_response(response: &FIRMResponse) -> Option<FIRMCommand> {
+    match response {
+        FIRMResponse::GetDeviceInfo(_) => Some(FIRMCommand::GetDeviceInfo),
+        FIRMResponse::GetDeviceConfig(_) => Some(FIRMCommand::GetDeviceConfig),
+        FIRMResponse::SetDeviceConfig(_) => Some(FIRMCommand::SetDeviceConfig),
+        FIRMResponse::SetMagnetometerCalibration(_) => {
+            Some(FIRMCommand::SetMagnetometerCalibration)
+        }
+        FIRMResponse::SetIMUCalibration(_) => Some(FIRMCommand::SetIMUCalibration),
+        FIRMResponse::GetCalibration(_) => Some(FIRMCommand::GetCalibration),
+        FIRMResponse::Cancel(_) => Some(FIRMCommand::Cancel),
+        FIRMResponse::Error(_) => None,
+    }
+}
+
 /// Ensures that the client is properly stopped when dropped, i.e. .stop() is called.
 impl Drop for FIRMClient {
     fn drop(&mut self) {
@@ -626,6 +724,7 @@ mod tests {
     };
 
     use super::*;
+    use crate::mock_serial::MockDeviceHandle;
 
     fn str_to_bytes<const N: usize>(string: &str) -> [u8; N] {
         let mut out = [0u8; N];
@@ -640,6 +739,62 @@ mod tests {
         // Test that creating a client with an invalid port fails immediately
         let result = FIRMClient::new("invalid_port_name", 2_000_000, 0.1);
         assert!(result.is_err());
+    }
+
+    /// Injects `payload` only after the client has sent `command`, so the reply can't arrive
+    /// before the command goes out.
+    fn respond_after_command(
+        device: &MockDeviceHandle,
+        command: FIRMCommand,
+        payload: Vec<u8>,
+    ) -> thread::JoinHandle<()> {
+        respond_to_commands(device, vec![(command, Some(payload))])
+    }
+
+    /// Acts as the device for the given commands: waits for each in turn (asserting it is the
+    /// next one sent) and then injects its reply payload, or drops the reply if `None`.
+    fn respond_to_commands(
+        device: &MockDeviceHandle,
+        script: Vec<(FIRMCommand, Option<Vec<u8>>)>,
+    ) -> thread::JoinHandle<()> {
+        let responder = device.clone();
+        thread::spawn(move || {
+            for (command, reply) in script {
+                assert_eq!(
+                    responder
+                        .wait_for_command_identifier(Duration::from_millis(100))
+                        .unwrap(),
+                    Some(command.to_u8().into())
+                );
+                if let Some(payload) = reply {
+                    responder.inject_response(command, &payload);
+                }
+            }
+        })
+    }
+
+    fn device_info_payload() -> Vec<u8> {
+        let mut payload = vec![0u8; DEVICE_ID_LENGTH + FIRMWARE_VERSION_LENGTH];
+        payload[DEVICE_ID_LENGTH..DEVICE_ID_LENGTH + 2].copy_from_slice(b"v1");
+        payload
+    }
+
+    fn device_config_payload() -> Vec<u8> {
+        let mut payload = vec![0u8; DEVICE_CONFIG_PAYLOAD_LENGTH];
+        payload[0..FREQUENCY_LENGTH].copy_from_slice(&100u16.to_le_bytes());
+        payload[FREQUENCY_LENGTH + DEVICE_NAME_LENGTH] = 1;
+        payload
+    }
+
+    /// Has the first cancel time out with the device never replying to it.
+    fn lose_first_cancel_reply(client: &mut FIRMClient, device: &MockDeviceHandle) {
+        assert_eq!(client.cancel(Duration::from_millis(20)).unwrap(), None);
+        assert_eq!(
+            device
+                .wait_for_command_identifier(Duration::from_millis(100))
+                .unwrap(),
+            Some(FIRMCommand::Cancel.to_u8().into())
+        );
     }
 
     #[test]
@@ -725,9 +880,8 @@ mod tests {
         let (mut client, device) = FIRMClient::new_mock(0.01);
         client.start();
 
-        // Prepare the response packet to be injected
-        let response_payload = [1u8]; // Acknowledgement byte
-        device.inject_response(FIRMCommand::SetDeviceConfig, &response_payload);
+        // Acknowledgement byte
+        let responder = respond_after_command(&device, FIRMCommand::SetDeviceConfig, vec![1u8]);
 
         // Send the set device config command
         let result = client.set_device_config(
@@ -736,6 +890,7 @@ mod tests {
             DeviceProtocol::UART,
             Duration::from_millis(100),
         );
+        responder.join().unwrap();
 
         // Verify the result
         assert_eq!(result.unwrap(), Some(true));
@@ -753,9 +908,10 @@ mod tests {
         payload[DEVICE_ID_LENGTH..DEVICE_ID_LENGTH + FIRMWARE_VERSION_LENGTH]
             .copy_from_slice(&fw_bytes);
 
-        device.inject_response(FIRMCommand::GetDeviceInfo, &payload);
+        let responder = respond_after_command(&device, FIRMCommand::GetDeviceInfo, payload);
 
         let result = client.get_device_info(Duration::from_millis(100));
+        responder.join().unwrap();
 
         assert_eq!(
             result.unwrap(),
@@ -783,9 +939,10 @@ mod tests {
         payload[FREQUENCY_LENGTH + DEVICE_NAME_LENGTH] = 1;
         payload[FREQUENCY_LENGTH + DEVICE_NAME_LENGTH + 1] = 1;
 
-        device.inject_response(FIRMCommand::GetDeviceConfig, &payload);
+        let responder = respond_after_command(&device, FIRMCommand::GetDeviceConfig, payload);
 
         let result = client.get_device_config(Duration::from_millis(100));
+        responder.join().unwrap();
 
         assert_eq!(
             result.unwrap(),
@@ -839,9 +996,10 @@ mod tests {
             payload.extend_from_slice(&v.to_le_bytes());
         }
 
-        device.inject_response(FIRMCommand::GetCalibration, &payload);
+        let responder = respond_after_command(&device, FIRMCommand::GetCalibration, payload);
 
         let result = client.get_calibration(Duration::from_millis(100));
+        responder.join().unwrap();
 
         assert_eq!(result.unwrap(), Some(expected));
     }
@@ -851,19 +1009,297 @@ mod tests {
         let (mut client, device) = FIRMClient::new_mock(0.01);
         client.start();
 
-        let responder = device.clone();
-        let handle = thread::spawn(move || {
-            assert_eq!(
-                responder
-                    .wait_for_command_identifier(Duration::from_millis(100))
-                    .unwrap(),
-                Some(FIRMCommand::Cancel.to_u8().into())
-            );
-            responder.inject_response(FIRMCommand::Cancel, &[1u8]);
-        });
+        let responder = respond_after_command(&device, FIRMCommand::Cancel, vec![1u8]);
 
         let result = client.cancel(Duration::from_millis(100));
-        handle.join().unwrap();
+        responder.join().unwrap();
+        assert_eq!(result.unwrap(), Some(true));
+    }
+
+    #[test]
+    fn test_late_ack_is_not_taken_as_reply_to_next_command() {
+        let (mut client, device) = FIRMClient::new_mock(0.01);
+        client.start();
+
+        // First cancel times out; its ack only arrives afterwards.
+        assert_eq!(client.cancel(Duration::from_millis(20)).unwrap(), None);
+        assert_eq!(
+            device
+                .wait_for_command_identifier(Duration::from_millis(100))
+                .unwrap(),
+            Some(FIRMCommand::Cancel.to_u8().into())
+        );
+        device.inject_response(FIRMCommand::Cancel, &[1u8]);
+        thread::sleep(Duration::from_millis(50));
+
+        // The device never answers the second cancel, so the stale ack must not count.
+        assert_eq!(client.cancel(Duration::from_millis(20)).unwrap(), None);
+        // The late ack settled the first cancel, so no fence was needed before the second.
+        assert_eq!(
+            device
+                .wait_for_command_identifier(Duration::from_millis(100))
+                .unwrap(),
+            Some(FIRMCommand::Cancel.to_u8().into())
+        );
+    }
+
+    #[test]
+    fn test_in_flight_late_ack_is_not_taken_as_reply_to_next_command() {
+        let (mut client, device) = FIRMClient::new_mock(0.01);
+        client.start();
+
+        // First cancel times out; the device has not replied yet.
+        assert_eq!(client.cancel(Duration::from_millis(20)).unwrap(), None);
+        assert_eq!(
+            device
+                .wait_for_command_identifier(Duration::from_millis(100))
+                .unwrap(),
+            Some(FIRMCommand::Cancel.to_u8().into())
+        );
+
+        // The second cancel goes out behind a fence, and all three replies arrive only after
+        // that, in command order: the first cancel's late ack, the fence's, the second's.
+        let fence_reply_lost = false;
+        let replies = answer_fenced_retry_late(&device, fence_reply_lost);
+        assert_eq!(
+            client.cancel(Duration::from_millis(200)).unwrap(),
+            Some(false)
+        );
+        replies.join().unwrap();
+    }
+
+    #[test]
+    fn test_in_flight_late_ack_is_not_taken_as_reply_when_fence_reply_is_lost() {
+        let (mut client, device) = FIRMClient::new_mock(0.01);
+        client.start();
+
+        // First cancel times out; the device has not replied yet.
+        assert_eq!(client.cancel(Duration::from_millis(20)).unwrap(), None);
+        assert_eq!(
+            device
+                .wait_for_command_identifier(Duration::from_millis(100))
+                .unwrap(),
+            Some(FIRMCommand::Cancel.to_u8().into())
+        );
+
+        // Without the fence's reply, the two acks still arrive in order and the first is skipped.
+        let fence_reply_lost = true;
+        let replies = answer_fenced_retry_late(&device, fence_reply_lost);
+        assert_eq!(
+            client.cancel(Duration::from_millis(200)).unwrap(),
+            Some(false)
+        );
+        replies.join().unwrap();
+    }
+
+    /// Waits for a fenced cancel retry, then replies late to the earlier cancel (ack `true`),
+    /// to the fence (unless lost), and to the retry (ack `false`).
+    fn answer_fenced_retry_late(
+        device: &MockDeviceHandle,
+        fence_reply_lost: bool,
+    ) -> thread::JoinHandle<()> {
+        let responder = device.clone();
+        thread::spawn(move || {
+            for command in [FIRMCommand::GetDeviceInfo, FIRMCommand::Cancel] {
+                assert_eq!(
+                    responder
+                        .wait_for_command_identifier(Duration::from_millis(100))
+                        .unwrap(),
+                    Some(command.to_u8().into())
+                );
+            }
+            responder.inject_response(FIRMCommand::Cancel, &[1u8]);
+            if !fence_reply_lost {
+                responder.inject_response(FIRMCommand::GetDeviceInfo, &device_info_payload());
+            }
+            responder.inject_response(FIRMCommand::Cancel, &[0u8]);
+        })
+    }
+
+    #[test]
+    fn test_lost_reply_does_not_block_immediate_retries() {
+        let (mut client, device) = FIRMClient::new_mock(0.01);
+        client.start();
+        lose_first_cancel_reply(&mut client, &device);
+
+        // Retry at once, repeatedly; the device answers each retry promptly, alternating the ack
+        // value so each retry is seen to get its own reply. Only the first retry needs a fence.
+        let mut results = Vec::new();
+        for attempt in 0..4u8 {
+            let ack = attempt % 2 == 0;
+            let mut script = Vec::new();
+            if attempt == 0 {
+                script.push((FIRMCommand::GetDeviceInfo, Some(device_info_payload())));
+            }
+            script.push((FIRMCommand::Cancel, Some(vec![ack as u8])));
+            let responder = respond_to_commands(&device, script);
+            results.push(client.cancel(Duration::from_millis(200)).unwrap());
+            responder.join().unwrap();
+        }
+        assert_eq!(
+            results,
+            vec![Some(true), Some(false), Some(true), Some(false)]
+        );
+        assert!(client.awaiting_reply.is_empty());
+        assert!(client.response_buffer.is_empty());
+    }
+
+    #[test]
+    fn test_lost_fence_reply_only_costs_one_retry() {
+        let (mut client, device) = FIRMClient::new_mock(0.01);
+        client.start();
+        lose_first_cancel_reply(&mut client, &device);
+
+        // With the fence's reply lost too, the retry's ack is indistinguishable from a late ack
+        // to the first cancel, so the retry times out rather than risk a wrong answer.
+        let responder = respond_to_commands(
+            &device,
+            vec![
+                (FIRMCommand::GetDeviceInfo, None),
+                (FIRMCommand::Cancel, Some(vec![1u8])),
+            ],
+        );
+        assert_eq!(client.cancel(Duration::from_millis(100)).unwrap(), None);
+        responder.join().unwrap();
+
+        // The next retry is fenced with another read-only command (device info is still
+        // awaited) and gets its own reply.
+        let responder = respond_to_commands(
+            &device,
+            vec![
+                (FIRMCommand::GetDeviceConfig, Some(device_config_payload())),
+                (FIRMCommand::Cancel, Some(vec![0u8])),
+            ],
+        );
+        assert_eq!(
+            client.cancel(Duration::from_millis(200)).unwrap(),
+            Some(false)
+        );
+        responder.join().unwrap();
+        assert!(client.awaiting_reply.is_empty());
+    }
+
+    #[test]
+    fn test_lost_device_info_reply_is_fenced_with_another_command() {
+        let (mut client, device) = FIRMClient::new_mock(0.01);
+        client.start();
+
+        assert_eq!(
+            client.get_device_info(Duration::from_millis(20)).unwrap(),
+            None
+        );
+        assert_eq!(
+            device
+                .wait_for_command_identifier(Duration::from_millis(100))
+                .unwrap(),
+            Some(FIRMCommand::GetDeviceInfo.to_u8().into())
+        );
+
+        let responder = respond_to_commands(
+            &device,
+            vec![
+                (FIRMCommand::GetDeviceConfig, Some(device_config_payload())),
+                (FIRMCommand::GetDeviceInfo, Some(device_info_payload())),
+            ],
+        );
+        let info = client.get_device_info(Duration::from_millis(200)).unwrap();
+        responder.join().unwrap();
+        assert_eq!(info.unwrap().firmware_version, "v1");
+        // The fence's reply is consumed internally, not left for get_response_packets.
+        assert!(client.response_buffer.is_empty());
+    }
+
+    #[test]
+    fn test_retries_recover_after_device_outage() {
+        let (mut client, device) = FIRMClient::new_mock(0.01);
+        client.start();
+
+        // The device answers nothing for a while. Retries are fenced while a fence kind is free.
+        for _ in 0..5 {
+            assert_eq!(client.cancel(Duration::ZERO).unwrap(), None);
+        }
+        let silent = respond_to_commands(
+            &device,
+            [
+                FIRMCommand::Cancel,
+                FIRMCommand::GetDeviceInfo,
+                FIRMCommand::Cancel,
+                FIRMCommand::GetDeviceConfig,
+                FIRMCommand::Cancel,
+                FIRMCommand::GetCalibration,
+                FIRMCommand::Cancel,
+                FIRMCommand::Cancel,
+            ]
+            .into_iter()
+            .map(|command| (command, None))
+            .collect(),
+        );
+        silent.join().unwrap();
+
+        // Once it answers again, unfenced retries can only be matched to the stale cancels, so
+        // they time out (never a wrong answer). Each reply rules out the stale commands before
+        // the one it is matched to, which frees a fence kind within two retries.
+        for _ in 0..2 {
+            let responder = respond_after_command(&device, FIRMCommand::Cancel, vec![1u8]);
+            assert_eq!(client.cancel(Duration::from_millis(50)).unwrap(), None);
+            responder.join().unwrap();
+        }
+        let responder = respond_to_commands(
+            &device,
+            vec![
+                (FIRMCommand::GetDeviceInfo, Some(device_info_payload())),
+                (FIRMCommand::Cancel, Some(vec![0u8])),
+            ],
+        );
+        assert_eq!(
+            client.cancel(Duration::from_millis(200)).unwrap(),
+            Some(false)
+        );
+        responder.join().unwrap();
+        assert!(client.awaiting_reply.is_empty());
+
+        let responder = respond_after_command(&device, FIRMCommand::Cancel, vec![1u8]);
+        assert_eq!(
+            client.cancel(Duration::from_millis(200)).unwrap(),
+            Some(true)
+        );
+        responder.join().unwrap();
+    }
+
+    #[test]
+    fn test_awaiting_replies_stay_bounded_when_device_never_answers() {
+        let (mut client, _device) = FIRMClient::new_mock(0.01);
+        client.start();
+
+        for _ in 0..(MAX_AWAITING_REPLY * 2) {
+            assert_eq!(client.cancel(Duration::ZERO).unwrap(), None);
+        }
+        assert_eq!(client.awaiting_reply.len(), MAX_AWAITING_REPLY);
+    }
+
+    #[test]
+    fn test_buffered_unrelated_response_does_not_block_waiting() {
+        let (mut client, device) = FIRMClient::new_mock(0.01);
+        client.start();
+
+        // Leave a device-info response buffered that no call is waiting for.
+        client
+            .send_command(FIRMCommandPacket::build_get_device_info_command())
+            .unwrap();
+        assert_eq!(
+            device
+                .wait_for_command_identifier(Duration::from_millis(100))
+                .unwrap(),
+            Some(FIRMCommand::GetDeviceInfo.to_u8().into())
+        );
+        let mut info = vec![0u8; 16];
+        info[8..10].copy_from_slice(b"v1");
+        device.inject_response(FIRMCommand::GetDeviceInfo, &info);
+        thread::sleep(Duration::from_millis(50));
+
+        let responder = respond_after_command(&device, FIRMCommand::Cancel, vec![1u8]);
+        let result = client.cancel(Duration::from_millis(200));
+        responder.join().unwrap();
         assert_eq!(result.unwrap(), Some(true));
     }
 }

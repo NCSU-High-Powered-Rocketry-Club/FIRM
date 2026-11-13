@@ -26,7 +26,8 @@ struct FIRMClient {
     timeout: f64,
 }
 
-#[pyclass(unsendable)]
+// Sendable so a test can play the device from another thread while the client blocks on a call.
+#[pyclass]
 struct MockDeviceHandle {
     inner: RustMockDeviceHandle,
 }
@@ -108,8 +109,15 @@ impl FIRMClient {
         self.inner.stop();
     }
 
+    // Calls that can block release the GIL (`py.detach`) while they wait, so other Python
+    // threads keep running.
+
     #[pyo3(signature = (block=false))]
-    fn get_data_packets(&mut self, block: bool) -> PyResult<Vec<ProcessedFIRMData>> {
+    fn get_data_packets(
+        &mut self,
+        py: Python<'_>,
+        block: bool,
+    ) -> PyResult<Vec<ProcessedFIRMData>> {
         self.ensure_ok()?;
 
         let timeout = if block {
@@ -118,33 +126,42 @@ impl FIRMClient {
             None
         };
 
-        let packets = map_io(self.inner.get_data_packets(timeout))?;
+        let packets = map_io(py.detach(|| self.inner.get_data_packets(timeout)))?;
         Ok(packets)
     }
 
     #[pyo3(signature = (timeout_seconds=5.0))]
-    fn get_device_info(&mut self, timeout_seconds: f64) -> PyResult<Option<DeviceInfo>> {
+    fn get_device_info(
+        &mut self,
+        py: Python<'_>,
+        timeout_seconds: f64,
+    ) -> PyResult<Option<DeviceInfo>> {
         self.ensure_ok()?;
-        let info = map_io(
+        let info = map_io(py.detach(|| {
             self.inner
-                .get_device_info(Duration::from_secs_f64(timeout_seconds)),
-        )?;
+                .get_device_info(Duration::from_secs_f64(timeout_seconds))
+        }))?;
         Ok(info)
     }
 
     #[pyo3(signature = (timeout_seconds=5.0))]
-    fn get_device_config(&mut self, timeout_seconds: f64) -> PyResult<Option<DeviceConfig>> {
+    fn get_device_config(
+        &mut self,
+        py: Python<'_>,
+        timeout_seconds: f64,
+    ) -> PyResult<Option<DeviceConfig>> {
         self.ensure_ok()?;
-        let cfg = map_io(
+        let cfg = map_io(py.detach(|| {
             self.inner
-                .get_device_config(Duration::from_secs_f64(timeout_seconds)),
-        )?;
+                .get_device_config(Duration::from_secs_f64(timeout_seconds))
+        }))?;
         Ok(cfg)
     }
 
     #[pyo3(signature = (name, frequency, protocol, timeout_seconds=5.0))]
     fn set_device_config(
         &mut self,
+        py: Python<'_>,
         name: String,
         frequency: u16,
         protocol: DeviceProtocol,
@@ -152,12 +169,14 @@ impl FIRMClient {
     ) -> PyResult<bool> {
         self.ensure_ok()?;
 
-        let res = map_io(self.inner.set_device_config(
-            name,
-            frequency,
-            protocol,
-            Duration::from_secs_f64(timeout_seconds),
-        ))?;
+        let res = map_io(py.detach(|| {
+            self.inner.set_device_config(
+                name,
+                frequency,
+                protocol,
+                Duration::from_secs_f64(timeout_seconds),
+            )
+        }))?;
 
         Ok(res.unwrap_or(false))
     }
@@ -165,17 +184,20 @@ impl FIRMClient {
     #[pyo3(signature = (offsets, scale_matrix, timeout_seconds=5.0))]
     fn set_magnetometer_calibration(
         &mut self,
+        py: Python<'_>,
         offsets: [f32; NUMBER_OF_CALIBRATION_OFFSETS],
         scale_matrix: [f32; NUMBER_OF_CALIBRATION_SCALE_MATRIX_ELEMENTS],
         timeout_seconds: f64,
     ) -> PyResult<bool> {
         self.ensure_ok()?;
 
-        let res = map_io(self.inner.set_magnetometer_calibration(
-            offsets,
-            scale_matrix,
-            Duration::from_secs_f64(timeout_seconds),
-        ))?;
+        let res = map_io(py.detach(|| {
+            self.inner.set_magnetometer_calibration(
+                offsets,
+                scale_matrix,
+                Duration::from_secs_f64(timeout_seconds),
+            )
+        }))?;
 
         Ok(res.unwrap_or(false))
     }
@@ -183,6 +205,7 @@ impl FIRMClient {
     #[pyo3(signature = (accel_offsets, accel_scale_matrix, gyro_offsets, gyro_scale_matrix, timeout_seconds=5.0))]
     fn set_imu_calibration(
         &mut self,
+        py: Python<'_>,
         accel_offsets: [f32; NUMBER_OF_CALIBRATION_OFFSETS],
         accel_scale_matrix: [f32; NUMBER_OF_CALIBRATION_SCALE_MATRIX_ELEMENTS],
         gyro_offsets: [f32; NUMBER_OF_CALIBRATION_OFFSETS],
@@ -191,24 +214,30 @@ impl FIRMClient {
     ) -> PyResult<bool> {
         self.ensure_ok()?;
 
-        let res = map_io(self.inner.set_imu_calibration(
-            accel_offsets,
-            accel_scale_matrix,
-            gyro_offsets,
-            gyro_scale_matrix,
-            Duration::from_secs_f64(timeout_seconds),
-        ))?;
+        let res = map_io(py.detach(|| {
+            self.inner.set_imu_calibration(
+                accel_offsets,
+                accel_scale_matrix,
+                gyro_offsets,
+                gyro_scale_matrix,
+                Duration::from_secs_f64(timeout_seconds),
+            )
+        }))?;
 
         Ok(res.unwrap_or(false))
     }
 
     #[pyo3(signature = (timeout_seconds=5.0))]
-    fn get_calibration(&mut self, timeout_seconds: f64) -> PyResult<Option<CalibrationValues>> {
+    fn get_calibration(
+        &mut self,
+        py: Python<'_>,
+        timeout_seconds: f64,
+    ) -> PyResult<Option<CalibrationValues>> {
         self.ensure_ok()?;
-        let calibration = map_io(
+        let calibration = map_io(py.detach(|| {
             self.inner
-                .get_calibration(Duration::from_secs_f64(timeout_seconds)),
-        )?;
+                .get_calibration(Duration::from_secs_f64(timeout_seconds))
+        }))?;
         Ok(calibration)
     }
 
@@ -222,6 +251,7 @@ impl FIRMClient {
     #[pyo3(signature = (collection_duration_seconds, apply_timeout_seconds=5.0))]
     fn run_and_apply_magnetometer_calibration(
         &mut self,
+        py: Python<'_>,
         collection_duration_seconds: f64,
         apply_timeout_seconds: f64,
     ) -> PyResult<Option<bool>> {
@@ -231,10 +261,10 @@ impl FIRMClient {
         let apply_timeout = Duration::from_secs_f64(apply_timeout_seconds);
 
         // Call the inner Rust method we created earlier.
-        let res = map_io(
+        let res = map_io(py.detach(|| {
             self.inner
-                .run_and_apply_magnetometer_calibration(collection_duration, apply_timeout),
-        )?;
+                .run_and_apply_magnetometer_calibration(collection_duration, apply_timeout)
+        }))?;
 
         Ok(res)
     }
@@ -242,10 +272,11 @@ impl FIRMClient {
     /// TODO: Firmware currently only ACKs cancel. Mag/IMU calibration on-device
     /// is a synchronous settings write with nothing in-flight to abort.
     #[pyo3(signature = (timeout_seconds=5.0))]
-    fn cancel(&mut self, timeout_seconds: f64) -> PyResult<bool> {
+    fn cancel(&mut self, py: Python<'_>, timeout_seconds: f64) -> PyResult<bool> {
         self.ensure_ok()?;
 
-        let res = map_io(self.inner.cancel(Duration::from_secs_f64(timeout_seconds)))?;
+        let res =
+            map_io(py.detach(|| self.inner.cancel(Duration::from_secs_f64(timeout_seconds))))?;
         Ok(res.unwrap_or(false))
     }
 
@@ -284,11 +315,15 @@ impl MockDeviceHandle {
     }
 
     #[pyo3(signature = (timeout_seconds))]
-    fn wait_for_command_identifier(&self, timeout_seconds: f64) -> PyResult<Option<u16>> {
-        map_io(
+    fn wait_for_command_identifier(
+        &self,
+        py: Python<'_>,
+        timeout_seconds: f64,
+    ) -> PyResult<Option<u16>> {
+        map_io(py.detach(|| {
             self.inner
-                .wait_for_command_identifier(Duration::from_secs_f64(timeout_seconds)),
-        )
+                .wait_for_command_identifier(Duration::from_secs_f64(timeout_seconds))
+        }))
     }
 }
 
