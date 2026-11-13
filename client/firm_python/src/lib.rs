@@ -26,7 +26,8 @@ struct FIRMClient {
     timeout: f64,
 }
 
-#[pyclass(unsendable)]
+// Sendable so a test can play the device from another thread while the client blocks on a call.
+#[pyclass]
 struct MockDeviceHandle {
     inner: RustMockDeviceHandle,
 }
